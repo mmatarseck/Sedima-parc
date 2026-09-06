@@ -1,0 +1,282 @@
+@import "tailwindcss";
+
+/* ============================================================================
+ * SEDIMA Logistique & Distribution — système de design
+ *
+ * Deux sources, chacune à sa place :
+ *
+ *  - La charte SEDIMA (docs/SEDIMA-charte-formatage.md de SEDIMA-OCT) donne
+ *    l'identité : Inter, le vert #78B225 réservé à l'action principale, à
+ *    l'état actif et au focus, le rouge réservé aux écarts. Elle n'est pas
+ *    discutée.
+ *
+ *  - Les références retenues par la Direction des Opérations (maquettes de
+ *    logiciels de gestion sur Dribbble) donnent le traitement : une interface
+ *    aérée, en graisses légères, des cartes arrondies posées sur un fond froid
+ *    très clair avec une ombre à peine perceptible, des identifiants en couleur
+ *    d'accent, des contrôles en pilule, une pagination en pied de tableau.
+ *
+ * Règle d'usage — l'interface reste neutre à 95 %. Ce qui a changé par rapport
+ * à la première version, c'est la respiration et le poids : moins de gras,
+ * plus d'air, des rayons plus généreux. Pas plus de couleur.
+ * ==========================================================================*/
+
+@theme {
+  /* -- Neutres (structure) ------------------------------------------------
+   * Fond froid très clair, comme dans les références, et un texte principal
+   * légèrement moins noir que le #010101 de la charte : sur une interface
+   * aérée, le noir pur pèse. */
+  --color-fond: #f4f6f9;
+  --color-surface: #ffffff;
+  --color-surface-2: #f9fafc;
+  --color-surface-3: #f1f3f6;
+  --color-texte: #1a1f24;
+  --color-texte-2: #5b6470;
+  --color-attenue: #8b95a1;
+  --color-attenue-2: #b3bcc6;
+  --color-bordure: #e8ecf1;
+  --color-bordure-champ: #d9dfe6;
+  --color-encre: #22272b;
+
+  /* -- Accent (vert SEDIMA) ----------------------------------------------- */
+  --color-accent: #78b225;
+  --color-accent-fonce: #5f8f14;
+  --color-accent-tres-fonce: #3f6b17;
+  --color-accent-fond: #f1f8e6;
+  --color-accent-bordure: #cfe0b4;
+  --color-surbrillance: #f2e000;
+
+  /* -- Statuts ------------------------------------------------------------ */
+  --color-favorable: #3f6b17;
+  --color-favorable-fond: #f1f8e6;
+  --color-favorable-bordure: #cfe0b4;
+  --color-defavorable: #c00000;
+  --color-defavorable-fond: #fdf3f3;
+  --color-defavorable-bordure: #f0c9c9;
+  --color-vigilance: #8a5a00;
+  --color-vigilance-fond: #fff5e3;
+  --color-neutre: #b8bec4;
+  --color-neutre-fond: #f1f3f6;
+
+  /* -- Statuts de véhicule ------------------------------------------------
+   * Couleurs données par la gestion de parc. Elles ne servent qu'à marquer un
+   * état sur une pastille ou un filet : ce sont des couleurs de donnée, pas des
+   * accents d'interface. Le fond des pastilles reste neutre.
+   * --------------------------------------------------------------------- */
+  --color-statut-service: #1f7a4d;
+  --color-statut-backup: #17e37e;
+  --color-statut-reparation: #f2e000;
+  --color-statut-restauration: #e08a15;
+  --color-statut-hors-service: #f5453c;
+  --color-statut-mutation: #22272b;
+  --color-statut-retrait: #a9b2b8;
+
+  /* -- Typographie -------------------------------------------------------- */
+  --font-sans: "Inter", -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  /* -- Rayons ------------------------------------------------------------- */
+  --radius-modale: 16px;
+  --radius-carte: 14px;
+  --radius-encart: 10px;
+  --radius-controle: 10px;
+  --radius-pastille: 8px;
+
+  /* -- Ombres --------------------------------------------------------------
+   * Les cartes portent une ombre à peine perceptible, comme dans les
+   * références : elle les décolle du fond sans les faire flotter. Les couches
+   * flottantes (menus, modales) en portent une franche. */
+  --shadow-carte: 0 1px 2px rgba(17, 24, 39, 0.04), 0 1px 3px rgba(17, 24, 39, 0.03);
+  --shadow-flottante: 0 12px 32px rgba(17, 24, 39, 0.1), 0 2px 6px rgba(17, 24, 39, 0.06);
+  --shadow-modale: 0 24px 60px rgba(17, 24, 39, 0.24);
+  --shadow-onglet: 0 1px 2px rgba(17, 24, 39, 0.08), 0 0 0 1px rgba(17, 24, 39, 0.03);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reset — repris de la charte §1.
+ *
+ * Impérativement dans « @layer base » : hors couche, une règle d'élément comme
+ * `button{background:none}` l'emporte sur les utilitaires Tailwind, et tous les
+ * boutons de l'application perdent leur fond.
+ * ------------------------------------------------------------------------*/
+@layer base {
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:var(--font-sans);
+    font-size:13px;
+    color:var(--color-texte);
+    background:var(--color-fond);
+    -webkit-font-smoothing:antialiased;
+    line-height:1.45;
+  }
+  a{color:var(--color-accent-fonce);text-decoration:none}
+  a:hover{color:var(--color-accent)}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input,select,textarea{font-family:inherit}
+  input[type="search"]::-webkit-search-cancel-button{-webkit-appearance:none}
+  ::selection{background:var(--color-surbrillance);color:var(--color-texte)}
+  :focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}
+}
+
+@keyframes apparition{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important;transition:none !important}
+}
+
+/* Barre de défilement discrète, dans le ton des références. */
+.defilement-discret::-webkit-scrollbar{width:10px;height:10px}
+.defilement-discret::-webkit-scrollbar-thumb{background:#d3d9e0;border-radius:8px;border:3px solid #fff}
+.defilement-discret::-webkit-scrollbar-thumb:hover{background:#b9c1ca}
+.defilement-discret::-webkit-scrollbar-track{background:transparent}
+.defilement-discret::-webkit-scrollbar-corner{background:transparent}
+
+/* Défilement sans barre visible — pour le rail, où une barre de 10 px prendrait
+   un quart de la largeur rétractée. Le contenu reste défilable à la molette. */
+.sans-barre{scrollbar-width:none;overflow-x:hidden}
+.sans-barre::-webkit-scrollbar{display:none}
+
+/* ---------------------------------------------------------------------------
+ * Utilitaires typographiques.
+ *
+ * L'échelle est plus légère que dans la charte d'origine : les références
+ * retenues portent la hiérarchie par la taille et la couleur, pas par la
+ * graisse. Le gras (700) n'existe plus que sur le titre de page.
+ * ------------------------------------------------------------------------*/
+@utility titre-page {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+@utility titre-bloc {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+@utility sur-titre {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-texte-2);
+}
+@utility micro-sur-titre {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-attenue);
+}
+@utility en-tete-colonne {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-texte-2);
+}
+@utility corps {
+  font-size: 13px;
+  line-height: 1.55;
+}
+@utility ligne-tableau {
+  font-size: 13px;
+  font-weight: 400;
+}
+@utility label-champ {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-texte-2);
+}
+@utility meta {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-attenue);
+}
+@utility badge-texte {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+/* Codes, immatriculations, périodes et montants alignés. Les références
+   n'emploient pas de monospace : les chiffres tabulaires d'Inter suffisent à
+   aligner les colonnes sans casser le ton. */
+@utility code {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+/* ---------------------------------------------------------------------------
+ * Composants de base — une carte, trois boutons, un champ.
+ * Écrits en utilitaires pour rester composables avec Tailwind.
+ * ------------------------------------------------------------------------*/
+@utility carte {
+  background: var(--color-surface);
+  border: 1px solid var(--color-bordure);
+  border-radius: var(--radius-carte);
+  box-shadow: var(--shadow-carte);
+}
+@utility bouton-principal {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-controle);
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 120ms ease;
+  &:hover { background: var(--color-accent-fonce); }
+}
+@utility bouton-secondaire {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-controle);
+  background: var(--color-surface);
+  border: 1px solid var(--color-bordure-champ);
+  color: var(--color-texte);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: border-color 120ms ease, background-color 120ms ease;
+  &:hover { border-color: var(--color-attenue-2); background: var(--color-surface-2); }
+}
+@utility bouton-discret {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius-pastille);
+  color: var(--color-texte-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 120ms ease, color 120ms ease;
+  &:hover { background: var(--color-surface-3); color: var(--color-texte); }
+}
+@utility champ-pilule {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--color-surface-3);
+  border: 1px solid transparent;
+  transition: border-color 120ms ease, background-color 120ms ease;
+  &:focus-within { background: var(--color-surface); border-color: var(--color-accent); }
+}
+
+/* Curseur de zoom du planning — piste fine, poignée verte, dans le ton des pilules. */
+.curseur-zoom{-webkit-appearance:none;appearance:none;height:4px;border-radius:999px;background:var(--color-bordure-champ);outline:none}
+.curseur-zoom::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--color-accent);border:2px solid #fff;box-shadow:0 1px 3px rgba(17,24,39,.2);cursor:pointer}
+.curseur-zoom::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--color-accent);border:2px solid #fff;box-shadow:0 1px 3px rgba(17,24,39,.2);cursor:pointer}
+.curseur-zoom:focus-visible{outline:2px solid var(--color-accent);outline-offset:4px}

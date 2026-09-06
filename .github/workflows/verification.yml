@@ -1,0 +1,37 @@
+# Ce que l'intégration continue vérifie à chaque poussée : que le projet
+# compile, qu'il tient sa charte, et qu'il se construit. Rien de plus — un
+# pipeline qui prend dix minutes finit par être contourné.
+name: Vérification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Types
+        run: npm run typecheck
+
+      - name: Charte du projet
+        run: npm run verifier-charte
+
+      # La construction est le vrai filet : elle rend les 169 pages statiques et
+      # échoue sur toute erreur qu'un rendu révèle et que le typage laisse passer.
+      - name: Construction
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://exemple.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: cle-de-construction
