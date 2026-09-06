@@ -1,0 +1,6 @@
+# Fins de ligne : LF dans le dépôt, quel que soit le poste. Sans cela, chaque
+# commit fait depuis Windows réécrit la moitié des fichiers en CRLF.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
