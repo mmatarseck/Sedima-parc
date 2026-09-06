@@ -93,14 +93,32 @@ supabase link --project-ref <ref-du-projet>
 supabase db push
 ```
 
-`supabase/migrations/0001_socle.sql` pose les référentiels, la flotte, les
-chauffeurs, les transactions, la trace des modifications, la clôture des mois et
-les paramètres — avec leurs politiques RLS et `get_me()`.
+Deux migrations, dans l'ordre :
 
-Ce qu'il **reste à écrire** (migration `0002`) : le module transporteurs
-(grilles tarifaires, affrètements, relevé de transport), le budget et les
-rapports personnalisés. Ils sont conçus et fonctionnent sur le jeu de
-démonstration ; on les branche une fois le socle repris en données.
+- `0001_socle.sql` — référentiels, flotte, chauffeurs, transactions, trace des
+  modifications, clôture des mois, paramètres — avec les politiques RLS et
+  `get_me()` en SECURITY DEFINER.
+- `0002_transport_budget.sql` — transporteurs (profils, flotte tierce, grilles,
+  rattachements, affrètements, mises à disposition, prestations, relevé de
+  transport), entretien (programmes, plans, ajustements), compte fournisseur
+  (avances, évaluations), budget, rapports personnalisés.
+
+**Aucune des deux n'a encore été jouée contre un Postgres** : ni le CLI
+Supabase ni `psql` ne sont installés sur le poste de développement. La première
+exécution se fera sur le projet Supabase, et c'est elle qui validera la syntaxe.
+
+Puis le jeu de démonstration, si l'on veut une base peuplée pour recetter :
+
+```bash
+npm run generer-seed      # écrit supabase/seed.sql depuis src/donnees/
+supabase db reset         # ou coller seed.sql dans l'éditeur SQL
+```
+
+Le seed est **généré**, jamais écrit à la main : il dit la même chose que
+l'application parce qu'il vient de la même source. Il est rejouable (`on
+conflict do nothing`), et ses identifiants sont stables — un UUID dérivé du
+numéro métier. Il ne porte ni les comptes (ils citent `auth.users`) ni les
+fichiers des justificatifs.
 
 Après la migration, créer le premier administrateur :
 
@@ -126,6 +144,11 @@ Le jeu de démonstration et la base ne cohabitent pas par accident : chaque
 module de `src/donnees/` expose des fonctions (`listeChauffeurs()`,
 `fichePourImmatriculation()`…) que les écrans appellent. Les remplacer une à une
 par des requêtes Supabase branche l'application sans toucher aux écrans.
+
+`src/lib/supabase.ts` fournit les trois clients — navigateur, serveur (session
+lue des cookies), service (clé qui passe outre les politiques, serveur
+seulement) — et `utilisateurCourant()`, qui appelle `get_me()`. Tant que
+`NEXT_PUBLIC_SUPABASE_URL` n'est pas posée, rien de tout cela n'est appelé.
 
 L'ordre qui tient : référentiels (sites, prestataires, types de document), puis
 la flotte et les chauffeurs, puis les transactions, puis les modules qui en

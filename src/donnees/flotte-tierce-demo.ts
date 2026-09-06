@@ -65,7 +65,12 @@ const RELEVE: { nomReleve: string; prestataire: string; camions: string[]; chauf
   {
     nomReleve: "ADEX",
     prestataire: "ADEX Express",
-    camions: ["AA 569 EC", "AA 918 NT", "AA 658 JS", "AA 014 SR", "AA 571 EC", "AA 573 EC", "AA 269 NW"],
+    /* Sept camions au relevé hebdomadaire, neuf sur les factures de mise à
+       disposition : les deux camions à œufs (AA 567 EC, AA 076 BP) ne passent
+       pas par le relevé de tonnage de l'aliment, mais ils roulent pour nous et
+       se facturent au mois. Sans eux, cinq cents chargements et vingt-quatre mois
+       de mise à disposition perdaient leur camion à l'entrée en base. */
+    camions: ["AA 569 EC", "AA 918 NT", "AA 658 JS", "AA 014 SR", "AA 571 EC", "AA 573 EC", "AA 269 NW", "AA 567 EC", "AA 076 BP"],
     chauffeurs: [
       { nom: "Alpha", telephone: "772003138" },
       { nom: "Demba Ka", telephone: "773977508" },

@@ -8,9 +8,11 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "verifier-charte": "node --experimental-strip-types scripts/verifier-charte.mts"
+    "verifier-charte": "node --experimental-strip-types scripts/verifier-charte.mts",
+    "generer-seed": "tsx scripts/generer-seed.mts"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.6",
     "@supabase/supabase-js": "^2.112.4",
     "lucide-react": "^1.34.0",
     "next": "^16.3.3",
@@ -24,6 +26,7 @@
     "@types/react-dom": "^19.2.5",
     "postcss": "^8.5.26",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.13",
     "typescript": "^7.0.2"
   }
 }

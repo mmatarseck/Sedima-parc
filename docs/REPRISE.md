@@ -197,6 +197,35 @@ manquement.**
 l'inventaire de référence du parc (les huit listes du dossier parc ne
 s'accordent pas) doit être arbitré par l'équipe parc, pas par une migration.
 
+### La suite de la mise en production (même journée)
+
+- **`0002_transport_budget.sql`** — transporteurs, entretien, compte
+  fournisseur, budget, rapports personnalisés. Les règles du code y deviennent
+  des contraintes : une exception tarifaire sans motif est refusée par la base,
+  un contrat écrit sans référence aussi, un relevé en mode « parc » cite un
+  véhicule.
+- **`src/lib/supabase.ts`** — les trois clients et `utilisateurCourant()` via
+  `get_me()`. `@supabase/ssr` ajouté pour la session en cookies avec l'App
+  Router.
+- **`scripts/generer-seed.mts`** (`npm run generer-seed`) — verse le jeu de
+  démonstration en SQL : 5 967 lignes sur 29 tables, identifiants stables,
+  rejouable. Il vient de la même source que l'application, donc il dit la même
+  chose.
+
+**Un défaut de données trouvé en générant le seed** : le référentiel tiers
+tenait sept camions ADEX, les factures de mise à disposition et le relevé en
+citaient neuf. Les deux camions à œufs (AA 567 EC, AA 076 BP) ne passent pas par
+le relevé de tonnage de l'aliment, mais ils roulent et se facturent — sans eux,
+527 chargements et 24 mois de mise à disposition perdaient leur camion à
+l'entrée en base. Ajoutés au référentiel : 35 camions tiers, tout est lié.
+La même génération a aussi révélé que les factures écrivent « AA-076-BP » et le
+référentiel « AA076BP » — normalisé avant de lier.
+
+**Ni le CLI Supabase, ni `psql`, ni Docker ne sont sur le poste** : les deux
+migrations et le seed n'ont pas encore été joués contre un Postgres. La
+première exécution, sur le projet Supabase, validera la syntaxe — c'est le
+premier geste de la reprise.
+
 ---
 
 ## 0. Reprise rapide (session du 4 septembre 2026)
