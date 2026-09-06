@@ -124,6 +124,8 @@ numéro métier. Il ne porte ni les comptes (ils citent `auth.users`) ni les
 fichiers des justificatifs. Le fichier entier (1,3 Mo) dépasse ce que
 l'éditeur SQL accepte d'un coup : `seed-parties/` le découpe en parties
 ordonnées d'au plus 300 Ko, à coller l'une après l'autre sans en sauter.
+`supabase/verifier-seed.sql`, joué ensuite, compare table par table ce que la
+base compte à ce que le générateur a versé : tout doit dire « ok ».
 
 Pour valider migrations et seed sans Postgres sur le poste, PGlite (PostgreSQL
 en WebAssembly, `npm i -D @electric-sql/pglite`) les rejoue en quelques
