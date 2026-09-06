@@ -9,3 +9,4 @@ build/
 .vercel
 .next-local/
 .env*.local
+supabase/seed-parties/

@@ -168,7 +168,8 @@ create table prestataire (
 create table type_document (
   id            text primary key,
   libelle       text not null,
-  porteur       text not null check (porteur in ('vehicule', 'chauffeur')),
+  -- Trois porteurs, pas deux : la licence de transport couvre toute la flotte.
+  porteur       text not null check (porteur in ('vehicule', 'chauffeur', 'flotte')),
   applicabilite text not null,
   validite_mois integer check (validite_mois is null or validite_mois > 0),
   -- Un document critique échu immobilise administrativement le véhicule.

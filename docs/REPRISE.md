@@ -221,10 +221,48 @@ l'entrée en base. Ajoutés au référentiel : 35 camions tiers, tout est lié.
 La même génération a aussi révélé que les factures écrivent « AA-076-BP » et le
 référentiel « AA076BP » — normalisé avant de lier.
 
-**Ni le CLI Supabase, ni `psql`, ni Docker ne sont sur le poste** : les deux
-migrations et le seed n'ont pas encore été joués contre un Postgres. La
-première exécution, sur le projet Supabase, validera la syntaxe — c'est le
-premier geste de la reprise.
+### Où en est la mise en production (6 septembre 2026, fin de session)
+
+**Fait.**
+
+- Dépôt GitHub : `https://github.com/mmatarseck/Sedima-parc` — `main` poussé,
+  intégration continue **verte** (types, charte, construction).
+- Projet Supabase : `mafnzghuexfcxctupyqb` (organisation MATAR_S, projet
+  `sedima-parc`). **Les migrations 0001 et 0002 sont passées** dans le SQL
+  Editor du tableau de bord, sans une correction : 39 tables, RLS, `get_me()`.
+- Le mot de passe de la base a été réinitialisé et a transité par la
+  conversation : **le réinitialiser encore une fois** avant de le poser dans
+  Vercel.
+
+**Ce qui a coincé, et la parade.**
+
+- `npx` refuse de s'exécuter sous PowerShell (politique d'exécution) : utiliser
+  `npx.cmd`.
+- `supabase link` répond « Your account does not have the necessary
+  privileges » quel que soit le compte connecté au CLI. Non résolu — et
+  contourné : **tout se joue dans le SQL Editor**, ce qui donne le même résultat
+  qu'un `db push`. `supabase/config.toml` a été posé par `supabase init` ; il
+  est inoffensif.
+- Le seed entier (1,3 Mo) dépasse la limite du SQL Editor : il est découpé en
+  cinq parties **ordonnées** dans `supabase/seed-parties/` (ignoré par git,
+  régénérable). Elles se jouent 01 → 05 sans en sauter.
+
+**À faire, dans l'ordre.**
+
+1. **Le seed** : jouer `seed-01.sql` à `seed-05.sql` dans le SQL Editor, puis
+   vérifier — `select count(*) from vehicule` doit répondre 19 ; le relevé de
+   transport 2 926 ; les enveloppes 27. Au moment où la session s'arrête, les
+   compteurs sont à zéro : aucune partie n'a encore passé.
+2. **Le premier administrateur** : Authentication › Users › *Invite user* avec
+   l'adresse du gestionnaire, puis dans le SQL Editor :
+   `insert into profil (utilisateur_id, nom, role) values ('<uuid du compte>',
+   'Prénom Nom', 'administrateur');`
+3. **Vercel** : importer le dépôt GitHub, poser les trois variables de
+   `.env.example` (`SUPABASE_SERVICE_ROLE_KEY` sans préfixe `NEXT_PUBLIC_`).
+   Tant que les variables ne sont pas posées, l'application déployée tourne
+   sur son jeu de démonstration — ce qui est déjà une recette utile.
+4. **Le branchement écran par écran** (`src/donnees/` → `src/lib/supabase.ts`),
+   en commençant par les référentiels.
 
 ---
 
