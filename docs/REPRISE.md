@@ -281,13 +281,16 @@ Le rejeu complet passe **5 954 lignes sur 31 tables, zéro erreur**, et le
 compte annoncé par le générateur est celui de la base — plus aucune ligne
 écartée sans le dire.
 
+**Fait le 6 septembre au soir.** La migration 0003 et les cinq parties sont
+passées dans le SQL Editor ; `verifier-seed.sql` répond « ok » sur les 31
+tables — après le retrait de deux lignes de `document` : la partie 01, jouée la
+veille avant 0003, y avait laissé les deux licences comme documents de
+véhicule. **La base Supabase porte le jeu de démonstration complet
+(5 954 lignes).**
+
 **À faire, dans l'ordre.**
 
-1. **La migration 0003** dans le SQL Editor, puis **le seed** : `seed-01.sql`
-   à `seed-05.sql`, dans l'ordre. La partie 01 se rejoue sans risque si elle
-   était déjà passée (`on conflict do nothing`). Vérifier ensuite :
-   `select count(*) from vehicule` doit répondre 19 ; le relevé de transport
-   2 926 ; les enveloppes 27 ; `document` 109 ; `licence_transport` 2.
+1. ~~Le seed~~ — fait.
 2. **Le premier administrateur** : Authentication › Users › *Invite user* avec
    l'adresse du gestionnaire, puis dans le SQL Editor :
    `insert into profil (utilisateur_id, nom, role) values ('<uuid du compte>',
