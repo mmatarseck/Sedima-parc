@@ -323,9 +323,25 @@ est donc l'authentification, et le premier module les référentiels.
   citent le prestataire par son nom, que `prestatairePour` retrouve.
 
 Types, charte (194 fichiers) et construction passent ; en démonstration,
-rien n'a bougé. **Le mode réel n'a pas été exercé sur ce poste** (pas de
-`.env.local`) : il se recette sur Vercel, où les variables sont posées, avec
-le compte administrateur invité.
+rien n'a bougé.
+
+**Recetté sur Vercel le 6 septembre, tard.** Le gestionnaire s'est connecté
+avec le compte invité ; la page de garde n'a plus de comptes de démonstration
+et un visiteur sans session est renvoyé à la connexion. Deux pièges, pour
+mémoire :
+
+- les variables `NEXT_PUBLIC_` sont gravées à la construction : les poser
+  après coup ne sert à rien sans redéploiement, et un commit vide force une
+  construction neuve ;
+- une URL Supabase mal collée (sans `https://`, ou avec des guillemets) fait
+  planter le proxy à chaque requête : « Invalid supabaseUrl » dans l'onglet
+  Logs de Vercel, et « Internal Server Error » sur toutes les pages, page de
+  garde comprise. Les deux variables publiques sont en type Config, la clé
+  de service en Secret.
+
+Sur le poste, `.env.local` (ignoré par git) porte l'URL et une clé factice :
+cela suffit à exercer le proxy et la page de garde en mode réel. Pour lire la
+base d'ici, y mettre la vraie clé anon.
 
 **À faire, dans l'ordre.**
 
