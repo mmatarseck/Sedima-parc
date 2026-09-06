@@ -183,9 +183,17 @@ qui les alimente devient asynchrone. Une page ne mélange pas les sources : les
 identifiants diffèrent (« s-uab » en démonstration, un UUID en base), donc les
 usages d'un site se comptent là où les sites se lisent.
 
-L'ordre qui tient pour la suite : types de document, puis la flotte et les
-chauffeurs, puis les transactions, puis les modules qui en dérivent (coûts,
-budget, rapports). Le module transporteurs vient en dernier : il dépend de
+**Les paramètres sont branchés** — barèmes d'énergie, règles d'alerte, types
+de document. Le serveur les lit dans `parametre` et `type_document`
+(`src/lib/parametres-serveur.ts`) ; la mise en page les pose dans le
+navigateur (`AmorceParametres`) pour que les écrans qui calculent chez eux
+appliquent les mêmes règles ; l'écriture passe par une fonction serveur
+(`src/lib/parametres-actions.ts`), qui vérifie le rôle avant que les
+politiques RLS ne tranchent, et rend le motif d'un refus à l'écran. En
+démonstration, le cookie et le stockage du navigateur restent la source.
+
+L'ordre qui tient pour la suite : la flotte et les chauffeurs, puis les
+transactions, puis les modules qui en dérivent (coûts, budget, rapports). Le module transporteurs vient en dernier : il dépend de
 tout le reste. Les composants client qui importent encore `SITES` ou `FLOTTE`
 (formulaires, recherche globale) passeront par des propriétés quand leur page
 sera branchée.

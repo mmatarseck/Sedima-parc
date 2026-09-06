@@ -343,6 +343,31 @@ Sur le poste, `.env.local` (ignoré par git) porte l'URL et une clé factice :
 cela suffit à exercer le proxy et la page de garde en mode réel. Pour lire la
 base d'ici, y mettre la vraie clé anon.
 
+### Les paramètres branchés (6 septembre, nuit, suite)
+
+Barèmes d'énergie, règles d'alerte et types de document ont **une seule
+vérité** en mode réel : `parametre` (une ligne JSON par clé) et
+`type_document`.
+
+- Lecture serveur : `parametresServeur()` lit la base si configurée, le
+  cookie sinon. La mise en page passe le résultat à `AmorceParametres`, qui le
+  pose dans le navigateur **pendant le rendu** — avant que les écrans, rendus
+  après, ne lisent `lireParametres()` dans leurs états initiaux.
+- Écriture : `ecrireParametres()` et `reinitialiserParametres()` deviennent
+  asynchrones et rendent un motif de refus. En réel, elles appellent la
+  fonction serveur `enregistrerParametres()` (`parametres-actions.ts`), qui
+  refait le contrôle de rôle (administrateur, direction) avant les politiques
+  RLS, écrit les deux lignes de `parametre`, met à jour les types de document
+  et retire ceux qui ont disparu — sauf s'ils portent encore des documents,
+  ce que la base dit et que l'écran affiche. Les trois écrans montrent le
+  refus à côté des boutons.
+
+Types, charte (195 fichiers), construction : bons. En démonstration, la
+sauvegarde d'un barème a été exercée (cookie posé, « Enregistré »). **Le
+chemin réel reste à recetter sur Vercel** : Paramètres › Énergie, modifier la
+capacité de cuve, Enregistrer, puis recharger — la valeur doit tenir, et un
+compte non administrateur doit lire le refus.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

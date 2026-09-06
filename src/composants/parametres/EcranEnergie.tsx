@@ -49,6 +49,7 @@ export function EcranEnergie() {
   const [habilite, setHabilite] = useState(false);
   const [nomRole, setNomRole] = useState("");
   const [enregistre, setEnregistre] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
 
   useEffect(() => {
     const lu = lireParametres();
@@ -109,11 +110,18 @@ export function EcranEnergie() {
     const suite: Parametres = { ...p, energie: { baremes: [...baremes].sort((a, b) => a.debut.localeCompare(b.debut)), capaciteCuve: capaciteNombre } };
     setP(suite);
     setBaremes(suite.energie.baremes);
-    ecrireParametres(suite);
-    setEnregistre(true);
-    /* Les pages rendues par le serveur relisent le cookie : on les rafraîchit. */
-    router.refresh();
-    setTimeout(() => setEnregistre(false), 1800);
+    setErreur(null);
+    void ecrireParametres(suite).then((refus) => {
+      if (refus) {
+        setErreur(refus);
+        setEnregistre(false);
+        return;
+      }
+      setEnregistre(true);
+      /* Les pages rendues par le serveur relisent les paramètres : on les rafraîchit. */
+      router.refresh();
+      setTimeout(() => setEnregistre(false), 1800);
+    });
   }
 
   function reinitialiser() {
@@ -140,6 +148,7 @@ export function EcranEnergie() {
         actions={
           habilite ? (
             <>
+              {erreur ? <span className="max-w-[360px] text-[12.5px] leading-[1.4] text-defavorable">{erreur}</span> : null}
               <button type="button" onClick={reinitialiser} disabled={!modifie} className="bouton-secondaire disabled:cursor-not-allowed disabled:opacity-50">
                 <RotateCcw className="size-4 text-texte-2" strokeWidth={1.7} />
                 Barèmes par défaut

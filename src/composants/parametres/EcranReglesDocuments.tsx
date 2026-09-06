@@ -41,6 +41,7 @@ export function EcranReglesDocuments() {
   const [habilite, setHabilite] = useState(false);
   const [nomRole, setNomRole] = useState("");
   const [enregistre, setEnregistre] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
   const [aFocaliser, setAFocaliser] = useState<string | null>(null);
   const champs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -102,16 +103,29 @@ export function EcranReglesDocuments() {
       },
     };
     setP(suite);
-    ecrireParametres(suite);
-    setEnregistre(true);
-    /* Les pages rendues par le serveur relisent le cookie : on les rafraîchit. */
-    router.refresh();
-    setTimeout(() => setEnregistre(false), 1800);
+    setErreur(null);
+    void ecrireParametres(suite).then((refus) => {
+      if (refus) {
+        setErreur(refus);
+        return;
+      }
+      setEnregistre(true);
+      /* Les pages rendues par le serveur relisent les paramètres : on les rafraîchit. */
+      router.refresh();
+      setTimeout(() => setEnregistre(false), 1800);
+    });
   }
 
   function reinitialiser() {
-    setP(reinitialiserParametres());
-    router.refresh();
+    setErreur(null);
+    void reinitialiserParametres().then(({ parametres, erreur: refus }) => {
+      if (refus) {
+        setErreur(refus);
+        return;
+      }
+      setP(parametres);
+      router.refresh();
+    });
   }
 
   return (
@@ -128,6 +142,7 @@ export function EcranReglesDocuments() {
         actions={
           habilite ? (
             <>
+              {erreur ? <span className="max-w-[360px] text-[12.5px] leading-[1.4] text-defavorable">{erreur}</span> : null}
               <button type="button" onClick={reinitialiser} disabled={!modifie} className="bouton-secondaire disabled:cursor-not-allowed disabled:opacity-50">
                 <RotateCcw className="size-4 text-texte-2" strokeWidth={1.7} />
                 Valeurs par défaut

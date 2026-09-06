@@ -37,6 +37,7 @@ export function EcranReglesAlerte() {
   const [habilite, setHabilite] = useState(false);
   const [nomRole, setNomRole] = useState("");
   const [enregistre, setEnregistre] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
 
   useEffect(() => {
     const lu = lireParametres();
@@ -70,9 +71,15 @@ export function EcranReglesAlerte() {
 
   function enregistrer() {
     const suivant: Parametres = { ...p, alertes: regles };
-    ecrireParametres(suivant);
-    setP(suivant);
-    setEnregistre(true);
+    setErreur(null);
+    void ecrireParametres(suivant).then((refus) => {
+      if (refus) {
+        setErreur(refus);
+        return;
+      }
+      setP(suivant);
+      setEnregistre(true);
+    });
   }
 
   function retablir() {
@@ -97,6 +104,7 @@ export function EcranReglesAlerte() {
         actions={
           habilite ? (
             <>
+              {erreur ? <span className="max-w-[360px] text-[12.5px] leading-[1.4] text-defavorable">{erreur}</span> : null}
               {modifie ? (
                 <button type="button" onClick={retablir} className="bouton-secondaire">
                   <RotateCcw className="size-4 text-texte-2" strokeWidth={1.7} />

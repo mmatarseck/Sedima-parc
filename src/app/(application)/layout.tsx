@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Coquille } from "@/composants/coquille/Coquille";
 import { AmorceSession } from "@/composants/coquille/AmorceSession";
 import { AmorceParametres } from "@/composants/parametres/AmorceParametres";
+import { parametresServeur } from "@/lib/parametres-serveur";
 import { sessionCourante } from "@/lib/session-serveur";
 
 /**
@@ -18,10 +19,14 @@ export default async function LayoutApplication({ children }: { children: React.
   if (session.etat === "anonyme") redirect("/connexion");
   if (session.etat === "sans-profil") redirect("/connexion?motif=sans-profil");
 
+  /* Base branchée : les paramètres lus en base sont posés dans le navigateur,
+     pour que les écrans qui calculent chez eux appliquent les mêmes règles. */
+  const parametres = session.etat === "connecte" ? await parametresServeur() : undefined;
+
   return (
     <Coquille>
       {session.etat === "connecte" ? <AmorceSession role={session.session.role} nom={session.session.nom} courriel={session.session.courriel} /> : null}
-      <AmorceParametres />
+      <AmorceParametres parametres={parametres} />
       {children}
     </Coquille>
   );
