@@ -52,6 +52,14 @@ const q = (v: unknown): string => {
   return `'${String(v).replace(/'/g, "''")}'`;
 };
 
+/** « 2026-08-12 », « 2026-08-12T16:05 » ou « 2026-08-12T16:05:00 » → un timestamptz valide. */
+function horodatage(brut: string): string {
+  if (brut.length <= 10) return `${brut}T08:00:00+00`;
+  const [jour, heure = "08:00"] = brut.split("T");
+  const [h = "08", m = "00", sec = "00"] = heure.split(":");
+  return `${jour}T${h}:${m}:${sec}+00`;
+}
+
 const lignes: string[] = [];
 let total = 0;
 
@@ -165,7 +173,7 @@ inserer("intervention", ["id", "numero", "vehicule_id", "prestataire_id", "date"
 inserer(
   "incident",
   ["id", "numero", "vehicule_id", "chauffeur_id", "date_heure", "nature", "type", "lieu", "mission", "responsabilite", "statut", "blesses", "sinistre_ouvert", "immobilisation_jours", "kilometrage", "declarant", "description"],
-  listeIncidents().map((i) => [uuid(`incident:${i.numero}`), i.numero, vehiculeId(i.vehiculeId), chauffeurId(i.chauffeurId), i.dateHeure.length > 10 ? `${i.dateHeure}:00+00` : `${i.dateHeure}T08:00:00+00`, i.nature, i.type, i.lieu, i.mission, i.responsabilite, i.statut, i.blesses, i.sinistreOuvert, i.immobilisationJours, i.kilometrage, i.declarant, i.description]),
+  listeIncidents().map((i) => [uuid(`incident:${i.numero}`), i.numero, vehiculeId(i.vehiculeId), chauffeurId(i.chauffeurId), horodatage(i.dateHeure), i.nature, i.type, i.lieu, i.mission, i.responsabilite, i.statut, i.blesses, i.sinistreOuvert, i.immobilisationJours, i.kilometrage, i.declarant, i.description]),
 );
 
 const sanctionsV: unknown[][] = [];
