@@ -176,11 +176,22 @@ inserer(
   listeIncidents().map((i) => [uuid(`incident:${i.numero}`), i.numero, vehiculeId(i.vehiculeId), chauffeurId(i.chauffeurId), horodatage(i.dateHeure), i.nature, i.type, i.lieu, i.mission, i.responsabilite, i.statut, i.blesses, i.sinistreOuvert, i.immobilisationJours, i.kilometrage, i.declarant, i.description]),
 );
 
+/* Une sanction cite l'incident par son identifiant interne (« acc-amadou-balde-… »),
+   pas par son numéro : on retrouve le numéro sur les incidents des fiches, et
+   une sanction dont l'incident est introuvable garde sa ligne, sans le lien. */
+const numeroIncident = new Map<string, string>();
+for (const f of fichesChauffeurs()) for (const i of f.incidents) numeroIncident.set(i.declaration.id, i.declaration.numero);
+const incidentsConnus = new Set(listeIncidents().map((i) => i.numero));
+const lienIncident = (id: string | null) => {
+  const n = id ? numeroIncident.get(id) : undefined;
+  return n && incidentsConnus.has(n) ? uuid(`incident:${n}`) : null;
+};
+
 const sanctionsV: unknown[][] = [];
 const indisposV: unknown[][] = [];
 for (const f of fichesChauffeurs()) {
   const cid = chauffeurId(f.ligne.id);
-  for (const s of f.sanctions) sanctionsV.push([uuid(`sanction:${s.numero}`), s.numero, cid, s.date, s.type, s.motif, s.jours, s.incidentId ? uuid(`incident:${s.incidentId}`) : null]);
+  for (const s of f.sanctions) sanctionsV.push([uuid(`sanction:${s.numero}`), s.numero, cid, s.date, s.type, s.motif, s.jours, lienIncident(s.incidentId)]);
   for (const i of f.indisponibilites) indisposV.push([uuid(`indisponibilite:${i.numero}`), i.numero, cid, i.motif, i.debut, i.fin, i.commentaire]);
 }
 inserer("sanction", ["id", "numero", "chauffeur_id", "date", "type", "motif", "jours", "incident_id"], sanctionsV);

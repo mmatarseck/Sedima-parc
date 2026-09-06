@@ -2623,8 +2623,8 @@ on conflict do nothing;
 -- sanction (9)
 insert into sanction (id, numero, chauffeur_id, date, type, motif, jours, incident_id) values
   ('c05d47a4-4fa0-44df-ae63-fd56af0aeab7', 'SAN-2026-01501', '865928f6-a33a-4d3b-a929-c772994cea8b', '2026-04-13', 'retenue', 'Contravention — Stationnement gênant — Dakar Plateau', null, null),
-  ('8cea7325-fa83-4466-a52a-4aad6d58234c', 'SAN-2026-01502', '865928f6-a33a-4d3b-a929-c772994cea8b', '2026-02-15', 'avertissement', 'Accident au chargement du 04/02/2026 — rappel des consignes', null, '32254b51-c0a4-4e05-aa39-d947bc30954c'),
-  ('bc91d979-c0a3-4a46-a081-99bed157bce1', 'SAN-2026-00802', '35c113e5-6848-4ce2-ac22-820bd3914afd', '2026-05-10', 'blame', 'Accident responsable du 27/04/2026 — rappel des consignes', null, '25bcb17f-cc79-48c7-ad33-9806e8c6cf92'),
+  ('8cea7325-fa83-4466-a52a-4aad6d58234c', 'SAN-2026-01502', '865928f6-a33a-4d3b-a929-c772994cea8b', '2026-02-15', 'avertissement', 'Accident au chargement du 04/02/2026 — rappel des consignes', null, '5210c6ed-6186-471e-a15a-d6f568f22a98'),
+  ('bc91d979-c0a3-4a46-a081-99bed157bce1', 'SAN-2026-00802', '35c113e5-6848-4ce2-ac22-820bd3914afd', '2026-05-10', 'blame', 'Accident responsable du 27/04/2026 — rappel des consignes', null, '70b06011-87c3-42e4-ae3d-78808beff6f9'),
   ('c6981dfc-fb1d-4069-a33e-a602edc5d600', 'SAN-2026-00801', '35c113e5-6848-4ce2-ac22-820bd3914afd', '2026-04-13', 'retenue', 'Contravention — Excès de vitesse — RN2', null, null),
   ('6087f448-df55-4078-a2b3-2958f2ca0a40', 'SAN-2026-00901', 'c97b1596-42a4-4997-a3a3-d94941f673d4', '2026-04-07', 'retenue', 'Contravention — Stationnement gênant — Dakar Plateau', null, null),
   ('fa58e2b6-40b8-4384-a4c7-b560b0a71b1d', 'SAN-2026-00101', '017fce30-dcb4-4b74-a532-a84b1a7efa94', '2026-01-31', 'retenue', 'Contravention — Surcharge — pont bascule Diamniadio', null, null),
