@@ -109,12 +109,93 @@ affectation peut se programmer par-dessus, avec un chauffeur tiers ; les deux
 référentiels se proposent dans le même choix, les tiers marqués de leur
 transporteur.
 
-### Ce qui reste
+### Le carnet, soldé
 
-- La **promotion d'une exception tarifaire en règle** : le domaine porte le
-  drapeau `promue`, l'écran ne la propose pas encore.
-- Note de données jamais traitée : « l'UAB n'est pas à Diamniadio mais à SEDIMA
-  Siège — retenir uniquement UAB ».
+- **L'exception tarifaire se promeut en règle**, depuis l'onglet Grille de la
+  fiche transporteur. La promotion crée une ligne de grille datée du jour, qui
+  cite la mission d'origine dans son commentaire — c'est ce lien qui permet de
+  dire, au retour, quelles exceptions ont déjà été reprises. Rien n'est réécrit
+  rétroactivement : les missions passées gardent leur prix.
+- **L'UAB n'est plus à Diamniadio.** Le site `s-diam` a disparu du référentiel
+  et ses deux véhicules ont rejoint l'UAB, qui est au siège de Rufisque.
+
+---
+
+## 0 ter. Session du 6 septembre 2026 — paramètres, audit, mise en production
+
+### Les paramètres, complets
+
+Les quatre sections « au cadrage » sont livrées ; l'écran en compte neuf, dont
+six où l'on saisit.
+
+- **Règles d'alerte** — ce qu'un compte reçoit sans rien toucher : dix familles
+  d'alerte × huit rôles, et le délai de prévenance. C'est **branché** :
+  `reglageParDefaut()` lit ces règles, et un nouveau compte les reçoit. À ne pas
+  confondre avec « Mes notifications », qui est le réglage de chacun.
+- **Référentiels** — les vingt registres de l'application (124 valeurs), chacun
+  avec **le nombre d'enregistrements qui le portent**. Rien ne s'y modifie, et
+  c'est délibéré : ces valeurs sont les clés des enregistrements, pas des
+  libellés ; la colonne « usages » dit ce qui pourrait disparaître sans rien
+  casser.
+- **Utilisateurs et rôles** — les huit rôles, leur périmètre, ce que chacun a le
+  droit de faire (la règle vient du domaine, elle n'est pas recopiée), et de
+  quoi prendre un autre rôle pour la démonstration.
+- **Barème SQDCM** — les cinq piliers pondérés, les indicateurs avec objectif,
+  tolérance, définition, formule et source, les quatre tranches de prime. Il vit
+  dans les paramètres parce qu'**un chauffeur doit pouvoir lire son barème** :
+  une prime dont la règle n'est pas publique cesse d'orienter les comportements.
+
+### L'audit
+
+**Boutons.** Treize boutons ne faisaient rien. Six sur la fiche chauffeur
+(nouvelle affectation, document, contravention, incident, sanction,
+indisponibilité) sont branchés sur l'`ajouter()` qui existait déjà dans la fiche
+— la logique n'a pas été dupliquée, elle a été passée aux onglets. « Ajouter un
+chauffeur » ouvre une vraie création (`fabriquerLigneChauffeur`, échéances
+calculées à la même règle que les autres). Les deux « Exporter » mènent au
+rapport correspondant, où les colonnes sont typées et le classeur part avec son
+cartouche — réécrire ici un export approximatif aurait donné deux vérités pour
+le même tableau. Les trois « Voir » d'un justificatif sont devenus des mentions
+« Fourni » : rien ne stocke encore les fichiers, et un bouton qui promet une
+pièce qu'il ne peut pas montrer est pire qu'une mention.
+
+**Chiffres.** Les effectifs, les coûts, le carburant et le transport
+s'accordent entre écrans et rapports (véhicules 19/19, chauffeurs 21/21, coûts
+236 653 193 F des deux côtés, relevé 2 813 chargements et 43 329 t partout). Le
+budget aussi : synthèse et somme des postes au franc près.
+
+**Un défaut trouvé** : le rapport « Dépenses par poste » comparait le **mois en
+cours** — deux jours au 2 septembre — à la moyenne mensuelle, et annonçait
+« −100 % » sur le carburant. Il compare maintenant le dernier mois **complet**,
+et une colonne dit lequel. Le carburant passe de −100 % à +44,8 % en août : un
+signal, au lieu d'un artefact de calendrier.
+
+**Code.** `noUnusedLocals`, `noUnusedParameters` et `noFallthroughCasesInSwitch`
+sont activés ; les dix-sept déclarations mortes qu'ils ont révélées sont
+retirées. Le script `verifier-charte`, déclaré dans `package.json` mais absent
+du dépôt depuis toujours, est écrit : il vérifie les dépendances interdites, les
+boutons sans action, le vocabulaire français, les échappatoires de typage, les
+en-têtes de module et les résidus de mise au point. **189 fichiers, aucun
+manquement.**
+
+### La mise en production
+
+- **Dépôt git initialisé**, premier commit posé sur `main` (210 fichiers).
+- **`supabase/migrations/0001_socle.sql`** — le socle : référentiels, flotte,
+  chauffeurs, transactions, trace des modifications, clôture, paramètres. Avec
+  les énumérations en types PostgreSQL (une faute de frappe ne crée pas une
+  neuvième catégorie de véhicule), une contrainte d'exclusion qui interdit deux
+  titulaires simultanés sur un véhicule, les politiques RLS, et `get_me()` en
+  SECURITY DEFINER. La lecture des sanctions y est réservée, comme dans le code.
+  Restent à écrire en `0002` : transporteurs, budget, rapports personnalisés.
+- **`.github/workflows/verification.yml`** — types, charte, construction.
+- **`README.md`** — démarrage, règles du projet, et la marche à suivre pour
+  GitHub, Supabase et Vercel, y compris l'ordre de branchement écran par écran.
+- **`.env.example`** complété.
+
+**Ce qui reste avant la production**, et qui ne se décide pas ici :
+l'inventaire de référence du parc (les huit listes du dossier parc ne
+s'accordent pas) doit être arbitré par l'équipe parc, pas par une migration.
 
 ---
 
