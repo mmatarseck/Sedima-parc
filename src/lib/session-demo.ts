@@ -42,9 +42,51 @@ export function ouvrirSession(role: Role): void {
 export function fermerSession(): void {
   try {
     localStorage.removeItem(CLE);
+    localStorage.removeItem(CLE_IDENTITE);
   } catch {
     /* rien à nettoyer */
   }
+}
+
+/* -- L'identité, quand l'authentification est réelle ------------------------------
+ *
+ * Le rôle résolu par le serveur (`get_me()`) est posé ici par `AmorceSession`,
+ * sous la même clé que la démonstration : les écrans qui lisent `lireRole()`
+ * n'ont pas à savoir d'où il vient. Le nom et l'adresse viennent du profil.
+ * Ce n'est toujours pas une autorisation — les politiques RLS décident — mais
+ * l'affichage cesse de porter un nom de démonstration.
+ */
+
+const CLE_IDENTITE = "sedima.parc.identite";
+
+export interface Identite {
+  nom: string;
+  courriel: string | null;
+}
+
+export function ecrireIdentite(identite: Identite): void {
+  try {
+    localStorage.setItem(CLE_IDENTITE, JSON.stringify(identite));
+  } catch {
+    /* sans stockage, l'identité ne vaut que pour la page courante */
+  }
+}
+
+/** Nulle en démonstration : le nom est alors celui du rôle choisi. */
+export function lireIdentite(): Identite | null {
+  try {
+    const brut = localStorage.getItem(CLE_IDENTITE);
+    return brut ? (JSON.parse(brut) as Identite) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Les initiales d'un nom affiché : « Mamadou Seck » → « MS ». */
+export function initiales(nom: string): string {
+  const mots = nom.trim().split(/\s+/).filter(Boolean);
+  const lettres = mots.length >= 2 ? `${mots[0]![0]}${mots[mots.length - 1]![0]}` : nom.slice(0, 2);
+  return lettres.toUpperCase();
 }
 
 export { ROLE_PAR_DEFAUT };

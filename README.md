@@ -162,10 +162,33 @@ lue des cookies), service (clé qui passe outre les politiques, serveur
 seulement) — et `utilisateurCourant()`, qui appelle `get_me()`. Tant que
 `NEXT_PUBLIC_SUPABASE_URL` n'est pas posée, rien de tout cela n'est appelé.
 
-L'ordre qui tient : référentiels (sites, prestataires, types de document), puis
-la flotte et les chauffeurs, puis les transactions, puis les modules qui en
-dérivent (coûts, budget, rapports). Le module transporteurs vient en dernier :
-il dépend de tout le reste.
+**L'authentification est branchée.** Dès que les variables sont posées :
+
+- `src/proxy.ts` rafraîchit la session dans les cookies à chaque requête et
+  garde la porte — sans session, retour à `/connexion` ; avec, la page de garde
+  renvoie à la flotte. C'est un contrôle optimiste ; l'autorisation est dans les
+  politiques RLS.
+- La mise en page de l'application lit la session (`src/lib/session-serveur.ts`)
+  et pose le rôle résolu par `get_me()` dans le navigateur (`AmorceSession`),
+  sous la clé que les écrans lisaient déjà en démonstration. Un compte invité
+  sans profil est renvoyé à la page de garde, qui le dit.
+- La page de garde connecte par courriel et mot de passe, envoie le lien de
+  réinitialisation, et cache ses comptes de démonstration.
+
+**Le premier module branché** est `src/donnees/referentiels.ts` — sites et
+prestataires — et il fixe le motif : une fonction asynchrone par lecture, qui
+interroge Supabase avec le client serveur quand un projet est configuré et
+rend le jeu de démonstration sinon. Les écrans ne changent pas, seule la page
+qui les alimente devient asynchrone. Une page ne mélange pas les sources : les
+identifiants diffèrent (« s-uab » en démonstration, un UUID en base), donc les
+usages d'un site se comptent là où les sites se lisent.
+
+L'ordre qui tient pour la suite : types de document, puis la flotte et les
+chauffeurs, puis les transactions, puis les modules qui en dérivent (coûts,
+budget, rapports). Le module transporteurs vient en dernier : il dépend de
+tout le reste. Les composants client qui importent encore `SITES` ou `FLOTTE`
+(formulaires, recherche globale) passeront par des propriétés quand leur page
+sera branchée.
 
 **L'inventaire de référence reste à consolider** avant toute reprise : les huit
 listes du dossier parc ne s'accordent pas, et les écarts doivent être arbitrés

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Bell, ChevronDown, KeyRound, LogOut, UserRound } from "lucide-react";
 import { trouverRole, type DefinitionRole } from "@/domaine/roles";
-import { fermerSession, lireRole } from "@/lib/session-demo";
+import { authentificationReelle, fermerSession, initiales, lireIdentite, lireRole } from "@/lib/session-demo";
+import { clientNavigateur } from "@/lib/supabase";
 
 interface Entree {
   libelle: string;
@@ -40,7 +41,11 @@ export function MenuUtilisateur() {
   const [ouvert, setOuvert] = useState(false);
 
   useEffect(() => {
-    setProfil(trouverRole(lireRole()));
+    const r = trouverRole(lireRole());
+    /* Authentification réelle : le nom et l'adresse sont ceux du profil, posés
+       par AmorceSession ; le libellé du rôle reste celui du référentiel. */
+    const identite = lireIdentite();
+    setProfil(identite ? { ...r, nom: identite.nom, initiales: initiales(identite.nom), compteTest: identite.courriel ?? "" } : r);
   }, []);
 
   useEffect(() => {
@@ -51,9 +56,12 @@ export function MenuUtilisateur() {
     return () => document.removeEventListener("keydown", surEchap);
   }, []);
 
-  function seDeconnecter() {
+  async function seDeconnecter() {
+    /* Réelle : Supabase efface ses cookies, puis le proxy garde la porte. */
+    if (authentificationReelle()) await clientNavigateur().auth.signOut();
     fermerSession();
     router.push("/connexion");
+    router.refresh();
   }
 
   return (
@@ -127,7 +135,7 @@ export function MenuUtilisateur() {
               <button
                 type="button"
                 role="menuitem"
-                onClick={seDeconnecter}
+                onClick={() => void seDeconnecter()}
                 className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-[13px] text-texte-2 hover:bg-defavorable-fond hover:text-defavorable"
               >
                 <LogOut className="size-4 shrink-0" strokeWidth={1.6} />

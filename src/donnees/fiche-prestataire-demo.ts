@@ -23,20 +23,24 @@ const CACHE = new Map<string, FichePrestataire | null>();
 
 /**
  * La fiche d'un prestataire par son numéro PRE. Nulle quand le numéro n'est
- * pas dans le référentiel de démonstration — une fiche créée dans le
- * navigateur n'est pas connue du serveur, c'est une limite du jeu de données.
+ * pas dans le référentiel — une fiche créée dans le navigateur n'est pas connue
+ * du serveur, c'est une limite du jeu de données.
+ *
+ * Le référentiel se passe en argument depuis qu'il peut venir de la base
+ * (`prestataires()`) : les transactions, elles, restent celles de la
+ * démonstration et citent le prestataire par son nom, que `prestatairePour`
+ * retrouve dans l'une ou l'autre liste. Le cache ne sert qu'à la liste de
+ * démonstration, la seule qui ne change jamais.
  */
-export function fichePrestataire(numero: string): FichePrestataire | null {
-  if (CACHE.has(numero)) return CACHE.get(numero)!;
-  const prestataires = listePrestataires();
-  const prestataire = prestataires.find((p) => p.numero === numero) ?? null;
-  if (!prestataire) {
-    CACHE.set(numero, null);
-    return null;
+export function fichePrestataire(numero: string, prestataires?: Prestataire[]): FichePrestataire | null {
+  if (!prestataires) {
+    if (CACHE.has(numero)) return CACHE.get(numero)!;
+    const fiche = fichePrestataire(numero, listePrestataires());
+    CACHE.set(numero, fiche);
+    return fiche;
   }
-  const fiche = construire(prestataire, prestataires);
-  CACHE.set(numero, fiche);
-  return fiche;
+  const prestataire = prestataires.find((p) => p.numero === numero) ?? null;
+  return prestataire ? construire(prestataire, prestataires) : null;
 }
 
 function construire(prestataire: Prestataire, prestataires: Prestataire[]): FichePrestataire {

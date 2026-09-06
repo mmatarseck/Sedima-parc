@@ -3,7 +3,7 @@ import { titrePage } from "@/domaine/marque";
 import { typeDuNumero } from "@/domaine/reference";
 import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
 import { SOLDE_INITIAL, demandesAchat, depensesAReglier, journalCaisse } from "@/donnees/caisse-demo";
-import { listePrestataires } from "@/donnees/prestataires-demo";
+import { prestataires } from "@/donnees/referentiels";
 
 export const metadata = { title: titrePage("Caisse & achats") };
 
@@ -17,7 +17,7 @@ export const metadata = { title: titrePage("Caisse & achats") };
  * tout seul.
  */
 export default async function PageCaisse({ searchParams }: { searchParams: Promise<{ vue?: string; ref?: string }> }) {
-  const { vue, ref } = await searchParams;
+  const [{ vue, ref }, liste] = await Promise.all([searchParams, prestataires()]);
   const typeCible = ref ? typeDuNumero(ref) : null;
   const vueRetenue: VueCaisse = vue === "achats" || typeCible === "achat" ? "achats" : "journal";
 
@@ -26,7 +26,7 @@ export default async function PageCaisse({ searchParams }: { searchParams: Promi
       mouvements={journalCaisse()}
       depensesARegler={depensesAReglier()}
       achats={demandesAchat()}
-      prestataires={listePrestataires()}
+      prestataires={liste}
       soldeInitial={SOLDE_INITIAL}
       aujourdhui={DATE_REFERENCE}
       vueInitiale={vueRetenue}

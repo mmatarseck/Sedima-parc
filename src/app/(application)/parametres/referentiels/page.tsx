@@ -20,10 +20,10 @@ import {
 import { MODE_REMUNERATION } from "@/domaine/flotte-tierce";
 import { TYPE_PRESTATAIRE } from "@/domaine/prestataires";
 import { MOTIF_AFFRETEMENT, UNITE_TARIF } from "@/domaine/transporteurs";
-import { FLOTTE, SITES } from "@/donnees/parc-demo";
+import { FLOTTE } from "@/donnees/parc-demo";
 import { fichesChauffeurs, listeChauffeurs } from "@/donnees/chauffeurs-demo";
 import { listeIncidents } from "@/donnees/incidents-demo";
-import { listePrestataires } from "@/donnees/prestataires-demo";
+import { prestataires as listePrestataires, sites as listeSites, vehiculesParSite } from "@/donnees/referentiels";
 import { affretements } from "@/donnees/transporteurs-demo";
 import { fichePourImmatriculation } from "@/donnees/fiche-demo";
 
@@ -72,11 +72,13 @@ function compter<T>(elements: T[], cle: (x: T) => string | null | undefined): Ma
   return m;
 }
 
-export default function PageReferentiels() {
+export default async function PageReferentiels() {
+  /* Sites et prestataires viennent de la base quand elle est branchée ; les
+     véhicules par site se comptent sur la même source que les sites. */
+  const [sites, parSite, prestataires] = await Promise.all([listeSites(), vehiculesParSite(), listePrestataires()]);
   const vehicules = FLOTTE.map((l) => l.vehicule);
   const chauffeurs = listeChauffeurs();
   const incidents = listeIncidents();
-  const prestataires = listePrestataires();
   const missions = affretements();
 
   /* Les dépenses de toutes les fiches : c'est la seule façon de compter ce que
@@ -93,11 +95,11 @@ export default function PageReferentiels() {
       precision: "Usines, dépôts, abattoirs, garages — le rattachement géographique d'un véhicule et d'un chauffeur",
       unite: "véhicules",
       href: "/flotte",
-      entrees: SITES.map((s) => ({
+      entrees: sites.map((s) => ({
         cle: s.code,
         libelle: s.libelle,
         precision: `${s.type} · région de ${s.region}`,
-        usages: vehicules.filter((v) => v.siteId === s.id).length,
+        usages: parSite.get(s.id) ?? 0,
       })).sort((a, b) => b.usages - a.usages || a.libelle.localeCompare(b.libelle, "fr")),
     },
     bloc("categorie-vehicule", "Catégories de véhicule", "Ce qu'est l'engin — elle décide du plan d'entretien et de la comparaison des coûts", "véhicules", CATEGORIE_VEHICULE, compter(vehicules, (v) => v.categorie), "/flotte"),

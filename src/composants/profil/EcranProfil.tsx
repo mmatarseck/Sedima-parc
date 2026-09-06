@@ -7,7 +7,7 @@ import { Carte, Definitions } from "@/composants/interface/Carte";
 import { alertesPour, famillesActives, reglageParDefaut, type ReglageAlertes } from "@/domaine/alertes";
 import { ROLES, trouverRole } from "@/domaine/roles";
 import { lireParametres } from "@/lib/parametres-demo";
-import { authentificationReelle, lireRole } from "@/lib/session-demo";
+import { authentificationReelle, initiales, lireIdentite, lireRole } from "@/lib/session-demo";
 
 /* ============================================================================
  * Mon profil — ce qui relève de la personne connectée, non du parc.
@@ -31,7 +31,10 @@ export function EcranProfil() {
   const [reelle, setReelle] = useState(false);
 
   useEffect(() => {
-    const r = trouverRole(lireRole());
+    const brut = trouverRole(lireRole());
+    /* Authentification réelle : le nom et l'adresse viennent du profil. */
+    const identite = lireIdentite();
+    const r = identite ? { ...brut, nom: identite.nom, initiales: initiales(identite.nom), compteTest: identite.courriel ?? "" } : brut;
     setRole(r);
     setReelle(authentificationReelle());
     try {

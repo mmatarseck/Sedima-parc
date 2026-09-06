@@ -6,7 +6,7 @@ import { fichePourImmatriculation } from "@/donnees/fiche-demo";
 import { parametresServeur } from "@/lib/parametres-serveur";
 import { FLOTTE } from "@/donnees/parc-demo";
 import { camionsTiers, chauffeursTiers } from "@/donnees/flotte-tierce-demo";
-import { listePrestataires } from "@/donnees/prestataires-demo";
+import { prestataires } from "@/donnees/referentiels";
 
 export const metadata = { title: titrePage("Affectations") };
 
@@ -48,7 +48,7 @@ export default async function PageAffectations() {
      numéro préfixé qui n'est pas celui d'une transaction — parce que ce n'en
      est pas une. */
   const chauffeurs = chauffeursTiers();
-  const noms = new Map(listePrestataires().map((p) => [p.numero, p.raisonSociale]));
+  const noms = new Map((await prestataires()).map((p) => [p.numero, p.raisonSociale]));
   const depuis = (() => {
     const d = new Date(`${DATE_REFERENCE}T00:00:00Z`);
     d.setUTCFullYear(d.getUTCFullYear() - 1);

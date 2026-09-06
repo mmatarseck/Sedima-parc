@@ -1,0 +1,68 @@
+/* ============================================================================
+ * Le proxy de session — ce qui court avant chaque page.
+ *
+ * Deux choses, et seulement quand un projet Supabase est configuré :
+ *
+ *   * **rafraîchir la session** : `@supabase/ssr` la tient dans les cookies, et
+ *     c'est ici, où la réponse peut encore écrire des cookies, qu'un jeton
+ *     expiré se renouvelle. Un composant serveur ne le peut pas.
+ *   * **garder la porte** : sans session, les écrans de l'application renvoient
+ *     à la page de garde ; avec une session, la page de garde renvoie à la
+ *     flotte. C'est un contrôle optimiste — la vraie autorisation est dans les
+ *     politiques RLS et dans `get_me()`, pas ici.
+ *
+ * Sans configuration, le proxy laisse tout passer : l'application est en
+ * démonstration, et la page de garde propose ses comptes.
+ * ==========================================================================*/
+
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+
+const PAGE_DE_GARDE = "/connexion";
+const PREMIERE_PAGE = "/flotte";
+
+export async function proxy(requete: NextRequest) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const cle = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !cle) return NextResponse.next();
+
+  let reponse = NextResponse.next({ request: requete });
+  const supabase = createServerClient(url, cle, {
+    cookies: {
+      getAll: () => requete.cookies.getAll(),
+      setAll: (liste) => {
+        for (const { name, value } of liste) requete.cookies.set(name, value);
+        reponse = NextResponse.next({ request: requete });
+        for (const { name, value, options } of liste) reponse.cookies.set(name, value, options);
+      },
+    },
+  });
+
+  /* `getUser()` et non `getSession()` : le premier revalide le jeton auprès du
+     serveur d'authentification, le second se fie au cookie. */
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const chemin = requete.nextUrl.pathname;
+  const surLaGarde = chemin === PAGE_DE_GARDE;
+
+  if (!user && !surLaGarde) {
+    const destination = requete.nextUrl.clone();
+    destination.pathname = PAGE_DE_GARDE;
+    destination.search = "";
+    return NextResponse.redirect(destination);
+  }
+  if (user && surLaGarde && !requete.nextUrl.searchParams.has("motif")) {
+    const destination = requete.nextUrl.clone();
+    destination.pathname = PREMIERE_PAGE;
+    destination.search = "";
+    return NextResponse.redirect(destination);
+  }
+  return reponse;
+}
+
+export const config = {
+  /* Tout sauf les fichiers servis tels quels : ressources de Next, images, icônes. */
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico|txt|xml)$).*)"],
+};

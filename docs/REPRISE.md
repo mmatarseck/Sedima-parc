@@ -296,6 +296,37 @@ aucun écran n'est encore branché sur la base. Le premier administrateur et les
 variables Vercel ne se vérifient pas depuis le code : les tenir pour faits
 quand le gestionnaire se connecte.
 
+### Le branchement commence : authentification et référentiels (6 septembre, nuit)
+
+Les politiques RLS exigent une session avec un profil actif : brancher un
+écran sans connexion réelle aurait lu des listes vides. Le premier incrément
+est donc l'authentification, et le premier module les référentiels.
+
+- **`src/proxy.ts`** (Next 16 appelle ainsi le middleware) : rafraîchit la
+  session `@supabase/ssr` dans les cookies, renvoie à `/connexion` sans
+  session et à `/flotte` depuis la page de garde avec une session. Inactif
+  sans configuration Supabase.
+- **`src/lib/session-serveur.ts`** : `sessionCourante()` — démonstration,
+  anonyme, sans profil, ou connecté (rôle par `get_me()`, nom par `profil`).
+  La mise en page de l'application la lit et redirige ; connectée, elle rend
+  `AmorceSession`, qui pose rôle et identité dans le navigateur sous la clé
+  que les trente appels à `lireRole()` lisaient déjà. Aucun écran n'a changé.
+- **Page de garde** : connexion par courriel et mot de passe, lien de
+  réinitialisation, motif « sans profil » expliqué (et session refermée pour
+  que le proxy ne renvoie pas en boucle). Menu du compte et écran Profil
+  affichent le nom du profil, pas celui du rôle de démonstration.
+- **`src/donnees/referentiels.ts`** : `sites()`, `vehiculesParSite()`,
+  `prestataires()` — Supabase avec le client serveur si configuré, jeu de
+  démonstration sinon. Branché sur Prestataires (liste et fiche), Caisse,
+  Affectations et Paramètres › Référentiels. `fichePrestataire` reçoit la
+  liste en argument : les transactions restent celles de la démonstration et
+  citent le prestataire par son nom, que `prestatairePour` retrouve.
+
+Types, charte (194 fichiers) et construction passent ; en démonstration,
+rien n'a bougé. **Le mode réel n'a pas été exercé sur ce poste** (pas de
+`.env.local`) : il se recette sur Vercel, où les variables sont posées, avec
+le compte administrateur invité.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

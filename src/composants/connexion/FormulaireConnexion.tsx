@@ -1,12 +1,19 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { ROLES } from "@/domaine/roles";
-import { authentificationReelle, ouvrirSession } from "@/lib/session-demo";
+import { authentificationReelle, fermerSession, ouvrirSession } from "@/lib/session-demo";
+import { clientNavigateur } from "@/lib/supabase";
 import { NOM_APPLICATION, SOUS_TITRE_APPLICATION } from "@/domaine/marque";
+
+/** Ce que la page de garde dit quand on y revient sans l'avoir choisi. */
+const MOTIFS: Record<string, string> = {
+  "sans-profil":
+    "Ce compte existe mais n'a pas encore de rôle dans SEDIMA Parc. Demandez à un administrateur de poser votre profil, puis reconnectez-vous.",
+};
 
 /**
  * Page de garde.
@@ -23,15 +30,61 @@ import { NOM_APPLICATION, SOUS_TITRE_APPLICATION } from "@/domaine/marque";
  */
 export function FormulaireConnexion() {
   const router = useRouter();
+  const parametres = useSearchParams();
   const reelle = authentificationReelle();
   const [identifiant, setIdentifiant] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [motDePasseVisible, setMotDePasseVisible] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+  const [information, setInformation] = useState<string | null>(null);
+  const [enCours, setEnCours] = useState(false);
 
-  function soumettre(evenement: React.FormEvent) {
+  /* Renvoyé ici avec un motif : le dire, et refermer la session qui n'a pas
+     de profil — sinon le proxy renverrait aussitôt vers la flotte. */
+  const motif = parametres.get("motif");
+  useEffect(() => {
+    if (!motif) return;
+    setErreur(MOTIFS[motif] ?? null);
+    if (reelle) void clientNavigateur().auth.signOut();
+    fermerSession();
+  }, [motif, reelle]);
+
+  async function soumettre(evenement: React.FormEvent) {
     evenement.preventDefault();
-    setErreur("L'authentification n'est pas encore branchée. Choisissez un compte de démonstration ci-dessous.");
+    if (!reelle) {
+      setErreur("L'authentification n'est pas branchée sur ce poste. Choisissez un compte de démonstration ci-dessous.");
+      return;
+    }
+    setErreur(null);
+    setInformation(null);
+    setEnCours(true);
+    const { error } = await clientNavigateur().auth.signInWithPassword({ email: identifiant.trim(), password: motDePasse });
+    setEnCours(false);
+    if (error) {
+      setErreur(
+        error.message === "Invalid login credentials"
+          ? "Identifiant ou mot de passe incorrect."
+          : error.message === "Email not confirmed"
+            ? "Cette adresse n'a pas encore été confirmée : ouvrez le courriel d'invitation."
+            : `Connexion refusée : ${error.message}`,
+      );
+      return;
+    }
+    /* La session est dans les cookies : le serveur la lira au prochain rendu. */
+    router.push("/flotte");
+    router.refresh();
+  }
+
+  async function motDePasseOublie() {
+    const adresse = identifiant.trim();
+    if (!adresse) {
+      setErreur("Saisissez d'abord votre identifiant : le lien de réinitialisation part à cette adresse.");
+      return;
+    }
+    setErreur(null);
+    const { error } = await clientNavigateur().auth.resetPasswordForEmail(adresse, { redirectTo: `${window.location.origin}/connexion` });
+    if (error) setErreur(`Réinitialisation refusée : ${error.message}`);
+    else setInformation(`Un lien de réinitialisation a été envoyé à ${adresse}, s'il correspond à un compte.`);
   }
 
   function entrer(role: (typeof ROLES)[number]) {
@@ -96,7 +149,7 @@ export function FormulaireConnexion() {
                   <button
                     type="button"
                     className="ml-auto text-[12px] font-medium text-accent-fonce hover:text-accent"
-                    onClick={() => setErreur("La réinitialisation du mot de passe sera branchée avec Supabase.")}
+                    onClick={() => void motDePasseOublie()}
                   >
                     Mot de passe oublié&nbsp;?
                   </button>
@@ -130,9 +183,15 @@ export function FormulaireConnexion() {
               <span className="text-[12.5px] leading-[1.5] text-defavorable">{erreur}</span>
             </div>
           ) : null}
+          {information ? (
+            <div className="mt-4 flex items-start gap-2.5 rounded-[10px] bg-accent-fond px-3.5 py-3">
+              <span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-accent" />
+              <span className="text-[12.5px] leading-[1.5] text-accent-tres-fonce">{information}</span>
+            </div>
+          ) : null}
 
-          <button type="submit" className="bouton-principal mt-6 h-11 w-full justify-center text-[14px]">
-            Se connecter
+          <button type="submit" disabled={enCours} className="bouton-principal mt-6 h-11 w-full justify-center text-[14px] disabled:opacity-60">
+            {enCours ? "Connexion…" : "Se connecter"}
             <ArrowRight className="size-4" strokeWidth={2.2} />
           </button>
 
