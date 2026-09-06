@@ -368,6 +368,48 @@ chemin réel reste à recetter sur Vercel** : Paramètres › Énergie, modifier
 capacité de cuve, Enregistrer, puis recharger — la valeur doit tenir, et un
 compte non administrateur doit lire le refus.
 
+### Les listes Flotte et Chauffeurs branchées (7 septembre 2026)
+
+Deux modules, même motif que les référentiels : lecture en base si
+configurée, démonstration sinon, écrans inchangés.
+
+- **`src/donnees/flotte.ts`** — `lireParc()` lit d'un coup véhicules, sites,
+  chauffeurs, affectations, documents, licences, relevés, dépenses, pleins,
+  interventions (par pages de mille : Supabase plafonne une réponse, et une
+  liste tronquée en silence vaudrait un compteur faux) ; `ligneDepuisLaBase()`
+  dérive la ligne avec les règles du domaine : titulaire et suppléants par
+  les affectations en cours, dernier compteur toutes sources (relevé, dépense,
+  plein), état des documents type par type — licence de flotte comprise —,
+  échéance de conformité la plus proche, immobilisation administrative,
+  coût douze mois, prochaine échéance d'entretien par `echeancesDuPlan`.
+- **`src/donnees/chauffeurs.ts`** — `lireChauffeurs()` puis
+  `lignesDepuisLaBase()` : statut déduit (en poste dès qu'une affectation
+  court, titulaire ou suppléant), véhicule tenu, échéances permis et visite,
+  incidents et contraventions de l'année, kilomètres attribués au titulaire
+  au prorata de ses jours disponibles.
+- Les identifiants restent ceux de l'application (immatriculation,
+  identifiant lisible du chauffeur) : les adresses et les fiches — encore en
+  démonstration — ne changent pas de clé.
+
+**Comparé à la démonstration sur le même seed** (`scripts/comparer-listes.mts`,
+qui rejoue migrations et seed dans PGlite) : statut effectif et immobilisation
+identiques sur les 19 véhicules. Les écarts restants sont documentés, et
+plutôt à l'avantage de la base : la colonne « conformité » de la liste de
+démonstration vient d'une valeur posée à la main dans `BRUT`, pas des
+documents de la fiche, qui disent autre chose (AA105VA : la liste annonce
+l'assurance à 74 jours, les documents une visite technique échue depuis six
+jours) ; le compteur de la liste diffère du dernier relevé pour deux
+véhicules ; le coût douze mois diffère d'un million environ sur quatre
+véhicules (fenêtre glissante) ; deux prochaines échéances d'entretien
+diffèrent parce que les ajustements du plan (`AJUSTEMENTS` de démonstration)
+n'ont pas de table. Côté chauffeurs, seuls les kilomètres attribués s'écartent
+(la démonstration confie au suppléant les jours d'indisponibilité du
+titulaire ; ce raffinement viendra avec la fiche).
+
+**Ce que la base ne porte pas encore** : l'attelage courant (pas de table
+`attelage`), les ajustements du plan d'entretien (`plan_vehicule` vide). À
+poser en migration 0004 avant de brancher la fiche véhicule.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

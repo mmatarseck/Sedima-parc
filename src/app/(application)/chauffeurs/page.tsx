@@ -1,5 +1,5 @@
 import { EcranChauffeurs } from "@/composants/chauffeurs/EcranChauffeurs";
-import { listeChauffeurs } from "@/donnees/chauffeurs-demo";
+import { lignesChauffeurs } from "@/donnees/chauffeurs";
 import { titrePage } from "@/domaine/marque";
 
 export const metadata = { title: titrePage("Chauffeurs") };
@@ -11,7 +11,10 @@ export const metadata = { title: titrePage("Chauffeurs") };
  * des échéances et des compteurs. Ce qui s'agrège est sur la fiche et sur le
  * tableau de bord. La liste et la création vivent dans l'écran client, qui a
  * besoin du contexte d'édition.
+ *
+ * Les lignes viennent de la base quand elle est branchée
+ * (`src/donnees/chauffeurs.ts`), du jeu de démonstration sinon.
  */
-export default function PageChauffeurs() {
-  return <EcranChauffeurs lignes={listeChauffeurs()} />;
+export default async function PageChauffeurs() {
+  return <EcranChauffeurs lignes={await lignesChauffeurs()} />;
 }
