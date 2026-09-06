@@ -19,9 +19,9 @@
  * ==========================================================================*/
 
 import { createHash } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 
-import { FLOTTE, SITES } from "@/donnees/parc-demo";
+import { FLOTTE, LICENCES, SITES } from "@/donnees/parc-demo";
 import { fichePourImmatriculation } from "@/donnees/fiche-demo";
 import { fichesChauffeurs, listeChauffeurs } from "@/donnees/chauffeurs-demo";
 import { listePrestataires } from "@/donnees/prestataires-demo";
@@ -48,7 +48,13 @@ const q = (v: unknown): string => {
   if (v === null || v === undefined || v === "") return "null";
   if (typeof v === "number") return Number.isFinite(v) ? String(v) : "null";
   if (typeof v === "boolean") return v ? "true" : "false";
-  if (Array.isArray(v)) return `array[${v.map((x) => q(x)).join(", ")}]${v.length === 0 ? "::text[]" : ""}`;
+  /* Un tableau s'écrit en littéral « '{…}' », pas en `array[…]` : le littéral
+     prend le type de la colonne, énumération comprise (`mode_remuneration[]`,
+     `categorie_vehicule[]`), là où `array['tonne']` reste un text[] refusé. */
+  if (Array.isArray(v)) {
+    const litteral = `{${v.map((x) => `"${String(x).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`).join(",")}}`;
+    return `'${litteral.replace(/'/g, "''")}'`;
+  }
   return `'${String(v).replace(/'/g, "''")}'`;
 };
 
@@ -137,6 +143,9 @@ for (const l of FLOTTE) {
     affectationsV.push([uuid(`affectation:${a.numero}`), a.numero, vid, chauffeurId(a.chauffeurId), a.role, a.debut, a.fin, a.motif]);
   }
   for (const d of f.documents) {
+    /* La licence de transport est portée par la flotte, pas par le véhicule :
+       la fiche l'affiche, la base la tient dans licence_transport (0003). */
+    if (d.type === "licence-transport") continue;
     documentsV.push([uuid(`document:${d.numero}`), d.numero, d.type, vid, null, d.dateEffet, d.echeance, d.emetteur, d.numeroPiece, d.montant, d.justificatif]);
   }
   for (const d of f.depenses) {
@@ -163,6 +172,17 @@ for (const c of chauffeurs) {
 
 inserer("affectation", ["id", "numero", "vehicule_id", "chauffeur_id", "role", "debut", "fin", "motif"], affectationsV);
 inserer("document", ["id", "numero", "type_document_id", "vehicule_id", "chauffeur_id", "date_effet", "echeance", "emetteur", "numero_piece", "montant", "justificatif"], documentsV);
+const licenceId = (l: { numero: string }) => uuid(`licence:${l.numero}`);
+inserer(
+  "licence_transport",
+  ["id", "numero", "libelle", "numero_piece", "emetteur", "perimetre", "date_effet", "echeance"],
+  LICENCES.map((l) => [licenceId(l), l.numero, l.libelle, l.numeroPiece, l.emetteur, l.perimetre, l.dateEffet, l.echeance]),
+);
+inserer(
+  "licence_vehicule",
+  ["licence_id", "vehicule_id"],
+  LICENCES.filter((l) => l.perimetre === "partie").flatMap((l) => l.vehiculeIds.map((v) => [licenceId(l), vehiculeId(v)])),
+);
 inserer("depense", ["id", "numero", "vehicule_id", "chauffeur_id", "prestataire_id", "date", "poste", "libelle", "montant", "beneficiaire", "reference", "origine", "justificatif", "km", "km_motif_rejet"], depensesV);
 inserer("plein", ["id", "numero", "vehicule_id", "chauffeur_id", "prestataire_id", "date", "litres", "prix_litre", "montant", "km", "plein_complet", "source", "reference"], pleinsV);
 inserer("releve_kilometrique", ["id", "numero", "vehicule_id", "date", "km", "origine", "motif_rejet"], relevesV);
@@ -331,7 +351,7 @@ const entete = `-- =============================================================
 -- GÉNÉRÉ par scripts/generer-seed.mts : ne pas modifier à la main, relancer.
 -- ${total} lignes. Rejouable : chaque insertion est \`on conflict do nothing\`.
 --
--- Prérequis : les migrations 0001 et 0002. Les comptes (profil) ne sont pas
+-- Prérequis : les migrations 0001 à 0003. Les comptes (profil) ne sont pas
 -- dans ce fichier — ils citent auth.users, qui n'existe qu'une fois les
 -- personnes invitées.
 -- ============================================================================
@@ -340,3 +360,26 @@ const entete = `-- =============================================================
 mkdirSync("supabase", { recursive: true });
 writeFileSync("supabase/seed.sql", `${entete}${lignes.join("\n")}\n`);
 console.log(`supabase/seed.sql — ${total} lignes sur ${lignes.filter((l) => l.startsWith("\n-- ")).length} tables`);
+
+/* Le fichier entier dépasse ce que l'éditeur SQL de Supabase accepte d'un
+   coup : il est aussi découpé en parties ordonnées, aux frontières
+   d'instruction, que l'on colle l'une après l'autre. Le dossier est ignoré
+   par git — il se régénère. */
+const TAILLE_PARTIE = 300_000;
+const parties: string[][] = [[]];
+let taille = 0;
+for (let i = 0; i < lignes.length; i++) {
+  const bloc = lignes[i].startsWith("\n-- ") ? `${lignes[i]}\n${lignes[++i]}` : lignes[i];
+  const octets = Buffer.byteLength(bloc, "utf8");
+  if (taille > 0 && taille + octets > TAILLE_PARTIE) { parties.push([]); taille = 0; }
+  parties[parties.length - 1].push(bloc);
+  taille += octets;
+}
+rmSync("supabase/seed-parties", { recursive: true, force: true });
+mkdirSync("supabase/seed-parties", { recursive: true });
+parties.forEach((blocs, i) => {
+  const numero = String(i + 1).padStart(2, "0");
+  const tete = `-- Partie ${i + 1}/${parties.length} du seed — à jouer dans l'ordre, sans en sauter.\n${i === 0 ? entete : ""}`;
+  writeFileSync(`supabase/seed-parties/seed-${numero}.sql`, `${tete}${blocs.join("\n")}\n`);
+});
+console.log(`supabase/seed-parties/ — ${parties.length} parties`);

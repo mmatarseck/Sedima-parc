@@ -2,9 +2,9 @@
 -- SEDIMA Parc — jeu de démonstration, versé dans la base.
 --
 -- GÉNÉRÉ par scripts/generer-seed.mts : ne pas modifier à la main, relancer.
--- 5967 lignes. Rejouable : chaque insertion est `on conflict do nothing`.
+-- 5954 lignes. Rejouable : chaque insertion est `on conflict do nothing`.
 --
--- Prérequis : les migrations 0001 et 0002. Les comptes (profil) ne sont pas
+-- Prérequis : les migrations 0001 à 0003. Les comptes (profil) ne sont pas
 -- dans ce fichier — ils citent auth.users, qui n'existe qu'une fois les
 -- personnes invitées.
 -- ============================================================================
@@ -96,27 +96,27 @@ on conflict do nothing;
 
 -- chauffeur (21)
 insert into chauffeur (id, matricule_rh, nom, prenom, contrat, site_id, telephone, permis_numero, permis_categories, permis_echeance, visite_medicale_echeance, aptitude, aptitude_motif, aptitude_date, date_naissance, date_embauche, date_sortie) values
-  ('865928f6-a33a-4d3b-a929-c772994cea8b', 'SED-3820', 'Baldé', 'Amadou', 'salarie', '7980851a-7bf2-450a-ab0b-1b5f14ad43c6', '77 424 88 08', 'DK-250750', array['B', 'C', 'D', 'E'], '2026-10-30', '2027-02-01', 'apte-avec-reserve', 'Véhicules légers seulement — port de lunettes obligatoire', '2026-03-12', '1978-06-14', '2022-09-26', null),
-  ('aed32383-1769-4da7-a770-2200dc5b7f56', 'SED-3422', 'Diaw', 'Moustapha', 'interimaire', '7980851a-7bf2-450a-ab0b-1b5f14ad43c6', '77 647 47 71', 'TH-893367', array['B', 'C', 'E'], '2028-03-13', '2026-09-26', 'apte', null, null, '1994-04-07', '2020-05-04', null),
-  ('35c113e5-6848-4ce2-ac22-820bd3914afd', 'SED-1607', 'Dieng', 'Boubacar', 'salarie', 'ac72a0b2-c967-4065-a69e-c0f2eaacf019', '77 950 82 17', 'DL-988875', array['B', 'C', 'D', 'E'], '2027-02-04', '2026-12-13', 'apte', null, null, '1977-12-12', '2022-09-01', null),
-  ('f548681f-01d3-468c-aef9-024d63d3d151', 'SED-2950', 'Diop', 'Libasse', 'salarie', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 355 75 49', 'TH-697583', array['B', 'C', 'E'], '2026-10-25', '2027-03-21', 'apte', null, '2026-04-13', '1981-07-06', '2019-07-21', null),
-  ('c97b1596-42a4-4997-a3a3-d94941f673d4', 'SED-1716', 'Diop', 'Mamadou', 'interimaire', '2909c0c7-181a-4fb7-ae6b-01ae0fea638c', '77 671 85 19', 'TH-562467', array['B', 'C', 'D', 'E'], '2029-12-08', '2026-08-15', 'apte-avec-reserve', 'Sous réserve du renouvellement de la visite médicale — avis du médecin du travail', '2026-08-20', '1985-04-25', '2019-10-24', null),
-  ('bc3261e2-1177-425d-a502-ae1d3cdea055', 'SED-1917', 'Djitte', 'Mory', 'salarie', '6e270370-a966-4eca-a3db-0b736cbea8fc', '77 549 86 31', 'DL-604771', array['B', 'C', 'E'], '2027-12-05', '2027-06-11', 'apte', null, '2026-07-18', '1974-08-11', '2023-01-13', null),
-  ('8b7c0d1c-c833-4fb8-aa6e-d3afeb8de08b', 'SED-3596', 'Fall', 'Serigne Mbaye', 'interimaire', '47c50d3c-c124-4e48-a9a8-00fbce5ea182', '77 159 87 09', 'TH-250823', array['B', 'C', 'E'], '2028-01-17', '2027-01-30', 'apte', null, null, '1992-08-14', '2022-04-03', null),
-  ('30cc453e-0f3c-41dd-afac-3c158d61e9ab', 'SED-1363', 'Kadji', 'Badji', 'salarie', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 205 99 60', 'DK-958456', array['B', 'C', 'E'], '2029-03-26', '2027-07-07', 'apte', null, null, '1992-05-16', '2023-05-18', null),
-  ('017fce30-dcb4-4b74-a532-a84b1a7efa94', 'SED-3649', 'Ndiaye', 'Babacar', 'salarie', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 837 43 58', 'TH-400666', array['B', 'C', 'E'], '2028-04-19', '2027-06-01', 'apte', null, '2025-12-23', '1981-10-24', '2024-07-02', null),
-  ('5e90604d-6bc5-4cc2-a4da-f7227650611b', 'SED-3243', 'Ndiaye', 'Khalifa', 'interimaire', '47c50d3c-c124-4e48-a9a8-00fbce5ea182', '77 478 58 17', 'TH-306247', array['B', 'C', 'E'], '2028-05-18', '2027-03-01', 'apte', null, null, '1979-02-09', '2022-06-15', null),
-  ('e927f782-a98d-455b-a466-8c9f41f2e9e1', 'SED-3714', 'Ndoye', 'Djibril', 'salarie', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 646 38 94', 'DL-859665', array['B', 'C', 'E'], '2029-07-20', '2026-10-25', 'apte', null, '2025-11-27', '1989-07-14', '2021-03-16', null),
-  ('d5785ae8-1de2-461e-aca6-4acc9b9d0ba4', 'SED-2844', 'Samb', 'Maguette', 'salarie', 'e2e6a3ab-c6ba-4ef9-ace4-2dafe19fe03d', '77 760 34 55', 'TH-447111', array['B', 'C', 'D', 'E'], '2028-10-29', '2026-12-05', 'apte', null, '2026-07-21', '1986-09-28', '2023-04-24', null),
-  ('379a6140-22d1-4c51-a2ec-a85b8f41c124', 'SED-1389', 'Sarr', 'Cheikh', 'salarie', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 534 27 68', 'TH-381956', array['B', 'C', 'D', 'E'], '2026-09-14', '2027-07-10', 'apte', null, '2026-03-05', '1970-02-23', '2020-05-28', null),
-  ('67e509c0-0e03-4ee3-ad36-b9f64a595f1d', 'SED-2805', 'Sène', 'Pape', 'salarie', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 127 98 96', 'TH-515786', array['B', 'C', 'E'], '2027-02-25', '2026-10-13', 'apte', null, null, '1973-10-20', '2021-08-22', null),
-  ('114caa97-a872-4155-aefe-d4c691ab4ee7', 'SED-2549', 'Wane', 'Birago', 'interimaire', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 631 86 70', 'TH-284602', array['B', 'C', 'D', 'E'], '2030-04-10', '2027-01-31', 'apte', null, '2026-06-02', '1975-01-05', '2021-06-24', null),
-  ('d9c72d50-3aff-4782-a384-7d90ac62940b', 'SED-1567', 'Camara', 'Ibrahima', 'interimaire', '7980851a-7bf2-450a-ab0b-1b5f14ad43c6', '77 282 08 66', 'TH-290912', array['B', 'C', 'D', 'E'], '2028-02-19', '2027-05-22', 'apte', null, null, '1988-02-17', '2023-06-25', null),
-  ('6347ad58-2967-4f4a-a428-890297c9ba39', 'SED-1379', 'Gueye', 'Modou', 'interimaire', 'e5455bcc-6927-4562-a002-9d2510edc44b', '77 651 60 07', 'TH-106904', array['B'], '2028-05-09', '2027-01-03', 'apte', null, '2026-08-03', '1990-04-24', '2023-11-10', null),
-  ('28afa999-3aa6-4970-a5f2-57d5660e7bdc', 'SED-3619', 'Thiam', 'Alioune', 'interimaire', '0dbf9f88-bad4-45ce-a5e8-8d0b746094e6', '77 998 11 29', 'TH-484719', array['B', 'C', 'D', 'E'], '2026-07-30', '2027-06-01', 'apte', null, null, '1976-11-07', '2018-06-02', null),
-  ('9b2044d0-74db-4b02-a72a-07bdbd54f7b0', 'SED-1629', 'Diène', 'Talla', 'salarie', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 773 39 32', 'TH-185971', array['B', 'C', 'E'], '2027-02-27', '2026-11-05', 'apte', null, '2026-07-03', '1990-07-03', '2023-07-27', null),
-  ('5300a942-eba6-4ce7-af5e-868c57dc7086', 'SED-2666', 'Sylla', 'Ndiaga', 'salarie', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 490 97 27', 'TH-285735', array['B'], '2030-06-02', '2027-06-17', 'inapte', 'Permis suspendu — inapte jusqu''à restitution', '2026-07-24', '1977-08-15', '2019-06-21', null),
-  ('cfb1399c-4750-410e-acfb-a04d212ac304', 'SED-1266', 'Mbengue', 'Saliou', 'salarie', '47c50d3c-c124-4e48-a9a8-00fbce5ea182', '77 790 98 69', 'DL-488330', array['B'], '2029-02-15', '2027-04-16', 'apte', null, '2026-01-09', '1990-04-21', '2022-03-19', '2026-03-31')
+  ('865928f6-a33a-4d3b-a929-c772994cea8b', 'SED-3820', 'Baldé', 'Amadou', 'salarie', '7980851a-7bf2-450a-ab0b-1b5f14ad43c6', '77 424 88 08', 'DK-250750', '{"B","C","D","E"}', '2026-10-30', '2027-02-01', 'apte-avec-reserve', 'Véhicules légers seulement — port de lunettes obligatoire', '2026-03-12', '1978-06-14', '2022-09-26', null),
+  ('aed32383-1769-4da7-a770-2200dc5b7f56', 'SED-3422', 'Diaw', 'Moustapha', 'interimaire', '7980851a-7bf2-450a-ab0b-1b5f14ad43c6', '77 647 47 71', 'TH-893367', '{"B","C","E"}', '2028-03-13', '2026-09-26', 'apte', null, null, '1994-04-07', '2020-05-04', null),
+  ('35c113e5-6848-4ce2-ac22-820bd3914afd', 'SED-1607', 'Dieng', 'Boubacar', 'salarie', 'ac72a0b2-c967-4065-a69e-c0f2eaacf019', '77 950 82 17', 'DL-988875', '{"B","C","D","E"}', '2027-02-04', '2026-12-13', 'apte', null, null, '1977-12-12', '2022-09-01', null),
+  ('f548681f-01d3-468c-aef9-024d63d3d151', 'SED-2950', 'Diop', 'Libasse', 'salarie', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 355 75 49', 'TH-697583', '{"B","C","E"}', '2026-10-25', '2027-03-21', 'apte', null, '2026-04-13', '1981-07-06', '2019-07-21', null),
+  ('c97b1596-42a4-4997-a3a3-d94941f673d4', 'SED-1716', 'Diop', 'Mamadou', 'interimaire', '2909c0c7-181a-4fb7-ae6b-01ae0fea638c', '77 671 85 19', 'TH-562467', '{"B","C","D","E"}', '2029-12-08', '2026-08-15', 'apte-avec-reserve', 'Sous réserve du renouvellement de la visite médicale — avis du médecin du travail', '2026-08-20', '1985-04-25', '2019-10-24', null),
+  ('bc3261e2-1177-425d-a502-ae1d3cdea055', 'SED-1917', 'Djitte', 'Mory', 'salarie', '6e270370-a966-4eca-a3db-0b736cbea8fc', '77 549 86 31', 'DL-604771', '{"B","C","E"}', '2027-12-05', '2027-06-11', 'apte', null, '2026-07-18', '1974-08-11', '2023-01-13', null),
+  ('8b7c0d1c-c833-4fb8-aa6e-d3afeb8de08b', 'SED-3596', 'Fall', 'Serigne Mbaye', 'interimaire', '47c50d3c-c124-4e48-a9a8-00fbce5ea182', '77 159 87 09', 'TH-250823', '{"B","C","E"}', '2028-01-17', '2027-01-30', 'apte', null, null, '1992-08-14', '2022-04-03', null),
+  ('30cc453e-0f3c-41dd-afac-3c158d61e9ab', 'SED-1363', 'Kadji', 'Badji', 'salarie', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 205 99 60', 'DK-958456', '{"B","C","E"}', '2029-03-26', '2027-07-07', 'apte', null, null, '1992-05-16', '2023-05-18', null),
+  ('017fce30-dcb4-4b74-a532-a84b1a7efa94', 'SED-3649', 'Ndiaye', 'Babacar', 'salarie', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 837 43 58', 'TH-400666', '{"B","C","E"}', '2028-04-19', '2027-06-01', 'apte', null, '2025-12-23', '1981-10-24', '2024-07-02', null),
+  ('5e90604d-6bc5-4cc2-a4da-f7227650611b', 'SED-3243', 'Ndiaye', 'Khalifa', 'interimaire', '47c50d3c-c124-4e48-a9a8-00fbce5ea182', '77 478 58 17', 'TH-306247', '{"B","C","E"}', '2028-05-18', '2027-03-01', 'apte', null, null, '1979-02-09', '2022-06-15', null),
+  ('e927f782-a98d-455b-a466-8c9f41f2e9e1', 'SED-3714', 'Ndoye', 'Djibril', 'salarie', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 646 38 94', 'DL-859665', '{"B","C","E"}', '2029-07-20', '2026-10-25', 'apte', null, '2025-11-27', '1989-07-14', '2021-03-16', null),
+  ('d5785ae8-1de2-461e-aca6-4acc9b9d0ba4', 'SED-2844', 'Samb', 'Maguette', 'salarie', 'e2e6a3ab-c6ba-4ef9-ace4-2dafe19fe03d', '77 760 34 55', 'TH-447111', '{"B","C","D","E"}', '2028-10-29', '2026-12-05', 'apte', null, '2026-07-21', '1986-09-28', '2023-04-24', null),
+  ('379a6140-22d1-4c51-a2ec-a85b8f41c124', 'SED-1389', 'Sarr', 'Cheikh', 'salarie', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 534 27 68', 'TH-381956', '{"B","C","D","E"}', '2026-09-14', '2027-07-10', 'apte', null, '2026-03-05', '1970-02-23', '2020-05-28', null),
+  ('67e509c0-0e03-4ee3-ad36-b9f64a595f1d', 'SED-2805', 'Sène', 'Pape', 'salarie', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 127 98 96', 'TH-515786', '{"B","C","E"}', '2027-02-25', '2026-10-13', 'apte', null, null, '1973-10-20', '2021-08-22', null),
+  ('114caa97-a872-4155-aefe-d4c691ab4ee7', 'SED-2549', 'Wane', 'Birago', 'interimaire', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 631 86 70', 'TH-284602', '{"B","C","D","E"}', '2030-04-10', '2027-01-31', 'apte', null, '2026-06-02', '1975-01-05', '2021-06-24', null),
+  ('d9c72d50-3aff-4782-a384-7d90ac62940b', 'SED-1567', 'Camara', 'Ibrahima', 'interimaire', '7980851a-7bf2-450a-ab0b-1b5f14ad43c6', '77 282 08 66', 'TH-290912', '{"B","C","D","E"}', '2028-02-19', '2027-05-22', 'apte', null, null, '1988-02-17', '2023-06-25', null),
+  ('6347ad58-2967-4f4a-a428-890297c9ba39', 'SED-1379', 'Gueye', 'Modou', 'interimaire', 'e5455bcc-6927-4562-a002-9d2510edc44b', '77 651 60 07', 'TH-106904', '{"B"}', '2028-05-09', '2027-01-03', 'apte', null, '2026-08-03', '1990-04-24', '2023-11-10', null),
+  ('28afa999-3aa6-4970-a5f2-57d5660e7bdc', 'SED-3619', 'Thiam', 'Alioune', 'interimaire', '0dbf9f88-bad4-45ce-a5e8-8d0b746094e6', '77 998 11 29', 'TH-484719', '{"B","C","D","E"}', '2026-07-30', '2027-06-01', 'apte', null, null, '1976-11-07', '2018-06-02', null),
+  ('9b2044d0-74db-4b02-a72a-07bdbd54f7b0', 'SED-1629', 'Diène', 'Talla', 'salarie', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 773 39 32', 'TH-185971', '{"B","C","E"}', '2027-02-27', '2026-11-05', 'apte', null, '2026-07-03', '1990-07-03', '2023-07-27', null),
+  ('5300a942-eba6-4ce7-af5e-868c57dc7086', 'SED-2666', 'Sylla', 'Ndiaga', 'salarie', '749ef4a6-0860-4e31-a59a-4e6ed5ca996d', '77 490 97 27', 'TH-285735', '{"B"}', '2030-06-02', '2027-06-17', 'inapte', 'Permis suspendu — inapte jusqu''à restitution', '2026-07-24', '1977-08-15', '2019-06-21', null),
+  ('cfb1399c-4750-410e-acfb-a04d212ac304', 'SED-1266', 'Mbengue', 'Saliou', 'salarie', '47c50d3c-c124-4e48-a9a8-00fbce5ea182', '77 790 98 69', 'DL-488330', '{"B"}', '2029-02-15', '2027-04-16', 'apte', null, '2026-01-09', '1990-04-21', '2022-03-19', '2026-03-31')
 on conflict do nothing;
 
 -- affectation (17)
@@ -140,94 +140,75 @@ insert into affectation (id, numero, vehicule_id, chauffeur_id, role, debut, fin
   ('0cbb5169-d3f0-475a-a2cc-6490a90f6349', 'AFF-2024-17002', 'e9bacc5a-785d-48fe-a16a-b5899927cf39', '865928f6-a33a-4d3b-a929-c772994cea8b', 'titulaire', '2024-01-29', null, 'Affectation initiale')
 on conflict do nothing;
 
--- document (128)
+-- document (109)
 insert into document (id, numero, type_document_id, vehicule_id, chauffeur_id, date_effet, echeance, emetteur, numero_piece, montant, justificatif) values
   ('6f81cffa-15df-4470-a917-6456d655a0f0', 'DOC-2026-01002', 'visite-technique', '032686e4-556b-46b2-a154-9de2392aa75d', null, '2026-03-13', '2026-09-12', 'CCVA', 'PV-26-9330', 55000, true),
   ('e08bade6-9652-4685-a9b3-8fcda192f1ea', 'DOC-2025-01001', 'assurance', '032686e4-556b-46b2-a154-9de2392aa75d', null, '2025-12-29', '2026-12-29', 'AXA Sénégal', 'AXA-2026-2122', 1578000, true),
   ('0fced21c-b275-41eb-a4ff-ba552ec9b73a', 'DOC-2026-01003', 'carte-grise', '032686e4-556b-46b2-a154-9de2392aa75d', null, null, null, 'DTT', 'CG-14-499215', null, true),
-  ('507fc8d6-5296-4dc9-a0c1-37d4e7fd2907', 'DOC-2025-00001', 'licence-transport', '032686e4-556b-46b2-a154-9de2392aa75d', null, '2025-02-10', '2027-02-09', 'Ministère des Transports', 'LT-2025-01170', null, true),
   ('61acd6cb-4af2-4448-a2f5-09050cd7d55d', 'DOC-2026-02002', 'visite-technique', 'a033ff63-c9bc-4584-a444-124e4c5b2c33', null, '2026-06-07', '2026-12-07', 'CCVA', 'PV-26-9984', 55000, true),
   ('d945d357-e7a4-4ff1-a3e7-e3f4b62e4bc1', 'DOC-2026-02001', 'assurance', 'a033ff63-c9bc-4584-a444-124e4c5b2c33', null, '2026-05-29', '2027-05-29', 'AXA Sénégal', 'AXA-2026-7823', 1352000, true),
   ('d4dc33aa-6a96-4403-a197-42f39f61f2e2', 'DOC-2026-02003', 'carte-grise', 'a033ff63-c9bc-4584-a444-124e4c5b2c33', null, null, null, 'DTT', 'CG-19-228722', null, true),
-  ('507fc8d6-5296-4dc9-a0c1-37d4e7fd2907', 'DOC-2025-00001', 'licence-transport', 'a033ff63-c9bc-4584-a444-124e4c5b2c33', null, '2025-02-10', '2027-02-09', 'Ministère des Transports', 'LT-2025-01170', null, true),
   ('dc7008c0-db75-4be7-a2e1-f50599550ed9', 'DOC-2026-03002', 'visite-technique', '1a94e449-ce99-428e-ad75-d318338e6985', null, '2026-03-11', '2026-09-10', 'CCVA', 'PV-26-3980', 55000, true),
   ('33bbb565-05cc-421f-aef0-77f98e0ce48e', 'DOC-2025-03001', 'assurance', '1a94e449-ce99-428e-ad75-d318338e6985', null, '2025-11-21', '2026-11-21', 'AXA Sénégal', 'AXA-2026-4118', 1464000, true),
   ('7c106a6b-9980-4641-a513-cd8d692fbbf5', 'DOC-2026-03003', 'carte-grise', '1a94e449-ce99-428e-ad75-d318338e6985', null, null, null, 'DTT', 'CG-19-602941', null, true),
-  ('507fc8d6-5296-4dc9-a0c1-37d4e7fd2907', 'DOC-2025-00001', 'licence-transport', '1a94e449-ce99-428e-ad75-d318338e6985', null, '2025-02-10', '2027-02-09', 'Ministère des Transports', 'LT-2025-01170', null, true),
   ('9a3e02ad-4b43-4757-ac22-8c05857eaeba', 'DOC-2026-04002', 'visite-technique', '8d2764b4-7eca-4cbe-a4fd-3b4de3fbd6cd', null, '2026-05-05', '2026-11-04', 'CCVA', 'PV-26-6094', 55000, true),
   ('eb729edf-deae-4269-a308-dcf271eb2876', 'DOC-2025-04001', 'assurance', '8d2764b4-7eca-4cbe-a4fd-3b4de3fbd6cd', null, '2025-11-02', '2026-11-02', 'AXA Sénégal', 'AXA-2026-9327', 1185000, true),
   ('f9ff56ed-3796-4feb-a8d8-d0193993b317', 'DOC-2026-04003', 'carte-grise', '8d2764b4-7eca-4cbe-a4fd-3b4de3fbd6cd', null, null, null, 'DTT', 'CG-15-752747', null, true),
-  ('507fc8d6-5296-4dc9-a0c1-37d4e7fd2907', 'DOC-2025-00001', 'licence-transport', '8d2764b4-7eca-4cbe-a4fd-3b4de3fbd6cd', null, '2025-02-10', '2027-02-09', 'Ministère des Transports', 'LT-2025-01170', null, true),
   ('af4e92c2-2dbe-4911-a9de-0da58ac4af46', 'DOC-2026-05002', 'visite-technique', '134523a1-cd0f-4a18-a6ce-adadaa1bc0f6', null, '2026-02-25', '2026-08-27', 'CCVA', 'PV-26-7907', 55000, true),
   ('144d11b1-fcbe-4d8c-a382-2c00f16270ab', 'DOC-2025-05001', 'assurance', '134523a1-cd0f-4a18-a6ce-adadaa1bc0f6', null, '2025-11-15', '2026-11-15', 'AXA Sénégal', 'AXA-2026-9461', 1370000, true),
   ('b4641332-9053-4acf-a432-2ecc386088c2', 'DOC-2026-05003', 'carte-grise', '134523a1-cd0f-4a18-a6ce-adadaa1bc0f6', null, null, null, 'DTT', 'CG-18-340885', null, true),
-  ('507fc8d6-5296-4dc9-a0c1-37d4e7fd2907', 'DOC-2025-00001', 'licence-transport', '134523a1-cd0f-4a18-a6ce-adadaa1bc0f6', null, '2025-02-10', '2027-02-09', 'Ministère des Transports', 'LT-2025-01170', null, true),
   ('ccfdd078-dcec-43dd-abd2-9a5ebc0486c1', 'DOC-2026-06004', 'visite-technique', 'af1abf6c-3a24-42a6-ad9b-1f0fa24c7866', null, '2026-04-24', '2026-10-24', 'CCVA', 'PV-26-3333', 55000, true),
   ('1a4575c2-e135-4131-aa10-1d0df3d7b011', 'DOC-2026-06003', 'assurance', 'af1abf6c-3a24-42a6-ad9b-1f0fa24c7866', null, '2026-04-02', '2027-04-02', 'AXA Sénégal', 'AXA-2026-2355', 945000, true),
   ('9ae38caa-78cd-4269-a933-c0d34231ba28', 'DOC-2026-06005', 'carte-grise', 'af1abf6c-3a24-42a6-ad9b-1f0fa24c7866', null, null, null, 'DTT', 'CG-20-344942', null, true),
   ('19a602b6-64b3-4c9c-a289-efcbdb45dae5', 'DOC-2026-06002', 'certificat-salubrite', 'af1abf6c-3a24-42a6-ad9b-1f0fa24c7866', null, '2026-01-18', '2027-01-18', 'Service d''hygiène — Ministère de la Santé', 'CS-5456', 25000, true),
-  ('14c81b3f-ccc1-43a5-a134-b01d12e81331', 'DOC-2024-00002', 'licence-transport', 'af1abf6c-3a24-42a6-ad9b-1f0fa24c7866', null, '2024-08-30', '2026-08-30', 'Ministère des Transports', 'LT-2024-00488', null, true),
   ('d787742f-5b08-4cbf-a7bb-40e48fff2f5a', 'DOC-2025-06001', 'carte-transport', 'af1abf6c-3a24-42a6-ad9b-1f0fa24c7866', null, '2025-11-06', '2026-11-06', 'Direction des Transports terrestres', 'CT-5901', 75000, true),
   ('df6750e8-85ca-4360-aaee-2473bbbf91ec', 'DOC-2026-07004', 'visite-technique', '5ea29a70-699c-4686-ada1-f5efd0b6abd6', null, '2026-06-26', '2026-12-26', 'CCVA', 'PV-26-9864', 55000, true),
   ('7290e0e9-41a2-4e95-aaa6-04a3baa3f196', 'DOC-2025-07001', 'assurance', '5ea29a70-699c-4686-ada1-f5efd0b6abd6', null, '2025-10-16', '2026-10-16', 'AXA Sénégal', 'AXA-2026-1108', 1563000, true),
   ('a5820367-2a99-4ab1-a50a-b9934dee4293', 'DOC-2026-07005', 'carte-grise', '5ea29a70-699c-4686-ada1-f5efd0b6abd6', null, null, null, 'DTT', 'CG-24-144953', null, true),
   ('c3636dc1-49a8-42b7-a91f-c2ae18081cba', 'DOC-2025-07003', 'certificat-salubrite', '5ea29a70-699c-4686-ada1-f5efd0b6abd6', null, '2025-12-24', '2026-12-24', 'Service d''hygiène — Ministère de la Santé', 'CS-7194', 25000, true),
-  ('14c81b3f-ccc1-43a5-a134-b01d12e81331', 'DOC-2024-00002', 'licence-transport', '5ea29a70-699c-4686-ada1-f5efd0b6abd6', null, '2024-08-30', '2026-08-30', 'Ministère des Transports', 'LT-2024-00488', null, true),
   ('9d994fe4-e78c-4ac7-a867-216bab995f4c', 'DOC-2025-07002', 'carte-transport', '5ea29a70-699c-4686-ada1-f5efd0b6abd6', null, '2025-11-06', '2026-11-06', 'Direction des Transports terrestres', 'CT-2380', 75000, true),
   ('95265fe8-e871-435f-ac3d-aefdecc9e5dd', 'DOC-2026-08004', 'visite-technique', '8f83955b-4584-4b2b-aed9-f92c14d0471c', null, '2026-04-06', '2026-10-06', 'CCVA', 'PV-26-8758', 55000, true),
   ('d5a8b904-ebbf-4ee1-a2b7-062e2f11c8c4', 'DOC-2025-08003', 'assurance', '8f83955b-4584-4b2b-aed9-f92c14d0471c', null, '2025-12-01', '2026-12-01', 'AXA Sénégal', 'AXA-2026-8799', 1026000, true),
   ('ae3841e6-ad6f-4ad0-aee4-58e92380199a', 'DOC-2026-08005', 'carte-grise', '8f83955b-4584-4b2b-aed9-f92c14d0471c', null, null, null, 'DTT', 'CG-22-231446', null, true),
   ('b707548d-9880-4c73-adbc-c6666f034de6', 'DOC-2025-08001', 'certificat-salubrite', '8f83955b-4584-4b2b-aed9-f92c14d0471c', null, '2025-09-29', '2026-09-29', 'Service d''hygiène — Ministère de la Santé', 'CS-1729', 25000, true),
-  ('14c81b3f-ccc1-43a5-a134-b01d12e81331', 'DOC-2024-00002', 'licence-transport', '8f83955b-4584-4b2b-aed9-f92c14d0471c', null, '2024-08-30', '2026-08-30', 'Ministère des Transports', 'LT-2024-00488', null, true),
   ('10bc5c90-fb1b-4f76-a296-4e59b167e825', 'DOC-2025-08002', 'carte-transport', '8f83955b-4584-4b2b-aed9-f92c14d0471c', null, '2025-11-06', '2026-11-06', 'Direction des Transports terrestres', 'CT-4141', 75000, true),
   ('8540b67c-1ad7-4942-a83e-f9729fbadc98', 'DOC-2026-09004', 'visite-technique', '9b9a5647-a91e-4b56-a8ac-50845ea15975', null, '2026-02-19', '2026-08-21', 'CCVA', 'PV-26-5457', 55000, true),
   ('fa9269b9-c22a-4b06-a1e8-fba08ba96e90', 'DOC-2026-09003', 'assurance', '9b9a5647-a91e-4b56-a8ac-50845ea15975', null, '2026-01-21', '2027-01-21', 'AXA Sénégal', 'AXA-2026-9850', 1042000, true),
   ('8cfbde7a-d925-4e3d-aa72-66f109fe1fbd', 'DOC-2026-09005', 'carte-grise', '9b9a5647-a91e-4b56-a8ac-50845ea15975', null, null, null, 'DTT', 'CG-18-501030', null, true),
   ('1ee7933a-5eff-44a5-a5f4-f9dfde17febd', 'DOC-2025-09001', 'certificat-salubrite', '9b9a5647-a91e-4b56-a8ac-50845ea15975', null, '2025-10-22', '2026-10-22', 'Service d''hygiène — Ministère de la Santé', 'CS-6680', 25000, true),
-  ('14c81b3f-ccc1-43a5-a134-b01d12e81331', 'DOC-2024-00002', 'licence-transport', '9b9a5647-a91e-4b56-a8ac-50845ea15975', null, '2024-08-30', '2026-08-30', 'Ministère des Transports', 'LT-2024-00488', null, true),
   ('110f7b9e-6f4e-41d0-a40c-e404a5f6949e', 'DOC-2025-09002', 'carte-transport', '9b9a5647-a91e-4b56-a8ac-50845ea15975', null, '2025-11-06', '2026-11-06', 'Direction des Transports terrestres', 'CT-8621', 75000, true),
   ('b27e2f56-c8da-4f83-ab51-c479e8910873', 'DOC-2026-10001', 'visite-technique', '3d2bf011-bb27-40a1-a27c-337d763348cb', null, '2026-02-10', '2026-08-12', 'CCVA', 'PV-26-6080', 55000, true),
   ('6e092825-e303-4994-af7d-c4c13759eb10', 'DOC-2026-10002', 'assurance', '3d2bf011-bb27-40a1-a27c-337d763348cb', null, '2026-05-28', '2027-05-28', 'AXA Sénégal', 'AXA-2026-9619', 1163000, true),
   ('c5b48dce-1797-403d-a80b-8f2715d6a82b', 'DOC-2026-10003', 'carte-grise', '3d2bf011-bb27-40a1-a27c-337d763348cb', null, null, null, 'DTT', 'CG-23-945016', null, true),
-  ('507fc8d6-5296-4dc9-a0c1-37d4e7fd2907', 'DOC-2025-00001', 'licence-transport', '3d2bf011-bb27-40a1-a27c-337d763348cb', null, '2025-02-10', '2027-02-09', 'Ministère des Transports', 'LT-2025-01170', null, true),
   ('0806b252-db2a-45f1-a32f-8ad3d6760e3a', 'DOC-2026-11004', 'visite-technique', 'b4c38d2c-52e2-4639-a4b3-9d67bf4bad02', null, '2026-04-12', '2026-10-12', 'CCVA', 'PV-26-6829', 55000, true),
   ('9cd4e839-3dfa-4fbe-ac19-34c746676b17', 'DOC-2025-11001', 'assurance', 'b4c38d2c-52e2-4639-a4b3-9d67bf4bad02', null, '2025-08-21', '2026-08-21', 'AXA Sénégal', 'AXA-2026-9383', 1489000, true),
   ('8304688b-1ee4-4f27-a0e0-86fc57805fc9', 'DOC-2026-11005', 'carte-grise', 'b4c38d2c-52e2-4639-a4b3-9d67bf4bad02', null, null, null, 'DTT', 'CG-17-122680', null, true),
   ('0fa13eb0-fc66-4480-a661-56084e27d187', 'DOC-2025-11002', 'certificat-salubrite', 'b4c38d2c-52e2-4639-a4b3-9d67bf4bad02', null, '2025-08-24', '2026-08-24', 'Service d''hygiène — Ministère de la Santé', 'CS-2302', 25000, true),
-  ('507fc8d6-5296-4dc9-a0c1-37d4e7fd2907', 'DOC-2025-00001', 'licence-transport', 'b4c38d2c-52e2-4639-a4b3-9d67bf4bad02', null, '2025-02-10', '2027-02-09', 'Ministère des Transports', 'LT-2025-01170', null, true),
   ('fab50732-9712-4e97-a568-a2b6aff7d860', 'DOC-2025-11003', 'carte-transport', 'b4c38d2c-52e2-4639-a4b3-9d67bf4bad02', null, '2025-11-06', '2026-11-06', 'Direction des Transports terrestres', 'CT-7926', 75000, true),
   ('5b134df7-733d-4f54-aa93-21daed72b5ad', 'DOC-2026-12002', 'visite-technique', 'f9bae306-c4d0-4114-a82e-2647b75f1123', null, '2026-02-27', '2026-08-29', 'CCVA', 'PV-26-5472', 55000, true),
   ('7eab9089-a486-453f-ae0b-d328b463e115', 'DOC-2025-12001', 'assurance', 'f9bae306-c4d0-4114-a82e-2647b75f1123', null, '2025-11-24', '2026-11-24', 'AXA Sénégal', 'AXA-2026-9160', 951000, true),
   ('769c2b1f-baae-492d-a20a-43f3a4e1c476', 'DOC-2026-12003', 'carte-grise', 'f9bae306-c4d0-4114-a82e-2647b75f1123', null, null, null, 'DTT', 'CG-16-365176', null, true),
-  ('507fc8d6-5296-4dc9-a0c1-37d4e7fd2907', 'DOC-2025-00001', 'licence-transport', 'f9bae306-c4d0-4114-a82e-2647b75f1123', null, '2025-02-10', '2027-02-09', 'Ministère des Transports', 'LT-2025-01170', null, true),
   ('f20b9129-4815-49e5-a0e4-68d5f88d9224', 'DOC-2026-13002', 'visite-technique', '90a7ae35-ce03-4775-a753-cdd1534c24c9', null, '2026-05-28', '2026-11-27', 'CCVA', 'PV-26-4528', 55000, true),
   ('e94a5e3a-8d80-4a56-affb-1578c49ecda8', 'DOC-2026-13001', 'assurance', '90a7ae35-ce03-4775-a753-cdd1534c24c9', null, '2026-01-09', '2027-01-09', 'AXA Sénégal', 'AXA-2026-1611', 1499000, true),
   ('35275588-bd7f-4de0-a79b-9cb0e5c3c470', 'DOC-2026-13003', 'carte-grise', '90a7ae35-ce03-4775-a753-cdd1534c24c9', null, null, null, 'DTT', 'CG-21-837043', null, true),
-  ('507fc8d6-5296-4dc9-a0c1-37d4e7fd2907', 'DOC-2025-00001', 'licence-transport', '90a7ae35-ce03-4775-a753-cdd1534c24c9', null, '2025-02-10', '2027-02-09', 'Ministère des Transports', 'LT-2025-01170', null, true),
   ('55d048d8-77ac-4849-ac2f-ffba48e34904', 'DOC-2026-14002', 'visite-technique', '3e21780a-a0da-4ad4-acf2-ef601b8f3afa', null, '2026-04-13', '2026-10-13', 'CCVA', 'PV-26-9915', 55000, true),
   ('fb2f2f07-ed88-4fdd-ae5d-c74585283c47', 'DOC-2026-14001', 'assurance', '3e21780a-a0da-4ad4-acf2-ef601b8f3afa', null, '2026-01-24', '2027-01-24', 'AXA Sénégal', 'AXA-2026-4298', 1182000, true),
   ('89820fc3-ef24-47d2-a0c1-6a85a46864ca', 'DOC-2026-14003', 'carte-grise', '3e21780a-a0da-4ad4-acf2-ef601b8f3afa', null, null, null, 'DTT', 'CG-16-812019', null, true),
-  ('507fc8d6-5296-4dc9-a0c1-37d4e7fd2907', 'DOC-2025-00001', 'licence-transport', '3e21780a-a0da-4ad4-acf2-ef601b8f3afa', null, '2025-02-10', '2027-02-09', 'Ministère des Transports', 'LT-2025-01170', null, true),
   ('c5c4d5bf-6f9b-43cd-a703-628994ca4944', 'DOC-2026-15002', 'visite-technique', '494b1755-733e-4c01-aa0a-fde07dd3bede', null, '2026-03-29', '2026-09-28', 'CCVA', 'PV-26-8209', 35000, true),
   ('bd0a8a60-d671-45fb-a5ba-ec2450252d03', 'DOC-2026-15001', 'assurance', '494b1755-733e-4c01-aa0a-fde07dd3bede', null, '2026-01-14', '2027-01-14', 'AXA Sénégal', 'AXA-2026-9650', 412000, true),
   ('de194bc0-e5ab-4ebf-ab2d-a0cf1e682bba', 'DOC-2026-15003', 'carte-grise', '494b1755-733e-4c01-aa0a-fde07dd3bede', null, null, null, 'DTT', 'CG-21-162428', null, true),
-  ('507fc8d6-5296-4dc9-a0c1-37d4e7fd2907', 'DOC-2025-00001', 'licence-transport', '494b1755-733e-4c01-aa0a-fde07dd3bede', null, '2025-02-10', '2027-02-09', 'Ministère des Transports', 'LT-2025-01170', null, true),
   ('acb13004-0471-4a28-a3e9-fe027c2511ce', 'DOC-2026-16002', 'visite-technique', 'ecb5ce34-5df7-484e-a818-ae25d94aecd7', null, '2026-07-17', '2027-01-16', 'CCVA', 'PV-26-9263', 35000, true),
   ('7ec16767-13d1-4ce6-ab73-effb820a3401', 'DOC-2026-16001', 'assurance', 'ecb5ce34-5df7-484e-a818-ae25d94aecd7', null, '2026-02-01', '2027-02-01', 'AXA Sénégal', 'AXA-2026-3675', 412000, true),
   ('fcfe4300-f63b-47da-a1a5-42c5dfb5f67f', 'DOC-2026-16003', 'carte-grise', 'ecb5ce34-5df7-484e-a818-ae25d94aecd7', null, null, null, 'DTT', 'CG-20-709942', null, true),
-  ('507fc8d6-5296-4dc9-a0c1-37d4e7fd2907', 'DOC-2025-00001', 'licence-transport', 'ecb5ce34-5df7-484e-a818-ae25d94aecd7', null, '2025-02-10', '2027-02-09', 'Ministère des Transports', 'LT-2025-01170', null, true),
   ('5d7799d1-056f-45c2-ada2-7d01536f3325', 'DOC-2026-17002', 'visite-technique', 'e9bacc5a-785d-48fe-a16a-b5899927cf39', null, '2026-07-27', '2027-01-26', 'CCVA', 'PV-26-1496', 35000, true),
   ('9edf2ce6-5f85-46e5-a7ac-299bc142bd99', 'DOC-2025-17001', 'assurance', 'e9bacc5a-785d-48fe-a16a-b5899927cf39', null, '2025-11-08', '2026-11-08', 'AXA Sénégal', 'AXA-2026-9668', 412000, true),
   ('e5284197-ad43-414c-a4b7-723b2706966b', 'DOC-2026-17003', 'carte-grise', 'e9bacc5a-785d-48fe-a16a-b5899927cf39', null, null, null, 'DTT', 'CG-20-265555', null, true),
-  ('507fc8d6-5296-4dc9-a0c1-37d4e7fd2907', 'DOC-2025-00001', 'licence-transport', 'e9bacc5a-785d-48fe-a16a-b5899927cf39', null, '2025-02-10', '2027-02-09', 'Ministère des Transports', 'LT-2025-01170', null, true),
   ('e7d7efc2-1531-4da2-aa10-0e3e3eaef4ef', 'DOC-2026-18001', 'visite-technique', '9683cd38-4fa3-41f8-a9ce-59aee44e3a60', null, '2026-02-24', '2026-08-26', 'CCVA', 'PV-26-9774', 35000, true),
   ('42dfb195-4ce8-4c77-ad06-e3fe34edc0b5', 'DOC-2026-18002', 'assurance', '9683cd38-4fa3-41f8-a9ce-59aee44e3a60', null, '2026-06-15', '2027-06-15', 'AXA Sénégal', 'AXA-2026-8409', 412000, true),
   ('796618be-1ce3-486c-a792-18facb1c37b2', 'DOC-2026-18003', 'carte-grise', '9683cd38-4fa3-41f8-a9ce-59aee44e3a60', null, null, null, 'DTT', 'CG-17-780878', null, true),
-  ('507fc8d6-5296-4dc9-a0c1-37d4e7fd2907', 'DOC-2025-00001', 'licence-transport', '9683cd38-4fa3-41f8-a9ce-59aee44e3a60', null, '2025-02-10', '2027-02-09', 'Ministère des Transports', 'LT-2025-01170', null, true),
   ('e7b4b29c-2034-4fdc-a70b-f29abfc69638', 'DOC-2026-19001', 'visite-technique', 'c1b10e19-b618-4632-a533-ec418c95bd8b', null, '2026-02-26', '2026-08-28', 'CCVA', 'PV-26-7780', 35000, true),
   ('876881cd-5aef-47d4-ab67-ea4c9310187d', 'DOC-2026-19002', 'assurance', 'c1b10e19-b618-4632-a533-ec418c95bd8b', null, '2026-06-13', '2027-06-13', 'AXA Sénégal', 'AXA-2026-6652', 412000, true),
   ('86b1a91f-df53-40b3-a733-d09806f34347', 'DOC-2026-19003', 'carte-grise', 'c1b10e19-b618-4632-a533-ec418c95bd8b', null, null, null, 'DTT', 'CG-20-369078', null, true),
-  ('507fc8d6-5296-4dc9-a0c1-37d4e7fd2907', 'DOC-2025-00001', 'licence-transport', 'c1b10e19-b618-4632-a533-ec418c95bd8b', null, '2025-02-10', '2027-02-09', 'Ministère des Transports', 'LT-2025-01170', null, true),
   ('b28c3455-601d-4836-af58-54569a860ed9', 'DOC-PERMIS-amadou-balde', 'permis', null, '865928f6-a33a-4d3b-a929-c772994cea8b', null, '2026-10-30', null, 'DK-250750', null, true),
   ('b77bef22-1fc1-4fba-ace8-4d892a06af4e', 'DOC-VISITE-amadou-balde', 'visite-medicale', null, '865928f6-a33a-4d3b-a929-c772994cea8b', null, '2027-02-01', null, null, null, true),
   ('f57acb7f-e8d6-47c5-a96b-d7be063bc467', 'DOC-PERMIS-moustapha-diaw', 'permis', null, 'aed32383-1769-4da7-a770-2200dc5b7f56', null, '2028-03-13', null, 'TH-893367', null, true),
@@ -270,6 +251,20 @@ insert into document (id, numero, type_document_id, vehicule_id, chauffeur_id, d
   ('f1360970-4021-4ee7-ad1a-b7ffae6be690', 'DOC-VISITE-ndiaga-sylla', 'visite-medicale', null, '5300a942-eba6-4ce7-af5e-868c57dc7086', null, '2027-06-17', null, null, null, true),
   ('04ed0d26-c114-43b4-a8e5-e0d55791cbfc', 'DOC-PERMIS-saliou-mbengue', 'permis', null, 'cfb1399c-4750-410e-acfb-a04d212ac304', null, '2029-02-15', null, 'DL-488330', null, true),
   ('08cbfc67-b25e-4e16-a409-c0a105f1e4d8', 'DOC-VISITE-saliou-mbengue', 'visite-medicale', null, 'cfb1399c-4750-410e-acfb-a04d212ac304', null, '2027-04-16', null, null, null, true)
+on conflict do nothing;
+
+-- licence_transport (2)
+insert into licence_transport (id, numero, libelle, numero_piece, emetteur, perimetre, date_effet, echeance) values
+  ('d3c88111-5f7c-41f7-a45f-3eb6c32c38a1', 'DOC-2025-00001', 'Transport public de marchandises', 'LT-2025-01170', 'Ministère des Transports', 'flotte', '2025-02-10', '2027-02-09'),
+  ('232cf287-1130-4522-a140-fdd35dd64999', 'DOC-2024-00002', 'Transport de vrac alimentaire', 'LT-2024-00488', 'Ministère des Transports', 'partie', '2024-08-30', '2026-08-30')
+on conflict do nothing;
+
+-- licence_vehicule (4)
+insert into licence_vehicule (licence_id, vehicule_id) values
+  ('232cf287-1130-4522-a140-fdd35dd64999', '8f83955b-4584-4b2b-aed9-f92c14d0471c'),
+  ('232cf287-1130-4522-a140-fdd35dd64999', '9b9a5647-a91e-4b56-a8ac-50845ea15975'),
+  ('232cf287-1130-4522-a140-fdd35dd64999', '5ea29a70-699c-4686-ada1-f5efd0b6abd6'),
+  ('232cf287-1130-4522-a140-fdd35dd64999', 'af1abf6c-3a24-42a6-ad9b-1f0fa24c7866')
 on conflict do nothing;
 
 -- depense (1103)
@@ -2663,19 +2658,19 @@ on conflict (cle) do update set valeur = excluded.valeur;
 
 -- profil_transporteur (13)
 insert into profil_transporteur (prestataire_id, forme, sous_contrat, reference_contrat, debut_contrat, fin_contrat, modes, camions_engages, commentaire) values
-  ('81a05d98-e8df-4abf-a68f-098b8242e11c', 'particulier', false, null, null, null, array['tonne'], 7, 'Client SEDIMA — transport compensé sur les achats.'),
-  ('3d52c263-326d-4459-aebb-dad2868709c0', 'particulier', false, null, null, null, array['tonne'], 10, 'Client SEDIMA — le plus gros porteur du relevé.'),
-  ('05527d5c-ea58-4b65-a1ca-952867582cce', 'particulier', false, null, null, null, array['tonne'], 2, 'Cliente SEDIMA — transport compensé.'),
-  ('ca3aae9a-ef60-4ca4-a1d5-9ccd3f75c093', 'particulier', false, null, null, null, array['tonne'], null, null),
-  ('3f6fc79e-03b0-4ca6-a003-893d57aa6081', 'particulier', false, null, null, null, array['tonne', 'mission'], 4, 'Rattaché à la ligne « AUTRES » du relevé et au bon de commande « divers transport route ».'),
-  ('b34dd126-81b4-43ca-a70b-d0e14ed5463b', 'societe', false, null, null, null, array['mission'], null, 'Transfert de poulets vers l''abattoir, au voyage.'),
-  ('43f81225-1d8c-4202-a918-9af8788d8205', 'societe', false, null, null, null, array['tonne'], 3, null),
-  ('194453d8-8981-47d8-a8b2-4047eceb1296', 'societe', false, null, null, null, array['tonne'], null, null),
-  ('0980ffb5-b826-42d1-a143-6b5b2dc99954', 'particulier', false, null, null, null, array['mission'], null, 'Œufs et farine, prix au sac — hors grille à la tonne.'),
-  ('b7677062-1801-4e25-ae25-6e2db9118edb', 'particulier', false, null, null, null, array['mission'], null, 'Transport du personnel des abattoirs.'),
-  ('f5f28020-52d4-4fd7-a3e0-3670a930f46f', 'societe', false, null, null, null, array['mission'], null, 'Livraison d''œufs.'),
-  ('b0f51183-8352-415c-ac70-c6fcf101f5a8', 'particulier', false, null, null, null, array['tonne'], null, 'Liaisons Gambie et Casamance.'),
-  ('9e6bc5c6-f46a-4875-ae7a-eb3d2f5e4897', 'societe', true, 'Contrat de mise à disposition — à revoir (CR du 10/04/2025)', '2024-01-01', null, array['journee'], 7, 'Plan d''action de la réunion du 10 avril : nouveau contrat hors mise à disposition, articulé au km, à la tonne ou au mU.')
+  ('81a05d98-e8df-4abf-a68f-098b8242e11c', 'particulier', false, null, null, null, '{"tonne"}', 7, 'Client SEDIMA — transport compensé sur les achats.'),
+  ('3d52c263-326d-4459-aebb-dad2868709c0', 'particulier', false, null, null, null, '{"tonne"}', 10, 'Client SEDIMA — le plus gros porteur du relevé.'),
+  ('05527d5c-ea58-4b65-a1ca-952867582cce', 'particulier', false, null, null, null, '{"tonne"}', 2, 'Cliente SEDIMA — transport compensé.'),
+  ('ca3aae9a-ef60-4ca4-a1d5-9ccd3f75c093', 'particulier', false, null, null, null, '{"tonne"}', null, null),
+  ('3f6fc79e-03b0-4ca6-a003-893d57aa6081', 'particulier', false, null, null, null, '{"tonne","mission"}', 4, 'Rattaché à la ligne « AUTRES » du relevé et au bon de commande « divers transport route ».'),
+  ('b34dd126-81b4-43ca-a70b-d0e14ed5463b', 'societe', false, null, null, null, '{"mission"}', null, 'Transfert de poulets vers l''abattoir, au voyage.'),
+  ('43f81225-1d8c-4202-a918-9af8788d8205', 'societe', false, null, null, null, '{"tonne"}', 3, null),
+  ('194453d8-8981-47d8-a8b2-4047eceb1296', 'societe', false, null, null, null, '{"tonne"}', null, null),
+  ('0980ffb5-b826-42d1-a143-6b5b2dc99954', 'particulier', false, null, null, null, '{"mission"}', null, 'Œufs et farine, prix au sac — hors grille à la tonne.'),
+  ('b7677062-1801-4e25-ae25-6e2db9118edb', 'particulier', false, null, null, null, '{"mission"}', null, 'Transport du personnel des abattoirs.'),
+  ('f5f28020-52d4-4fd7-a3e0-3670a930f46f', 'societe', false, null, null, null, '{"mission"}', null, 'Livraison d''œufs.'),
+  ('b0f51183-8352-415c-ac70-c6fcf101f5a8', 'particulier', false, null, null, null, '{"tonne"}', null, 'Liaisons Gambie et Casamance.'),
+  ('9e6bc5c6-f46a-4875-ae7a-eb3d2f5e4897', 'societe', true, 'Contrat de mise à disposition — à revoir (CR du 10/04/2025)', '2024-01-01', null, '{"journee"}', 7, 'Plan d''action de la réunion du 10 avril : nouveau contrat hors mise à disposition, articulé au km, à la tonne ou au mU.')
 on conflict do nothing;
 
 -- chauffeur_tiers (28)
@@ -6056,37 +6051,37 @@ on conflict do nothing;
 
 -- programme_entretien (4)
 insert into programme_entretien (code, libelle, precision, categories, base) values
-  ('porteur-lourd', 'Poids lourd — porteur et tracteur', 'Vrac, sacherie et traction. Périodicités resserrées : la piste et la surcharge usent plus vite que la route.', array['camion', 'tracteur'], 'km'),
-  ('remorque', 'Semi-remorque', 'Pas de moteur : tout se joue sur le freinage, les pneumatiques et le châssis.', array['semi-remorque'], 'km'),
-  ('leger', 'Véhicule léger et camionnette', 'Livraison, liaison et direction. Le kilométrage tombe vite, la courroie décide de la longévité.', array['camionnette', 'vehicule-leger', 'bus', 'moto'], 'km'),
-  ('engin', 'Engin de manutention', 'Il ne roule pas, il travaille : c''est le compteur horaire qui commande, jamais le kilométrage.', array['engin'], 'heures')
+  ('porteur-lourd', 'Poids lourd — porteur et tracteur', 'Vrac, sacherie et traction. Périodicités resserrées : la piste et la surcharge usent plus vite que la route.', '{"camion","tracteur"}', 'km'),
+  ('remorque', 'Semi-remorque', 'Pas de moteur : tout se joue sur le freinage, les pneumatiques et le châssis.', '{"semi-remorque"}', 'km'),
+  ('leger', 'Véhicule léger et camionnette', 'Livraison, liaison et direction. Le kilométrage tombe vite, la courroie décide de la longévité.', '{"camionnette","vehicule-leger","bus","moto"}', 'km'),
+  ('engin', 'Engin de manutention', 'Il ne roule pas, il travaille : c''est le compteur horaire qui commande, jamais le kilométrage.', '{"engin"}', 'heures')
 on conflict do nothing;
 
 -- operation_entretien (23)
 insert into operation_entretien (code, programme_code, libelle, groupe, periodicite_km, periodicite_heures, periodicite_mois, mots_cles, duree_heures, cout_estime, critique, ordre) values
-  ('porteur-lourd:vidange-moteur', 'porteur-lourd', 'Vidange moteur et filtres', 'moteur', 15000, null, 12, array['vidange'], 3, 118500, false, 0),
-  ('porteur-lourd:filtres-air-gasoil', 'porteur-lourd', 'Filtre à air et filtre à gasoil', 'moteur', 30000, null, 12, array['filtre à air', 'filtre à gasoil', 'filtres'], 2, 62000, false, 1),
-  ('porteur-lourd:graissage-chassis', 'porteur-lourd', 'Graissage du châssis', 'chassis', 5000, null, 2, array['graissage'], 1, 18000, false, 2),
-  ('porteur-lourd:garnitures-frein', 'porteur-lourd', 'Contrôle des garnitures de frein', 'freinage', 30000, null, 6, array['frein', 'garniture', 'plaquette'], 4, 245000, true, 3),
-  ('porteur-lourd:boite-pont', 'porteur-lourd', 'Huile de boîte et de pont', 'transmission', 60000, null, 24, array['boîte', 'pont'], 4, 195000, false, 4),
-  ('porteur-lourd:pneumatiques', 'porteur-lourd', 'Contrôle des pneumatiques', 'pneumatiques', null, null, 1, array['pneu', 'permutation'], 1, 12000, true, 5),
-  ('porteur-lourd:suspension-direction', 'porteur-lourd', 'Contrôle suspension et direction', 'securite', 45000, null, 12, array['suspension', 'direction', 'amortisseur'], 3, 165000, true, 6),
-  ('remorque:garnitures-frein', 'remorque', 'Contrôle des garnitures de frein', 'freinage', 30000, null, 6, array['frein', 'garniture', 'plaquette'], 4, 210000, true, 0),
-  ('remorque:graissage-chassis', 'remorque', 'Graissage du châssis et de la sellette', 'chassis', 5000, null, 2, array['graissage', 'sellette'], 1, 15000, false, 1),
-  ('remorque:pneumatiques', 'remorque', 'Contrôle des pneumatiques', 'pneumatiques', null, null, 1, array['pneu', 'permutation'], 1, 12000, true, 2),
-  ('remorque:moyeux', 'remorque', 'Graissage et jeu des moyeux', 'chassis', 60000, null, 24, array['moyeu', 'roulement'], 4, 145000, false, 3),
-  ('remorque:feux-signalisation', 'remorque', 'Feux et signalisation', 'securite', null, null, 3, array['feu', 'signalisation', 'éclairage'], 1, 25000, true, 4),
-  ('leger:vidange-moteur', 'leger', 'Vidange moteur et filtres', 'moteur', 10000, null, 12, array['vidange'], 2, 62000, false, 0),
-  ('leger:filtre-air', 'leger', 'Filtre à air', 'moteur', 20000, null, 12, array['filtre à air', 'filtres'], 1, 28000, false, 1),
-  ('leger:plaquettes-frein', 'leger', 'Contrôle des plaquettes de frein', 'freinage', 20000, null, 12, array['frein', 'plaquette'], 2, 85000, true, 2),
-  ('leger:courroie-distribution', 'leger', 'Courroie de distribution', 'moteur', 100000, null, 60, array['courroie', 'distribution'], 6, 320000, true, 3),
-  ('leger:permutation-pneus', 'leger', 'Permutation des pneus', 'pneumatiques', 15000, null, 6, array['pneu', 'permutation'], 1, 15000, false, 4),
-  ('leger:climatisation', 'leger', 'Entretien de la climatisation', 'chassis', null, null, 12, array['clim'], 2, 45000, false, 5),
-  ('engin:vidange-moteur', 'engin', 'Vidange moteur et filtres', 'moteur', null, 500, 12, array['vidange'], 3, 95000, false, 0),
-  ('engin:hydraulique', 'engin', 'Huile et filtres hydrauliques', 'transmission', null, 1000, 24, array['hydraulique'], 4, 185000, false, 1),
-  ('engin:graissage-chassis', 'engin', 'Graissage général', 'chassis', null, 250, 2, array['graissage'], 1, 18000, false, 2),
-  ('engin:freins-engin', 'engin', 'Contrôle du freinage', 'freinage', null, 1000, 12, array['frein'], 3, 120000, true, 3),
-  ('engin:securite-levage', 'engin', 'Contrôle du dispositif de levage', 'securite', null, 1000, 12, array['levage', 'mât', 'fourche'], 4, 210000, true, 4)
+  ('porteur-lourd:vidange-moteur', 'porteur-lourd', 'Vidange moteur et filtres', 'moteur', 15000, null, 12, '{"vidange"}', 3, 118500, false, 0),
+  ('porteur-lourd:filtres-air-gasoil', 'porteur-lourd', 'Filtre à air et filtre à gasoil', 'moteur', 30000, null, 12, '{"filtre à air","filtre à gasoil","filtres"}', 2, 62000, false, 1),
+  ('porteur-lourd:graissage-chassis', 'porteur-lourd', 'Graissage du châssis', 'chassis', 5000, null, 2, '{"graissage"}', 1, 18000, false, 2),
+  ('porteur-lourd:garnitures-frein', 'porteur-lourd', 'Contrôle des garnitures de frein', 'freinage', 30000, null, 6, '{"frein","garniture","plaquette"}', 4, 245000, true, 3),
+  ('porteur-lourd:boite-pont', 'porteur-lourd', 'Huile de boîte et de pont', 'transmission', 60000, null, 24, '{"boîte","pont"}', 4, 195000, false, 4),
+  ('porteur-lourd:pneumatiques', 'porteur-lourd', 'Contrôle des pneumatiques', 'pneumatiques', null, null, 1, '{"pneu","permutation"}', 1, 12000, true, 5),
+  ('porteur-lourd:suspension-direction', 'porteur-lourd', 'Contrôle suspension et direction', 'securite', 45000, null, 12, '{"suspension","direction","amortisseur"}', 3, 165000, true, 6),
+  ('remorque:garnitures-frein', 'remorque', 'Contrôle des garnitures de frein', 'freinage', 30000, null, 6, '{"frein","garniture","plaquette"}', 4, 210000, true, 0),
+  ('remorque:graissage-chassis', 'remorque', 'Graissage du châssis et de la sellette', 'chassis', 5000, null, 2, '{"graissage","sellette"}', 1, 15000, false, 1),
+  ('remorque:pneumatiques', 'remorque', 'Contrôle des pneumatiques', 'pneumatiques', null, null, 1, '{"pneu","permutation"}', 1, 12000, true, 2),
+  ('remorque:moyeux', 'remorque', 'Graissage et jeu des moyeux', 'chassis', 60000, null, 24, '{"moyeu","roulement"}', 4, 145000, false, 3),
+  ('remorque:feux-signalisation', 'remorque', 'Feux et signalisation', 'securite', null, null, 3, '{"feu","signalisation","éclairage"}', 1, 25000, true, 4),
+  ('leger:vidange-moteur', 'leger', 'Vidange moteur et filtres', 'moteur', 10000, null, 12, '{"vidange"}', 2, 62000, false, 0),
+  ('leger:filtre-air', 'leger', 'Filtre à air', 'moteur', 20000, null, 12, '{"filtre à air","filtres"}', 1, 28000, false, 1),
+  ('leger:plaquettes-frein', 'leger', 'Contrôle des plaquettes de frein', 'freinage', 20000, null, 12, '{"frein","plaquette"}', 2, 85000, true, 2),
+  ('leger:courroie-distribution', 'leger', 'Courroie de distribution', 'moteur', 100000, null, 60, '{"courroie","distribution"}', 6, 320000, true, 3),
+  ('leger:permutation-pneus', 'leger', 'Permutation des pneus', 'pneumatiques', 15000, null, 6, '{"pneu","permutation"}', 1, 15000, false, 4),
+  ('leger:climatisation', 'leger', 'Entretien de la climatisation', 'chassis', null, null, 12, '{"clim"}', 2, 45000, false, 5),
+  ('engin:vidange-moteur', 'engin', 'Vidange moteur et filtres', 'moteur', null, 500, 12, '{"vidange"}', 3, 95000, false, 0),
+  ('engin:hydraulique', 'engin', 'Huile et filtres hydrauliques', 'transmission', null, 1000, 24, '{"hydraulique"}', 4, 185000, false, 1),
+  ('engin:graissage-chassis', 'engin', 'Graissage général', 'chassis', null, 250, 2, '{"graissage"}', 1, 18000, false, 2),
+  ('engin:freins-engin', 'engin', 'Contrôle du freinage', 'freinage', null, 1000, 12, '{"frein"}', 3, 120000, true, 3),
+  ('engin:securite-levage', 'engin', 'Contrôle du dispositif de levage', 'securite', null, 1000, 12, '{"levage","mât","fourche"}', 4, 210000, true, 4)
 on conflict do nothing;
 
 -- avance_prestataire (4)

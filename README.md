@@ -93,7 +93,7 @@ supabase link --project-ref <ref-du-projet>
 supabase db push
 ```
 
-Deux migrations, dans l'ordre :
+Trois migrations, dans l'ordre :
 
 - `0001_socle.sql` — référentiels, flotte, chauffeurs, transactions, trace des
   modifications, clôture des mois, paramètres — avec les politiques RLS et
@@ -102,23 +102,33 @@ Deux migrations, dans l'ordre :
   rattachements, affrètements, mises à disposition, prestations, relevé de
   transport), entretien (programmes, plans, ajustements), compte fournisseur
   (avances, évaluations), budget, rapports personnalisés.
+- `0003_mad_et_licence.sql` — une mise à disposition peut porter sur un mois
+  entamé (jours calendaires de 1 à 31), et la licence de transport a sa table,
+  `licence_transport`, avec son périmètre (`licence_vehicule`) : elle est
+  portée par la flotte, pas recopiée sur chaque véhicule.
 
-**Aucune des deux n'a encore été jouée contre un Postgres** : ni le CLI
-Supabase ni `psql` ne sont installés sur le poste de développement. La première
-exécution se fera sur le projet Supabase, et c'est elle qui validera la syntaxe.
+Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
+même résultat : coller chaque migration, dans l'ordre.
 
 Puis le jeu de démonstration, si l'on veut une base peuplée pour recetter :
 
 ```bash
-npm run generer-seed      # écrit supabase/seed.sql depuis src/donnees/
-supabase db reset         # ou coller seed.sql dans l'éditeur SQL
+npm run generer-seed      # écrit supabase/seed.sql et supabase/seed-parties/
+supabase db reset         # ou coller les parties, dans l'ordre, dans l'éditeur SQL
 ```
 
 Le seed est **généré**, jamais écrit à la main : il dit la même chose que
 l'application parce qu'il vient de la même source. Il est rejouable (`on
 conflict do nothing`), et ses identifiants sont stables — un UUID dérivé du
 numéro métier. Il ne porte ni les comptes (ils citent `auth.users`) ni les
-fichiers des justificatifs.
+fichiers des justificatifs. Le fichier entier (1,3 Mo) dépasse ce que
+l'éditeur SQL accepte d'un coup : `seed-parties/` le découpe en parties
+ordonnées d'au plus 300 Ko, à coller l'une après l'autre sans en sauter.
+
+Pour valider migrations et seed sans Postgres sur le poste, PGlite (PostgreSQL
+en WebAssembly, `npm i -D @electric-sql/pglite`) les rejoue en quelques
+secondes avec un schéma `auth` factice ; c'est ainsi que la syntaxe et les
+contraintes ont été vérifiées avant d'être jouées sur Supabase.
 
 Après la migration, créer le premier administrateur :
 

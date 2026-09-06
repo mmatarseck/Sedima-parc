@@ -247,12 +247,47 @@ référentiel « AA076BP » — normalisé avant de lier.
   cinq parties **ordonnées** dans `supabase/seed-parties/` (ignoré par git,
   régénérable). Elles se jouent 01 → 05 sans en sauter.
 
+### Le seed validé hors ligne (6 septembre 2026, reprise du soir)
+
+Deux allers-retours dans le SQL Editor avaient corrigé la partie 02 à
+l'aveugle (horodatage des incidents, lien sanction → incident). Plutôt que de
+continuer une erreur à la fois, **le seed est rejoué en local dans PGlite**
+(PostgreSQL en WebAssembly, installé dans le bac à sable de la session, pas
+dans le projet) avec un schéma `auth` factice : migrations 0001 à 0003, puis
+les cinq parties, en quelques secondes. Le rejeu a trouvé d'un coup ce qui
+restait :
+
+- **Les tableaux d'énumérations.** `array['tonne']` est un `text[]`, que
+  `mode_remuneration[]` refuse ; même chose pour `categorie_vehicule[]` sur
+  les programmes d'entretien (et l'opération qui les cite tombait derrière).
+  Le générateur écrit désormais les tableaux en littéral `'{…}'`, qui prend
+  le type de la colonne.
+- **Le mois en cours d'une mise à disposition.** 0002 exigeait 28 à 31 jours
+  calendaires ; septembre entamé en porte 2, comme l'écran Transporteurs qui
+  ne compte que les jours écoulés. Migration `0003` : de 1 à 31.
+- **Dix-sept documents perdus en silence.** Le générateur annonçait 128
+  documents, la base en gardait 111 : la licence de transport était recopiée
+  sur chaque véhicule couvert, et l'unicité du numéro n'en gardait qu'une —
+  `on conflict do nothing` cachait le reste. La licence est portée par la
+  flotte (décision du 3 septembre) : `0003_mad_et_licence.sql` lui donne sa
+  table `licence_transport` et son périmètre `licence_vehicule`, avec deux
+  déclencheurs (une licence de flotte ne liste personne ; passer une licence
+  en « flotte » vide son périmètre), l'horodatage et les politiques des
+  documents. Le seed la verse deux fois, pas dix-neuf.
+
+Le générateur découpe maintenant lui-même les parties (`supabase/seed-parties/`,
+300 Ko au plus, aux frontières d'instruction) : `npm run generer-seed` suffit.
+Le rejeu complet passe **5 954 lignes sur 31 tables, zéro erreur**, et le
+compte annoncé par le générateur est celui de la base — plus aucune ligne
+écartée sans le dire.
+
 **À faire, dans l'ordre.**
 
-1. **Le seed** : jouer `seed-01.sql` à `seed-05.sql` dans le SQL Editor, puis
-   vérifier — `select count(*) from vehicule` doit répondre 19 ; le relevé de
-   transport 2 926 ; les enveloppes 27. Au moment où la session s'arrête, les
-   compteurs sont à zéro : aucune partie n'a encore passé.
+1. **La migration 0003** dans le SQL Editor, puis **le seed** : `seed-01.sql`
+   à `seed-05.sql`, dans l'ordre. La partie 01 se rejoue sans risque si elle
+   était déjà passée (`on conflict do nothing`). Vérifier ensuite :
+   `select count(*) from vehicule` doit répondre 19 ; le relevé de transport
+   2 926 ; les enveloppes 27 ; `document` 109 ; `licence_transport` 2.
 2. **Le premier administrateur** : Authentication › Users › *Invite user* avec
    l'adresse du gestionnaire, puis dans le SQL Editor :
    `insert into profil (utilisateur_id, nom, role) values ('<uuid du compte>',
