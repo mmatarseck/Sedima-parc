@@ -288,6 +288,14 @@ veille avant 0003, y avait laissé les deux licences comme documents de
 véhicule. **La base Supabase porte le jeu de démonstration complet
 (5 954 lignes).**
 
+**Vérifié le 6 septembre, plus tard dans la soirée.** `main` est poussé
+(commit 66629df), l'intégration continue est verte sur ce commit, et
+l'application est déployée : **https://sedima-parc.vercel.app** rend le
+tableau de bord sans erreur console — sur son jeu de démonstration, puisque
+aucun écran n'est encore branché sur la base. Le premier administrateur et les
+variables Vercel ne se vérifient pas depuis le code : les tenir pour faits
+quand le gestionnaire se connecte.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.
