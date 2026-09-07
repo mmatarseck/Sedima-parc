@@ -103,6 +103,12 @@ export const STATUT_VEHICULE: Record<StatutVehicule, DefinitionStatut> = {
     operationnel: false,
     precision: "Sortie du parc engagée",
   },
+  "a-recevoir": {
+    libelle: "À recevoir",
+    couleur: "var(--color-statut-a-recevoir)",
+    operationnel: false,
+    precision: "Commandé, pas encore livré ni immatriculé",
+  },
 };
 
 /** Ordre d'affichage, du plus disponible au plus sortant. */
@@ -114,6 +120,7 @@ export const ORDRE_STATUTS: StatutVehicule[] = [
   "hors-service",
   "en-mutation",
   "retrait-en-cours",
+  "a-recevoir",
 ];
 
 export const MOTIF_IMMOBILISATION: Record<MotifImmobilisation, string> = {

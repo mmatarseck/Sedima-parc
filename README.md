@@ -110,6 +110,8 @@ Trois migrations, dans l'ordre :
   véhicule (exploitation, service, fonction), les attributaires, les
   attributions avec le plan car, les forfaits carburant, les véhicules à
   recevoir.
+- `0005_statut_a_recevoir.sql` — le statut « à recevoir » : un véhicule
+  commandé, pas encore livré ni immatriculé.
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.

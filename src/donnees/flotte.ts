@@ -39,7 +39,7 @@ import { attributairePour, depensesForfaits, vehiculesLegers } from "./parc-lege
 /* -- Le parc léger dans la liste (fusion du 7 septembre 2026) ------------------ */
 
 /** L'état du dossier parc, traduit en statut de véhicule. */
-const STATUT_LEGER: Record<EtatLeger, Vehicule["statut"]> = { actif: "en-service", pool: "en-backup", panne: "en-reparation", "a-reformer": "retrait-en-cours", "a-recevoir": "en-mutation" };
+const STATUT_LEGER: Record<EtatLeger, Vehicule["statut"]> = { actif: "en-service", pool: "en-backup", panne: "en-reparation", "a-reformer": "retrait-en-cours", "a-recevoir": "a-recevoir" };
 
 /**
  * Un véhicule léger comme ligne de la Flotte : pas de chauffeur mais un
@@ -48,8 +48,9 @@ const STATUT_LEGER: Record<EtatLeger, Vehicule["statut"]> = { actif: "en-service
  * de l'année. Les véhicules à recevoir n'y entrent pas : sans immatriculation,
  * ce ne sont pas encore des véhicules du parc.
  */
-export function ligneLegere(v: VehiculeLeger, coutDouzeMois: number | null): LigneFlotte {
-  const a = attributairePour(v.attributaireId);
+export function ligneLegere(v: VehiculeLeger, coutDouzeMois: number | null, personne?: { nom: string; fonction: string | null } | null): LigneFlotte {
+  /* La personne vient du dossier de démonstration, ou de la base quand c'est elle qui parle. */
+  const a = personne ?? attributairePour(v.attributaireId);
   const vehicule: Vehicule = {
     id: v.id,
     regime: v.regime,
@@ -98,7 +99,11 @@ export function ligneLegere(v: VehiculeLeger, coutDouzeMois: number | null): Lig
   };
 }
 
-/** Les lignes du parc léger de la démonstration, immatriculés seulement. */
+/**
+ * Les lignes du parc léger de la démonstration, véhicules à recevoir compris :
+ * le lot 2 est dans la Flotte, au statut « à recevoir », sous son numéro de lot
+ * en attendant l'immatriculation (demande du métier, 7 septembre 2026).
+ */
 function lignesLegeresDemo(): LigneFlotte[] {
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const depuis = `${Number(aujourdhui.slice(0, 4)) - 1}${aujourdhui.slice(4)}`;
@@ -106,9 +111,7 @@ function lignesLegeresDemo(): LigneFlotte[] {
   for (const d of depensesForfaits(aujourdhui, PARAMETRES_DEFAUT.parcLeger.forfaitCarburantMensuel)) {
     if (d.date >= depuis) coutPar.set(d.vehiculeId, (coutPar.get(d.vehiculeId) ?? 0) + d.montant);
   }
-  return vehiculesLegers()
-    .filter((v) => v.immatriculation !== null)
-    .map((v) => ligneLegere(v, coutPar.get(v.id) ?? null));
+  return vehiculesLegers().map((v) => ligneLegere(v, coutPar.get(v.id) ?? null));
 }
 
 /* -- Les lignes de la base -------------------------------------------------- */
@@ -244,6 +247,22 @@ export interface ParcBrut {
   /** Le parc léger (0004) : qui tient chaque véhicule de service ou de fonction. */
   attributions: LigneAttribution[];
   attributaires: Map<string, LigneAttributaire>;
+  /** Les véhicules commandés, pas encore reçus ni immatriculés. */
+  aRecevoir: LigneARecevoir[];
+}
+
+interface LigneARecevoir {
+  id: string;
+  lot: string;
+  marque: string;
+  modele: string;
+  categorie: Vehicule["categorie"];
+  regime: Vehicule["regime"];
+  attributaire_id: string | null;
+  pool: string | null;
+  business_unit: Vehicule["businessUnit"];
+  commentaire: string | null;
+  recu_le: string | null;
 }
 
 /**
@@ -271,7 +290,7 @@ function ilYADouzeMois(aujourdhui: string): string {
 /** Le parc et ses transactions récentes, lus avec la session de l'utilisateur. */
 export async function lireParc(client: SupabaseClient, aujourdhui: string): Promise<ParcBrut> {
   const depuis = ilYADouzeMois(aujourdhui);
-  const [vehicules, sites, chauffeurs, affectations, documents, licences, licencesVehicules, releves, depenses, pleins, interventions, attributions, attributaires] = await Promise.all([
+  const [vehicules, sites, chauffeurs, affectations, documents, licences, licencesVehicules, releves, depenses, pleins, interventions, attributions, attributaires, aRecevoir] = await Promise.all([
     /* Tout le parc, transport et léger : la liste Flotte les réunit depuis le
        7 septembre 2026, et c'est le régime qui les distingue. */
     tout<LigneVehicule>("véhicules", (de, a) => client.from("vehicule").select("*").order("immatriculation").range(de, a)),
@@ -287,11 +306,13 @@ export async function lireParc(client: SupabaseClient, aujourdhui: string): Prom
     tout<LigneIntervention>("interventions", (de, a) => client.from("intervention").select("vehicule_id, numero, date, objet, km").range(de, a)),
     tout<LigneAttribution>("attributions", (de, a) => client.from("attribution_legere").select("vehicule_id, attributaire_id, pool, plan_car, fin").is("fin", null).range(de, a)),
     tout<LigneAttributaire>("attributaires", (de, a) => client.from("attributaire").select("id, nom, fonction").range(de, a)),
+    tout<LigneARecevoir>("véhicules à recevoir", (de, a) => client.from("vehicule_a_recevoir").select("id, lot, marque, modele, categorie, regime, attributaire_id, pool, business_unit, commentaire, recu_le").is("recu_le", null).range(de, a)),
   ]);
   return {
     aujourdhui,
     attributions,
     attributaires: new Map(attributaires.map((a) => [a.id, a])),
+    aRecevoir,
     vehicules,
     sites: new Map(sites.map((s) => [s.id, { id: s.id, code: s.code, libelle: s.libelle, region: s.region, type: s.type }])),
     chauffeurs: new Map(chauffeurs.map((c) => [c.id, c])),
@@ -511,5 +532,33 @@ export async function lignesFlotte(parametres: Parametres): Promise<LigneFlotte[
     return [...transport, ...lignesLegeresDemo().filter((l) => !immats.has(l.vehicule.immatriculation))];
   }
   const parc = await lireParc(await clientServeur(), new Date().toISOString().slice(0, 10));
-  return parc.vehicules.map((v) => ligneDepuisLaBase(v, parc, parametres));
+  /* Les véhicules à recevoir ferment la liste : sous leur numéro de lot, sans
+     compteur ni coût, avec le bénéficiaire prévu. */
+  const aRecevoir = parc.aRecevoir.map((r) => {
+    const a = r.attributaire_id ? (parc.attributaires.get(r.attributaire_id) ?? null) : null;
+    return ligneLegere(
+      {
+        id: r.lot.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        immatriculation: null,
+        immatriculationAffichee: `${r.lot} — à immatriculer`,
+        marque: r.marque,
+        modele: r.modele,
+        annee: null,
+        kilometrage: null,
+        categorie: r.categorie as "vehicule-leger" | "camionnette" | "moto" | "bus",
+        regime: r.regime ?? "service",
+        etat: "a-recevoir",
+        attributaireId: null,
+        pool: a ? null : r.pool,
+        departement: null,
+        businessUnit: r.business_unit,
+        planCar: null,
+        lot: r.lot,
+        commentaire: r.commentaire,
+      },
+      null,
+      a ? { nom: a.nom, fonction: a.fonction } : null,
+    );
+  });
+  return [...parc.vehicules.map((v) => ligneDepuisLaBase(v, parc, parametres)), ...aRecevoir];
 }

@@ -27,10 +27,6 @@ export function FicheVehiculeLeger({ vehicule, attributaire, forfait, regles, au
           <ChevronLeft className="size-3.5" strokeWidth={2} />
           Flotte
         </Link>
-        <span>·</span>
-        <Link href="/parc-leger" className="font-medium text-texte-2 hover:text-accent-fonce">
-          Parc léger
-        </Link>
       </nav>
       <TitreEcran
         titre={vehicule.immatriculationAffichee}

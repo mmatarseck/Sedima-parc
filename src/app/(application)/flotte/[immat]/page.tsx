@@ -17,8 +17,11 @@ export async function generateMetadata({ params }: Props) {
   const fiche = fichePourImmatriculation(immat);
   /* Sans fiche au serveur, le véhicule peut fort bien exister dans le
      navigateur : on titre l'immatriculation demandée plutôt que de déclarer
-     introuvable ce que la page va peut-être trouver. */
-  return { title: titrePage(fiche ? fiche.ligne.vehicule.immatriculationAffichee : afficher(normaliser(decodeURIComponent(immat)))) };
+     introuvable ce que la page va peut-être trouver. Un véhicule léger, ou un
+     véhicule à recevoir sous son numéro de lot, se titre par le dossier. */
+  const brut = decodeURIComponent(immat);
+  const leger = fiche ? null : vehiculesLegers().find((v) => v.immatriculation === normaliser(brut) || v.id === brut.toLowerCase());
+  return { title: titrePage(fiche ? fiche.ligne.vehicule.immatriculationAffichee : (leger?.immatriculationAffichee ?? afficher(normaliser(brut)))) };
 }
 
 export function generateStaticParams() {
@@ -42,7 +45,9 @@ export default async function PageVehicule({ params, searchParams }: Props) {
     const canonique = normaliser(decodeURIComponent(immat));
     /* Un véhicule de service ou de fonction : sa fiche est celle du dossier
        du parc léger (fusion du 7 septembre 2026). */
-    const leger = vehiculesLegers().find((v) => v.immatriculation === canonique);
+    /* Par immatriculation, ou par numéro de lot pour un véhicule à recevoir. */
+    const brut = decodeURIComponent(immat).toLowerCase();
+    const leger = vehiculesLegers().find((v) => v.immatriculation === canonique || v.id === brut);
     if (leger) {
       return (
         <FicheVehiculeLeger

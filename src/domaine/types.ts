@@ -42,7 +42,9 @@ export type StatutVehicule =
   | "en-restauration"
   | "hors-service"
   | "en-mutation"
-  | "retrait-en-cours";
+  | "retrait-en-cours"
+  /** Commandé, pas encore livré ni immatriculé — les quinze du lot 2 (7 septembre 2026). */
+  | "a-recevoir";
 
 /** Motif d'immobilisation — typé, car D_TICV ne retient que panne et curatif. */
 export type MotifImmobilisation =

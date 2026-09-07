@@ -585,7 +585,19 @@ charge se rattache à **la BU de l'agent** ; les véhicules de service vont
   serait immobilisé administrativement d'un coup). La fiche d'un véhicule
   léger (`FicheVehiculeLeger`) s'ouvre depuis la liste : identité,
   attributaire, forfait, plan car, état et devenir — ses transactions
-  viendront avec la base. L'écran Parc léger reste la vue dédiée.
+  viendront avec la base.
+- **L'écran Parc léger est retiré et le lot 2 entre dans la Flotte** (demande
+  du 7 septembre, plus tard) : une seule liste, des filtres. Les quinze
+  véhicules commandés y figurent sous leur numéro de lot (« Lot 2 - 07 — à
+  immatriculer »), au statut **« à recevoir »** — nouveau statut de véhicule
+  (`a-recevoir`, migration `0005_statut_a_recevoir.sql`, `alter type … add
+  value`), non opérationnel, hors périmètre de disponibilité, sans document
+  à tenir — avec une pilule « À recevoir » dans la liste. La Flotte compte
+  134 lignes en démonstration. En base, ces véhicules restent dans
+  `vehicule_a_recevoir` tant qu'ils n'ont pas d'immatriculation ; la liste
+  les lit et les ajoute en fin. Leur fiche s'ouvre par le numéro de lot
+  (`/flotte/lot-2-07`). Paramètres › Parc léger et les rapports « Parc
+  léger » restent.
 
 **Ce qui reste** : la maintenance des véhicules légers (aucun historique
 chiffré dans le dossier, seulement la note « Parc Automobile Réalisation

@@ -79,7 +79,7 @@ export function conducteurDuJour(
 }
 
 export function etatDisponibilite(l: Pick<LigneDisponibilite, "engage" | "statutEffectif" | "conducteur" | "immobilisation">): { etat: EtatDisponibilite; motif: string | null } {
-  if (!l.engage || l.statutEffectif === "en-mutation" || l.statutEffectif === "retrait-en-cours") {
+  if (!l.engage || l.statutEffectif === "en-mutation" || l.statutEffectif === "retrait-en-cours" || l.statutEffectif === "a-recevoir") {
     return { etat: "hors-perimetre", motif: !l.engage ? "non engagé au parc" : STATUT_VEHICULE[l.statutEffectif].libelle.toLowerCase() };
   }
   if (!STATUT_VEHICULE[l.statutEffectif].operationnel) {

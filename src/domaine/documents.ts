@@ -83,7 +83,8 @@ export function immobilisationAdministrative(
   documents: { type: TypeDocument; etat: EtatDocument }[],
   p: Parametres = PARAMETRES_DEFAUT,
 ): ImmobilisationAdministrative | null {
-  if (v.statut === "en-mutation" || v.statut === "retrait-en-cours") return null;
+  /* Un véhicule sortant ou pas encore reçu n'a pas de documents à tenir. */
+  if (v.statut === "en-mutation" || v.statut === "retrait-en-cours" || v.statut === "a-recevoir") return null;
   const critique = (t: TypeDocument) => (definitionDocument(t, p)?.critique ?? false) && exigeDocument(t, v, p);
   const enCause = documents.filter((d) => critique(d.type) && (d.etat === "echu" || d.etat === "manquant"));
   /* Un document critique exigé qui n'est même pas dans la liste manque aussi. */

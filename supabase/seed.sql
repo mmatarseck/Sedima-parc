@@ -4,7 +4,7 @@
 -- GÉNÉRÉ par scripts/generer-seed.mts : ne pas modifier à la main, relancer.
 -- 6281 lignes. Rejouable : chaque insertion est `on conflict do nothing`.
 --
--- Prérequis : les migrations 0001 à 0004. Les comptes (profil) ne sont pas
+-- Prérequis : les migrations 0001 à 0005. Les comptes (profil) ne sont pas
 -- dans ce fichier — ils citent auth.users, qui n'existe qu'une fois les
 -- personnes invitées.
 -- ============================================================================

@@ -70,6 +70,7 @@
   --color-statut-hors-service: #f5453c;
   --color-statut-mutation: #22272b;
   --color-statut-retrait: #a9b2b8;
+  --color-statut-a-recevoir: #7f9bb5;
 
   /* -- Typographie -------------------------------------------------------- */
   --font-sans: "Inter", -apple-system, "Segoe UI", sans-serif;

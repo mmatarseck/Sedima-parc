@@ -1,7 +1,6 @@
 import {
   BarChart3,
   CalendarRange,
-  Car,
   ClipboardList,
   Fuel,
   Handshake,
@@ -61,11 +60,11 @@ export const NAVIGATION: GroupeNavigation[] = [
   {
     titre: "Exploitation",
     entrees: [
+      /* La Flotte porte tout le parc depuis le 7 septembre 2026 — transport,
+         service, fonction, plan car, et les véhicules commandés à recevoir —,
+         distingués par le régime d'usage. L'écran « Parc léger » a été retiré
+         le soir même à la demande du métier : une seule liste, des filtres. */
       { href: "/flotte", libelle: "Flotte", icone: Truck, livre: true },
-      /* Le parc léger — service, fonction, plan car — cadré le 7 septembre 2026 :
-         ces véhicules ne livrent pas, mais leur maintenance et leur carburant
-         sont des charges du parc. */
-      { href: "/parc-leger", libelle: "Parc léger", icone: Car, livre: true },
       { href: "/disponibilite", libelle: "Disponibilité du jour", icone: ClipboardList, livre: true },
       { href: "/chauffeurs", libelle: "Chauffeurs", icone: Users, livre: true },
       { href: "/affectations", libelle: "Affectations", icone: CalendarRange, livre: true },

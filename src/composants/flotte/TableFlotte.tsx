@@ -41,6 +41,7 @@ const FILTRES: FiltreListe<LigneFlotte>[] = [
   },
   { cle: "sortants", libelle: "Sortants", retient: (l) => l.vehicule.statut === "en-mutation" || l.vehicule.statut === "retrait-en-cours" },
   { cle: "non-conformes", libelle: "Non conformes", retient: (l) => (l.prochaineEcheanceConformite?.joursRestants ?? 1) < 0 },
+  { cle: "a-recevoir", libelle: "À recevoir", retient: (l) => l.vehicule.statut === "a-recevoir" },
 ];
 
 /* Le second jeu de pilules, croisé avec l'état : le régime d'usage. Le parc
