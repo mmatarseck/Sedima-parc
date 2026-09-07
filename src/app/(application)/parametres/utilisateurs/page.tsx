@@ -1,12 +1,13 @@
 import { EcranUtilisateurs } from "@/composants/parametres/EcranUtilisateurs";
 import { titrePage } from "@/domaine/marque";
+import { accesServeur } from "@/lib/acces-serveur";
 
-export const metadata = { title: titrePage("Utilisateurs et rôles") };
+export const metadata = { title: titrePage("Utilisateurs") };
 
 /**
- * Les rôles de l'application et leur périmètre. La création des comptes viendra
- * de Supabase : le navigateur ne décide jamais d'une autorisation.
+ * Les personnes et leur fiche d'accès. La liste vient de la base quand elle
+ * est branchée ; le navigateur ne décide jamais d'une autorisation.
  */
-export default function PageUtilisateurs() {
-  return <EcranUtilisateurs />;
+export default async function PageUtilisateurs() {
+  return <EcranUtilisateurs initial={await accesServeur()} />;
 }

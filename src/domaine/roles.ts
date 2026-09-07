@@ -15,7 +15,9 @@ export type Role =
   | "correspondant-site"
   | "controle-de-gestion"
   | "direction"
-  | "achats";
+  | "achats"
+  /** Le détenteur d'un véhicule — chauffeur ou attributaire — cadrage du 7 septembre 2026 : demandes et transferts, rien d'autre. */
+  | "detenteur";
 
 export interface DefinitionRole {
   role: Role;
@@ -91,6 +93,14 @@ export const ROLES: DefinitionRole[] = [
     compteTest: "achats@sedima.test",
     initiales: "AC",
     nom: "Service achats",
+  },
+  {
+    role: "detenteur",
+    libelle: "Détenteur",
+    perimetre: "Son véhicule, les demandes reçues, les transferts à signer",
+    compteTest: "detenteur@sedima.test",
+    initiales: "GD",
+    nom: "Gora Diop",
   },
 ];
 

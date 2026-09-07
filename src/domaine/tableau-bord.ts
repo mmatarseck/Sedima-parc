@@ -580,9 +580,10 @@ export const INDICATEURS_COURBE = INDICATEURS.filter((d) => d.calcul !== undefin
  * six lignes, ce qui reste parcourable d'un défilement. Au-delà, on
  * n'observe plus une flotte, on feuillette un rapport.
  */
-/* Quatre depuis la refonte du 7 septembre 2026 : une rangée, une échelle par
-   courbe, et la page tient sur un écran. */
-export const MAX_COURBES = 4;
+/* Huit depuis le 7 septembre 2026 au soir (demande du métier) : deux rangées
+   de quatre, une échelle par courbe. Quatre courbes tiennent sur un écran ;
+   au-delà, la page défile, et c'est un choix. */
+export const MAX_COURBES = 8;
 
 /** Les courbes proposées d'emblée : disponibilité, coût, consommation, accidents. */
 export const COURBES_DEFAUT = ["d1", "c4", "c5", "s1"];

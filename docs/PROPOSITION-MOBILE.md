@@ -92,9 +92,8 @@ Deux objets nouveaux en base : la **demande** (type, destinataires,
 Photo justificative obligatoire ; écarts de profil approuvés par
 l'administrateur ; compte détenteur ; demandes poussées ; fiche de transfert.
 
-## Reste à décider
-
-1. Le second « Admin » : agent terrain, ou autre chose ?
-2. Le périmètre d'un agent terrain : son site seul, ou aussi les véhicules de passage ?
-3. La panne passe-t-elle le véhicule hors service dès l'envoi, ou après confirmation ?
-4. Le détenteur reçoit-il ses demandes par l'application seule, ou aussi par SMS ?
+Puis, le même soir : le second « Admin » est l'Agent terrain ; son périmètre
+est son site, posé par la fiche d'accès et élargi au cas par cas ; une panne
+signalée ne change pas le statut d'elle-même, le statut se pose à la main ;
+le détenteur est prévenu par notification de l'application ou par courriel,
+pas de SMS. Tout est arbitré ; la construction commence par la fiche d'accès.

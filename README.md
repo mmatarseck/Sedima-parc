@@ -93,7 +93,7 @@ supabase link --project-ref <ref-du-projet>
 supabase db push
 ```
 
-Six migrations, dans l'ordre :
+Sept migrations, dans l'ordre :
 
 - `0001_socle.sql` — référentiels, flotte, chauffeurs, transactions, trace des
   modifications, clôture des mois, paramètres — avec les politiques RLS et
@@ -116,6 +116,10 @@ Six migrations, dans l'ordre :
   véhicule (`categorie_metier`), à côté de sa famille qui porte les règles.
   Marques, modèles et catégories se règlent dans Paramètres › Véhicules
   (clé `vehicules` de `parametre`).
+- `0007_acces_utilisateur.sql` — la fiche d'accès par personne : profil,
+  périmètre, écarts par module approuvés par l'administrateur ; le rôle
+  « détenteur » entre dans l'énumération. `profil.role` reste la clé que
+  `get_me()` rend.
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.

@@ -685,6 +685,40 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   plusieurs véhicules en une fois (un import du classeur d'inventaire serait
   plus juste), les champs que la fiche ne porte pas (volumes, jantes, EPA).
 
+### La version mobile cadrée, la fiche d'accès livrée (7 septembre 2026, nuit, suite)
+
+- **Cadrage mobile** : `PROPOSITION-MOBILE.md` et la maquette
+  <https://claude.ai/code/artifact/7ef45bcc-a580-4a03-b091-6f32bfbca0c5>.
+  Huit écrans de terrain, six profils, photo justificative obligatoire,
+  écarts approuvés par l'administrateur, compte détenteur (chauffeur ou
+  attributaire) qui répond aux demandes poussées et signe les fiches de
+  transfert, statut posé à la main, notifications par l'application ou le
+  courriel. Tout est arbitré ; l'ordre : fiche d'accès, fiche rapide et
+  statut, saisies, détenteur et demandes, transfert, atelier.
+- **La fiche d'accès par personne** (première étape) : `src/domaine/acces.ts`
+  — six profils (`PROFILS`, avec leur rôle historique par défaut, leurs
+  niveaux par module —/lecture/saisie/gestion, les statuts qu'ils posent,
+  les sanctions), le périmètre (sites, BU, régimes), `AccesUtilisateur`,
+  `niveauEffectif`, `ecartsDe`. Paramètres › Utilisateurs
+  (`EcranUtilisateurs.tsx`) liste les personnes, leurs écarts approuvés ou en
+  attente, et la grille des six profils ; `EcranAccesUtilisateur.tsx`
+  (`/parametres/utilisateurs/nouveau`, `/[id]`) est la fiche en cinq
+  sections — identité, accès, profil et périmètre, modules, notifications —
+  où seul l'administrateur enregistre et approuve les écarts. Migration
+  `0007_acces_utilisateur.sql` (table, RLS, rôle `detenteur` dans
+  l'énumération ; `profil.role` reste la clé de `get_me()`), fonction
+  serveur `acces-actions.ts`, lecture `acces-serveur.ts`, démonstration dans
+  le navigateur (`acces-demo.ts`). **Les politiques RLS ne lisent pas encore
+  le périmètre ni les niveaux** : c'est l'étape suivante, avec `get_me()`.
+- **Icône et manifeste** : `src/app/icon.svg` (le camion sur le fond sombre
+  et les trois barres du logo SEDIMA), `apple-icon.tsx` (PNG par
+  `ImageResponse`), `manifest.ts` — l'application s'installe depuis le
+  navigateur, premier pas du mobile.
+- Tableau de bord : huit courbes au plus, sur deux rangées de quatre.
+- Vérifié en démonstration : création d'une fiche « Awa Ndiaye », agent
+  terrain sur Keur Massar, écart maintenance en lecture approuvé, relue dans
+  la liste ; icône, manifeste et apple-icon servis.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

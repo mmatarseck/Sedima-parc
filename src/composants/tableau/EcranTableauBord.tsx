@@ -41,7 +41,7 @@ import { date as formaterDate, montantCourt, nombre } from "@/lib/format";
  *   1. **cinq pastilles au plus**, choisies par le compte, chacune complète :
  *      valeur sur la période, écart à la période précédente, cible, et la
  *      courbe des douze mois en pied ;
- *   2. **les courbes**, quatre au plus, chacune sur sa propre échelle, avec la
+ *   2. **les courbes**, huit au plus sur deux rangées, chacune sur sa propre échelle, avec la
  *      période précédente en pointillé et la cible ;
  *   3. **ce qui appelle une action** aujourd'hui, où va l'argent, et qui le
  *      dépense.
@@ -787,7 +787,7 @@ export function EcranTableauBord({
                     })}
                   </div>
                   <div className="flex items-center gap-3 border-t border-bordure px-5 py-3 text-[12px] text-texte-2">
-                    <span>{pourPastilles ? "Cinq au plus, sur une seule rangée. Décochez-en un pour en choisir un autre." : "Quatre courbes au plus, chacune sur sa propre échelle."}</span>
+                    <span>{pourPastilles ? "Cinq au plus, sur une seule rangée. Décochez-en un pour en choisir un autre." : "Huit courbes au plus, sur deux rangées de quatre, chacune sur sa propre échelle."}</span>
                     <button type="button" onClick={() => (pourPastilles ? enregistrer([...PASTILLES_DEFAUT]) : enregistrerCourbes([...COURBES_DEFAUT]))} className="bouton-secondaire ml-auto h-8 shrink-0 text-[12px]">
                       Par défaut
                     </button>
