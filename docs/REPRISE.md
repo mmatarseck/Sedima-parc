@@ -751,6 +751,36 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   périmètre en démonstration (en base, les politiques le font) ; les modules
   demandes et transferts n'ont pas encore de table.
 
+### La vue téléphone, et la revue de performance (8 septembre 2026)
+
+- **Vue téléphone** (`src/composants/telephone/`, routes `/telephone`,
+  `/telephone/vehicules`, `/telephone/vehicules/[immat]`) : l'accueil borné
+  au périmètre de la fiche d'accès (`perimetre.ts` fait dans l'écran ce que
+  les politiques font en base) — disponibles, immobilisés, à faire
+  aujourd'hui, quatre gestes selon le niveau sur les relevés et les
+  incidents ; la recherche d'un véhicule (plaque, marque, chauffeur, site),
+  un geste passé dans l'adresse suit jusqu'à la fiche ; la **fiche rapide**
+  (compteur, kilomètres avant la vidange, échéances, derniers faits, lien
+  vers la fiche complète) avec relevé, plein et panne par la modale de
+  transaction, et le **panneau de statut** qui ne propose que les statuts
+  du profil (`PROFILS[].statuts`) et pose une transaction « statut » tracée.
+  La coquille porte quatre onglets en bas sur écran étroit
+  (`ONGLETS_TELEPHONE`). Vérifié : accueil et liste rendus sur 375 px,
+  onglets présents, HTML de la fiche complet ; le panneau de statut n'a pu
+  être manœuvré dans le navigateur de la session (onglet caché, React 19.2
+  diffère l'hydratation des frontières Suspense) — à essayer sur un
+  téléphone. La photo obligatoire attend le stockage.
+- **Revue de performance** : `REVUE-PERFORMANCE.md`. En production locale,
+  chaque page répond sous une demi-seconde à froid ; la lenteur vient (1) du
+  poste — binaire natif de Next bloqué depuis ce soir, WebAssembly cinq à dix
+  fois plus lent, projet dans OneDrive — ; (2) de la version en ligne —
+  quatorze requêtes Supabase par liste Flotte, pages lues en séquence,
+  paramètres lus deux fois par page, aucun cache, fonction Vercel loin de la
+  base, 0,5 s par aller-retour depuis Dakar — ; (3) du navigateur — les
+  données de démonstration embarquées par la modale, le champ de référence
+  et la recherche globale (blocs de 235 et 202 Ko, mise en page 148 Ko).
+  Propositions ordonnées dans le document ; rien n'est encore appliqué.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

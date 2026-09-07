@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { BellRing, House, PanelLeftClose, PanelLeftOpen, Truck, UserRound } from "lucide-react";
 import { NAVIGATION, type GroupeNavigation } from "./navigation";
 import { BarreApplication } from "./BarreApplication";
 import { HAUTEUR_BARRE, LARGEUR_RAIL, LARGEUR_RAIL_RETRACTE } from "./mesures";
@@ -161,8 +161,32 @@ export function Coquille({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
 
-        <main className="min-w-0 lg:h-[calc(100vh-var(--hauteur-barre))] lg:overflow-hidden">{children}</main>
+        <main className="min-w-0 pb-[60px] lg:h-[calc(100vh-var(--hauteur-barre))] lg:overflow-hidden lg:pb-0">{children}</main>
       </div>
+
+      {/* Sur un écran étroit, le rail n'existe pas : quatre onglets en bas,
+          ceux de la vue téléphone (cadrage du 7 septembre 2026). */}
+      <nav aria-label="Téléphone" className="fixed inset-x-0 bottom-0 z-20 grid h-[60px] grid-cols-4 border-t border-bordure bg-surface lg:hidden">
+        {ONGLETS_TELEPHONE.map((o) => {
+          const Icone = o.icone;
+          const actif = o.href === "/telephone" ? chemin === "/telephone" : chemin.startsWith(o.href);
+          return (
+            <Link key={o.href} href={o.href} aria-current={actif ? "page" : undefined} className={`flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold ${actif ? "text-accent-fonce" : "text-attenue"}`}>
+              <span className={`grid size-7 place-items-center rounded-[8px] ${actif ? "bg-accent-fond" : ""}`}>
+                <Icone className="size-[18px]" strokeWidth={actif ? 2 : 1.7} />
+              </span>
+              {o.libelle}
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }
+
+const ONGLETS_TELEPHONE = [
+  { href: "/telephone", libelle: "Accueil", icone: House },
+  { href: "/telephone/vehicules", libelle: "Véhicules", icone: Truck },
+  { href: "/conformite", libelle: "Alertes", icone: BellRing },
+  { href: "/profil", libelle: "Moi", icone: UserRound },
+];
