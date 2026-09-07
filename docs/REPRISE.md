@@ -194,8 +194,12 @@ manquement.**
 - **`.env.example`** complété.
 
 **Ce qui reste avant la production**, et qui ne se décide pas ici :
-l'inventaire de référence du parc (les huit listes du dossier parc ne
-s'accordent pas) doit être arbitré par l'équipe parc, pas par une migration.
+l'inventaire de référence du parc doit être arbitré par l'équipe parc, pas
+par une migration. Le rapprochement du 7 septembre 2026 (`RAPPROCHEMENT-PARC.md`)
+a tranché la moitié de la question : les cinq listes 2026 du dossier
+s'accordent entre elles (les listes 2023-2024 portent les anciennes plaques
+DK) ; le parc léger est complet ; le parc lourd n'a que 16 des 33 unités
+opérationnelles, et dix pick-up du lot 2 sont assurés depuis le 19 août 2026.
 
 ### La suite de la mise en production (même journée)
 
