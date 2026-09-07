@@ -16,7 +16,7 @@
  * fait dès son chargement dans le navigateur, avant le premier rendu.
  * ==========================================================================*/
 
-import { COOKIE_PARAMETRES, PARAMETRES_DEFAUT, appliquerLibelles, apprendreMarqueModele, fusionnerParametres, type Parametres } from "@/domaine/parametres";
+import { CLES_PARAMETRES, COOKIE_PARAMETRES, PARAMETRES_DEFAUT, PREFIXE_COOKIE_PARAMETRES, TAILLE_MAX_COOKIE, appliquerLibelles, apprendreMarqueModele, encoderValeurCookie, fusionnerParametres, type Parametres } from "@/domaine/parametres";
 import { enregistrerParametres } from "@/lib/parametres-actions";
 import { authentificationReelle } from "@/lib/session-demo";
 
@@ -42,19 +42,45 @@ export function poserParametres(p: Parametres): void {
   appliquerLibelles(p);
 }
 
+const UN_AN = 60 * 60 * 24 * 365;
+
+function poserCookie(nom: string, valeur: string | null): void {
+  document.cookie = valeur === null ? `${nom}=; path=/; max-age=0` : `${nom}=${valeur}; path=/; max-age=${UN_AN}; samesite=lax`;
+}
+
 /**
- * Enregistre. Nul quand c'est fait ; sinon le motif du refus, à afficher. En
- * démonstration, rien n'est refusé : le cookie porte la valeur au serveur.
+ * Enregistre. Nul quand c'est fait ; sinon le motif du refus, à afficher.
+ *
+ * En démonstration, les cookies portent la valeur au serveur : un par clé,
+ * pour ce qui diffère des défauts — un cookie unique dépassait la taille
+ * admise et n'était plus écrit. Une clé trop grosse pour un cookie reste
+ * dans le navigateur, et l'écran le dit.
  */
 export async function ecrireParametres(p: Parametres): Promise<string | null> {
   poserParametres(p);
   if (authentificationReelle()) return enregistrerParametres(p);
+  const defauts = fusionnerParametres(null);
+  const tropGros: string[] = [];
   try {
-    document.cookie = `${COOKIE_PARAMETRES}=${encodeURIComponent(JSON.stringify(p))}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+    poserCookie(COOKIE_PARAMETRES, null);
+    for (const cle of CLES_PARAMETRES) {
+      const nom = PREFIXE_COOKIE_PARAMETRES + cle;
+      if (JSON.stringify(p[cle]) === JSON.stringify(defauts[cle])) {
+        poserCookie(nom, null);
+        continue;
+      }
+      const valeur = encoderValeurCookie(p[cle]);
+      if (valeur.length > TAILLE_MAX_COOKIE) {
+        tropGros.push(cle);
+        poserCookie(nom, null);
+        continue;
+      }
+      poserCookie(nom, valeur);
+    }
   } catch {
     /* pas de document : rien à faire */
   }
-  return null;
+  return tropGros.length > 0 ? `Enregistré dans ce navigateur ; trop volumineux pour les pages du serveur en démonstration (${tropGros.join(", ")}) — elles gardent les défauts.` : null;
 }
 
 /**
@@ -81,7 +107,8 @@ export async function reinitialiserParametres(): Promise<{ parametres: Parametre
   }
   try {
     localStorage.removeItem(COOKIE_PARAMETRES);
-    document.cookie = `${COOKIE_PARAMETRES}=; path=/; max-age=0`;
+    poserCookie(COOKIE_PARAMETRES, null);
+    for (const cle of CLES_PARAMETRES) poserCookie(PREFIXE_COOKIE_PARAMETRES + cle, null);
   } catch {
     /* rien à nettoyer */
   }

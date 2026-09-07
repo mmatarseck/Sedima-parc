@@ -813,9 +813,40 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   pastilles du moment ; les anciennes sélections d'indicateurs sont
   ignorées (`limiterPastilles`).
 - Vérifié en démonstration : cinq pastilles rendues avec valeur,
-  complément, référence, seuil et mini-courbe ; quinze au choix. Reste :
-  les seuils en paramètres, `situation_journaliere()` en base, la pastille
-  « demandes sans réponse » avec le module des demandes.
+  complément, référence, seuil et mini-courbe ; quinze au choix.
+- **Seuils en paramètres** (le lendemain) : `Parametres.pastilles.seuils`,
+  une valeur par pastille qui porte un seuil (onze), clé `pastilles` de
+  `parametre` ; le catalogue ne garde que le défaut, le sens et le texte
+  (`seuil.texte(valeur)`) ; `evaluerPastille(p, jours, seuils)` rend le
+  seuil en vigueur et son texte. Écran Paramètres › Pastilles du tableau
+  de bord (`EcranSeuilsPastilles`), par axe, avec la valeur du jour à
+  côté de chaque seuil et le nombre de pastilles qui seraient au rouge.
+  La page du tableau de bord passe les seuils lus par `parametresServeur()`.
+  Correction au passage : le rouge des ordres de travail porte sur les
+  ordres de plus de quinze jours, pas sur les ordres ouverts.
+- **`situation_journaliere(depuis, jusqua)` en base** (migration 0010) :
+  une situation par jour en un JSON — statut à la fin du jour (courant,
+  corrigé par la trace `modification` du champ statut et par les
+  interventions curatives qui immobilisent), immobilisation administrative
+  (document critique exigé manquant ou échu, selon l'applicabilité de
+  `type_document`), échéances à 7 jours et échues, sans relevé 7 jours,
+  litres, carburant, dépenses, pannes, accidents, prêt à charger ; flotte :
+  chauffeurs présents, indisponibles, jours sans accident. Ordres, caisse,
+  cuve : nuls (pas de table) — `FaitsFlotteJour` les admet nuls et les
+  pastilles montrent « — ». `src/donnees/situations.ts` :
+  `situationsServeur(aujourdhui)` lit la fonction en base, sinon la
+  démonstration. Vérifié dans PGlite (`tester-situation.mjs` :
+  28 jours × 129 véhicules, hors service, litres, échéances, accidents,
+  prêts cohérents avec les tables ; la trace corrige le passé ; 160 ms).
+- **Cookie des paramètres en démonstration, réparé** : depuis le
+  référentiel des véhicules, les paramètres encodés dépassaient 4 Ko et
+  le navigateur refusait le cookie sans rien dire — les pages du serveur
+  restaient aux défauts. Désormais un cookie **par clé**
+  (`sedima.parc.parametres.<cle>`), en base64url de JSON, seulement pour
+  ce qui diffère des défauts ; l'ancien cookie unique est encore lu.
+- Reste : la pastille « demandes sans réponse » avec le module des
+  demandes ; les ordres, la caisse et la cuve en base ; les courbes et la
+  troisième rangée du tableau de bord lues en base.
 
 **À faire, dans l'ordre.**
 

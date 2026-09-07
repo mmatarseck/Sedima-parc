@@ -18,6 +18,7 @@
 
 import type { CategorieVehicule, TypeDocument } from "./types";
 import { ALERTES, PREVENANCE_DEFAUT, type FamilleAlerte } from "./alertes";
+import { PASTILLE_PAR_ID, SEUILS_DEFAUT } from "./pastilles";
 import { ROLES, type Role } from "./roles";
 
 export type PorteurDocument = "vehicule" | "chauffeur" | "flotte";
@@ -145,6 +146,30 @@ function normaliserParcLeger(brut: unknown): ParametresParcLeger {
     planCarDureeMois: entier(b.planCarDureeMois, PARC_LEGER_DEFAUT.planCarDureeMois),
     forfaitCarburantMensuel: entier(b.forfaitCarburantMensuel, PARC_LEGER_DEFAUT.forfaitCarburantMensuel),
   };
+}
+
+/**
+ * Les seuils des pastilles du tableau de bord — décision du métier du
+ * 8 septembre 2026 : des seuils **en nombre**, réglables, jamais en part. Une
+ * valeur par pastille qui en porte un ; le catalogue (pastilles.ts) donne le
+ * défaut et le sens du rouge. Une pastille absente d'ici garde son défaut.
+ */
+export interface ParametresPastilles {
+  seuils: Record<string, number>;
+}
+
+export const PASTILLES_PARAM_DEFAUT: ParametresPastilles = { seuils: { ...SEUILS_DEFAUT } };
+
+function normaliserPastilles(brut: unknown): ParametresPastilles {
+  const b = (brut ?? {}) as Partial<Record<keyof ParametresPastilles, unknown>>;
+  const seuils: Record<string, number> = { ...SEUILS_DEFAUT };
+  const lus = (b.seuils ?? {}) as Record<string, unknown>;
+  for (const [id, v] of Object.entries(lus)) {
+    /* Seule une pastille du catalogue qui porte un seuil se règle ; le reste est ignoré. */
+    if (!PASTILLE_PAR_ID.get(id)?.seuil) continue;
+    if (typeof v === "number" && Number.isFinite(v) && v >= 0) seuils[id] = Math.round(v);
+  }
+  return { seuils };
 }
 
 /* ---- Référentiel des véhicules -----------------------------------------
@@ -335,6 +360,7 @@ export interface Parametres {
   alertes: ReglesAlerte;
   parcLeger: ParametresParcLeger;
   vehicules: ParametresVehicules;
+  pastilles: ParametresPastilles;
 }
 
 const standard = (d: Omit<DefinitionDocument, "standard">): DefinitionDocument => ({ ...d, standard: true });
@@ -404,6 +430,7 @@ export const PARAMETRES_DEFAUT: Parametres = {
   alertes: REGLES_ALERTE_DEFAUT,
   parcLeger: PARC_LEGER_DEFAUT,
   vehicules: VEHICULES_DEFAUT,
+  pastilles: PASTILLES_PARAM_DEFAUT,
   documents: {
     types: [
       standard({ id: "carte-grise", libelle: "Carte grise", porteur: "vehicule", applicabilite: "tous", validiteMois: null, critique: true }),
@@ -457,6 +484,7 @@ export function fusionnerParametres(partiel: unknown): Parametres {
     alertes: normaliserReglesAlerte((p as { alertes?: unknown }).alertes),
     parcLeger: normaliserParcLeger((p as { parcLeger?: unknown }).parcLeger),
     vehicules: normaliserVehicules((p as { vehicules?: unknown }).vehicules),
+    pastilles: normaliserPastilles((p as { pastilles?: unknown }).pastilles),
   };
 }
 
@@ -558,8 +586,49 @@ export function empreinteParametres(p: Parametres): string {
   return JSON.stringify(p);
 }
 
-/** Nom du cookie qui porte les paramètres, pour que le serveur les lise aussi. */
+/** Clé du stockage local qui porte les paramètres — et nom de l'ancien cookie unique. */
 export const COOKIE_PARAMETRES = "sedima.parc.parametres";
+
+/**
+ * En démonstration, le serveur lit les paramètres dans des cookies : **un par
+ * clé**, sous ce préfixe, et seulement pour ce qui diffère des défauts. Un
+ * cookie unique ne suffisait plus : depuis le référentiel des véhicules, les
+ * paramètres encodés dépassent les 4 Ko qu'un navigateur accepte, et
+ * l'écriture échouait sans bruit — les pages du serveur restaient aux
+ * défauts.
+ */
+export const PREFIXE_COOKIE_PARAMETRES = "sedima.parc.parametres.";
+
+export const CLES_PARAMETRES: (keyof Parametres)[] = ["documents", "energie", "alertes", "parcLeger", "vehicules", "pastilles"];
+
+/** Un cookie ne porte pas plus de 4 Ko, nom compris : au-delà, le navigateur le refuse sans rien dire. */
+export const TAILLE_MAX_COOKIE = 3_900;
+
+/* base64url d'un JSON en UTF-8 : plus compact que l'URL-encodage, qui triple
+   chaque guillemet et sextuple chaque accent. Disponible au navigateur comme
+   au serveur (TextEncoder, btoa). */
+export function encoderValeurCookie(valeur: unknown): string {
+  const octets = new TextEncoder().encode(JSON.stringify(valeur));
+  let binaire = "";
+  for (const o of octets) binaire += String.fromCharCode(o);
+  return btoa(binaire).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/** L'inverse ; accepte aussi l'ancien URL-encodage. Nul quand rien ne se lit. */
+export function decoderValeurCookie(brut: string): unknown {
+  try {
+    const b64 = brut.replace(/-/g, "+").replace(/_/g, "/");
+    const binaire = atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4));
+    const octets = Uint8Array.from(binaire, (c) => c.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(octets));
+  } catch {
+    try {
+      return JSON.parse(decodeURIComponent(brut));
+    } catch {
+      return null;
+    }
+  }
+}
 
 /**
  * Relecture des règles d'alerte enregistrées.

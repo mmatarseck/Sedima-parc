@@ -270,6 +270,7 @@ inserer(
     ["energie", JSON.stringify(PARAMETRES_DEFAUT.energie)],
     ["alertes", JSON.stringify(PARAMETRES_DEFAUT.alertes)],
     ["vehicules", JSON.stringify(PARAMETRES_DEFAUT.vehicules)],
+    ["pastilles", JSON.stringify(PARAMETRES_DEFAUT.pastilles)],
   ],
   "(cle) do update set valeur = excluded.valeur",
 );

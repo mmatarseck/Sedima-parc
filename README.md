@@ -128,6 +128,13 @@ Neuf migrations, dans l'ordre :
   `lire_chauffeurs(depuis)` rendent en un JSON ce que les listes Flotte et
   Chauffeurs lisaient en quatorze et neuf requêtes ; l'application y revient
   d'elle-même tant que la fonction n'est pas jouée.
+- `0010_situation_journaliere.sql` — `situation_journaliere(depuis, jusqua)`
+  rend une situation par jour (statut, immobilisation administrative,
+  échéances, relevés, pleins, dépenses, pannes, accidents, prêt à charger
+  par véhicule ; chauffeurs et jours sans accident pour la flotte) : la
+  matière des pastilles du tableau de bord. Ordres, caisse et cuve y sont
+  nuls tant que ces modules n'ont pas leur table. Sans la fonction, le
+  tableau de bord reste au jeu de démonstration.
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.

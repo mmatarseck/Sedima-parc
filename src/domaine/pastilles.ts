@@ -44,17 +44,21 @@ export interface FaitsVehiculeJour {
   pretACharger: boolean;
 }
 
-/** Ce que la flotte présentait à la fin d'un jour, hors véhicule. */
+/**
+ * Ce que la flotte présentait à la fin d'un jour, hors véhicule. Les ordres,
+ * la caisse et la cuve sont nuls tant que leur module n'a pas sa table en
+ * base : la pastille montre alors « — » plutôt qu'un zéro qui mentirait.
+ */
 export interface FaitsFlotteJour {
   jour: string;
   chauffeurs: number;
   chauffeursIndisponibles: number;
-  ordresOuverts: number;
+  ordresOuverts: number | null;
   /** Ordres ouverts depuis plus de quinze jours. */
-  ordresAnciens: number;
-  soldeCaisse: number;
-  seuilCaisse: number;
-  cuveLitres: number;
+  ordresAnciens: number | null;
+  soldeCaisse: number | null;
+  seuilCaisse: number | null;
+  cuveLitres: number | null;
   /** Jours d'autonomie de la cuve au rythme des sept derniers jours ; nul sans sortie. */
   cuveJours: number | null;
   /** Jours écoulés depuis le dernier accident ; nul sans accident connu. */
@@ -91,17 +95,26 @@ export interface DefinitionPastille {
   unite?: string;
   decimales?: number;
   reference: Reference;
-  /** Le seuil au-delà duquel la pastille passe au rouge ; en nombre, jamais en part. */
-  seuil?: { sens: Sens; valeur: number };
-  seuilTexte: string;
+  /**
+   * Le seuil au-delà duquel la pastille passe au rouge ; en nombre, jamais en
+   * part. La valeur livrée est un défaut : le métier la règle dans Paramètres
+   * › Pastilles, et le texte se refait sur la valeur réglée.
+   */
+  seuil?: { sens: Sens; defaut: number; texte: (valeur: number) => string };
+  /** Le texte du pied quand la pastille n'a pas de seuil réglable. */
+  seuilTexte?: string;
   /** L'écran qui explique le chiffre. */
   href: string;
   calcul: (c: ContextePastille) => number | null;
   /** Ce qui complète la valeur : « / 47 engagés », « dont 2 échues ». */
   complement?: (c: ContextePastille) => string | null;
-  /** Le rouge, quand il ne se lit pas sur la valeur et son seuil : une échéance passée, une caisse sous son propre seuil. */
-  alerte?: (c: ContextePastille) => boolean;
+  /** Le rouge, quand il ne se lit pas sur la valeur et son seuil : une échéance passée, une caisse sous son propre seuil, un ordre trop ancien. */
+  alerte?: (c: ContextePastille, seuil: number | null) => boolean;
 }
+
+/* Les textes de seuil : « Rouge dès le premier » à zéro, sinon le nombre. */
+const desLePremier = (unite: string) => (v: number) => (v <= 0 ? "Rouge dès le premier" : `Seuil : ${v} ${unite}`);
+const sous = (unite: string) => (v: number) => `Rouge sous ${v} ${unite}`;
 
 const OPERATIONNELS = new Set<StatutVehicule>(["en-service", "en-backup"]);
 const engagesDu = (s: SituationJournaliere) => s.vehicules.filter((v) => v.engage);
@@ -114,8 +127,7 @@ export const PASTILLES: DefinitionPastille[] = [
     libelle: "Hors service maintenant",
     moment: "instant",
     reference: "hier",
-    seuil: { sens: "inf", valeur: 5 },
-    seuilTexte: "Seuil : 5 véhicules",
+    seuil: { sens: "inf", defaut: 5, texte: desLePremier("véhicules") },
     href: "/disponibilite",
     calcul: (c) => engagesDu(c.jour).filter((v) => !OPERATIONNELS.has(v.statut) || v.immobiliseAdmin).length,
     complement: (c) => `/ ${engagesDu(c.jour).length} engagés`,
@@ -126,8 +138,7 @@ export const PASTILLES: DefinitionPastille[] = [
     libelle: "Prêts à charger ce matin",
     moment: "instant",
     reference: "hier",
-    seuil: { sens: "sup", valeur: 30 },
-    seuilTexte: "Seuil : 30 véhicules prêts",
+    seuil: { sens: "sup", defaut: 30, texte: sous("véhicules prêts") },
     href: "/disponibilite",
     calcul: (c) => engagesDu(c.jour).filter((v) => v.pretACharger && !v.immobiliseAdmin).length,
     complement: (c) => `/ ${engagesDu(c.jour).length}`,
@@ -138,8 +149,7 @@ export const PASTILLES: DefinitionPastille[] = [
     libelle: "Immobilisés depuis plus de 7 jours",
     moment: "instant",
     reference: "semaine-passee",
-    seuil: { sens: "inf", valeur: 0 },
-    seuilTexte: "Rouge dès le premier",
+    seuil: { sens: "inf", defaut: 0, texte: desLePremier("véhicules") },
     href: "/maintenance",
     calcul: (c) => engagesDu(c.jour).filter((v) => v.immobiliseDepuisJours > 7).length,
   },
@@ -149,8 +159,7 @@ export const PASTILLES: DefinitionPastille[] = [
     libelle: "Pannes de la semaine",
     moment: "semaine",
     reference: "semaine-passee",
-    seuil: { sens: "inf", valeur: 3 },
-    seuilTexte: "Seuil : 3 pannes par semaine",
+    seuil: { sens: "inf", defaut: 3, texte: desLePremier("pannes par semaine") },
     href: "/incidents",
     calcul: (c) => somme(c.depuisLundi, (v) => v.pannes),
   },
@@ -161,8 +170,7 @@ export const PASTILLES: DefinitionPastille[] = [
     moment: "instant",
     unite: "j",
     reference: "aucune",
-    seuil: { sens: "sup", valeur: 7 },
-    seuilTexte: "Rouge sous 7 jours",
+    seuil: { sens: "sup", defaut: 7, texte: sous("jours") },
     href: "/incidents",
     calcul: (c) => c.jour.flotte.joursSansAccident,
   },
@@ -172,8 +180,7 @@ export const PASTILLES: DefinitionPastille[] = [
     libelle: "Accidents de la semaine",
     moment: "semaine",
     reference: "semaine-passee",
-    seuil: { sens: "inf", valeur: 0 },
-    seuilTexte: "Rouge dès le premier",
+    seuil: { sens: "inf", defaut: 0, texte: desLePremier("accidents par semaine") },
     href: "/incidents",
     calcul: (c) => somme(c.depuisLundi, (v) => v.accidents),
   },
@@ -200,8 +207,7 @@ export const PASTILLES: DefinitionPastille[] = [
     libelle: "Immobilisés administrativement",
     moment: "instant",
     reference: "hier",
-    seuil: { sens: "inf", valeur: 0 },
-    seuilTexte: "Rouge dès le premier",
+    seuil: { sens: "inf", defaut: 0, texte: desLePremier("véhicules") },
     href: "/conformite",
     calcul: (c) => engagesDu(c.jour).filter((v) => v.immobiliseAdmin).length,
   },
@@ -211,8 +217,7 @@ export const PASTILLES: DefinitionPastille[] = [
     libelle: "Sans relevé depuis 7 jours",
     moment: "instant",
     reference: "semaine-passee",
-    seuil: { sens: "inf", valeur: 5 },
-    seuilTexte: "Seuil : 5 véhicules",
+    seuil: { sens: "inf", defaut: 5, texte: desLePremier("véhicules") },
     href: "/flotte",
     calcul: (c) => engagesDu(c.jour).filter((v) => v.sansReleve7).length,
   },
@@ -238,11 +243,10 @@ export const PASTILLES: DefinitionPastille[] = [
     moment: "instant",
     unite: "j",
     reference: "hier",
-    seuil: { sens: "sup", valeur: 5 },
-    seuilTexte: "Rouge sous 5 jours",
+    seuil: { sens: "sup", defaut: 5, texte: sous("jours d'autonomie") },
     href: "/carburant",
     calcul: (c) => c.jour.flotte.cuveJours,
-    complement: (c) => `${Math.round(c.jour.flotte.cuveLitres).toLocaleString("fr-FR")} l en cuve`,
+    complement: (c) => (c.jour.flotte.cuveLitres === null ? null : `${Math.round(c.jour.flotte.cuveLitres).toLocaleString("fr-FR")} l en cuve`),
   },
   {
     id: "p-caisse",
@@ -253,9 +257,9 @@ export const PASTILLES: DefinitionPastille[] = [
     reference: "hier",
     seuilTexte: "Rouge sous le seuil de réapprovisionnement",
     href: "/caisse",
-    calcul: (c) => Math.round(c.jour.flotte.soldeCaisse / 1000),
-    alerte: (c) => c.jour.flotte.soldeCaisse < c.jour.flotte.seuilCaisse,
-    complement: (c) => `seuil ${Math.round(c.jour.flotte.seuilCaisse / 1000)} kF`,
+    calcul: (c) => (c.jour.flotte.soldeCaisse === null ? null : Math.round(c.jour.flotte.soldeCaisse / 1000)),
+    alerte: (c) => c.jour.flotte.soldeCaisse !== null && c.jour.flotte.seuilCaisse !== null && c.jour.flotte.soldeCaisse < c.jour.flotte.seuilCaisse,
+    complement: (c) => (c.jour.flotte.seuilCaisse === null ? null : `seuil ${Math.round(c.jour.flotte.seuilCaisse / 1000)} kF`),
   },
   {
     id: "p-depenses-semaine",
@@ -274,8 +278,7 @@ export const PASTILLES: DefinitionPastille[] = [
     libelle: "Chauffeurs indisponibles aujourd'hui",
     moment: "instant",
     reference: "hier",
-    seuil: { sens: "inf", valeur: 3 },
-    seuilTexte: "Seuil : 3 chauffeurs",
+    seuil: { sens: "inf", defaut: 3, texte: desLePremier("chauffeurs") },
     href: "/chauffeurs",
     calcul: (c) => c.jour.flotte.chauffeursIndisponibles,
     complement: (c) => `/ ${c.jour.flotte.chauffeurs}`,
@@ -286,15 +289,32 @@ export const PASTILLES: DefinitionPastille[] = [
     libelle: "Ordres de travail ouverts",
     moment: "instant",
     reference: "semaine-passee",
-    seuil: { sens: "inf", valeur: 0 },
-    seuilTexte: "Rouge dès qu'un ordre a plus de 15 jours",
+    seuil: { sens: "inf", defaut: 0, texte: (v) => (v <= 0 ? "Rouge dès qu'un ordre a plus de 15 jours" : `Seuil : ${v} ordres de plus de 15 jours`) },
     href: "/maintenance",
     calcul: (c) => c.jour.flotte.ordresOuverts,
-    complement: (c) => (c.jour.flotte.ordresAnciens ? `dont ${c.jour.flotte.ordresAnciens} de plus de 15 j` : "aucun de plus de 15 j"),
+    /* Le seuil compte les ordres anciens, pas les ouverts : un ordre du jour n'est pas une alerte. */
+    alerte: (c, seuil) => (c.jour.flotte.ordresAnciens ?? 0) > (seuil ?? 0),
+    complement: (c) => (c.jour.flotte.ordresAnciens === null ? null : c.jour.flotte.ordresAnciens ? `dont ${c.jour.flotte.ordresAnciens} de plus de 15 j` : "aucun de plus de 15 j"),
   },
 ];
 
 export const PASTILLE_PAR_ID = new Map(PASTILLES.map((p) => [p.id, p]));
+
+/** Les seuils livrés, par pastille — ce que Paramètres › Pastilles règle. */
+export const SEUILS_DEFAUT: Record<string, number> = Object.fromEntries(PASTILLES.filter((p) => p.seuil).map((p) => [p.id, p.seuil!.defaut]));
+
+/** Le seuil en vigueur d'une pastille : celui réglé, sinon celui livré ; nul si elle n'en a pas. */
+export function seuilDe(p: DefinitionPastille, seuils: Record<string, number> = SEUILS_DEFAUT): number | null {
+  if (!p.seuil) return null;
+  const v = seuils[p.id];
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : p.seuil.defaut;
+}
+
+/** Le pied de pastille : le seuil en clair, ou le texte fixe d'une pastille sans seuil. */
+export function texteSeuil(p: DefinitionPastille, seuil: number | null): string {
+  if (p.seuil && seuil !== null) return p.seuil.texte(seuil);
+  return p.seuilTexte ?? "";
+}
 
 export const MAX_PASTILLES = 5;
 
@@ -331,6 +351,9 @@ export interface ValeurPastille {
   /** La valeur de référence — hier en fin de journée, ou la semaine passée au même jour. */
   reference: number | null;
   referenceTexte: string;
+  /** Le seuil en vigueur, réglé ou livré ; nul pour une pastille sans seuil. */
+  seuil: number | null;
+  seuilTexte: string;
   /** Vrai quand le seuil est franchi. */
   alerte: boolean;
   /** Les quatorze derniers jours, pour la mini-courbe. */
@@ -342,13 +365,14 @@ export interface ValeurPastille {
  * inférieure ou égale au seuil ; au sens « sup », supérieure ou égale.
  * Les seuils à zéro se lisent « rouge dès le premier ».
  */
-export function seuilFranchi(p: DefinitionPastille, valeur: number | null): boolean {
-  if (valeur === null || !p.seuil) return false;
-  return p.seuil.sens === "inf" ? valeur > p.seuil.valeur : valeur < p.seuil.valeur;
+export function seuilFranchi(p: DefinitionPastille, valeur: number | null, seuil: number | null): boolean {
+  if (valeur === null || !p.seuil || seuil === null) return false;
+  return p.seuil.sens === "inf" ? valeur > seuil : valeur < seuil;
 }
 
-/** Évalue une pastille au dernier jour de la série, avec sa référence et ses quatorze jours. */
-export function evaluerPastille(p: DefinitionPastille, jours: SituationJournaliere[]): ValeurPastille {
+/** Évalue une pastille au dernier jour de la série, avec sa référence, son seuil réglé et ses quatorze jours. */
+export function evaluerPastille(p: DefinitionPastille, jours: SituationJournaliere[], seuils: Record<string, number> = SEUILS_DEFAUT): ValeurPastille {
+  const seuil = seuilDe(p, seuils);
   const dernier = jours.length - 1;
   const a = (i: number) => {
     const c = contexteA(jours, i);
@@ -367,6 +391,6 @@ export function evaluerPastille(p: DefinitionPastille, jours: SituationJournalie
     const unite = p.unite ? ` ${p.unite}` : "";
     referenceTexte = diff === 0 ? `comme ${quoi}` : `${Math.abs(diff).toLocaleString("fr-FR", { maximumFractionDigits: decimales })}${unite} de ${diff > 0 ? "plus" : "moins"} qu${quoi === "hier" ? "'hier" : "e la semaine passée"}`;
   } else if (p.reference !== "aucune") referenceTexte = "pas de référence";
-  const alerte = p.alerte && ctx ? p.alerte(ctx) : seuilFranchi(p, valeur);
-  return { definition: p, valeur, complement: ctx && p.complement ? p.complement(ctx) : null, reference, referenceTexte, alerte, quatorze };
+  const alerte = p.alerte && ctx ? p.alerte(ctx, seuil) : seuilFranchi(p, valeur, seuil);
+  return { definition: p, valeur, complement: ctx && p.complement ? p.complement(ctx) : null, reference, referenceTexte, seuil, seuilTexte: texteSeuil(p, seuil), alerte, quatorze };
 }

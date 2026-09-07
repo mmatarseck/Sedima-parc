@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BellRing, Car, ChevronRight, FileCheck2, Fuel, ListChecks, LockKeyhole, Trophy, Truck, Users, Wrench } from "lucide-react";
+import { BellRing, Car, ChevronRight, FileCheck2, Fuel, Gauge, ListChecks, LockKeyhole, Trophy, Truck, Users, Wrench } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { titrePage } from "@/domaine/marque";
 
@@ -8,7 +8,7 @@ export const metadata = { title: titrePage("Paramètres") };
 /**
  * Paramètres — ce qui règle l'application plutôt que le parc.
  *
- * Les onze sections sont livrées. Trois d'entre elles **montrent sans laisser
+ * Les douze sections sont livrées. Trois d'entre elles **montrent sans laisser
  * modifier**, et c'est délibéré : les référentiels sont les clés des
  * enregistrements, les rôles ne se décident jamais dans le navigateur, et un
  * barème de prime ne se change pas en cours de période. Chacune dit pourquoi,
@@ -29,12 +29,13 @@ const SECTIONS = [
   { href: "/parametres/sqdcm", libelle: "Barème SQDCM des chauffeurs", precision: "Indicateurs, objectifs, tolérances, poids des piliers, tranches de prime — le barème que le chauffeur doit pouvoir lire", icone: Trophy, livre: true },
   { href: "/parametres/parc-leger", libelle: "Parc léger", precision: "Durée du plan car, forfait carburant mensuel des véhicules de fonction — les valeurs par défaut, que chaque dossier peut préciser", icone: Car, livre: true },
   { href: "/parametres/vehicules", libelle: "Véhicules", precision: "Marques, modèles et catégories proposés à la création d'un véhicule — la liste s'enrichit de ce qui se saisit", icone: Truck, livre: true },
+  { href: "/parametres/pastilles", libelle: "Pastilles du tableau de bord", precision: "Les seuils en nombre au-delà desquels une pastille passe au rouge — hors service, prêts à charger, pannes, autonomie de la cuve", icone: Gauge, livre: true },
 ];
 
 export default function PageParametres() {
   return (
     <div className="defilement-discret flex flex-col gap-5 px-8 py-7 lg:h-full lg:overflow-y-auto">
-      <TitreEcran titre="Paramètres" sousTitre="Ce qui règle l'application — onze sections : huit où l'on saisit, trois qui montrent et disent pourquoi" />
+      <TitreEcran titre="Paramètres" sousTitre="Ce qui règle l'application — douze sections : neuf où l'on saisit, trois qui montrent et disent pourquoi" />
       <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {SECTIONS.map((s) => {
           const Icone = s.icone;

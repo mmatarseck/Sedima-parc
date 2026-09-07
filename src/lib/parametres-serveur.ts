@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { cache } from "react";
-import { COOKIE_PARAMETRES, appliquerLibelles, fusionnerParametres, type Parametres } from "@/domaine/parametres";
+import { CLES_PARAMETRES, COOKIE_PARAMETRES, PREFIXE_COOKIE_PARAMETRES, appliquerLibelles, decoderValeurCookie, fusionnerParametres, type Parametres } from "@/domaine/parametres";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 
@@ -51,15 +51,28 @@ async function depuisLaBase(): Promise<Parametres> {
     alertes: parCle.get("alertes"),
     parcLeger: parCle.get("parc-leger"),
     vehicules: parCle.get("vehicules"),
+    pastilles: parCle.get("pastilles"),
     documents: types.data.length > 0 ? { types: types.data.map((t) => ({ id: t.id, libelle: t.libelle, porteur: t.porteur, applicabilite: t.applicabilite, validiteMois: t.validite_mois, critique: t.critique, standard: t.standard })) } : undefined,
   });
 }
 
+/* Un cookie par clé, pour ce qui diffère des défauts ; l'ancien cookie unique
+   est encore lu, pour les navigateurs qui l'ont gardé. Une clé absente ou
+   illisible reprend son défaut. */
 async function depuisLeCookie(): Promise<Parametres> {
   try {
     const jar = await cookies();
-    const brut = jar.get(COOKIE_PARAMETRES)?.value;
-    return fusionnerParametres(brut ? JSON.parse(decodeURIComponent(brut)) : null);
+    const partiel: Record<string, unknown> = {};
+    const ancien = jar.get(COOKIE_PARAMETRES)?.value;
+    const lu = ancien ? decoderValeurCookie(ancien) : null;
+    if (lu && typeof lu === "object") Object.assign(partiel, lu);
+    for (const cle of CLES_PARAMETRES) {
+      const brut = jar.get(PREFIXE_COOKIE_PARAMETRES + cle)?.value;
+      if (!brut) continue;
+      const valeur = decoderValeurCookie(brut);
+      if (valeur !== null) partiel[cle] = valeur;
+    }
+    return fusionnerParametres(partiel);
   } catch {
     return fusionnerParametres(null);
   }

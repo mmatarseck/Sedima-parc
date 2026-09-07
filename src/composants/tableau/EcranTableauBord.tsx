@@ -163,6 +163,7 @@ export function EcranTableauBord({
   alertes,
   aujourdhui,
   situations,
+  seuils,
 }: {
   mois: string[];
   vehicules: VehiculeTableau[];
@@ -175,6 +176,8 @@ export function EcranTableauBord({
   aujourdhui: string;
   /** Les situations journalières des quatre dernières semaines : la matière des pastilles. */
   situations: SituationJournaliere[];
+  /** Les seuils réglés dans Paramètres › Pastilles, par identifiant de pastille. */
+  seuils: Record<string, number>;
 }) {
   const [periode, setPeriode] = useState<Periode>("mois");
   const [bu, setBu] = useState<string>("tous");
@@ -194,7 +197,14 @@ export function EcranTableauBord({
     try {
       const role = trouverRole(lireRole()).role;
       const brut = localStorage.getItem(`sedima.parc.tableau-bord.pastilles.${role}`);
-      if (brut) setSelection(limiterPastilles(JSON.parse(brut) as string[]));
+      if (brut) {
+        /* Une sélection d'avant le 8 septembre 2026 ne porte que des indicateurs
+           de période : elle ne donne rien, et le compte repart du défaut plutôt
+           que d'une rangée vide. Une rangée vidée exprès reste vide. */
+        const lue = JSON.parse(brut) as string[];
+        const retenue = limiterPastilles(lue);
+        setSelection(retenue.length > 0 || lue.length === 0 ? retenue : PASTILLES_DEFAUT);
+      }
       const brutCourbes = localStorage.getItem(`sedima.parc.tableau-bord-courbes.${role}`);
       if (brutCourbes) setCourbes((JSON.parse(brutCourbes) as string[]).slice(0, MAX_COURBES));
     } catch {
@@ -288,7 +298,7 @@ export function EcranTableauBord({
      — BU, catégorie, site — mais pas à la période, qui ne vaut que pour les
      courbes. La référence est hier en fin de journée, ou la semaine passée. */
   const situationsRetenues = useMemo(() => (filtreVehicule ? situations.map((s) => ({ ...s, vehicules: s.vehicules.filter((v) => retenus.has(v.vehiculeId)) })) : situations), [situations, retenus, filtreVehicule]);
-  const pastilles = useMemo(() => (monte ? selection : PASTILLES_DEFAUT).map((id) => evaluerPastille(PASTILLE_PAR_ID.get(id)!, situationsRetenues)), [monte, selection, situationsRetenues]);
+  const pastilles = useMemo(() => (monte ? selection : PASTILLES_DEFAUT).map((id) => evaluerPastille(PASTILLE_PAR_ID.get(id)!, situationsRetenues, seuils)), [monte, selection, situationsRetenues, seuils]);
 
   const series = useMemo(
     () =>
@@ -455,11 +465,11 @@ export function EcranTableauBord({
                   {diff !== null ? <span className={`shrink-0 font-semibold ${diff === 0 ? "" : bonSens === false && p.alerte ? "text-defavorable" : bonSens ? "text-favorable" : ""}`}>{diff === 0 ? "=" : diff > 0 ? "▲" : "▼"}</span> : null}
                   <span className="truncate">{p.referenceTexte || (p.valeur === null ? "sans donnée" : "")}</span>
                 </span>
-                <span className="truncate text-[11px] text-attenue" title={d.seuilTexte}>
-                  {d.seuilTexte}
+                <span className="truncate text-[11px] text-attenue" title={p.seuilTexte}>
+                  {p.seuilTexte}
                 </span>
                 <span className="-mx-1 -mb-1 self-end">
-                  <Etincelle valeurs={p.quatorze} cible={d.seuil?.valeur ?? null} horsCible={p.alerte} />
+                  <Etincelle valeurs={p.quatorze} cible={p.seuil} horsCible={p.alerte} />
                 </span>
               </Link>
             );

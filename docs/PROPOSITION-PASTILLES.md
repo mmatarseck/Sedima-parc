@@ -104,7 +104,10 @@ Construit le soir même : `src/domaine/pastilles.ts` (quinze pastilles,
 `src/donnees/situation-demo.ts` (les situations journalières des quatre
 dernières semaines, déduites des fiches, des incidents, des chauffeurs, des
 ordres, de la caisse et de la cuve), la rangée et le sélecteur du tableau de
-bord. Les seuils sont des constantes du catalogue ; ils passeront en
-paramètres quand le métier voudra les régler. La « demande sans réponse »
-attend le module des demandes. En base, `situation_journaliere()` reste à
-écrire dans la lignée de `lire_parc()`.
+bord. La « demande sans réponse » attend le module des demandes.
+
+Le lendemain : les seuils se règlent dans **Paramètres › Pastilles du
+tableau de bord** (une valeur par pastille, en nombre, la valeur du jour à
+côté), et la migration `0010_situation_journaliere.sql` rend les situations
+journalières depuis la base, dans la lignée de `lire_parc()` — ordres, caisse
+et cuve exceptés, qui n'ont pas encore leur table et se montrent « — ».
