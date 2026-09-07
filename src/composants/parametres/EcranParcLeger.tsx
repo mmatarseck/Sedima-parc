@@ -15,14 +15,15 @@ import { lireRole } from "@/lib/session-demo";
 
 /**
  * Paramètres › Parc léger — les valeurs par défaut du plan car et du forfait
- * carburant, données par le métier le 7 septembre 2026 : cinq ans, 150 000 F
- * par mois. Chaque dossier peut s'en écarter ; ce qui se règle ici vaut pour
- * tous ceux qui ne disent rien.
+ * carburant, données par le métier le 7 septembre 2026 : cinq ans, et
+ * 150 000 F de carburant par mois. Chaque dossier peut s'en écarter ; ce qui
+ * se règle ici vaut pour tous ceux qui ne disent rien. La mensualité du plan
+ * car ne se règle pas ici : elle ne se suit pas dans le parc.
  */
 export function EcranParametresParcLeger() {
   const router = useRouter();
   const [p, setP] = useState<Parametres>(PARAMETRES_DEFAUT);
-  const [valeurs, setValeurs] = useState<Record<keyof ParametresParcLeger, string>>({ planCarDureeMois: "", planCarMensualite: "", forfaitCarburantMensuel: "" });
+  const [valeurs, setValeurs] = useState<Record<keyof ParametresParcLeger, string>>({ planCarDureeMois: "", forfaitCarburantMensuel: "" });
   const [habilite, setHabilite] = useState(false);
   const [nomRole, setNomRole] = useState("");
   const [enregistre, setEnregistre] = useState(false);
@@ -31,7 +32,7 @@ export function EcranParametresParcLeger() {
   useEffect(() => {
     const lu = lireParametres();
     setP(lu);
-    setValeurs({ planCarDureeMois: String(lu.parcLeger.planCarDureeMois), planCarMensualite: String(lu.parcLeger.planCarMensualite), forfaitCarburantMensuel: String(lu.parcLeger.forfaitCarburantMensuel) });
+    setValeurs({ planCarDureeMois: String(lu.parcLeger.planCarDureeMois), forfaitCarburantMensuel: String(lu.parcLeger.forfaitCarburantMensuel) });
     const r = trouverRole(lireRole());
     setHabilite(peutCloturer(r.role));
     setNomRole(r.libelle);
@@ -39,16 +40,15 @@ export function EcranParametresParcLeger() {
 
   const nombres = {
     planCarDureeMois: Number(valeurs.planCarDureeMois.replace(/\s/g, "")),
-    planCarMensualite: Number(valeurs.planCarMensualite.replace(/\s/g, "")),
     forfaitCarburantMensuel: Number(valeurs.forfaitCarburantMensuel.replace(/\s/g, "")),
   };
   const valide = Object.values(nombres).every((n) => Number.isFinite(n) && n > 0);
-  const change = valide && (nombres.planCarDureeMois !== p.parcLeger.planCarDureeMois || nombres.planCarMensualite !== p.parcLeger.planCarMensualite || nombres.forfaitCarburantMensuel !== p.parcLeger.forfaitCarburantMensuel);
-  const modifie = nombres.planCarDureeMois !== PARC_LEGER_DEFAUT.planCarDureeMois || nombres.planCarMensualite !== PARC_LEGER_DEFAUT.planCarMensualite || nombres.forfaitCarburantMensuel !== PARC_LEGER_DEFAUT.forfaitCarburantMensuel;
+  const change = valide && (nombres.planCarDureeMois !== p.parcLeger.planCarDureeMois || nombres.forfaitCarburantMensuel !== p.parcLeger.forfaitCarburantMensuel);
+  const modifie = nombres.planCarDureeMois !== PARC_LEGER_DEFAUT.planCarDureeMois || nombres.forfaitCarburantMensuel !== PARC_LEGER_DEFAUT.forfaitCarburantMensuel;
 
   function enregistrer() {
     if (!valide) return;
-    const suite: Parametres = { ...p, parcLeger: { planCarDureeMois: Math.round(nombres.planCarDureeMois), planCarMensualite: Math.round(nombres.planCarMensualite), forfaitCarburantMensuel: Math.round(nombres.forfaitCarburantMensuel) } };
+    const suite: Parametres = { ...p, parcLeger: { planCarDureeMois: Math.round(nombres.planCarDureeMois), forfaitCarburantMensuel: Math.round(nombres.forfaitCarburantMensuel) } };
     setP(suite);
     setErreur(null);
     void ecrireParametres(suite).then((refus) => {
@@ -63,14 +63,13 @@ export function EcranParametresParcLeger() {
   }
 
   function reinitialiser() {
-    setValeurs({ planCarDureeMois: String(PARC_LEGER_DEFAUT.planCarDureeMois), planCarMensualite: String(PARC_LEGER_DEFAUT.planCarMensualite), forfaitCarburantMensuel: String(PARC_LEGER_DEFAUT.forfaitCarburantMensuel) });
+    setValeurs({ planCarDureeMois: String(PARC_LEGER_DEFAUT.planCarDureeMois), forfaitCarburantMensuel: String(PARC_LEGER_DEFAUT.forfaitCarburantMensuel) });
     setEnregistre(false);
   }
 
   const champ = "h-9 w-[180px] rounded-[8px] border border-bordure-champ bg-surface px-3 text-right text-[13px] tabular-nums outline-none focus:border-accent disabled:bg-surface-2 disabled:text-texte-2";
   const lignes: { cle: keyof ParametresParcLeger; libelle: string; precision: string; unite: string }[] = [
-    { cle: "planCarDureeMois", libelle: "Durée du plan car", precision: "Au terme, le véhicule est cédé à l'attributaire", unite: "mois" },
-    { cle: "planCarMensualite", libelle: "Mensualité du plan car", precision: "Ce que l'attributaire paie chaque mois — une trace, la retenue est une donnée de paie", unite: "F par mois" },
+    { cle: "planCarDureeMois", libelle: "Durée du plan car", precision: "Au terme, le véhicule est cédé à l'attributaire — la mensualité, elle, est une donnée de paie et ne se suit pas ici", unite: "mois" },
     { cle: "forfaitCarburantMensuel", libelle: "Forfait carburant des véhicules de fonction", precision: "Versé sur la carte carburant de l'attributaire, absorbé en charge sur la BU de l'agent", unite: "F par mois" },
   ];
 
@@ -102,7 +101,7 @@ export function EcranParametresParcLeger() {
         }
       />
 
-      <Carte titre="Plan car et forfait carburant" precision={`Aujourd'hui : ${p.parcLeger.planCarDureeMois} mois, ${montant(p.parcLeger.planCarMensualite)} par mois, forfait ${montant(p.parcLeger.forfaitCarburantMensuel)} par mois`}>
+      <Carte titre="Plan car et forfait carburant" precision={`Aujourd'hui : cession après ${p.parcLeger.planCarDureeMois} mois, forfait ${montant(p.parcLeger.forfaitCarburantMensuel)} par mois`}>
         <div className="flex flex-col divide-y divide-bordure px-5 pb-2">
           {lignes.map((l) => (
             <label key={l.cle} className="flex flex-wrap items-center gap-4 py-3">
@@ -119,10 +118,10 @@ export function EcranParametresParcLeger() {
         </div>
       </Carte>
 
-      <Carte titre="Ce que ces valeurs produisent" precision="À la règle courante, pour un plan car qui ne précise rien">
+      <Carte titre="Ce que ces valeurs produisent" precision="À la règle courante, pour un dossier qui ne précise rien">
         <p className="px-5 pb-4 text-[12.5px] leading-[1.5] text-texte-2">
-          Un plan car vaut <b className="font-semibold text-texte">{montant(nombres.planCarMensualite * nombres.planCarDureeMois || 0)}</b> sur {nombres.planCarDureeMois || 0} mois. Le forfait carburant d&apos;un véhicule de fonction pèse{" "}
-          <b className="font-semibold text-texte">{montant((nombres.forfaitCarburantMensuel || 0) * 12)}</b> par an sur la BU de l&apos;agent. Ces montants sont des valeurs par défaut : le dossier de chaque véhicule peut porter les siens.
+          Un véhicule en plan car est cédé à son attributaire <b className="font-semibold text-texte">{nombres.planCarDureeMois || 0} mois</b> après le début du plan. Le forfait carburant d&apos;un véhicule de fonction pèse{" "}
+          <b className="font-semibold text-texte">{montant((nombres.forfaitCarburantMensuel || 0) * 12)}</b> par an sur la BU de l&apos;agent. Ces valeurs sont des défauts : le dossier de chaque véhicule peut porter les siennes.
         </p>
       </Carte>
     </div>

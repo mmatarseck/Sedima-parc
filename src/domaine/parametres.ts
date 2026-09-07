@@ -122,20 +122,19 @@ export const REGLES_ALERTE_DEFAUT: ReglesAlerte = {
 };
 
 /**
- * Le parc léger — cadrage du 7 septembre 2026 : la durée et la mensualité du
- * plan car, le forfait carburant mensuel des véhicules de fonction, en
- * paramètres, avec les valeurs par défaut données par le métier (cinq ans,
- * 150 000 F par mois). Chaque dossier peut s'en écarter.
+ * Le parc léger — cadrage du 7 septembre 2026 : la durée du plan car et le
+ * forfait carburant mensuel des véhicules de fonction, en paramètres, avec
+ * les valeurs par défaut données par le métier (cinq ans, 150 000 F par
+ * mois). Chaque dossier peut s'en écarter. La mensualité du plan car ne se
+ * suit pas : c'est une donnée de paie.
  */
 export interface ParametresParcLeger {
   planCarDureeMois: number;
-  planCarMensualite: number;
   forfaitCarburantMensuel: number;
 }
 
 export const PARC_LEGER_DEFAUT: ParametresParcLeger = {
   planCarDureeMois: 60,
-  planCarMensualite: 150_000,
   forfaitCarburantMensuel: 150_000,
 };
 
@@ -144,7 +143,6 @@ function normaliserParcLeger(brut: unknown): ParametresParcLeger {
   const entier = (v: unknown, defaut: number) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.round(v) : defaut);
   return {
     planCarDureeMois: entier(b.planCarDureeMois, PARC_LEGER_DEFAUT.planCarDureeMois),
-    planCarMensualite: entier(b.planCarMensualite, PARC_LEGER_DEFAUT.planCarMensualite),
     forfaitCarburantMensuel: entier(b.forfaitCarburantMensuel, PARC_LEGER_DEFAUT.forfaitCarburantMensuel),
   };
 }

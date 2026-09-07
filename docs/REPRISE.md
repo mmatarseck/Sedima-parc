@@ -517,9 +517,11 @@ charge se rattache à **la BU de l'agent** ; les véhicules de service vont
   plan car (mensualité et durée propres ou héritées des paramètres, début,
   statut) et son échéancier, forfait carburant ;
 - **Paramètres › Parc léger** (`parcLeger` dans `Parametres`, lu et écrit en
-  base sous la clé `parc-leger`) : durée du plan car (60 mois), mensualité
-  (150 000 F), forfait carburant mensuel (150 000 F, **hypothèse à confirmer** :
-  la réponse « 150 000 F/mois » visait le plan car ou le forfait) ;
+  base sous la clé `parc-leger`) : durée du plan car (60 mois) et forfait
+  carburant mensuel (150 000 F). **Précision du métier, le soir même** : les
+  150 000 F sont le forfait carburant ; la mensualité du plan car **ne se
+  suit pas** dans l'application (donnée de paie) — le parc ne retient que la
+  durée et la date de cession ;
 - `src/donnees/parc-leger-demo.ts` — **l'inventaire réel du dossier** : les
   64 véhicules de « PARC LEGERS AFFECTATION 2026 » (mai 2026), les 10 du
   plan car (feuille CAR-PLAN), 7 motos, 7 véhicules des Almadies, et le plan

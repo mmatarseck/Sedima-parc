@@ -194,7 +194,7 @@ function construire() {
       pool: nom ? null : (departement ?? null),
       departement,
       businessUnit,
-      planCar: PLAN_CAR.has(canonique) ? { mensualite: null, dureeMois: null, debut: null, statut: "en-cours" } : null,
+      planCar: PLAN_CAR.has(canonique) ? { dureeMois: null, debut: null, statut: "en-cours" } : null,
       lot,
       commentaire,
     };

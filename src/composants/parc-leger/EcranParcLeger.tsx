@@ -17,7 +17,7 @@ import { montant, nombre } from "@/lib/format";
  * maintenance est à la charge du parc et le carburant de leurs attributaires
  * est un forfait mensuel absorbé en charge. L'écran répond à trois questions :
  * qui tient quoi, dans quel état est le parc léger, et ce qu'il coûte chaque
- * mois — forfaits carburant en charge, mensualités du plan car en face.
+ * mois en carburant — et quand les plans car arrivent à leur terme.
  *
  * Les données viennent du dossier de la Direction des Opérations (inventaire
  * de mai, plan de cascade d'août 2026). Rien ne s'y saisit encore : c'est la
@@ -65,7 +65,7 @@ export function EcranParcLeger({ vehicules, attributaires, forfaits, aujourdhui 
   useEffect(() => {
     setParametres(lireParametres().parcLeger);
   }, []);
-  const regles = parametres ?? { planCarDureeMois: 60, planCarMensualite: 150_000, forfaitCarburantMensuel: 150_000 };
+  const regles = parametres ?? { planCarDureeMois: 60, forfaitCarburantMensuel: 150_000 };
 
   const parId = useMemo(() => new Map(attributaires.map((a) => [a.id, a])), [attributaires]);
   const departements = useMemo(() => [...new Set(vehicules.map((v) => v.departement).filter((d): d is string => d !== null))].sort((a, b) => a.localeCompare(b, "fr")), [vehicules]);
@@ -82,10 +82,9 @@ export function EcranParcLeger({ vehicules, attributaires, forfaits, aujourdhui 
     });
   }, [vehicules, regime, etat, departement, recherche, parId]);
 
-  /* Ce que le parc léger coûte et rapporte chaque mois, à la règle des paramètres. */
+  /* Ce que le parc léger coûte chaque mois en carburant, à la règle des paramètres. */
   const chargeForfaits = forfaits.reduce((s, f) => s + (f.montantMensuel ?? regles.forfaitCarburantMensuel), 0);
   const planCars = vehicules.filter((v) => v.planCar);
-  const mensualites = planCars.reduce((s, v) => s + (v.planCar!.mensualite ?? regles.planCarMensualite), 0);
   const compte = (f: (v: VehiculeLeger) => boolean) => vehicules.filter(f).length;
 
   return (
@@ -99,7 +98,7 @@ export function EcranParcLeger({ vehicules, attributaires, forfaits, aujourdhui 
         <Chiffre valeur={nombre(compte((v) => v.etat === "panne"))} libelle="en panne" ton="vigilance" />
         <Chiffre valeur={nombre(compte((v) => v.etat === "a-reformer"))} libelle="à réformer" ton="defavorable" />
         <Chiffre valeur={`${montant(chargeForfaits)}`} libelle={`forfaits carburant par mois · ${forfaits.length} cartes`} />
-        <Chiffre valeur={`${montant(mensualites)}`} libelle={`mensualités plan car par mois · ${planCars.length} véhicules`} />
+        <Chiffre valeur={nombre(planCars.length)} libelle={`en plan car · cession après ${regles.planCarDureeMois} mois`} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -145,7 +144,7 @@ export function EcranParcLeger({ vehicules, attributaires, forfaits, aujourdhui 
               {retenus.map((v) => {
                 const a = v.attributaireId ? (parId.get(v.attributaireId) ?? null) : null;
                 const forfait = a ? forfaits.find((f) => f.attributaireId === a.id) : null;
-                const echeancier = v.planCar ? echeancierPlanCar(v.planCar, { mensualite: regles.planCarMensualite, dureeMois: regles.planCarDureeMois }, aujourdhui) : null;
+                const echeancier = v.planCar ? echeancierPlanCar(v.planCar, regles.planCarDureeMois, aujourdhui) : null;
                 const definition = ETAT_LEGER[v.etat];
                 return (
                   <tr key={v.id} className="border-t border-bordure align-top hover:bg-surface-2">
@@ -175,7 +174,7 @@ export function EcranParcLeger({ vehicules, attributaires, forfaits, aujourdhui 
                       {forfait ? <span className="block text-texte">{montant(forfait.montantMensuel ?? regles.forfaitCarburantMensuel)} carburant</span> : null}
                       {echeancier ? (
                         <span className="block text-texte-2">
-                          {montant(echeancier.mensualite)} plan car · {echeancier.moisPayes === null ? `${echeancier.dureeMois} mois, début à renseigner` : `${echeancier.moisPayes}/${echeancier.dureeMois} mois, cession ${echeancier.cessionPrevue}`}
+                          Plan car · {echeancier.moisEcoules === null ? `${echeancier.dureeMois} mois, début à renseigner` : `${echeancier.moisEcoules}/${echeancier.dureeMois} mois, cession ${echeancier.cessionPrevue}`}
                         </span>
                       ) : null}
                       {!forfait && !echeancier ? <span className="text-attenue">maintenance seule</span> : null}
@@ -213,7 +212,7 @@ export function EcranParcLeger({ vehicules, attributaires, forfaits, aujourdhui 
             <b className="font-semibold text-texte">Dans les charges de parc.</b> Leur maintenance et leur carburant comptent dans Coûts &amp; analyses et au budget, sur la BU de l&apos;agent. Le forfait carburant est une dépense mensuelle fixe, sans plein ni kilométrage : il n&apos;entre pas dans la consommation aux 100 km.
           </li>
           <li>
-            <b className="font-semibold text-texte">Le plan car est une trace.</b> Mensualité et durée viennent des paramètres ({montant(regles.planCarMensualite)} sur {regles.planCarDureeMois} mois) tant que le dossier ne dit pas autre chose ; la retenue elle-même est une donnée de paie, suivie aux RH. La date de début de chaque plan reste à renseigner pour dater la cession.
+            <b className="font-semibold text-texte">Le plan car ne se compte pas ici.</b> Le parc retient la durée ({regles.planCarDureeMois} mois par défaut) et la date de cession ; la mensualité que paie l&apos;attributaire est une donnée de paie, suivie aux RH. La date de début de chaque plan reste à renseigner pour dater la cession.
           </li>
         </ul>
       </Carte>

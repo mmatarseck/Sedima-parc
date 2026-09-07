@@ -15,8 +15,9 @@
  * entrent dans les charges de maintenance et de carburant du parc. Le régime
  * d'usage porte cette distinction ; il est distinct de la catégorie de flotte
  * (qui dit qui possède) et de la catégorie de véhicule (qui dit ce qu'est
- * l'engin). La mensualité du plan car est une trace, pas une donnée de paie —
- * même décision que pour les sanctions (Q69).
+ * l'engin). La mensualité du plan car ne se suit pas ici : c'est une donnée
+ * de paie, suivie aux RH — même partage que pour les sanctions (Q69). Le parc
+ * retient la durée et la date de cession.
  * ==========================================================================*/
 
 import type { BusinessUnit } from "./types";
@@ -52,13 +53,16 @@ export interface Attributaire {
   businessUnit: BusinessUnit | null;
 }
 
-/** Le plan car d'un véhicule de fonction : une mensualité, une durée, une cession au terme. */
+/**
+ * Le plan car d'un véhicule de fonction : une durée, une cession au terme.
+ * La mensualité que paie l'attributaire **ne se suit pas ici** (décision du
+ * métier, 7 septembre 2026) : c'est une donnée de paie. Le parc ne retient que
+ * ce qui le concerne — quand le véhicule cesse d'être à lui.
+ */
 export interface PlanCar {
-  /** Mensualité payée par l'attributaire, en francs ; nulle quand elle suit le paramètre. */
-  mensualite: number | null;
   /** Durée en mois ; nulle quand elle suit le paramètre. */
   dureeMois: number | null;
-  /** Premier mois payé, « AAAA-MM » ; nul tant que le dossier ne l'a pas dit. */
+  /** Premier mois du plan, « AAAA-MM » ; nul tant que le dossier ne l'a pas dit. */
   debut: string | null;
   statut: "en-cours" | "cede";
 }
@@ -86,15 +90,11 @@ export interface VehiculeLeger {
   commentaire: string | null;
 }
 
-/** Ce que coûte la période d'un plan car, à la règle des paramètres. */
+/** Où en est un plan car, à la règle des paramètres. */
 export interface EcheancierPlanCar {
-  mensualite: number;
   dureeMois: number;
-  total: number;
-  /** Mois déjà payés à la date de référence ; nul sans date de début. */
-  moisPayes: number | null;
-  verse: number | null;
-  restant: number | null;
+  /** Mois écoulés depuis le début, bornés à la durée ; nul sans date de début. */
+  moisEcoules: number | null;
   /** « AAAA-MM » de la cession prévue ; nul sans date de début. */
   cessionPrevue: string | null;
 }
@@ -105,20 +105,17 @@ function ajouterMois(mois: string, n: number): string {
 }
 
 /**
- * L'échéancier d'un plan car : la mensualité et la durée propres au dossier,
- * ou celles des paramètres. Sans date de début, on connaît le total mais ni
- * le versé ni la cession — et l'écran le dit plutôt que d'inventer une date.
+ * L'échéancier d'un plan car : la durée propre au dossier, ou celle des
+ * paramètres. Sans date de début, on connaît la durée mais pas la cession —
+ * et l'écran le dit plutôt que d'inventer une date.
  */
-export function echeancierPlanCar(p: PlanCar, defauts: { mensualite: number; dureeMois: number }, aujourdhui: string): EcheancierPlanCar {
-  const mensualite = p.mensualite ?? defauts.mensualite;
-  const dureeMois = p.dureeMois ?? defauts.dureeMois;
-  const total = mensualite * dureeMois;
-  if (!p.debut) return { mensualite, dureeMois, total, moisPayes: null, verse: null, restant: null, cessionPrevue: null };
+export function echeancierPlanCar(p: PlanCar, dureeDefaut: number, aujourdhui: string): EcheancierPlanCar {
+  const dureeMois = p.dureeMois ?? dureeDefaut;
+  if (!p.debut) return { dureeMois, moisEcoules: null, cessionPrevue: null };
   const [a0, m0] = p.debut.split("-").map(Number);
   const [a1, m1] = aujourdhui.slice(0, 7).split("-").map(Number);
   const ecoules = Math.max(0, (a1! - a0!) * 12 + (m1! - m0!) + 1);
-  const moisPayes = p.statut === "cede" ? dureeMois : Math.min(dureeMois, ecoules);
-  return { mensualite, dureeMois, total, moisPayes, verse: moisPayes * mensualite, restant: total - moisPayes * mensualite, cessionPrevue: ajouterMois(p.debut, dureeMois - 1) };
+  return { dureeMois, moisEcoules: p.statut === "cede" ? dureeMois : Math.min(dureeMois, ecoules), cessionPrevue: ajouterMois(p.debut, dureeMois - 1) };
 }
 
 /** Un identifiant lisible d'attributaire, à partir du nom : « Assane Gueye » → « assane-gueye ». */
