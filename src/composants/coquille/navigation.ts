@@ -1,6 +1,7 @@
 import {
   BarChart3,
   CalendarRange,
+  Car,
   ClipboardList,
   Fuel,
   Handshake,
@@ -61,6 +62,10 @@ export const NAVIGATION: GroupeNavigation[] = [
     titre: "Exploitation",
     entrees: [
       { href: "/flotte", libelle: "Flotte", icone: Truck, livre: true },
+      /* Le parc léger — service, fonction, plan car — cadré le 7 septembre 2026 :
+         ces véhicules ne livrent pas, mais leur maintenance et leur carburant
+         sont des charges du parc. */
+      { href: "/parc-leger", libelle: "Parc léger", icone: Car, livre: true },
       { href: "/disponibilite", libelle: "Disponibilité du jour", icone: ClipboardList, livre: true },
       { href: "/chauffeurs", libelle: "Chauffeurs", icone: Users, livre: true },
       { href: "/affectations", libelle: "Affectations", icone: CalendarRange, livre: true },

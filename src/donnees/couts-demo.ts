@@ -11,14 +11,20 @@
  * ==========================================================================*/
 
 import type { DonneesVehicule, MoisVehicule } from "@/domaine/couts";
+import { PARAMETRES_DEFAUT } from "@/domaine/parametres";
 import type { PosteDepense } from "@/domaine/types";
 import { fichePourImmatriculation } from "./fiche-demo";
 import { FLOTTE } from "./parc-demo";
+import { forfaitsCarburant, vehiculesLegers } from "./parc-leger-demo";
 
 /** Date de référence du jeu de démonstration, comme dans les autres modules. */
 const AUJOURDHUI = "2026-09-02";
 /** Profondeur servie au module : deux ans, pour comparer une période à la précédente. */
 const PROFONDEUR_MOIS = 24;
+/** Consommation de référence d'un véhicule léger, aux 100 km — sans plein, elle ne sert qu'au verdict. */
+const REFERENCE_L100_LEGER = 9;
+/** Premier mois où les forfaits carburant sont portés en charge dans la démonstration. */
+const DEBUT_FORFAITS = "2025-01";
 
 let CACHE: DonneesVehicule[] | null = null;
 
@@ -29,7 +35,34 @@ export function donneesCouts(): DonneesVehicule[] {
   for (let k = PROFONDEUR_MOIS - 1; k >= 0; k--) moisServis.push(new Date(Date.UTC(a!, m! - 1 - k, 1)).toISOString().slice(0, 7));
   const retenu = new Set(moisServis);
 
-  CACHE = FLOTTE.flatMap((l) => {
+  /* Le parc léger (cadrage du 7 septembre 2026) : un véhicule de fonction
+     coûte son forfait carburant chaque mois — une charge fixe, sans plein ni
+     kilométrage, qui n'entre donc pas dans la consommation aux 100 km. Sa
+     maintenance viendra avec les fiches ; pour l'instant, la ligne porte le
+     forfait seul, sur la BU de l'agent. */
+  const regles = PARAMETRES_DEFAUT.parcLeger;
+  const forfaitPar = new Map(forfaitsCarburant().map((f) => [f.attributaireId, f.montantMensuel ?? regles.forfaitCarburantMensuel]));
+  const legers: DonneesVehicule[] = vehiculesLegers()
+    .filter((v) => v.immatriculation !== null && v.etat !== "a-reformer")
+    .map((v) => {
+      const forfait = v.attributaireId ? (forfaitPar.get(v.attributaireId) ?? 0) : 0;
+      return {
+        vehiculeId: v.id,
+        immatriculation: v.immatriculation!,
+        immatriculationAffichee: v.immatriculationAffichee,
+        libelle: `${v.marque} ${v.modele}`,
+        categorie: v.categorie,
+        categorieFlotte: "interne",
+        businessUnit: v.businessUnit,
+        site: v.departement,
+        statut: v.etat === "panne" ? "en-reparation" : "en-service",
+        referenceL100: REFERENCE_L100_LEGER,
+        ageAnnees: v.annee ? Number(AUJOURDHUI.slice(0, 4)) - v.annee : null,
+        mois: moisServis.map((mois) => ({ mois, km: 0, litres: 0, parPoste: forfait > 0 && mois >= DEBUT_FORFAITS ? { carburant: forfait } : {}, curatifs: 0, immobilisationJours: 0 })),
+      } satisfies DonneesVehicule;
+    });
+
+  CACHE = legers.concat(FLOTTE.flatMap((l) => {
     const f = fichePourImmatriculation(l.vehicule.immatriculation);
     if (!f) return [];
     const v = l.vehicule;
@@ -78,6 +111,6 @@ export function donneesCouts(): DonneesVehicule[] {
         mois: moisServis.map((mois) => parMois.get(mois) ?? { mois, km: 0, litres: 0, parPoste: {}, curatifs: 0, immobilisationJours: 0 }),
       } satisfies DonneesVehicule,
     ];
-  });
+  }));
   return CACHE;
 }

@@ -34,6 +34,7 @@ export async function enregistrerParametres(brut: Parametres): Promise<string | 
   const lignes = [
     { cle: "energie", valeur: p.energie, modifie_le: maintenant, modifie_par: moi.utilisateurId },
     { cle: "alertes", valeur: p.alertes, modifie_le: maintenant, modifie_par: moi.utilisateurId },
+    { cle: "parc-leger", valeur: p.parcLeger, modifie_le: maintenant, modifie_par: moi.utilisateurId },
   ];
   const ecriture = await client.from("parametre").upsert(lignes, { onConflict: "cle" });
   if (ecriture.error) return `Enregistrement refusé : ${ecriture.error.message}`;

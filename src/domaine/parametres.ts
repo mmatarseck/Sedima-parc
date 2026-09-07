@@ -121,10 +121,39 @@ export const REGLES_ALERTE_DEFAUT: ReglesAlerte = {
   prevenance: PREVENANCE_DEFAUT,
 };
 
+/**
+ * Le parc léger — cadrage du 7 septembre 2026 : la durée et la mensualité du
+ * plan car, le forfait carburant mensuel des véhicules de fonction, en
+ * paramètres, avec les valeurs par défaut données par le métier (cinq ans,
+ * 150 000 F par mois). Chaque dossier peut s'en écarter.
+ */
+export interface ParametresParcLeger {
+  planCarDureeMois: number;
+  planCarMensualite: number;
+  forfaitCarburantMensuel: number;
+}
+
+export const PARC_LEGER_DEFAUT: ParametresParcLeger = {
+  planCarDureeMois: 60,
+  planCarMensualite: 150_000,
+  forfaitCarburantMensuel: 150_000,
+};
+
+function normaliserParcLeger(brut: unknown): ParametresParcLeger {
+  const b = (brut ?? {}) as Partial<Record<keyof ParametresParcLeger, unknown>>;
+  const entier = (v: unknown, defaut: number) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.round(v) : defaut);
+  return {
+    planCarDureeMois: entier(b.planCarDureeMois, PARC_LEGER_DEFAUT.planCarDureeMois),
+    planCarMensualite: entier(b.planCarMensualite, PARC_LEGER_DEFAUT.planCarMensualite),
+    forfaitCarburantMensuel: entier(b.forfaitCarburantMensuel, PARC_LEGER_DEFAUT.forfaitCarburantMensuel),
+  };
+}
+
 export interface Parametres {
   documents: ParametresDocuments;
   energie: ParametresEnergie;
   alertes: ReglesAlerte;
+  parcLeger: ParametresParcLeger;
 }
 
 const standard = (d: Omit<DefinitionDocument, "standard">): DefinitionDocument => ({ ...d, standard: true });
@@ -192,6 +221,7 @@ export function prixCuve(date: string, p: Parametres = PARAMETRES_DEFAUT): numbe
 export const PARAMETRES_DEFAUT: Parametres = {
   energie: ENERGIE_DEFAUT,
   alertes: REGLES_ALERTE_DEFAUT,
+  parcLeger: PARC_LEGER_DEFAUT,
   documents: {
     types: [
       standard({ id: "carte-grise", libelle: "Carte grise", porteur: "vehicule", applicabilite: "tous", validiteMois: null, critique: true }),
@@ -243,6 +273,7 @@ export function fusionnerParametres(partiel: unknown): Parametres {
     documents: { types },
     energie: { baremes: baremes.length > 0 ? baremes : BAREMES_DEFAUT.map((b) => ({ ...b })), capaciteCuve },
     alertes: normaliserReglesAlerte((p as { alertes?: unknown }).alertes),
+    parcLeger: normaliserParcLeger((p as { parcLeger?: unknown }).parcLeger),
   };
 }
 

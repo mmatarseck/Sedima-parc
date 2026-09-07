@@ -48,6 +48,7 @@ async function depuisLaBase(): Promise<Parametres> {
   return fusionnerParametres({
     energie: parCle.get("energie"),
     alertes: parCle.get("alertes"),
+    parcLeger: parCle.get("parc-leger"),
     documents: types.data.length > 0 ? { types: types.data.map((t) => ({ id: t.id, libelle: t.libelle, porteur: t.porteur, applicabilite: t.applicabilite, validiteMois: t.validite_mois, critique: t.critique, standard: t.standard })) } : undefined,
   });
 }

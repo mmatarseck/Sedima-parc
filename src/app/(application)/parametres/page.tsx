@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BellRing, ChevronRight, FileCheck2, Fuel, ListChecks, LockKeyhole, Trophy, Users, Wrench } from "lucide-react";
+import { BellRing, Car, ChevronRight, FileCheck2, Fuel, ListChecks, LockKeyhole, Trophy, Users, Wrench } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { titrePage } from "@/domaine/marque";
 
@@ -27,6 +27,7 @@ const SECTIONS = [
   { href: "/parametres/notifications", libelle: "Mes notifications", precision: "Ce que vous recevez, et par quel canal — réglage de votre compte", icone: BellRing, livre: true },
   { href: "/parametres/alertes", libelle: "Règles d'alerte", precision: "Ce qu'un compte reçoit sans rien toucher : destinataires par famille et délai de prévenance, pour toute l'organisation", icone: BellRing, livre: true },
   { href: "/parametres/sqdcm", libelle: "Barème SQDCM des chauffeurs", precision: "Indicateurs, objectifs, tolérances, poids des piliers, tranches de prime — le barème que le chauffeur doit pouvoir lire", icone: Trophy, livre: true },
+  { href: "/parametres/parc-leger", libelle: "Parc léger", precision: "Durée et mensualité du plan car, forfait carburant mensuel des véhicules de fonction — les valeurs par défaut, que chaque dossier peut préciser", icone: Car, livre: true },
 ];
 
 export default function PageParametres() {

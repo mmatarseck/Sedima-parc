@@ -503,13 +503,53 @@ le point d'ancrage naturel.
   régime `exploitation` ; les coûts complets, le budget et la maintenance
   couvrent tout ; un rapport « Parc léger » par véhicule et par attributaire.
 
-**Questions ouvertes** : la durée exacte du plan car ; si la mensualité se
-suit dans l'application ou seulement la date de cession ; le montant du
-forfait carburant (par niveau ? par personne ?) et s'il se rapproche des
-consommations réelles de la carte ; la BU de rattachement des véhicules de
-fonction et de service pour le budget (siège, support ?) ; si les véhicules
-de service sont affectés à un pool ou à une personne nommée ; si les vingt
-véhicules récents sont déjà dans l'inventaire de référence.
+**Réponses du métier (7 septembre, plus tard)** : durée et montants **en
+paramètres**, avec cinq ans et 150 000 F par mois en valeurs par défaut ; la
+charge se rattache à **la BU de l'agent** ; les véhicules de service vont
+**aux deux** (pool ou personne nommée) ; le reste est **dans le dossier DO**
+(`6. Logistique & Distribution`), où tout doit figurer.
+
+**Ce qui a été construit le jour même** (premier incrément, en démonstration) :
+
+- `src/domaine/parc-leger.ts` — régime d'usage (`exploitation`, `service`,
+  `fonction`), état du véhicule léger (actif, pool, panne, à réformer, à
+  recevoir), attributaire (personne qui n'est pas un chauffeur, avec sa BU),
+  plan car (mensualité et durée propres ou héritées des paramètres, début,
+  statut) et son échéancier, forfait carburant ;
+- **Paramètres › Parc léger** (`parcLeger` dans `Parametres`, lu et écrit en
+  base sous la clé `parc-leger`) : durée du plan car (60 mois), mensualité
+  (150 000 F), forfait carburant mensuel (150 000 F, **hypothèse à confirmer** :
+  la réponse « 150 000 F/mois » visait le plan car ou le forfait) ;
+- `src/donnees/parc-leger-demo.ts` — **l'inventaire réel du dossier** : les
+  64 véhicules de « PARC LEGERS AFFECTATION 2026 » (mai 2026), les 10 du
+  plan car (feuille CAR-PLAN), 7 motos, 7 véhicules des Almadies, et le plan
+  de cascade d'août 2026 (« Plan d'affectation des véhicules légers vf ») —
+  lot 1 reçu (5, immatriculés), lot 2 à commander (15, La Sénégalaise de
+  l'Automobile, 19,94 M F l'unité, 299,1 M F), les 11 réaffectations, les
+  8 réformes, les 3 transferts vers la distribution et le pool. Quand mai
+  et août divergent, août fait foi. 116 véhicules au total ;
+- **Exploitation › Parc léger** (`EcranParcLeger`) : compteurs (actifs, pool,
+  à recevoir, en panne, à réformer, forfaits par mois, mensualités par mois),
+  filtres régime / état / département et recherche, une table avec
+  attributaire, fonction, département et BU, charge mensuelle, état, lot et
+  observation, et le rappel de ce que le parc léger change aux charges ;
+- **Coûts** : chaque véhicule de fonction en circulation porte son forfait
+  carburant comme dépense mensuelle (`couts-demo.ts`, sur la BU de l'agent,
+  depuis janvier 2025), sans plein ni kilométrage. Le rapport « Coût par
+  catégorie » compte désormais 112 véhicules et 296 M F sur douze mois
+  (contre 19 et 237 M F) ; le tableau de bord, lui, reste sur les faits de
+  transport — c'est voulu, et à dire au métier.
+
+**Ce qui reste** : la maintenance des véhicules légers (aucun historique
+chiffré dans le dossier, seulement la note « Parc Automobile Réalisation
+pour légers » qui décrit les travaux) ; les dates de début des plans car
+(la feuille CAR-PLAN n'en a pas) ; le budget (les forfaits n'entrent pas
+encore dans `budget-demo`) ; l'intégration des véhicules légers à la liste
+Flotte avec un filtre de régime, et à la base — migration 0004 : colonne
+`regime` sur `vehicule`, tables `attributaire`, `attribution_legere`,
+`plan_car`, `forfait_carburant`, puis le seed. Les attributaires du plan car
+reçoivent aujourd'hui un forfait carburant comme les autres véhicules de
+fonction : à confirmer.
 
 **À faire, dans l'ordre.**
 
