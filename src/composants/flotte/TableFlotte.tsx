@@ -9,7 +9,7 @@ import { PhotoVehicule } from "@/composants/vehicule/PhotoVehicule";
 import {
   BUSINESS_UNIT,
   CATEGORIE_FLOTTE,
-  CATEGORIE_VEHICULE,
+  libelleCategorie,
   STATUT_VEHICULE,
   TYPE_DOCUMENT,
   formulerEcheance,
@@ -88,7 +88,7 @@ const COLONNES: ColonneListe<LigneFlotte>[] = [
   { cle: "modele", libelle: "Modèle", parDefaut: true, largeur: 148, rendu: (l) => <span className="block truncate">{l.vehicule.appellation}</span> },
   { cle: "vin", libelle: "VIN", parDefaut: false, largeur: 190, rendu: (l) => <span className="code block truncate text-texte-2">{l.vehicule.vin ?? "—"}</span> },
   { cle: "energie", libelle: "Énergie", parDefaut: false, largeur: 110, rendu: (l) => (l.vehicule.energie ? ENERGIE[l.vehicule.energie] : <span className="text-attenue-2">—</span>) },
-  { cle: "categorie", libelle: "Catégorie", parDefaut: true, largeur: 128, rendu: (l) => <span className="block truncate">{CATEGORIE_VEHICULE[l.vehicule.categorie]}</span> },
+  { cle: "categorie", libelle: "Catégorie", parDefaut: true, largeur: 128, rendu: (l) => <span className="block truncate">{libelleCategorie(l.vehicule)}</span> },
   /* Le régime d'usage (cadrage du 7 septembre 2026) : exploitation, service,
      fonction — et le plan car en mention, parce qu'il change le devenir du véhicule. */
   {

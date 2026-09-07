@@ -102,7 +102,14 @@ export interface Vehicule {
   marque: string;
   appellation: string;
   typeModele: string | null;
+  /** La famille, clé des règles : documents, plafond kilométrique, entretien, silhouette. */
   categorie: CategorieVehicule;
+  /**
+   * La catégorie ajoutée par le métier dans Paramètres › Véhicules (« cat-… »),
+   * quand le véhicule en porte une : elle se nomme à sa place, et sa famille
+   * reste dans `categorie`. Absente ou nulle : la famille suffit.
+   */
+  categorieMetier?: string | null;
   categorieFlotte: CategorieFlotte;
   /** Coché sur la fiche : vracs, transport de poussins, frigorifiques. Sert à D_TICV. */
   transportSpecial: boolean;

@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ChampEdition, Creation } from "@/domaine/cloture";
 import type { TypeTransaction } from "@/domaine/reference";
 import { lireCreations, lireToutesCreations, lireToutesSurcharges } from "@/lib/clotures-demo";
-import { CHAMPS } from "./champs";
+import { champsCourants } from "./champs";
 import { ModaleTransaction } from "./ModaleTransaction";
 
 /* ============================================================================
@@ -129,7 +129,7 @@ export function FournisseurEdition({ sujet, href, children }: { sujet: string; h
           type={courante.d.type}
           numero={courante.d.numero}
           titre={courante.d.titre}
-          champs={courante.d.champs ?? CHAMPS[courante.d.type]}
+          champs={courante.d.champs ?? champsCourants(courante.d.type)}
           valeurs={surcharger({ numero: courante.d.numero, ...courante.d.valeurs })}
           href={href}
           onFermer={() => setCourante(null)}

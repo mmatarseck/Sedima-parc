@@ -611,6 +611,46 @@ lus en base (encore en démonstration). Les attributaires du plan car reçoivent
 aujourd'hui un forfait carburant comme les autres véhicules de fonction : à
 confirmer.
 
+### Le référentiel des véhicules en paramètres (7 septembre 2026, soir)
+
+Demande du métier : « maintenir les paramètres des véhicules en paramètres,
+qui pourront être rajoutés au fur et à mesure qu'on crée des véhicules —
+marque, modèle, catégorie ». Le dossier parc en montre le besoin : la même
+marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
+
+- **Paramètres › Véhicules** (`EcranVehicules.tsx`, clé `vehicules` de
+  `parametre`) : les marques et leurs modèles, les catégories. Chaque ligne
+  dit combien de véhicules la portent — ce qui se retire est ce que rien ne
+  porte. Les marques que le parc porte sans que la liste les connaisse
+  s'intègrent d'un clic. La liste de départ (`MARQUES_DEFAUT`) est celle du
+  dossier de septembre 2026, orthographiée une fois.
+- **Le formulaire** (`champsVehicule()`, `champsIdentiteVehicule()`) : marque
+  et modèle en **suggestion** — nouveau type de champ, texte libre avec une
+  liste (`datalist`), les modèles filtrés par la marque saisie — ; la
+  catégorie en choix parmi les paramètres. À la création, une marque ou un
+  modèle inconnus entrent au référentiel (`apprendreVehicule`, appelé par
+  `apresCreation` dans `EcranFlotte`). Les noms se rapprochent sans accent
+  ni casse (`cleNom`).
+- **Les catégories** : les huit livrées sont des **familles**, fixes
+  (renommables, jamais retirées) parce qu'elles portent les règles —
+  documents des poids lourds, plafond kilométrique, programme d'entretien,
+  silhouette. Une catégorie ajoutée (« cat-… ») se rattache à une famille et
+  en suit les règles. Le véhicule garde la famille dans `categorie` et
+  l'ajout dans `categorieMetier` (migration `0006_categorie_metier.sql`,
+  colonne `categorie_metier`) ; `libelleCategorie(v)` nomme le véhicule
+  partout (liste, fiche, caractéristiques), les rapports comptent par
+  famille. Usages et énergies restent fixes : ils filtrent la disponibilité et
+  fixent le prix du plein.
+- Vérifié dans le navigateur en démonstration : 28 marques et 62 modèles
+  proposés, liste des modèles réduite à ceux de la marque saisie, marque
+  « Dongfeng » et modèle « Captain » appris à la création, catégorie
+  « Citerne à eau (Tracteur) » ajoutée, enregistrée et proposée au formulaire,
+  véhicule créé sous ce nom dans la liste. Seed régénéré (`parametre` compte
+  trois lignes), rejoué dans PGlite avec 0001 à 0006, zéro erreur. **À jouer
+  sur Supabase : la migration 0006, puis la partie 3 du seed (celle qui
+  porte `parametre`)** — sans 0006, la lecture de la flotte échoue sur la
+  colonne absente.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

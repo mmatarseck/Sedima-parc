@@ -130,13 +130,17 @@ export function EcranReferentiels({ blocs }: { blocs: BlocReferentiel[] }) {
       <p className="meta shrink-0 rounded-[10px] border-l-[3px] border-l-vigilance bg-surface px-4 py-3 leading-relaxed">
         <strong className="font-semibold text-texte">Pourquoi rien ne se modifie ici.</strong> Ces valeurs sont les clés des enregistrements, pas des libellés décoratifs : supprimer une catégorie que
         douze véhicules portent laisse douze fiches sans catégorie, et aucune migration ne devine ce qu&apos;il fallait mettre à la place. La colonne « usages » dit ce qui pourrait disparaître sans
-        rien casser. Les deux référentiels qui se modifient déjà ont leur propre écran, parce qu&apos;ils ont leur propre reprise :{" "}
+        rien casser. Les référentiels qui se modifient déjà ont leur propre écran, parce qu&apos;ils ont leur propre reprise :{" "}
         <Link href="/parametres/documents" className="font-medium text-accent-fonce hover:text-accent">
           les documents
-        </Link>{" "}
-        et{" "}
+        </Link>
+        ,{" "}
         <Link href="/parametres/entretien" className="font-medium text-accent-fonce hover:text-accent">
           les programmes d&apos;entretien
+        </Link>{" "}
+        et{" "}
+        <Link href="/parametres/vehicules" className="font-medium text-accent-fonce hover:text-accent">
+          les marques, modèles et catégories de véhicule
         </Link>
         .
       </p>

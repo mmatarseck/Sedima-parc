@@ -19,11 +19,12 @@ import { GARAGES } from "@/donnees/fiche-demo";
 import { listePrestataires, optionsPrestataires, optionsPrestatairesParNumero } from "@/donnees/prestataires-demo";
 import { camionsTiers, chauffeursTiers } from "@/donnees/flotte-tierce-demo";
 import { lireCreations } from "@/lib/clotures-demo";
-import { APTITUDE, BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_OBSERVATION, CATEGORIE_VEHICULE, GRAVITE_OBSERVATION, MISSION_INCIDENT, MOTIF_IMMOBILISATION, MOTIF_INDISPONIBILITE, NATURE_INCIDENT, POSTE_DEPENSE, RESPONSABILITE, ROLE_AFFECTATION, STATUT_DECLARATION, STATUT_OBSERVATION, STATUT_VEHICULE, STATUT_VISITE, TYPE_INCIDENT, TYPE_SANCTION, TYPE_VISITE, USAGE_VEHICULE } from "@/domaine/libelles";
+import { APTITUDE, BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_OBSERVATION, GRAVITE_OBSERVATION, MISSION_INCIDENT, MOTIF_IMMOBILISATION, MOTIF_INDISPONIBILITE, NATURE_INCIDENT, POSTE_DEPENSE, RESPONSABILITE, ROLE_AFFECTATION, STATUT_DECLARATION, STATUT_OBSERVATION, STATUT_VEHICULE, STATUT_VISITE, TYPE_INCIDENT, TYPE_SANCTION, TYPE_VISITE, USAGE_VEHICULE } from "@/domaine/libelles";
 import type { TypeTransaction } from "@/domaine/reference";
 import type { CategorieVehicule } from "@/domaine/types";
 import { listeChauffeurs } from "@/donnees/chauffeurs-demo";
 import { FLOTTE, SITES } from "@/donnees/parc-demo";
+import { cleNom, nomMarqueConnu } from "@/domaine/parametres";
 import { lireParametres } from "@/lib/parametres-demo";
 
 const options = (r: Record<string, string>) => Object.entries(r).map(([valeur, libelle]) => ({ valeur, libelle }));
@@ -56,6 +57,44 @@ function raisonSocialeDe(numero: string): string {
 }
 
 const DATE = (cle: string, libelle = "Date"): ChampEdition => ({ cle, libelle, type: "date", obligatoire: true });
+
+/*
+ * Le référentiel des véhicules (Paramètres › Véhicules), relu à chaque
+ * ouverture du formulaire : marques et modèles en suggestion — on choisit ce
+ * qui existe, on écrit ce qui n'existe pas encore, et la création l'apprend —,
+ * catégories en choix, familles et ajouts du métier confondus.
+ */
+function champsIdentiteVehicule(): ChampEdition[] {
+  const { marques, categories } = lireParametres().vehicules;
+  /* Les marques que le parc porte déjà sans être au référentiel se proposent
+     aussi, sous le nom du référentiel quand il les connaît. */
+  const noms = new Map(marques.map((m) => [cleNom(m.nom), m.nom]));
+  for (const l of FLOTTE) if (!noms.has(cleNom(l.vehicule.marque))) noms.set(cleNom(l.vehicule.marque), nomMarqueConnu(l.vehicule.marque, marques));
+  const optionsMarques = [...noms.values()].sort((a, b) => a.localeCompare(b, "fr")).map((nom) => ({ valeur: nom, libelle: nom }));
+  const modelesDe = (saisie: Record<string, string | boolean>) => {
+    const cle = cleNom(String(saisie.marque ?? ""));
+    const marque = marques.find((m) => cleNom(m.nom) === cle);
+    const modeles = marque ? marque.modeles : cle ? [] : marques.flatMap((m) => m.modeles);
+    return modeles.map((m) => ({ valeur: m, libelle: m }));
+  };
+  return [
+    { cle: "marque", libelle: "Marque", type: "suggestion", options: optionsMarques, obligatoire: true },
+    { cle: "appellation", libelle: "Modèle (appellation commerciale)", type: "suggestion", suggestionsDe: modelesDe, obligatoire: true },
+    { cle: "vin", libelle: "N° de châssis (VIN)", type: "texte" },
+    {
+      cle: "categorie",
+      libelle: "Catégorie",
+      type: "choix",
+      options: categories.map((c) => ({ valeur: c.id, libelle: c.standard ? c.libelle : `${c.libelle} (${categories.find((f) => f.id === c.famille)?.libelle ?? c.famille})` })),
+      obligatoire: true,
+    },
+  ];
+}
+
+/** Les champs d'un type, ceux du véhicule relus des paramètres à chaque appel. */
+export function champsCourants(type: TypeTransaction): ChampEdition[] {
+  return type === "vehicule" ? champsVehicule() : CHAMPS[type];
+}
 
 export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
   /* Ni la mise à disposition ni la prestation ne se saisissent encore dans
@@ -301,42 +340,9 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "actif", libelle: "Actif (proposé au choix dans les formulaires)", type: "oui-non" },
     { cle: "note", libelle: "Note", type: "texte-long" },
   ],
-  vehicule: [
-    /* L'adresse de la photo se saisit ici ; le cadre de l'en-tête sait aussi
-       téléverser un fichier, qu'il redimensionne avant d'enregistrer. */
-    { cle: "photo", libelle: "Photo (adresse)", type: "texte" },
-    { cle: "marque", libelle: "Marque", type: "texte", obligatoire: true },
-    { cle: "appellation", libelle: "Appellation commerciale", type: "texte", obligatoire: true },
-    { cle: "vin", libelle: "N° de châssis (VIN)", type: "texte" },
-    { cle: "categorie", libelle: "Catégorie", type: "choix", options: options(CATEGORIE_VEHICULE), obligatoire: true },
-    { cle: "categorieFlotte", libelle: "Catégorie de flotte", type: "choix", options: options(CATEGORIE_FLOTTE), obligatoire: true },
-    { cle: "usage", libelle: "Usage (vrac, frigorifique, plateau…)", type: "choix", options: options(USAGE_VEHICULE), obligatoire: true },
-    { cle: "businessUnit", libelle: "Business unit", type: "choix", options: options(BUSINESS_UNIT) },
-    { cle: "siteId", libelle: "Site", type: "choix", options: optionsSites() },
-    { cle: "energie", libelle: "Énergie", type: "choix", options: options(ENERGIE), obligatoire: true },
-    { cle: "transportSpecial", libelle: "Transport spécial", type: "oui-non" },
-    { cle: "engage", libelle: "Engagé au parc (compte dans D_TDPA)", type: "oui-non" },
-    /* Les caractéristiques de l'onglet du même nom : identification, technique,
-       rattachement, valeur. Une seule modale, une seule trace. */
-    { cle: "typeModele", libelle: "Type / modèle", type: "texte" },
-    { cle: "premiereMiseEnCirculation", libelle: "1re mise en circulation", type: "date" },
-    { cle: "dateImmatriculation", libelle: "Date d'immatriculation", type: "date" },
-    { cle: "region", libelle: "Région", type: "texte" },
-    { cle: "puissanceCv", libelle: "Puissance", type: "nombre", unite: "CV" },
-    { cle: "cylindree", libelle: "Cylindrée", type: "nombre", unite: "cm³" },
-    { cle: "ptac", libelle: "PTAC", type: "nombre", unite: "kg" },
-    { cle: "ptra", libelle: "PTRA", type: "nombre", unite: "kg" },
-    { cle: "poidsVide", libelle: "Poids à vide", type: "nombre", unite: "kg" },
-    { cle: "chargeUtile", libelle: "Charge utile", type: "nombre", unite: "kg" },
-    { cle: "capaciteReservoir", libelle: "Réservoir", type: "nombre", unite: "L" },
-    { cle: "entite", libelle: "Entité", type: "texte" },
-    { cle: "utilisation", libelle: "Utilisation", type: "texte" },
-    { cle: "regimePropriete", libelle: "Régime de propriété", type: "texte" },
-    { cle: "gpsActif", libelle: "Télématique (balise active)", type: "oui-non" },
-    { cle: "valeurAcquisition", libelle: "Valeur d'acquisition", type: "nombre", unite: "F" },
-    { cle: "dureeAmortissementAnnees", libelle: "Durée d'amortissement", type: "nombre", unite: "ans" },
-    { cle: "commentaire", libelle: "Commentaire", type: "texte-long" },
-  ],
+  /* Les champs du véhicule se construisent par `champsVehicule()` : marque,
+     modèle et catégorie viennent des paramètres, relus à chaque ouverture. */
+  vehicule: [],
   chauffeur: [
     { cle: "prenom", libelle: "Prénom", type: "texte", obligatoire: true },
     { cle: "nom", libelle: "Nom", type: "texte", obligatoire: true },
@@ -374,6 +380,45 @@ export const CHAMPS_FRAIS: ChampEdition[] = [
   { cle: "reference", libelle: "Pièce caisse", type: "texte" },
   { cle: "justificatif", libelle: "Justificatif fourni", type: "oui-non" },
 ];
+
+/* -- Le véhicule : identité tirée des paramètres, puis le reste de la fiche ---- */
+
+/** Ce qui se modifie sur une fiche véhicule après sa création. */
+export function champsVehicule(): ChampEdition[] {
+  return [
+    /* L'adresse de la photo se saisit ici ; le cadre de l'en-tête sait aussi
+       téléverser un fichier, qu'il redimensionne avant d'enregistrer. */
+    { cle: "photo", libelle: "Photo (adresse)", type: "texte" },
+    ...champsIdentiteVehicule(),
+    { cle: "categorieFlotte", libelle: "Catégorie de flotte", type: "choix", options: options(CATEGORIE_FLOTTE), obligatoire: true },
+    { cle: "usage", libelle: "Usage (vrac, frigorifique, plateau…)", type: "choix", options: options(USAGE_VEHICULE), obligatoire: true },
+    { cle: "businessUnit", libelle: "Business unit", type: "choix", options: options(BUSINESS_UNIT) },
+    { cle: "siteId", libelle: "Site", type: "choix", options: optionsSites() },
+    { cle: "energie", libelle: "Énergie", type: "choix", options: options(ENERGIE), obligatoire: true },
+    { cle: "transportSpecial", libelle: "Transport spécial", type: "oui-non" },
+    { cle: "engage", libelle: "Engagé au parc (compte dans D_TDPA)", type: "oui-non" },
+    /* Les caractéristiques de l'onglet du même nom : identification, technique,
+       rattachement, valeur. Une seule modale, une seule trace. */
+    { cle: "typeModele", libelle: "Type / modèle", type: "texte" },
+    { cle: "premiereMiseEnCirculation", libelle: "1re mise en circulation", type: "date" },
+    { cle: "dateImmatriculation", libelle: "Date d'immatriculation", type: "date" },
+    { cle: "region", libelle: "Région", type: "texte" },
+    { cle: "puissanceCv", libelle: "Puissance", type: "nombre", unite: "CV" },
+    { cle: "cylindree", libelle: "Cylindrée", type: "nombre", unite: "cm³" },
+    { cle: "ptac", libelle: "PTAC", type: "nombre", unite: "kg" },
+    { cle: "ptra", libelle: "PTRA", type: "nombre", unite: "kg" },
+    { cle: "poidsVide", libelle: "Poids à vide", type: "nombre", unite: "kg" },
+    { cle: "chargeUtile", libelle: "Charge utile", type: "nombre", unite: "kg" },
+    { cle: "capaciteReservoir", libelle: "Réservoir", type: "nombre", unite: "L" },
+    { cle: "entite", libelle: "Entité", type: "texte" },
+    { cle: "utilisation", libelle: "Utilisation", type: "texte" },
+    { cle: "regimePropriete", libelle: "Régime de propriété", type: "texte" },
+    { cle: "gpsActif", libelle: "Télématique (balise active)", type: "oui-non" },
+    { cle: "valeurAcquisition", libelle: "Valeur d'acquisition", type: "nombre", unite: "F" },
+    { cle: "dureeAmortissementAnnees", libelle: "Durée d'amortissement", type: "nombre", unite: "ans" },
+    { cle: "commentaire", libelle: "Commentaire", type: "texte-long" },
+  ];
+}
 
 /* -- À la création : ce qui se fixe une fois pour toutes ---------------------- */
 
@@ -448,10 +493,7 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
       return [
         { cle: "immatriculation", libelle: "Immatriculation", type: "texte", obligatoire: true },
         { cle: "photo", libelle: "Photo (adresse)", type: "texte" },
-        { cle: "marque", libelle: "Marque", type: "texte", obligatoire: true },
-        { cle: "appellation", libelle: "Appellation commerciale", type: "texte", obligatoire: true },
-        { cle: "vin", libelle: "N° de châssis (VIN)", type: "texte" },
-        { cle: "categorie", libelle: "Catégorie", type: "choix", options: options(CATEGORIE_VEHICULE), obligatoire: true },
+        ...champsIdentiteVehicule(),
         { cle: "categorieFlotte", libelle: "Catégorie de flotte", type: "choix", options: options(CATEGORIE_FLOTTE), obligatoire: true },
         { cle: "usage", libelle: "Usage (vrac, frigorifique, plateau…)", type: "choix", options: options(USAGE_VEHICULE), obligatoire: true },
         { cle: "businessUnit", libelle: "Business unit", type: "choix", options: options(BUSINESS_UNIT) },

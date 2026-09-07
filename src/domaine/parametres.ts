@@ -16,7 +16,7 @@
  * la réglementation lui accorde), et l'échéancier part de là.
  * ==========================================================================*/
 
-import type { TypeDocument } from "./types";
+import type { CategorieVehicule, TypeDocument } from "./types";
 import { ALERTES, PREVENANCE_DEFAUT, type FamilleAlerte } from "./alertes";
 import { ROLES, type Role } from "./roles";
 
@@ -147,11 +147,194 @@ function normaliserParcLeger(brut: unknown): ParametresParcLeger {
   };
 }
 
+/* ---- Référentiel des véhicules -----------------------------------------
+ * Demande du métier du 7 septembre 2026 : « maintenir les paramètres des
+ * véhicules en paramètres, qui pourront être rajoutés au fur et à mesure
+ * qu'on crée des véhicules — marque, modèle, catégorie ».
+ *
+ * Le dossier parc montre pourquoi : la même marque y est écrite MITSUBISHI,
+ * MITSIBUSHI et MITSIBUHSI, la même remorque Lecitrailer et LECITRAILE. Une
+ * liste tenue ici est proposée au formulaire ; ce qui s'y saisit de nouveau
+ * y entre aussitôt, et l'orthographe ne dérive plus.
+ *
+ * Les catégories sont d'une autre nature : ce sont les clés des règles
+ * (poids lourd ou léger pour les documents, plafond kilométrique, programme
+ * d'entretien, silhouette). Les huit livrées sont donc des **familles**,
+ * fixes ; le métier en ajoute autant qu'il veut, chacune rattachée à la
+ * famille dont elle suit les règles. Un véhicule porte la famille dans
+ * `categorie` et, s'il y a lieu, la catégorie ajoutée dans `categorieMetier`.
+ */
+
+export interface MarqueVehicule {
+  nom: string;
+  modeles: string[];
+}
+
+export interface CategorieVehiculeParametree {
+  /** « camion » pour une famille livrée, « cat-… » pour une catégorie ajoutée. */
+  id: string;
+  libelle: string;
+  /** La famille livrée dont la catégorie suit les règles. */
+  famille: CategorieVehicule;
+  /** Livrée avec l'application : c'est une famille, elle ne se retire pas. */
+  standard: boolean;
+}
+
+export interface ParametresVehicules {
+  marques: MarqueVehicule[];
+  categories: CategorieVehiculeParametree[];
+}
+
+export const FAMILLES_VEHICULE: readonly CategorieVehicule[] = ["camion", "tracteur", "semi-remorque", "camionnette", "vehicule-leger", "bus", "moto", "engin"];
+
+const LIBELLE_FAMILLE: Record<CategorieVehicule, string> = {
+  camion: "Camion",
+  tracteur: "Tracteur",
+  "semi-remorque": "Semi-remorque",
+  camionnette: "Camionnette",
+  "vehicule-leger": "Véhicule léger",
+  bus: "Bus",
+  moto: "Moto",
+  engin: "Engin",
+};
+
+export const CATEGORIES_STANDARD: CategorieVehiculeParametree[] = FAMILLES_VEHICULE.map((f) => ({ id: f, libelle: LIBELLE_FAMILLE[f], famille: f, standard: true }));
+
+/*
+ * La liste de départ des marques et modèles : ce que le dossier parc de
+ * septembre 2026 contient, orthographié une fois pour toutes. Elle n'est
+ * qu'un point de départ — chaque création de véhicule la complète.
+ */
+export const MARQUES_DEFAUT: MarqueVehicule[] = [
+  { nom: "Renault", modeles: ["Kerax", "Magnum", "Premium", "Lander", "Master", "Duster", "Oroch", "Stepway"] },
+  { nom: "Tata", modeles: ["LPT 1618", "LPT 1109", "LPT 613"] },
+  { nom: "Mitsubishi", modeles: ["L200", "L200 Sportero", "ASX"] },
+  { nom: "Toyota", modeles: ["Hilux", "Corolla Cross", "Coaster", "Hiace", "Prado", "Land Cruiser"] },
+  { nom: "Citroën", modeles: ["Berlingo", "C-Elysée", "C3", "C3 Aircross"] },
+  { nom: "Hyundai", modeles: ["Santa Fe", "Tucson", "Creta", "Sonata", "ix35"] },
+  { nom: "Kia", modeles: ["Sorento", "Sportage", "Sonet", "Optima"] },
+  { nom: "Suzuki", modeles: ["Vitara", "Moto 125"] },
+  { nom: "Peugeot", modeles: ["Boxer", "508", "5008"] },
+  { nom: "Ford", modeles: ["EcoSport", "Ranger", "Focus"] },
+  { nom: "BAIC", modeles: ["X7"] },
+  { nom: "Iveco", modeles: ["AT260", "Eurocargo"] },
+  { nom: "MAN", modeles: ["TGM"] },
+  { nom: "FAW", modeles: ["CA4250"] },
+  { nom: "JAC", modeles: ["HFC9640"] },
+  { nom: "Mercedes", modeles: ["Sprinter", "Classe C", "4Matic"] },
+  { nom: "Force Motors", modeles: ["Autocar 24 places"] },
+  { nom: "Cubas Segre", modeles: ["Citerne vrac"] },
+  { nom: "Lecitrailer", modeles: ["Citerne vrac", "Plateau nu"] },
+  { nom: "Trailor", modeles: ["Plateau nu"] },
+  { nom: "Schmitz", modeles: ["Semi benne"] },
+  { nom: "Coder", modeles: ["Citerne à eau"] },
+  { nom: "Yamaha", modeles: ["Majesty 250"] },
+  { nom: "Caterpillar", modeles: ["966C"] },
+  { nom: "Land Rover", modeles: ["Range Rover Sport"] },
+  { nom: "Lexus", modeles: ["LX570"] },
+  { nom: "Chrysler", modeles: ["Grand Voyager"] },
+  { nom: "Jeep", modeles: [] },
+  { nom: "Nissan", modeles: ["Rogue"] },
+];
+
+export const VEHICULES_DEFAUT: ParametresVehicules = {
+  marques: MARQUES_DEFAUT,
+  categories: CATEGORIES_STANDARD,
+};
+
+/** Clé de rapprochement d'un nom : « MITSUBISHI », « Mitsubishi » et « mitsubishi  » sont la même marque. */
+export function cleNom(nom: string): string {
+  return nom
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** « Mitsubishi » quel que soit le nom saisi, si la marque est connue ; sinon le nom saisi, nettoyé. */
+export function nomMarqueConnu(nom: string, marques: MarqueVehicule[]): string {
+  const cle = cleNom(nom);
+  return marques.find((m) => cleNom(m.nom) === cle)?.nom ?? nom.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Les marques complétées d'une marque et d'un modèle : ce qu'une création de
+ * véhicule apprend. Rend la même liste si rien n'est nouveau, pour que
+ * l'appelant sache s'il y a quelque chose à enregistrer.
+ */
+export function apprendreMarqueModele(marques: MarqueVehicule[], marque: string, modele: string | null): MarqueVehicule[] {
+  const nom = marque.replace(/\s+/g, " ").trim();
+  if (!nom) return marques;
+  const cle = cleNom(nom);
+  const mod = (modele ?? "").replace(/\s+/g, " ").trim();
+  const existante = marques.find((m) => cleNom(m.nom) === cle);
+  if (!existante) return [...marques, { nom, modeles: mod ? [mod] : [] }].sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+  if (!mod || existante.modeles.some((x) => cleNom(x) === cleNom(mod))) return marques;
+  return marques.map((m) => (m === existante ? { ...m, modeles: [...m.modeles, mod].sort((a, b) => a.localeCompare(b, "fr")) } : m));
+}
+
+/** « cat-citerne-eau » : un identifiant lisible, unique parmi les existants. */
+export function nouvelIdCategorie(libelle: string, existants: CategorieVehiculeParametree[]): string {
+  const base = `cat-${identifiant(libelle)}`.replace(/-$/, "") || "cat-nouvelle";
+  let id = base;
+  let n = 2;
+  while (existants.some((c) => c.id === id)) id = `${base}-${n++}`;
+  return id;
+}
+
+/** La famille d'une catégorie, livrée ou ajoutée ; la famille elle-même si l'identifiant est inconnu. */
+export function familleDe(id: string, categories: CategorieVehiculeParametree[] = VEHICULES_DEFAUT.categories): CategorieVehicule {
+  const c = categories.find((x) => x.id === id);
+  if (c) return c.famille;
+  return (FAMILLES_VEHICULE as readonly string[]).includes(id) ? (id as CategorieVehicule) : "camion";
+}
+
+function normaliserVehicules(brut: unknown): ParametresVehicules {
+  const b = (brut ?? {}) as Partial<Record<keyof ParametresVehicules, unknown>>;
+  /* Les marques : une par nom, sans doublon ni modèle vide, triées. */
+  const marques: MarqueVehicule[] = [];
+  if (Array.isArray(b.marques)) {
+    for (const m of b.marques) {
+      if (!m || typeof m !== "object") continue;
+      const nom = typeof (m as MarqueVehicule).nom === "string" ? (m as MarqueVehicule).nom.replace(/\s+/g, " ").trim() : "";
+      if (!nom || marques.some((x) => cleNom(x.nom) === cleNom(nom))) continue;
+      const bruts = Array.isArray((m as MarqueVehicule).modeles) ? (m as MarqueVehicule).modeles : [];
+      const modeles: string[] = [];
+      for (const x of bruts) {
+        const mod = typeof x === "string" ? x.replace(/\s+/g, " ").trim() : "";
+        if (mod && !modeles.some((y) => cleNom(y) === cleNom(mod))) modeles.push(mod);
+      }
+      marques.push({ nom, modeles: modeles.sort((x, y) => x.localeCompare(y, "fr")) });
+    }
+  }
+  marques.sort((x, y) => x.nom.localeCompare(y.nom, "fr"));
+
+  /* Les catégories : les huit familles toujours présentes (renommables, jamais
+     retirées), puis les ajouts, chacun rattaché à une famille connue. */
+  const bruts = Array.isArray(b.categories) ? b.categories : [];
+  const categories: CategorieVehiculeParametree[] = CATEGORIES_STANDARD.map((s) => {
+    const lu = bruts.find((c) => c && typeof c === "object" && (c as CategorieVehiculeParametree).id === s.id) as Partial<CategorieVehiculeParametree> | undefined;
+    const libelle = typeof lu?.libelle === "string" && lu.libelle.trim() ? lu.libelle.trim() : s.libelle;
+    return { ...s, libelle };
+  });
+  for (const c of bruts) {
+    if (!c || typeof c !== "object") continue;
+    const x = c as Partial<CategorieVehiculeParametree>;
+    if (typeof x.id !== "string" || !x.id.startsWith("cat-") || categories.some((y) => y.id === x.id)) continue;
+    const famille = (FAMILLES_VEHICULE as readonly string[]).includes(x.famille as string) ? (x.famille as CategorieVehicule) : "camion";
+    const libelle = typeof x.libelle === "string" && x.libelle.trim() ? x.libelle.trim() : humaniser(x.id.replace(/^cat-/, ""));
+    categories.push({ id: x.id, libelle, famille, standard: false });
+  }
+  return { marques: marques.length > 0 ? marques : MARQUES_DEFAUT.map((m) => ({ ...m, modeles: [...m.modeles] })), categories };
+}
+
 export interface Parametres {
   documents: ParametresDocuments;
   energie: ParametresEnergie;
   alertes: ReglesAlerte;
   parcLeger: ParametresParcLeger;
+  vehicules: ParametresVehicules;
 }
 
 const standard = (d: Omit<DefinitionDocument, "standard">): DefinitionDocument => ({ ...d, standard: true });
@@ -220,6 +403,7 @@ export const PARAMETRES_DEFAUT: Parametres = {
   energie: ENERGIE_DEFAUT,
   alertes: REGLES_ALERTE_DEFAUT,
   parcLeger: PARC_LEGER_DEFAUT,
+  vehicules: VEHICULES_DEFAUT,
   documents: {
     types: [
       standard({ id: "carte-grise", libelle: "Carte grise", porteur: "vehicule", applicabilite: "tous", validiteMois: null, critique: true }),
@@ -272,6 +456,7 @@ export function fusionnerParametres(partiel: unknown): Parametres {
     energie: { baremes: baremes.length > 0 ? baremes : BAREMES_DEFAUT.map((b) => ({ ...b })), capaciteCuve },
     alertes: normaliserReglesAlerte((p as { alertes?: unknown }).alertes),
     parcLeger: normaliserParcLeger((p as { parcLeger?: unknown }).parcLeger),
+    vehicules: normaliserVehicules((p as { vehicules?: unknown }).vehicules),
   };
 }
 
@@ -297,14 +482,19 @@ export function definitionDocument(type: TypeDocument, p: Parametres = PARAMETRE
   return p.documents.types.find((t) => t.id === type) ?? null;
 }
 
-/** « doc-certificat-gaz » : un identifiant lisible, unique parmi les existants. */
-export function nouvelIdDocument(libelle: string, existants: DefinitionDocument[]): string {
-  const base = `doc-${libelle
+/** « certificat-gaz » : le libellé en identifiant, sans accent ni espace. */
+function identifiant(libelle: string): string {
+  return libelle
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")}`.replace(/-$/, "") || "doc-nouveau";
+    .replace(/^-+|-+$/g, "");
+}
+
+/** « doc-certificat-gaz » : un identifiant lisible, unique parmi les existants. */
+export function nouvelIdDocument(libelle: string, existants: DefinitionDocument[]): string {
+  const base = `doc-${identifiant(libelle)}`.replace(/-$/, "") || "doc-nouveau";
   let id = base;
   let n = 2;
   while (existants.some((t) => t.id === id)) id = `${base}-${n++}`;
@@ -328,10 +518,31 @@ function humaniser(id: string): string {
 
 let LIBELLES: Record<string, string> = Object.fromEntries(PARAMETRES_DEFAUT.documents.types.map((t) => [t.id, t.libelle]));
 let TYPES_COURANTS: DefinitionDocument[] = PARAMETRES_DEFAUT.documents.types;
+let VEHICULES_COURANTS: ParametresVehicules = VEHICULES_DEFAUT;
 
 export function appliquerLibelles(p: Parametres): void {
   LIBELLES = Object.fromEntries(p.documents.types.map((t) => [t.id, t.libelle]));
   TYPES_COURANTS = p.documents.types;
+  VEHICULES_COURANTS = p.vehicules;
+}
+
+/** Le référentiel des véhicules tel que la dernière lecture des paramètres l'a posé. */
+export function vehiculesCourants(): ParametresVehicules {
+  return VEHICULES_COURANTS;
+}
+
+/**
+ * Le nom d'une catégorie de véhicule : celle ajoutée par le métier si le
+ * véhicule en porte une, sinon sa famille — sous le libellé courant, qui a pu
+ * être renommé. Une catégorie ajoutée puis retirée retombe sur sa famille.
+ */
+export function libelleCategorieCourant(famille: CategorieVehicule, categorieMetier?: string | null): string {
+  const c = VEHICULES_COURANTS.categories;
+  if (categorieMetier) {
+    const ajoutee = c.find((x) => x.id === categorieMetier);
+    if (ajoutee) return ajoutee.libelle;
+  }
+  return c.find((x) => x.id === famille)?.libelle ?? LIBELLE_FAMILLE[famille];
 }
 
 export function libelleDocumentCourant(type: string): string {

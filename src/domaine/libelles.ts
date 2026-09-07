@@ -30,7 +30,7 @@ import type {
   UsageVehicule,
 } from "./types";
 
-import { libelleDocumentCourant, typesDocumentsCourants } from "./parametres";
+import { CATEGORIES_STANDARD, libelleCategorieCourant, libelleDocumentCourant, typesDocumentsCourants } from "./parametres";
 
 export type Ton = "favorable" | "defavorable" | "vigilance" | "neutre";
 
@@ -132,16 +132,16 @@ export const MOTIF_IMMOBILISATION: Record<MotifImmobilisation, string> = {
   reforme: "Réforme",
 };
 
-export const CATEGORIE_VEHICULE: Record<CategorieVehicule, string> = {
-  camion: "Camion",
-  tracteur: "Tracteur",
-  "semi-remorque": "Semi-remorque",
-  camionnette: "Camionnette",
-  "vehicule-leger": "Véhicule léger",
-  bus: "Bus",
-  moto: "Moto",
-  engin: "Engin",
-};
+/**
+ * Les huit familles de véhicule, sous leur nom livré. Pour nommer un véhicule
+ * précis, `libelleCategorie` : il tient compte des catégories ajoutées et des
+ * renommages faits dans Paramètres › Véhicules.
+ */
+export const CATEGORIE_VEHICULE: Record<CategorieVehicule, string> = Object.fromEntries(CATEGORIES_STANDARD.map((c) => [c.id, c.libelle])) as Record<CategorieVehicule, string>;
+
+export function libelleCategorie(v: { categorie: CategorieVehicule; categorieMetier?: string | null }): string {
+  return libelleCategorieCourant(v.categorie, v.categorieMetier);
+}
 
 export const USAGE_VEHICULE: Record<UsageVehicule, string> = {
   vrac: "Vrac",

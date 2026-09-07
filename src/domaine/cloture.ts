@@ -46,13 +46,16 @@ export function moisDe(dateIso: string): string {
  * contrôlé — jamais un texte libre (demande du métier du 3 septembre 2026 :
  * « être sûr du rattachement »).
  */
-export type TypeChamp = "texte" | "texte-long" | "nombre" | "date" | "choix" | "oui-non" | "reference";
+/** « suggestion » : un texte libre, avec une liste proposée — la marque, le modèle. */
+export type TypeChamp = "texte" | "texte-long" | "nombre" | "date" | "choix" | "oui-non" | "reference" | "suggestion";
 
 export interface ChampEdition {
   cle: string;
   libelle: string;
   type: TypeChamp;
   options?: { valeur: string; libelle: string }[];
+  /** Pour un champ « suggestion » dont la liste dépend d'un autre : les modèles de la marque choisie. */
+  suggestionsDe?: (saisie: Record<string, string | boolean>) => { valeur: string; libelle: string }[];
   /** Pour un champ « reference » : les types de transaction acceptés ; tous si absent. */
   references?: TypeTransaction[];
   /** Unité affichée après un nombre : « F », « km », « L ». */

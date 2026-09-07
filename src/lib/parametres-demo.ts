@@ -16,7 +16,7 @@
  * fait dès son chargement dans le navigateur, avant le premier rendu.
  * ==========================================================================*/
 
-import { COOKIE_PARAMETRES, PARAMETRES_DEFAUT, appliquerLibelles, fusionnerParametres, type Parametres } from "@/domaine/parametres";
+import { COOKIE_PARAMETRES, PARAMETRES_DEFAUT, appliquerLibelles, apprendreMarqueModele, fusionnerParametres, type Parametres } from "@/domaine/parametres";
 import { enregistrerParametres } from "@/lib/parametres-actions";
 import { authentificationReelle } from "@/lib/session-demo";
 
@@ -55,6 +55,20 @@ export async function ecrireParametres(p: Parametres): Promise<string | null> {
     /* pas de document : rien à faire */
   }
   return null;
+}
+
+/**
+ * Ce qu'une création de véhicule apprend au référentiel : une marque ou un
+ * modèle inconnus y entrent aussitôt (demande du métier du 7 septembre 2026,
+ * « au fur et à mesure qu'on crée des véhicules »). Rien n'est envoyé si
+ * tout était déjà connu. Un refus du serveur n'empêche pas la création : le
+ * véhicule existe, seul le référentiel n'a pas suivi, et l'écran le dit.
+ */
+export async function apprendreVehicule(marque: string, modele: string | null): Promise<string | null> {
+  const p = lireParametres();
+  const marques = apprendreMarqueModele(p.vehicules.marques, marque, modele);
+  if (marques === p.vehicules.marques) return null;
+  return ecrireParametres({ ...p, vehicules: { ...p.vehicules, marques } });
 }
 
 /** Les défauts, remis partout. Même contrat que `ecrireParametres`. */

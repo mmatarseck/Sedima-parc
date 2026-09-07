@@ -19,7 +19,7 @@ import { TYPE_TRANSACTION, type TypeTransaction } from "@/domaine/reference";
 import { PastilleStatut } from "@/composants/interface/Pastille";
 import type { FicheVehicule as Fiche } from "@/domaine/fiche";
 import type { Personne } from "@/domaine/discussion";
-import { BUSINESS_UNIT, CATEGORIE_VEHICULE, STATUT_VEHICULE, TYPE_DOCUMENT } from "@/domaine/libelles";
+import { BUSINESS_UNIT, STATUT_VEHICULE, TYPE_DOCUMENT, libelleCategorie } from "@/domaine/libelles";
 import { personnesUtilisateurs } from "@/lib/discussion-demo";
 import { date, montantCourt, nombre } from "@/lib/format";
 import { controlerReleves } from "@/domaine/releves";
@@ -258,7 +258,7 @@ export function FicheVehicule({ fiche, ongletInitial, discussionInitiale = false
                 {v.marque} {v.appellation}
               </span>
               <span className="text-attenue-2">·</span>
-              <span>{CATEGORIE_VEHICULE[v.categorie]}</span>
+              <span>{libelleCategorie(v)}</span>
               <span className="text-attenue-2">·</span>
               <span className="inline-flex items-center gap-1.5">
                 <MapPin className="size-3.5 text-attenue" strokeWidth={1.8} />

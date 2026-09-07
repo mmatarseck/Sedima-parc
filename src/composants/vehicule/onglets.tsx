@@ -43,7 +43,7 @@ import type {
 import {
   BUSINESS_UNIT,
   CATEGORIE_OBSERVATION,
-  CATEGORIE_VEHICULE,
+  libelleCategorie,
   GRAVITE_OBSERVATION,
   GROUPE_CHARGE,
   STATUT_OBSERVATION,
@@ -317,7 +317,7 @@ export function OngletCaracteristiques({ fiche }: { fiche: FicheVehicule }) {
             { libelle: "1re mise en circulation", valeur: date(i.premiereMiseEnCirculation) },
             { libelle: "Date d'immatriculation", valeur: date(i.dateImmatriculation) },
             { libelle: "Région", valeur: i.region },
-            { libelle: "Catégorie", valeur: CATEGORIE_VEHICULE[v.categorie] },
+            { libelle: "Catégorie", valeur: libelleCategorie(v) },
             { libelle: "Usage", valeur: USAGE_VEHICULE[v.usage] },
           ]}
         />

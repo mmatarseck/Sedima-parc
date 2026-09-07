@@ -3,7 +3,6 @@ import { titrePage } from "@/domaine/marque";
 import {
   BUSINESS_UNIT,
   CATEGORIE_FLOTTE,
-  CATEGORIE_VEHICULE,
   CONTRAT_CHAUFFEUR,
   ENERGIE,
   MISSION_INCIDENT,
@@ -26,6 +25,7 @@ import { listeIncidents } from "@/donnees/incidents-demo";
 import { prestataires as listePrestataires, sites as listeSites, vehiculesParSite } from "@/donnees/referentiels";
 import { affretements } from "@/donnees/transporteurs-demo";
 import { fichePourImmatriculation } from "@/donnees/fiche-demo";
+import { parametresServeur } from "@/lib/parametres-serveur";
 
 export const metadata = { title: titrePage("Référentiels") };
 
@@ -75,7 +75,7 @@ function compter<T>(elements: T[], cle: (x: T) => string | null | undefined): Ma
 export default async function PageReferentiels() {
   /* Sites et prestataires viennent de la base quand elle est branchée ; les
      véhicules par site se comptent sur la même source que les sites. */
-  const [sites, parSite, prestataires] = await Promise.all([listeSites(), vehiculesParSite(), listePrestataires()]);
+  const [sites, parSite, prestataires, parametres] = await Promise.all([listeSites(), vehiculesParSite(), listePrestataires(), parametresServeur()]);
   const vehicules = FLOTTE.map((l) => l.vehicule);
   const chauffeurs = listeChauffeurs();
   const incidents = listeIncidents();
@@ -102,7 +102,21 @@ export default async function PageReferentiels() {
         usages: parSite.get(s.id) ?? 0,
       })).sort((a, b) => b.usages - a.usages || a.libelle.localeCompare(b.libelle, "fr")),
     },
-    bloc("categorie-vehicule", "Catégories de véhicule", "Ce qu'est l'engin — elle décide du plan d'entretien et de la comparaison des coûts", "véhicules", CATEGORIE_VEHICULE, compter(vehicules, (v) => v.categorie), "/flotte"),
+    {
+      cle: "categorie-vehicule",
+      titre: "Catégories de véhicule",
+      precision: "Les huit familles et les catégories ajoutées — elles se règlent dans Paramètres › Véhicules ; la famille décide du plan d'entretien et de la comparaison des coûts",
+      unite: "véhicules",
+      href: "/parametres/vehicules",
+      entrees: parametres.vehicules.categories
+        .map((c) => ({
+          cle: c.id,
+          libelle: c.libelle,
+          precision: c.standard ? "Famille livrée — porte les règles" : `Ajoutée par le métier — suit les règles de la famille ${parametres.vehicules.categories.find((f) => f.id === c.famille)?.libelle ?? c.famille}`,
+          usages: vehicules.filter((v) => (v.categorieMetier ?? v.categorie) === c.id).length,
+        }))
+        .sort((a, b) => b.usages - a.usages || a.libelle.localeCompare(b.libelle, "fr")),
+    },
     bloc("usage", "Usages", "Ce que le véhicule transporte ou fait — vrac, frigorifique, plateau", "véhicules", USAGE_VEHICULE, compter(vehicules, (v) => v.usage), "/flotte"),
     bloc("categorie-flotte", "Catégories de flotte", "Interne, en location, mise à disposition — qui possède et qui paie", "véhicules", CATEGORIE_FLOTTE, compter(vehicules, (v) => v.categorieFlotte), "/flotte"),
     bloc("energie", "Énergies", "Ce que le véhicule consomme — elle décide du prix appliqué au plein", "véhicules", ENERGIE, compter(vehicules, (v) => v.energie), "/carburant"),

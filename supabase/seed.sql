@@ -2,7 +2,7 @@
 -- SEDIMA Parc — jeu de démonstration, versé dans la base.
 --
 -- GÉNÉRÉ par scripts/generer-seed.mts : ne pas modifier à la main, relancer.
--- 6281 lignes. Rejouable : chaque insertion est `on conflict do nothing`.
+-- 6282 lignes. Rejouable : chaque insertion est `on conflict do nothing`.
 --
 -- Prérequis : les migrations 0001 à 0005. Les comptes (profil) ne sont pas
 -- dans ce fichier — ils citent auth.users, qui n'existe qu'une fois les
@@ -2996,10 +2996,11 @@ insert into indisponibilite (id, numero, chauffeur_id, motif, debut, fin, commen
   ('2c4901bd-95f8-4e56-a643-0d08ab06c656', 'IND-2026-02001', '5300a942-eba6-4ce7-af5e-868c57dc7086', 'conge', '2026-04-21', '2026-05-03', null)
 on conflict do nothing;
 
--- parametre (2)
+-- parametre (3)
 insert into parametre (cle, valeur) values
   ('energie', '{"baremes":[{"debut":"2024-07-01","prixLitreGasoil":755,"prixLitreEssence":1015,"prixKwh":115,"prixLitreCuve":705,"source":"Barème de démonstration — à remplacer par l''arrêté"},{"debut":"2025-01-01","prixLitreGasoil":690,"prixLitreEssence":990,"prixKwh":115,"prixLitreCuve":645,"source":"Barème de démonstration — à remplacer par l''arrêté"},{"debut":"2025-09-01","prixLitreGasoil":655,"prixLitreEssence":990,"prixKwh":120,"prixLitreCuve":615,"source":"Barème de démonstration — à remplacer par l''arrêté"},{"debut":"2026-03-01","prixLitreGasoil":630,"prixLitreEssence":990,"prixKwh":120,"prixLitreCuve":590,"source":"Prix appliqués par l''application depuis le 3 septembre 2026"}],"capaciteCuve":30000}'),
-  ('alertes', '{"destinataires":{"conformite":[],"disponibilite":[],"maintenance":[],"incidents":[],"achats":[],"caisse":["administrateur","direction","controle-de-gestion","gestionnaire-parc"],"carburant":[],"chauffeurs":[],"mentions":[],"clotures":["administrateur","direction","controle-de-gestion","gestionnaire-parc"]},"prevenance":[60,30,7]}')
+  ('alertes', '{"destinataires":{"conformite":[],"disponibilite":[],"maintenance":[],"incidents":[],"achats":[],"caisse":["administrateur","direction","controle-de-gestion","gestionnaire-parc"],"carburant":[],"chauffeurs":[],"mentions":[],"clotures":["administrateur","direction","controle-de-gestion","gestionnaire-parc"]},"prevenance":[60,30,7]}'),
+  ('vehicules', '{"marques":[{"nom":"Renault","modeles":["Kerax","Magnum","Premium","Lander","Master","Duster","Oroch","Stepway"]},{"nom":"Tata","modeles":["LPT 1618","LPT 1109","LPT 613"]},{"nom":"Mitsubishi","modeles":["L200","L200 Sportero","ASX"]},{"nom":"Toyota","modeles":["Hilux","Corolla Cross","Coaster","Hiace","Prado","Land Cruiser"]},{"nom":"Citroën","modeles":["Berlingo","C-Elysée","C3","C3 Aircross"]},{"nom":"Hyundai","modeles":["Santa Fe","Tucson","Creta","Sonata","ix35"]},{"nom":"Kia","modeles":["Sorento","Sportage","Sonet","Optima"]},{"nom":"Suzuki","modeles":["Vitara","Moto 125"]},{"nom":"Peugeot","modeles":["Boxer","508","5008"]},{"nom":"Ford","modeles":["EcoSport","Ranger","Focus"]},{"nom":"BAIC","modeles":["X7"]},{"nom":"Iveco","modeles":["AT260","Eurocargo"]},{"nom":"MAN","modeles":["TGM"]},{"nom":"FAW","modeles":["CA4250"]},{"nom":"JAC","modeles":["HFC9640"]},{"nom":"Mercedes","modeles":["Sprinter","Classe C","4Matic"]},{"nom":"Force Motors","modeles":["Autocar 24 places"]},{"nom":"Cubas Segre","modeles":["Citerne vrac"]},{"nom":"Lecitrailer","modeles":["Citerne vrac","Plateau nu"]},{"nom":"Trailor","modeles":["Plateau nu"]},{"nom":"Schmitz","modeles":["Semi benne"]},{"nom":"Coder","modeles":["Citerne à eau"]},{"nom":"Yamaha","modeles":["Majesty 250"]},{"nom":"Caterpillar","modeles":["966C"]},{"nom":"Land Rover","modeles":["Range Rover Sport"]},{"nom":"Lexus","modeles":["LX570"]},{"nom":"Jeep","modeles":[]},{"nom":"Nissan","modeles":["Rogue"]}],"categories":[{"id":"camion","libelle":"Camion","famille":"camion","standard":true},{"id":"tracteur","libelle":"Tracteur","famille":"tracteur","standard":true},{"id":"semi-remorque","libelle":"Semi-remorque","famille":"semi-remorque","standard":true},{"id":"camionnette","libelle":"Camionnette","famille":"camionnette","standard":true},{"id":"vehicule-leger","libelle":"Véhicule léger","famille":"vehicule-leger","standard":true},{"id":"bus","libelle":"Bus","famille":"bus","standard":true},{"id":"moto","libelle":"Moto","famille":"moto","standard":true},{"id":"engin","libelle":"Engin","famille":"engin","standard":true}]}')
 on conflict (cle) do update set valeur = excluded.valeur;
 
 -- profil_transporteur (13)

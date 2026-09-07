@@ -124,6 +124,7 @@ interface LigneVehicule {
   appellation: string;
   type_modele: string | null;
   categorie: Vehicule["categorie"];
+  categorie_metier: string | null;
   categorie_flotte: Vehicule["categorieFlotte"];
   usage: Vehicule["usage"];
   transport_special: boolean;
@@ -339,6 +340,7 @@ export function vehiculeDepuisLaBase(v: LigneVehicule): Vehicule {
     appellation: v.appellation,
     typeModele: v.type_modele,
     categorie: v.categorie,
+    categorieMetier: v.categorie_metier ?? null,
     categorieFlotte: v.categorie_flotte,
     transportSpecial: v.transport_special,
     usage: v.usage,

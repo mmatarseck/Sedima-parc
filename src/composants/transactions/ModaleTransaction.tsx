@@ -276,6 +276,19 @@ export function ModaleTransaction({
                       </select>
                     ) : c.type === "texte-long" ? (
                       <textarea value={String(v ?? "")} onChange={(e) => changer(c.cle, e.target.value)} rows={3} className={`${commun} h-auto resize-none py-2 leading-relaxed`} />
+                    ) : c.type === "suggestion" ? (
+                      /* Texte libre avec la liste du référentiel en suggestion : on
+                         choisit ce qui existe, on écrit ce qui n'existe pas encore. */
+                      <>
+                        <input type="text" list={`suggestions-${c.cle}`} autoComplete="off" value={String(v ?? "")} onChange={(e) => changer(c.cle, e.target.value)} className={commun} />
+                        <datalist id={`suggestions-${c.cle}`}>
+                          {(c.suggestionsDe ? c.suggestionsDe(saisie) : (c.options ?? [])).map((o) => (
+                            <option key={o.valeur} value={o.valeur}>
+                              {o.libelle !== o.valeur ? o.libelle : undefined}
+                            </option>
+                          ))}
+                        </datalist>
+                      </>
                     ) : c.type === "reference" ? (
                       <ChampReference valeur={String(v ?? "")} onChange={(valeur) => changer(c.cle, valeur)} types={c.references} immatriculation={immatFormulaire} />
                     ) : (

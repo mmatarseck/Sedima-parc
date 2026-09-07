@@ -26,6 +26,7 @@ import { ROLES } from "@/domaine/roles";
 import type { DepenseCaisse } from "@/donnees/caisse-demo";
 import { afficher, normaliser } from "@/domaine/immatriculation";
 import type { CategorieVehicule, Energie } from "@/domaine/types";
+import { familleDe } from "@/domaine/parametres";
 import { lireParametres } from "@/lib/parametres-demo";
 
 const s = (v: unknown): string | null => (v === null || v === undefined || v === "" ? null : String(v));
@@ -265,7 +266,10 @@ export function fabriquerLigneFlotte(c: Creation): LigneFlotte {
       marque: s(v.marque) ?? "",
       appellation: s(v.appellation) ?? "",
       typeModele: s(v.typeModele),
-      categorie: (s(v.categorie) as CategorieVehicule) ?? "camion",
+      /* Le formulaire propose les catégories des paramètres, familles et
+         ajouts confondus : l'ajout se garde à part, sa famille porte les règles. */
+      categorie: familleDe(s(v.categorie) ?? "camion", lireParametres().vehicules.categories),
+      categorieMetier: (s(v.categorie) ?? "").startsWith("cat-") ? s(v.categorie) : null,
       categorieFlotte: (s(v.categorieFlotte) as CategorieFlotte) ?? "interne",
       transportSpecial: oui(v.transportSpecial),
       usage: (s(v.usage) as UsageVehicule) ?? "autre",
