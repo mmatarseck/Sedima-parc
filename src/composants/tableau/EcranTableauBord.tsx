@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { Carte } from "@/composants/interface/Carte";
-import { Anneau, BarresContribution, BarresMensuelles, Courbe, type PartAnneau, type PointCourbe } from "./Graphiques";
+import { Anneau, BarresContribution, BarresMensuelles, Courbe, libelleMoisCourt, type PartAnneau, type PointCourbe } from "./Graphiques";
 import {
   AXES,
   COURBES_DEFAUT,
@@ -201,6 +201,8 @@ export function EcranTableauBord({
   const [categorie, setCategorie] = useState<string>("tous");
   const [site, setSite] = useState<string>("tous");
   const [panneau, setPanneau] = useState<"pastilles" | "courbes" | null>(null);
+  /* Un clic sur une courbe l'ouvre en grand, avec le détail mois par mois. */
+  const [zoom, setZoom] = useState<string | null>(null);
 
   /* Les choix sont un réglage de compte, comme les colonnes des listes : ils
      vivent dans le navigateur sous une clé qui porte le rôle. */
@@ -236,13 +238,15 @@ export function EcranTableauBord({
     }
   }
   useEffect(() => {
-    if (!panneau) return;
+    if (!panneau && !zoom) return;
     const surEchap = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPanneau(null);
+      if (e.key !== "Escape") return;
+      setPanneau(null);
+      setZoom(null);
     };
     document.addEventListener("keydown", surEchap);
     return () => document.removeEventListener("keydown", surEchap);
-  }, [panneau]);
+  }, [panneau, zoom]);
 
   /* ---- La fenêtre : période et périmètre, appliqués à toute la page ---- */
   const moisCourant = mois[mois.length - 1]!;
@@ -317,6 +321,27 @@ export function EcranTableauBord({
       }),
     );
   }, [mois, courbes, monte, valeurDuMois]);
+
+  /**
+   * Ce qu'une courbe dit d'elle-même : dernière valeur, hors cible ou non,
+   * et l'écart des douze derniers mois aux douze précédents — mesuré sur les
+   * mois où les deux existent, pour ne pas mêler tendance et saison.
+   */
+  function detailCourbe(id: string) {
+    const d = INDICATEUR_PAR_ID.get(id);
+    if (!d) return null;
+    const points = series.get(id) ?? [];
+    const connus = points.filter((x) => x.valeur !== null).map((x) => x.valeur!);
+    const dernier = connus.at(-1) ?? null;
+    const mal = dernier !== null && d.cible ? (d.cible.sens === "inf" ? dernier > d.cible.valeur : dernier < d.cible.valeur) : false;
+    const apparies = points.filter((x) => x.valeur !== null && x.precedent !== null);
+    const sommeCourante = apparies.reduce((s, x) => s + x.valeur!, 0);
+    const sommeAvant = apparies.reduce((s, x) => s + x.precedent!, 0);
+    const variation = apparies.length > 0 && sommeAvant !== 0 ? Math.round(((sommeCourante - sommeAvant) / Math.abs(sommeAvant)) * 100) : null;
+    const mieux = variation === null || !d.cible ? null : d.cible.sens === "inf" ? variation < 0 : variation > 0;
+    const teinte = mal ? "var(--color-defavorable)" : "var(--color-accent-tres-fonce)";
+    return { d, points, dernier, mal, variation, mieux, teinte };
+  }
 
   /* Les alertes suivent le périmètre : une échéance d'un véhicule filtré ne se montre pas. */
   const alertesRetenues = useMemo(() => {
@@ -496,20 +521,24 @@ export function EcranTableauBord({
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             {courbesAffichees.map((id) => {
-              const d = INDICATEUR_PAR_ID.get(id);
-              const points = series.get(id) ?? [];
-              if (!d) return null;
-              const connus = points.filter((x) => x.valeur !== null).map((x) => x.valeur!);
-              const dernier = connus.at(-1) ?? null;
-              const mal = dernier !== null && d.cible ? (d.cible.sens === "inf" ? dernier > d.cible.valeur : dernier < d.cible.valeur) : false;
-              const apparies = points.filter((x) => x.valeur !== null && x.precedent !== null);
-              const sommeCourante = apparies.reduce((s, x) => s + x.valeur!, 0);
-              const sommeAvant = apparies.reduce((s, x) => s + x.precedent!, 0);
-              const variation = apparies.length > 0 && sommeAvant !== 0 ? Math.round(((sommeCourante - sommeAvant) / Math.abs(sommeAvant)) * 100) : null;
-              const mieux = variation === null || !d.cible ? null : d.cible.sens === "inf" ? variation < 0 : variation > 0;
-              const teinte = mal ? "var(--color-defavorable)" : "var(--color-accent-tres-fonce)";
+              const detail = detailCourbe(id);
+              if (!detail) return null;
+              const { d, points, dernier, mal, variation, mieux, teinte } = detail;
               return (
-                <div key={id} className="min-w-0 rounded-[12px] border border-bordure bg-surface-2 px-3 pt-2.5 pb-1.5">
+                <div
+                  key={id}
+                  role="button"
+                  tabIndex={0}
+                  title="Agrandir la courbe"
+                  onClick={() => setZoom(id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setZoom(id);
+                    }
+                  }}
+                  className="min-w-0 cursor-pointer rounded-[12px] border border-bordure bg-surface-2 px-3 pt-2.5 pb-1.5 transition-colors hover:border-accent-bordure hover:bg-surface"
+                >
                   <div className="flex items-baseline gap-2">
                     <PuceAxe axe={d.axe} petite />
                     <span className="min-w-0 truncate text-[12px] font-semibold text-texte" title={d.libelle}>
@@ -582,6 +611,87 @@ export function EcranTableauBord({
           <BarresContribution lignes={contributions.lignes} total={contributions.total} formater={(v) => montantCourt(v)} teinte="var(--color-texte-2)" universLibelle="véhicules" universTotal={contributions.univers} />
         </Carte>
       </div>
+
+      {/* ---- La courbe agrandie : le graphique en grand, et le détail mois par mois ---- */}
+      {zoom
+        ? (() => {
+            const detail = detailCourbe(zoom);
+            if (!detail) return null;
+            const { d, points, dernier, mal, variation, mieux, teinte } = detail;
+            const axe = AXES.find((a) => a.cle === d.axe);
+            const decimales = d.decimales ?? 0;
+            return (
+              <>
+                <button type="button" aria-label="Fermer la courbe agrandie" onClick={() => setZoom(null)} className="fixed inset-0 z-30 cursor-default bg-encre/40" />
+                <div role="dialog" aria-modal="true" aria-labelledby="zoom-titre" className="fixed top-1/2 left-1/2 z-40 flex max-h-[92vh] w-[min(1040px,94vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[18px] bg-surface shadow-flottante">
+                  <div className="flex items-start gap-3 border-b border-bordure px-6 pt-5 pb-4">
+                    <PuceAxe axe={d.axe} />
+                    <div className="min-w-0">
+                      <h2 id="zoom-titre" className="text-[17px] leading-tight font-bold text-texte">
+                        {d.libelle}
+                      </h2>
+                      <p className="meta mt-0.5">
+                        {axe?.nom}
+                        {d.code ? ` · ${d.code}` : ""} · douze derniers mois · {filtreVehicule ? "périmètre filtré" : "tout le parc"} · {d.cibleTexte}
+                      </p>
+                    </div>
+                    <span className="ml-auto flex shrink-0 items-baseline gap-3">
+                      <span className="text-[26px] font-bold tracking-[-0.03em] tabular-nums" style={{ color: mal ? "var(--color-defavorable)" : undefined }}>
+                        {dernier === null ? "—" : nombre(dernier, Math.abs(dernier) >= 1000 ? 0 : decimales)}
+                        {d.unite ? <small className="ml-1 text-[12px] font-semibold text-attenue">{d.unite}</small> : null}
+                      </span>
+                      {variation !== null && variation !== 0 ? (
+                        <span className={`code text-[12.5px] font-medium ${mieux === true ? "text-favorable" : mieux === false && mal ? "text-defavorable" : "text-texte-2"}`}>
+                          {variation > 0 ? "+" : ""}
+                          {variation} % sur un an
+                        </span>
+                      ) : null}
+                    </span>
+                    <button type="button" onClick={() => setZoom(null)} className="grid size-8 shrink-0 place-items-center rounded-full text-attenue hover:bg-surface-3 hover:text-texte">
+                      <X className="size-4" strokeWidth={2} />
+                      <span className="sr-only">Fermer</span>
+                    </button>
+                  </div>
+                  <div className="defilement-discret grid min-h-0 flex-1 grid-cols-1 gap-5 overflow-y-auto px-6 py-5 lg:grid-cols-[minmax(0,3fr)_minmax(280px,2fr)]">
+                    <div className="min-w-0">
+                      {d.forme === "barres" ? (
+                        <BarresMensuelles points={points} cible={d.cible?.valeur ?? null} sens={d.cible?.sens ?? null} teinte={teinte} unite={d.unite} decimales={decimales} />
+                      ) : (
+                        <Courbe points={points} cible={d.cible?.valeur ?? null} sens={d.cible?.sens ?? null} teinte={teinte} unite={d.unite} decimales={decimales} />
+                      )}
+                    </div>
+                    <div className="min-w-0 overflow-x-auto">
+                      <table className="w-full text-[12.5px] tabular-nums">
+                        <thead>
+                          <tr className="text-left text-[10.5px] tracking-[0.06em] text-attenue uppercase">
+                            <th className="pb-1.5 font-semibold">Mois</th>
+                            <th className="pb-1.5 text-right font-semibold">Valeur</th>
+                            <th className="pb-1.5 text-right font-semibold">An passé</th>
+                            <th className="pb-1.5 text-right font-semibold">Écart</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...points].reverse().map((p) => {
+                            const horsCible = p.valeur !== null && d.cible ? (d.cible.sens === "inf" ? p.valeur > d.cible.valeur : p.valeur < d.cible.valeur) : false;
+                            const ecart = p.valeur !== null && p.precedent !== null && p.precedent !== 0 ? Math.round(((p.valeur - p.precedent) / Math.abs(p.precedent)) * 100) : null;
+                            return (
+                              <tr key={p.mois} className="border-t border-bordure">
+                                <td className="py-1 text-texte-2">{libelleMoisCourt(p.mois)}</td>
+                                <td className={`py-1 text-right font-semibold ${horsCible ? "text-defavorable" : "text-texte"}`}>{p.valeur === null ? "—" : nombre(p.valeur, decimales)}</td>
+                                <td className="py-1 text-right text-texte-2">{p.precedent === null ? "—" : nombre(p.precedent, decimales)}</td>
+                                <td className="py-1 text-right text-texte-2">{ecart === null ? "—" : `${ecart > 0 ? "+" : ""}${ecart} %`}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </>
+            );
+          })()
+        : null}
 
       {/* ---- Le panneau de choix : pastilles ou courbes, par axe, borné ---- */}
       {panneau ? (

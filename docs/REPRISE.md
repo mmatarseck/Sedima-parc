@@ -440,6 +440,9 @@ Ce qui est construit dans `EcranTableauBord.tsx`, une seule vue à 1 440 × 900
 - **le rouge n'apparaît que sur ce qui appelle une action** : filet et courbe
   d'une pastille hors cible, tronçon de courbe hors cible, échéance échue.
   Les teintes des axes ne colorent plus rien ;
+- **un clic sur une courbe l'agrandit** (demande du 7 septembre) : le
+  graphique en grand avec sa légende, et le détail mois par mois — valeur,
+  même mois l'an passé, écart — dans une fenêtre qui se ferme par Échap ;
 - **le panneau de choix** (pastilles ou courbes) glisse par la droite, rangé
   par axe ; au maximum atteint, le reste se grise et il faut décocher pour
   choisir. Les choix se retiennent par rôle sous
