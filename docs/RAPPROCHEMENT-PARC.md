@@ -60,6 +60,31 @@ Gaye, lot 2-05). Le dossier ne dit pas quelle plaque va à quelle ligne du lot :
 **à arbitrer** avant de passer ces dix véhicules d'« à recevoir » à « en
 service ». Les cinq autres restent à recevoir.
 
+**Proposition d'affectation des dix plaques** (7 septembre 2026, à valider).
+Les dix vont aux lignes qui équipent quelqu'un aujourd'hui sans véhicule,
+qui en libèrent un pour quelqu'un sans véhicule, qui remplacent un véhicule à
+réformer, ou dont la cascade a une échéance au 1er octobre. Les plaques
+suivent l'ordre des lignes du lot, pour que la trace reste lisible.
+
+| Plaque | Ligne | Bénéficiaire | Pourquoi maintenant |
+| --- | --- | --- | --- |
+| AB 565 KP | 2-01 | Aly Gaye, technicien intégration | Remplace DK 1307 BB (2016, 257 838 km, pannes récurrentes), à réformer |
+| AB 609 KP | 2-02 | Bakary Sow, commercial farine Sud | Remplace AB 078 JS (2017, 322 134 km), à réformer |
+| AB 611 KP | 2-03 | Bineta Djiba, commerciale Kaolack-Ziguinchor | Libère AA 022 EA pour Mourtalla Thiaw (SATV), sans véhicule |
+| AB 612 KP | 2-04 | Yacine Siby, responsable dépôts | Sans véhicule aujourd'hui |
+| AB 614 KP | 2-06 | Amacodou Ndiaye, commercial Ziguinchor et navette Kédougou-Tamba-Matam | Libère AA 119 AH, dont la remise à niveau doit être finie fin septembre pour le responsable logistique du 1er octobre |
+| AB 615 KP | 2-08 | Moustapha Mboup, commercial Diourbel-Linguère | Libère AA 023 EA pour Alla Faye (Touba), sans véhicule |
+| AB 616 KP | 2-10 | Dr Babacar Soumaré, responsable pôle SATV | Libère AA 386 JG pour Mamadou Gueye (SATV), sans véhicule |
+| AB 617 KP | 2-12 | Adama Wane, responsable couvoir | Libère le Berlingo AA 019 EA, à réparer d'ici fin septembre pour Khady Mbaye (labo) |
+| AB 619 KP | 2-14 | Papa Samba Mbengue, maintenance fermes et couvoir | Nouvelle recrue, sans véhicule |
+| AB 622 KP | 2-15 | Cheikhou Keïta, maintenance abattoir | Libère DK 1306 BB pour Ibrahima Faye (équipe mobile), sans véhicule |
+
+Attendent la prochaine livraison (cinq lignes) : 2-05 Maimouna Gaye (véhicule
+alternatif C3 ou Sonet, à trancher), 2-07 Amadou Yoro Ba et 2-09 Pape Bouba
+Gaye (leurs véhicules actuels sont les plus récents du lot, 2022 et 2021, et
+leur cascade renforce la distribution sans échéance), 2-11 et 2-13 (postes en
+recrutement au 1er octobre, personne à équiper aujourd'hui).
+
 **Véhicules assurés et entretenus par SEDIMA mais absents de l'application.**
 `VEHICULE HORS SEDIMA 2025` en liste cinq (colonne « assurance et entretien »),
 et l'assurance 2026 en ajoute six. Ce sont des charges du parc même si l'usage
