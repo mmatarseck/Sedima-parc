@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BellRing, House, PanelLeftClose, PanelLeftOpen, Truck, UserRound } from "lucide-react";
+import { BellRing, House, Inbox, PanelLeftClose, PanelLeftOpen, Truck, UserRound } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { Module } from "@/domaine/acces";
 import { NAVIGATION, type GroupeNavigation } from "./navigation";
 import { BarreApplication } from "./BarreApplication";
 import { HAUTEUR_BARRE, LARGEUR_RAIL, LARGEUR_RAIL_RETRACTE } from "./mesures";
@@ -24,6 +26,7 @@ export function Coquille({ children }: { children: React.ReactNode }) {
   const chemin = usePathname();
   const [retracte, setRetracte] = useState(false);
   const [groupes, setGroupes] = useState<GroupeNavigation[]>(NAVIGATION);
+  const [onglets, setOnglets] = useState(ONGLETS_TELEPHONE);
 
   // Lu après le montage : le serveur ne connaît pas la préférence du navigateur.
   useEffect(() => {
@@ -38,6 +41,7 @@ export function Coquille({ children }: { children: React.ReactNode }) {
        promettrait ce que le serveur refuse. */
     const acces = lireAccesCourant();
     setGroupes(NAVIGATION.map((g) => ({ ...g, entrees: g.entrees.filter((e) => !e.module || acces.niveaux[e.module] !== "aucun") })).filter((g) => g.entrees.length > 0));
+    setOnglets(ONGLETS_TELEPHONE.filter((o) => !o.module || acces.niveaux[o.module] !== "aucun"));
   }, [chemin]);
 
   function basculer() {
@@ -166,8 +170,8 @@ export function Coquille({ children }: { children: React.ReactNode }) {
 
       {/* Sur un écran étroit, le rail n'existe pas : quatre onglets en bas,
           ceux de la vue téléphone (cadrage du 7 septembre 2026). */}
-      <nav aria-label="Téléphone" className="fixed inset-x-0 bottom-0 z-20 grid h-[60px] grid-cols-4 border-t border-bordure bg-surface lg:hidden">
-        {ONGLETS_TELEPHONE.map((o) => {
+      <nav aria-label="Téléphone" className="fixed inset-x-0 bottom-0 z-20 grid h-[60px] border-t border-bordure bg-surface lg:hidden" style={{ gridTemplateColumns: `repeat(${onglets.length}, minmax(0, 1fr))` }}>
+        {onglets.map((o) => {
           const Icone = o.icone;
           const actif = o.href === "/telephone" ? chemin === "/telephone" : chemin.startsWith(o.href);
           return (
@@ -184,9 +188,11 @@ export function Coquille({ children }: { children: React.ReactNode }) {
   );
 }
 
-const ONGLETS_TELEPHONE = [
+/* Les onglets suivent l'accès : un détenteur n'a que l'accueil, ses demandes et lui-même. */
+const ONGLETS_TELEPHONE: { href: string; libelle: string; icone: LucideIcon; module?: Module }[] = [
   { href: "/telephone", libelle: "Accueil", icone: House },
-  { href: "/telephone/vehicules", libelle: "Véhicules", icone: Truck },
-  { href: "/conformite", libelle: "Alertes", icone: BellRing },
+  { href: "/telephone/vehicules", libelle: "Véhicules", icone: Truck, module: "flotte" },
+  { href: "/telephone/demandes", libelle: "Demandes", icone: Inbox, module: "demandes" },
+  { href: "/conformite", libelle: "Alertes", icone: BellRing, module: "documents" },
   { href: "/profil", libelle: "Moi", icone: UserRound },
 ];

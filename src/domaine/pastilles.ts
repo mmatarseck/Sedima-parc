@@ -63,6 +63,8 @@ export interface FaitsFlotteJour {
   cuveJours: number | null;
   /** Jours écoulés depuis le dernier accident ; nul sans accident connu. */
   joursSansAccident: number | null;
+  /** Demandes poussées aux détenteurs, échues et sans réponse à la fin du jour ; nul tant que le module n'est pas lu. */
+  demandesSansReponse: number | null;
 }
 
 export interface SituationJournaliere {
@@ -295,6 +297,17 @@ export const PASTILLES: DefinitionPastille[] = [
     /* Le seuil compte les ordres anciens, pas les ouverts : un ordre du jour n'est pas une alerte. */
     alerte: (c, seuil) => (c.jour.flotte.ordresAnciens ?? 0) > (seuil ?? 0),
     complement: (c) => (c.jour.flotte.ordresAnciens === null ? null : c.jour.flotte.ordresAnciens ? `dont ${c.jour.flotte.ordresAnciens} de plus de 15 j` : "aucun de plus de 15 j"),
+  },
+  {
+    id: "p-demandes-sans-reponse",
+    axe: "M",
+    libelle: "Demandes sans réponse",
+    moment: "instant",
+    reference: "hier",
+    seuil: { sens: "inf", defaut: 0, texte: desLePremier("demandes") },
+    href: "/demandes",
+    /* Une demande poussée à un détenteur, échue et toujours sans réponse (module des demandes, 8 septembre 2026). */
+    calcul: (c) => c.jour.flotte.demandesSansReponse,
   },
 ];
 

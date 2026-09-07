@@ -27,6 +27,7 @@ import { fichesChauffeurs, listeChauffeurs } from "@/donnees/chauffeurs-demo";
 import { listePrestataires } from "@/donnees/prestataires-demo";
 import { listeIncidents } from "@/donnees/incidents-demo";
 import { PARAMETRES_DEFAUT } from "@/domaine/parametres";
+import { demandesDemo } from "@/donnees/demandes-demo";
 import { affretements, grillesTarifaires, misesADisposition, prestations, transporteurs } from "@/donnees/transporteurs-demo";
 import { camionsTiers, chauffeursTiers, profilTransporteur, rattachements } from "@/donnees/flotte-tierce-demo";
 import { relevesTransport } from "@/donnees/releve-demo";
@@ -260,6 +261,14 @@ for (const f of fichesChauffeurs()) {
 }
 inserer("sanction", ["id", "numero", "chauffeur_id", "date", "type", "motif", "jours", "incident_id"], sanctionsV);
 inserer("indisponibilite", ["id", "numero", "chauffeur_id", "motif", "debut", "fin", "commentaire"], indisposV);
+
+/* -- Demandes poussées aux détenteurs (0011) -------------------------------------- */
+
+inserer(
+  "demande",
+  ["id", "numero", "lot", "type", "vehicule_id", "chauffeur_id", "attributaire_id", "destinataire_nom", "message", "emise_le", "emise_par_nom", "echeance", "repondue_le", "reponse_valeur", "reponse_texte", "reponse_photo", "reponse_commentaire"],
+  demandesDemo().map((d) => [uuid(`demande:${d.numero}`), d.numero, d.lot, d.type, vehiculeId(d.vehicule.id), d.detenteur.genre === "chauffeur" ? chauffeurId(d.detenteur.id) : null, d.detenteur.genre === "attributaire" ? attributaireId(d.detenteur.id) : null, d.detenteur.nom, d.message, d.emiseLe, d.emisePar, d.echeance, d.reponse?.le ?? null, d.reponse?.valeur ?? null, d.reponse?.texte ?? null, d.reponse?.photo ?? null, d.reponse?.commentaire ?? null]),
+);
 
 /* -- Paramètres ------------------------------------------------------------------- */
 

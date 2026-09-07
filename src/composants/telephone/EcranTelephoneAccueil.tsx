@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Fuel, Gauge, Search, TriangleAlert } from "lucide-react";
+import { Fuel, Gauge, Inbox, Search, TriangleAlert } from "lucide-react";
+import { TYPE_DEMANDE, statutDemande, type Demande } from "@/domaine/demandes";
+import { lireDemandes } from "@/lib/demandes-demo";
+import { mesDemandes } from "./EcranTelephoneDemandes";
 import { lireAccesCourant } from "@/lib/acces-courant";
 import { trouverProfil, type AccesCourant } from "@/domaine/acces";
 import { TYPE_DOCUMENT } from "@/domaine/libelles";
@@ -21,13 +24,19 @@ import { Bloc, Chiffre, EnTeteTelephone, Ligne } from "./Telephone";
 
 const OPERATIONNELS = new Set(["en-service", "en-backup"]);
 
-export function EcranTelephoneAccueil({ lignes, aujourdhui }: { lignes: LigneFlotte[]; aujourdhui: string }) {
+export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, maintenant }: { lignes: LigneFlotte[]; aujourdhui: string; demandes: Demande[]; maintenant: string }) {
   const [acces, setAcces] = useState<AccesCourant | null>(null);
   const [nom, setNom] = useState("");
+  const [listeDemandes, setListeDemandes] = useState<Demande[]>(demandes);
   useEffect(() => {
     setAcces(lireAccesCourant());
     setNom(lireIdentite()?.nom ?? trouverRole(lireRole()).nom);
-  }, []);
+    setListeDemandes(lireDemandes(demandes));
+  }, [demandes]);
+
+  /* Les demandes qui attendent : les miennes pour un détenteur, celles du périmètre sinon. */
+  const demandesOuvertes = useMemo(() => (acces ? mesDemandes(listeDemandes, acces).filter((d) => statutDemande(d, maintenant) === "a-repondre" || statutDemande(d, maintenant) === "en-retard") : []), [listeDemandes, acces, maintenant]);
+  const enRetard = demandesOuvertes.filter((d) => statutDemande(d, maintenant) === "en-retard").length;
 
   const miennes = useMemo(() => (acces ? lignes.filter((l) => dansPerimetre(l, acces)) : lignes), [lignes, acces]);
   const engagees = miennes.filter((l) => l.vehicule.engage && l.vehicule.statut !== "a-recevoir");
@@ -41,6 +50,27 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui }: { lignes: LigneFlo
   const profil = acces ? trouverProfil(acces.profil) : null;
   const saisit = acces ? acces.niveaux.releves !== "aucun" && acces.niveaux.releves !== "lecture" : false;
   const perimetreLibelle = acces && acces.perimetre.sites !== "tous" ? `${acces.perimetre.sites.length} site${acces.perimetre.sites.length > 1 ? "s" : ""}` : "tout le parc";
+
+  /* Le détenteur n'a que son véhicule et ses demandes (cadrage du 7 septembre 2026). */
+  if (acces?.profil === "detenteur") {
+    const monVehicule = demandesOuvertes[0]?.vehicule ?? mesDemandes(listeDemandes, acces)[0]?.vehicule ?? null;
+    return (
+      <div className="mx-auto flex w-full max-w-[520px] flex-col gap-3 px-3 pb-24 pt-1">
+        <EnTeteTelephone titre="Mon véhicule" droite={<span className="grid size-8 place-items-center rounded-full bg-surface-3 text-[11px] font-semibold text-texte-2">{initialesDe(nom || "SP")}</span>} />
+        <p className="meta -mt-2 px-4">
+          {nom} · {profil?.libelle ?? "Détenteur"}
+        </p>
+        <Bloc>{monVehicule ? <Ligne icone={monVehicule.immatriculation.slice(0, 2)} titre={monVehicule.immatriculation} precision={monVehicule.libelle} /> : <p className="meta py-1">Aucun véhicule ne vous est encore rattaché dans l&apos;application.</p>}</Bloc>
+        <Bloc titre="À répondre" accent={demandesOuvertes.length > 0}>
+          {demandesOuvertes.length === 0 ? <p className="meta py-1">Rien à répondre. Le parc vous préviendra.</p> : null}
+          {demandesOuvertes.slice(0, 4).map((d) => (
+            <Ligne key={d.id} icone={<Inbox className="size-4" strokeWidth={2} />} ton={statutDemande(d, maintenant) === "en-retard" ? "defavorable" : "vigilance"} titre={TYPE_DEMANDE[d.type].libelle} precision={`${d.vehicule.immatriculation} · ${statutDemande(d, maintenant) === "en-retard" ? "en retard" : "à répondre"}`} href="/telephone/demandes" />
+          ))}
+        </Bloc>
+        <Geste href="/telephone/demandes" icone={<Inbox className="size-4" strokeWidth={2} />} libelle="Mes demandes" />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-[520px] flex-col gap-3 px-3 pb-24 pt-1">
@@ -65,6 +95,7 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui }: { lignes: LigneFlo
           return <Ligne key={`e-${l.vehicule.id}`} icone="VT" ton={e.joursRestants < 0 ? "defavorable" : "vigilance"} titre={`${l.vehicule.immatriculationAffichee} · ${TYPE_DOCUMENT[e.type].toLowerCase()}`} precision={e.joursRestants < 0 ? `échue depuis ${-e.joursRestants} j` : `dans ${e.joursRestants} j`} href={`/telephone/vehicules/${l.vehicule.id}`} />;
         })}
         {sansReleve > 0 ? <Ligne icone="km" titre="Relevés de la semaine" precision={`${sansReleve} véhicule${sansReleve > 1 ? "s" : ""} sans relevé depuis 7 jours`} href="/telephone/vehicules?geste=releve" /> : null}
+        {demandesOuvertes.length > 0 ? <Ligne icone={<Inbox className="size-4" strokeWidth={2} />} ton={enRetard > 0 ? "defavorable" : "vigilance"} titre="Demandes sans réponse" precision={`${demandesOuvertes.length} en attente${enRetard ? `, dont ${enRetard} en retard` : ""}`} href="/telephone/demandes" /> : null}
         {immobilises.slice(0, 3).map((l) => (
           <Ligne key={`i-${l.vehicule.id}`} icone="!" ton="defavorable" titre={`${l.vehicule.immatriculationAffichee} · ${l.vehicule.marque} ${l.vehicule.appellation}`} precision={l.immobilisationAdministrative?.length ? "immobilisé administrativement" : "immobilisé"} href={`/telephone/vehicules/${l.vehicule.id}`} />
         ))}

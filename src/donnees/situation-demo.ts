@@ -19,6 +19,7 @@ import type { StatutVehicule } from "@/domaine/types";
 import { SOLDE_INITIAL, journalCaisse } from "./caisse-demo";
 import { STOCK_INITIAL, livraisonsEtJauges } from "./carburant-demo";
 import { DATE_REFERENCE, fichesChauffeurs } from "./chauffeurs-demo";
+import { demandesDemo } from "./demandes-demo";
 import { fichePourImmatriculation } from "./fiche-demo";
 import { listeIncidents } from "./incidents-demo";
 import { ordresDeTravail } from "./maintenance-demo";
@@ -48,6 +49,7 @@ export function situationsJournalieres(aujourdhui: string = DATE_REFERENCE, prof
   const ordres = ordresDeTravail();
   const caisse = journalCaisse();
   const cuve = livraisonsEtJauges();
+  const demandes = demandesDemo();
 
   /* Les chauffeurs indisponibles un jour donné, par identifiant. */
   const indisponibleLe = (jour: string) => new Set(chauffeurs.filter((c) => c.indisponibilites.some((i) => i.debut <= jour && (i.fin === null || i.fin >= jour))).map((c) => c.ligne.id));
@@ -117,6 +119,7 @@ export function situationsJournalieres(aujourdhui: string = DATE_REFERENCE, prof
       cuveLitres: Math.max(0, cuveLitres),
       cuveJours: sorties7 > 0 ? Math.round((Math.max(0, cuveLitres) / (sorties7 / 7)) * 10) / 10 : null,
       joursSansAccident: dernierAccident ? joursEntre(dernierAccident, jour) : null,
+      demandesSansReponse: demandes.filter((d) => !d.annuleeLe && d.echeance.slice(0, 10) <= jour && (!d.reponse || d.reponse.le.slice(0, 10) > jour)).length,
     };
     return { jour, vehicules, flotte };
   });

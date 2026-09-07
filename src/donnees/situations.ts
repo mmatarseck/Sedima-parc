@@ -46,6 +46,7 @@ interface FlotteJson {
   cuve_litres: number | null;
   cuve_jours: number | null;
   jours_sans_accident: number | null;
+  demandes_sans_reponse?: number | null;
 }
 
 interface SituationJson {
@@ -91,6 +92,7 @@ function situationDepuisJson(s: SituationJson): SituationJournaliere {
     cuveLitres: f.cuve_litres,
     cuveJours: f.cuve_jours,
     joursSansAccident: f.jours_sans_accident,
+    demandesSansReponse: f.demandes_sans_reponse ?? null,
   };
   return { jour: s.jour, vehicules, flotte };
 }

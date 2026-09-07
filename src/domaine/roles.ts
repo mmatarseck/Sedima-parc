@@ -99,8 +99,8 @@ export const ROLES: DefinitionRole[] = [
     libelle: "Détenteur",
     perimetre: "Son véhicule, les demandes reçues, les transferts à signer",
     compteTest: "detenteur@sedima.test",
-    initiales: "GD",
-    nom: "Gora Diop",
+    initiales: "MD",
+    nom: "Moustapha Diaw",
   },
 ];
 

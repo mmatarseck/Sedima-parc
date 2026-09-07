@@ -104,7 +104,8 @@ Construit le soir même : `src/domaine/pastilles.ts` (quinze pastilles,
 `src/donnees/situation-demo.ts` (les situations journalières des quatre
 dernières semaines, déduites des fiches, des incidents, des chauffeurs, des
 ordres, de la caisse et de la cuve), la rangée et le sélecteur du tableau de
-bord. La « demande sans réponse » attend le module des demandes.
+bord. La « demande sans réponse » est arrivée avec le module des demandes,
+le lendemain.
 
 Le lendemain : les seuils se règlent dans **Paramètres › Pastilles du
 tableau de bord** (une valeur par pastille, en nombre, la valeur du jour à

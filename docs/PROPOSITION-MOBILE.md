@@ -97,3 +97,15 @@ est son site, posé par la fiche d'accès et élargi au cas par cas ; une panne
 signalée ne change pas le statut d'elle-même, le statut se pose à la main ;
 le détenteur est prévenu par notification de l'application ou par courriel,
 pas de SMS. Tout est arbitré ; la construction commence par la fiche d'accès.
+
+## Construit
+
+1. La fiche d'accès (7 septembre), puis les politiques qui la lisent (8).
+2. La fiche rapide et le statut sur le téléphone (8 septembre).
+3. Relevé, plein, panne par la même modale que le bureau ; la photo
+   obligatoire attend le stockage.
+4. **Le compte détenteur et les demandes poussées** (8 septembre) : écran
+   Demandes au bureau, réponse avec photo sur le téléphone, suivi par lot,
+   pastille « Demandes sans réponse », migration 0011.
+
+Restent la fiche de transfert (5) et l'atelier (6).

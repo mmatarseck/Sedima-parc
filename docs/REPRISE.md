@@ -844,9 +844,49 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   restaient aux défauts. Désormais un cookie **par clé**
   (`sedima.parc.parametres.<cle>`), en base64url de JSON, seulement pour
   ce qui diffère des défauts ; l'ancien cookie unique est encore lu.
-- Reste : la pastille « demandes sans réponse » avec le module des
-  demandes ; les ordres, la caisse et la cuve en base ; les courbes et la
+- Reste : les ordres, la caisse et la cuve en base ; les courbes et la
   troisième rangée du tableau de bord lues en base.
+
+### Le module des demandes (8 septembre 2026)
+
+- Cadrage mobile, étape 4 : le parc **pousse une demande ciblée** au
+  détenteur d'un véhicule — relevé de compteur, jauge de carburant,
+  position, contrôle du matin — à une personne, plusieurs, ou tous les
+  détenteurs d'un site ; le détenteur répond depuis son téléphone, **photo
+  obligatoire** ; le parc suit qui a répondu et qui tarde.
+- `src/domaine/demandes.ts` : `Demande` (numéro DEM-AAAA-NNNN, lot, type,
+  véhicule et détenteur figés à l'envoi, échéance, réponse, annulation),
+  `statutDemande` (à répondre, en retard, répondue, annulée),
+  `resumerLot`, `libelleReponse`, `normaliserDemande`.
+- Bureau : `/demandes` (`EcranDemandes`, entrée « Demandes » du groupe
+  Suivi, module `demandes`) — une carte par lot, filtres par statut, panneau
+  « Nouvelle demande » (type, message, échéance, site, cases par détenteur,
+  « tous les détenteurs du site »), annulation avec la gestion. Les cibles
+  sont les véhicules engagés avec titulaire ou attributaire, depuis la
+  liste Flotte.
+- Téléphone : `/telephone/demandes` (`EcranTelephoneDemandes`) — pour un
+  détenteur, ses demandes et le panneau de réponse (kilométrage, niveau du
+  réservoir par boutons, position, contrôle « tout est bon / une réserve »,
+  photo par `input capture`, un mot) ; pour les autres, le suivi du
+  périmètre. L'accueil du détenteur est réduit à son véhicule et ses
+  demandes ; les onglets du bas suivent l'accès (Accueil, Demandes, Moi
+  pour un détenteur). En démonstration, le détenteur est **Moustapha Diaw**
+  (AA 032 EA, Thiès) — la fiche `u-mdiaw` et le rôle de démonstration.
+- Stockage : `src/lib/demandes-demo.ts` (démonstration dans le navigateur,
+  notification à la cloche du détenteur) ; `src/lib/demandes-actions.ts`
+  (envoyer, répondre, annuler en base) ; `src/donnees/demandes.ts`
+  (`demandesServeur`). Migration `0011_demandes.sql` : table, politiques,
+  `suis_destinataire()`, et `situation_journaliere()` complétée des
+  demandes sans réponse. Seed : vingt demandes de démonstration.
+- Pastille **« Demandes sans réponse »** (axe M, seuil réglable, rouge dès
+  la première) — la seizième du catalogue.
+- Vérifié en démonstration : envoi d'un lot « jauge » aux deux détenteurs
+  de Thiès, notification créée, réponse 75 % avec photo depuis le
+  téléphone, lot passé à 1/2 ; PGlite : 0001–0011 rejouées, vingt demandes
+  semées, la fonction compte les mêmes demandes sans réponse que la table.
+- Reste : la photo elle-même (le stockage : seul le nom est gardé) ; le
+  courriel au détenteur (fonction de notification de la plateforme) ; la
+  fiche de transfert (étape 5) ; l'atelier (étape 6).
 
 **À faire, dans l'ordre.**
 

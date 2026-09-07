@@ -135,6 +135,13 @@ Neuf migrations, dans l'ordre :
   matière des pastilles du tableau de bord. Ordres, caisse et cuve y sont
   nuls tant que ces modules n'ont pas leur table. Sans la fonction, le
   tableau de bord reste au jeu de démonstration.
+- `0011_demandes.sql` — la table `demande` : ce que le parc pousse au
+  détenteur d'un véhicule (relevé de compteur, jauge, position, contrôle du
+  matin), par lot, avec la réponse et sa photo obligatoire ; politiques :
+  lire dans son périmètre ou ce qui m'est adressé (`suis_destinataire`),
+  envoyer avec la saisie du module hors détenteur, répondre en tant que
+  destinataire, annuler avec la gestion. `situation_journaliere()` compte
+  les demandes sans réponse à l'échéance.
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.
