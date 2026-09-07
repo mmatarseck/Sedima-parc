@@ -120,6 +120,7 @@ export function Courbe({
   teinte,
   unite,
   decimales = 0,
+  sansLegende = false,
 }: {
   points: PointCourbe[];
   cible: number | null;
@@ -127,6 +128,8 @@ export function Courbe({
   teinte: string;
   unite?: string;
   decimales?: number;
+  /** Vrai quand la légende est portée une fois pour toutes par le bloc qui aligne plusieurs courbes. */
+  sansLegende?: boolean;
 }) {
   const [survol, setSurvol] = useState<number | null>(null);
 
@@ -367,16 +370,18 @@ export function Courbe({
         })()
       ) : null}
 
-      <p className="meta mt-1 flex items-center gap-3 px-1">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4 rounded-full" style={{ background: teinte }} />
-          douze derniers mois
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-0 w-4 border-t-[1.4px] border-dashed border-attenue-2" />
-          période précédente
-        </span>
-      </p>
+      {sansLegende ? null : (
+        <p className="meta mt-1 flex items-center gap-3 px-1">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block h-0.5 w-4 rounded-full" style={{ background: teinte }} />
+            douze derniers mois
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block h-0 w-4 border-t-[1.4px] border-dashed border-attenue-2" />
+            période précédente
+          </span>
+        </p>
+      )}
     </div>
   );
 }
@@ -402,6 +407,7 @@ export function BarresMensuelles({
   teinte,
   unite,
   decimales = 0,
+  sansLegende = false,
 }: {
   points: PointCourbe[];
   cible: number | null;
@@ -409,6 +415,7 @@ export function BarresMensuelles({
   teinte: string;
   unite?: string;
   decimales?: number;
+  sansLegende?: boolean;
 }) {
   const [survol, setSurvol] = useState<number | null>(null);
 
@@ -571,16 +578,18 @@ export function BarresMensuelles({
         })()
       ) : null}
 
-      <p className="meta mt-1 flex items-center gap-3 px-1">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block size-2.5 rounded-[3px]" style={{ background: teinte }} />
-          mois par mois
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-0 w-4 border-t-[1.4px] border-dashed border-attenue" />
-          même mois l&apos;an dernier
-        </span>
-      </p>
+      {sansLegende ? null : (
+        <p className="meta mt-1 flex items-center gap-3 px-1">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block size-2.5 rounded-[3px]" style={{ background: teinte }} />
+            mois par mois
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block h-0 w-4 border-t-[1.4px] border-dashed border-attenue" />
+            même mois l&apos;an dernier
+          </span>
+        </p>
+      )}
     </div>
   );
 }

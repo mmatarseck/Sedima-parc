@@ -410,6 +410,47 @@ titulaire ; ce raffinement viendra avec la fiche).
 `attelage`), les ajustements du plan d'entretien (`plan_vehicule` vide). À
 poser en migration 0004 avant de brancher la fiche véhicule.
 
+### Le tableau de bord refondu (7 septembre 2026)
+
+Le métier a jugé le tableau de bord SQDCM « ni joli ni utile » et a cadré la
+refonte à l'oral, puis sur une maquette interactive (artefact « Tableau de
+bord SEDIMA Parc », deux versions) qu'il a validée avec trois retours :
+**pas de performance par axe**, **des courbes riches**, **les filtres sur
+toute la page**. Le cadre SQDCM reste ; c'est la forme qui change.
+
+Ce qui est construit dans `EcranTableauBord.tsx`, une seule vue à 1 440 × 900
+(vérifié : aucun dépassement du conteneur de 840 px) :
+
+- **cinq pastilles au plus** (`MAX_PASTILLES`, `PASTILLES_DEFAUT`,
+  `limiterPastilles` dans le domaine), sur une rangée, chacune complète :
+  lettre de l'axe en puce neutre, libellé, code, valeur sur la période,
+  écart à la période précédente avec flèche (mois contre mois précédent,
+  année contre année précédente ; la semaine n'a pas de semaine d'avant dans
+  les faits, son écart reste muet), cible lisible, et la courbe des douze
+  mois en pied (`Etincelle`) avec la cible en pointillé ;
+- **quatre courbes au plus** (`MAX_COURBES` passe de 12 à 4), sur une rangée,
+  chacune sur son échelle, période précédente en pointillé, cible, survol ;
+  la légende est portée une fois par le bloc (`sansLegende` sur `Courbe` et
+  `BarresMensuelles`) ;
+- une troisième rangée : **à traiter aujourd'hui** (les alertes de
+  `donneesTableau()`, filtrées par le périmètre, cinq lignes puis le compte),
+  **où passe l'argent**, **les véhicules qui pèsent le plus** ;
+- **les filtres** — période en segments, BU, catégorie, site — s'appliquent
+  à toute la page, sous-titre compris ;
+- **le rouge n'apparaît que sur ce qui appelle une action** : filet et courbe
+  d'une pastille hors cible, tronçon de courbe hors cible, échéance échue.
+  Les teintes des axes ne colorent plus rien ;
+- **le panneau de choix** (pastilles ou courbes) glisse par la droite, rangé
+  par axe ; au maximum atteint, le reste se grise et il faut décocher pour
+  choisir. Les choix se retiennent par rôle sous
+  `sedima.parc.tableau-bord.pastilles.<rôle>` (nouvelle clé : l'ancienne
+  sélection de six par axe n'a plus de sens) et
+  `sedima.parc.tableau-bord-courbes.<rôle>`.
+
+`evaluerAxes`, `couleurScore`, `MAX_PAR_AXE`, `limiter` et `SELECTION_DEFAUT`
+restent dans le domaine sans usage : à retirer quand on sera sûr que le
+bandeau des axes ne revient pas.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

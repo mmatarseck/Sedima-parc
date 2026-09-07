@@ -516,6 +516,19 @@ export const INDICATEURS: DefinitionIndicateur[] = [
 export const SELECTION_DEFAUT = ["d1", "d2", "d3", "c1", "c2", "c3"];
 
 /**
+ * La rangée de pastilles du tableau de bord refondu (7 septembre 2026) : cinq
+ * au plus, sur une seule ligne, quels que soient les axes. Au-delà, le choix
+ * se grise ; il faut en décocher une pour en prendre une autre.
+ */
+export const MAX_PASTILLES = 5;
+export const PASTILLES_DEFAUT = ["d1", "c2", "c3", "d3", "s1"];
+
+/** Une sélection relue du stockage, bornée à la rangée. */
+export function limiterPastilles(selection: string[]): string[] {
+  return selection.filter((id) => INDICATEURS.some((d) => d.id === id)).slice(0, MAX_PASTILLES);
+}
+
+/**
  * Trois indicateurs par axe au maximum — règle du métier du 3 septembre au soir.
  * Un axe qui en montre davantage ne se lit plus d'un coup d'œil, et le tableau
  * de bord cesse d'être un tableau de bord.
@@ -567,7 +580,9 @@ export const INDICATEURS_COURBE = INDICATEURS.filter((d) => d.calcul !== undefin
  * six lignes, ce qui reste parcourable d'un défilement. Au-delà, on
  * n'observe plus une flotte, on feuillette un rapport.
  */
-export const MAX_COURBES = 12;
+/* Quatre depuis la refonte du 7 septembre 2026 : une rangée, une échelle par
+   courbe, et la page tient sur un écran. */
+export const MAX_COURBES = 4;
 
 /** Les courbes proposées d'emblée : disponibilité, coût, consommation, accidents. */
 export const COURBES_DEFAUT = ["d1", "c4", "c5", "s1"];

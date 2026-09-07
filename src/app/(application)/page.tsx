@@ -13,5 +13,5 @@ export const metadata = { title: titrePage("Tableau de bord") };
  */
 export default function PageTableauBord() {
   const d = donneesTableau();
-  return <EcranTableauBord mois={d.mois} vehicules={d.vehicules} faits={d.faits} flotte={d.flotte} semaine={d.semaine} flotteSemaine={d.flotteSemaine} jour={d.jour} aujourdhui={DATE_REFERENCE} />;
+  return <EcranTableauBord mois={d.mois} vehicules={d.vehicules} faits={d.faits} flotte={d.flotte} semaine={d.semaine} flotteSemaine={d.flotteSemaine} jour={d.jour} alertes={d.alertes} aujourdhui={DATE_REFERENCE} />;
 }
