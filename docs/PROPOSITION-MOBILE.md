@@ -112,4 +112,8 @@ pas de SMS. Tout est arbitré ; la construction commence par la fiche d'accès.
    signatures sur l'écran, complète elle ouvre l'affectation qui suit ;
    migration 0012.
 
-Reste l'atelier (6).
+6. **L'atelier** (8 septembre) : ordres en atelier à clôturer depuis la
+   fosse, retour en service en un geste, ordres planifiés à faire entrer.
+
+Les six étapes sont livrées. Restent le stockage des photos (seul le nom
+est gardé) et le courriel au détenteur (notification de la plateforme).

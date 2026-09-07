@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Fuel, Gauge, Inbox, PenLine, Search, TriangleAlert } from "lucide-react";
+import { Fuel, Gauge, Inbox, PenLine, Search, TriangleAlert, Wrench } from "lucide-react";
 import { statutTransfert, type Transfert } from "@/domaine/transferts";
 import { lireTransferts } from "@/lib/transferts-demo";
 import { mesTransferts } from "./EcranTelephoneTransferts";
@@ -57,6 +57,7 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, transferts
   const sansReleve = miennes.filter((l) => l.vehicule.engage && (!l.dateKilometrage || joursEntre(l.dateKilometrage, aujourdhui) > 7)).length;
   const profil = acces ? trouverProfil(acces.profil) : null;
   const saisit = acces ? acces.niveaux.releves !== "aucun" && acces.niveaux.releves !== "lecture" : false;
+  const atelier = acces ? acces.niveaux.maintenance === "saisie" || acces.niveaux.maintenance === "gestion" : false;
   const perimetreLibelle = acces && acces.perimetre.sites !== "tous" ? `${acces.perimetre.sites.length} site${acces.perimetre.sites.length > 1 ? "s" : ""}` : "tout le parc";
 
   /* Le détenteur n'a que son véhicule et ses demandes (cadrage du 7 septembre 2026). */
@@ -125,6 +126,7 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, transferts
           </>
         ) : null}
         <Geste href="/telephone/vehicules" icone={<Search className="size-4" strokeWidth={2} />} libelle="Chercher" />
+        {atelier ? <Geste href="/telephone/atelier" icone={<Wrench className="size-4" strokeWidth={2} />} libelle="Atelier" /> : null}
       </div>
     </div>
   );

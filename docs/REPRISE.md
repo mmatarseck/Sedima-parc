@@ -918,10 +918,32 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   rejeu sans effet) ; démonstration (fiche dressée et signée des deux
   côtés au bureau → complète, affectation créée ; fiche en attente signée
   par le détenteur sur le téléphone → complète).
-- Reste : l'atelier (étape 6) ; le stockage des photos et des signatures
-  (les PNG vivent dans la ligne, ~2 Ko chacun, acceptable) ; la fermeture
-  de l'affectation précédente en démonstration (le planning ne la voit
-  que par la base).
+- Reste : le stockage des photos et des signatures (les PNG vivent dans
+  la ligne, ~2 Ko chacun, acceptable) ; la fermeture de l'affectation
+  précédente en démonstration (le planning ne la voit que par la base).
+
+### L'atelier sur le téléphone (8 septembre 2026)
+
+- Cadrage mobile, étape 6 et dernière : `/telephone/atelier`
+  (`EcranTelephoneAtelier`), geste « Atelier » sur l'accueil pour qui
+  saisit la maintenance. Trois blocs : **en atelier** (un ordre s'ouvre
+  sur le panneau de clôture : montant, compteur, remarque, et le bouton
+  « Clôturer et remettre en service » quand le véhicule est immobilisé),
+  **planifiés** (« Entrer » fait passer l'ordre en atelier et le véhicule
+  en réparation), **à planifier** (les travaux en retard, planification au
+  bureau), plus les ordres clos du jour.
+- Les mêmes transactions que le bureau (`enregistrerCreation` intervention
+  et statut, `enregistrerModification` sur l'ordre), sous
+  `FournisseurEdition` « maintenance » : ce que l'atelier fait se lit dans
+  Maintenance et sur la fiche du véhicule. Les ordres restent au jeu de
+  démonstration tant qu'ils n'ont pas leur table — comme au bureau.
+- Vérifié en démonstration, rôle responsable maintenance : « Entrer » sur
+  AA 032 EA (ordre en atelier, statut en réparation posé) ; clôture de
+  OTR-2026-00002 sur AA 565 GA (intervention INT créée, ordre clos, statut
+  en service posé).
+- Le cadrage mobile du 7 septembre 2026 est livré en entier : fiche
+  d'accès, fiche rapide et statut, relevé-plein-panne, demandes,
+  transfert, atelier. Restent le stockage des photos et le courriel.
 
 **À faire, dans l'ordre.**
 
