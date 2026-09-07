@@ -180,18 +180,18 @@ export function Courbe({
   const tracesAvant = tracer((p) => p.precedent);
 
   /*
-   * L'aire se remplit **au-dessus** de la courbe, du haut du cadre jusqu'au
-   * trait, dense en haut et s'effaçant en descendant ; sous la courbe, rien.
-   * C'est le parti du modèle donné par le métier, et il se défend : le blanc
-   * sous le trait laisse lire les points bas, là où se trouve d'ordinaire ce
-   * qu'on cherche — un creux de disponibilité, un mois sans accident.
+   * L'aire se remplit **sous** la courbe, du trait jusqu'au bas du cadre,
+   * dense au contact du trait et s'effaçant en descendant ; au-dessus, rien.
+   * Décision du métier du 7 septembre 2026, à la refonte du tableau de bord :
+   * le haut du cadre reste transparent, la teinte tient à la courbe.
    *
    * Elle ne se dessine que sur un trait continu : un trou dans la série ne doit
    * pas se remplir comme s'il valait quelque chose.
    */
   const premier = points.findIndex((pt) => pt.valeur !== null);
   const dernier = points.length - 1 - [...points].reverse().findIndex((pt) => pt.valeur !== null);
-  const aire = traces.length === 1 ? `${traces[0]} L${x(dernier).toFixed(1)},${haut.toFixed(1)} L${x(premier).toFixed(1)},${haut.toFixed(1)} Z` : null;
+  const plancher = hauteur - bas;
+  const aire = traces.length === 1 ? `${traces[0]} L${x(dernier).toFixed(1)},${plancher.toFixed(1)} L${x(premier).toFixed(1)},${plancher.toFixed(1)} Z` : null;
 
   const iMax = points.findIndex((pt) => pt.valeur === max);
   const iMin = points.findIndex((pt) => pt.valeur === min);
@@ -209,12 +209,12 @@ export function Courbe({
       <svg viewBox={`0 0 ${largeur} ${hauteur}`} className="block h-auto w-full" role="img" aria-label="Évolution mensuelle, comparée à la période précédente">
         <defs>
           <linearGradient id={identifiant} x1="0" y1="0" x2="0" y2="1">
-            {/* Soutenu **au contact du trait**, transparent en montant vers le
-                haut du cadre : la teinte tient à la courbe, elle ne pèse pas
+            {/* Soutenu **au contact du trait**, transparent en descendant vers
+                le bas du cadre : la teinte tient à la courbe, elle ne pèse pas
                 sur l'échelle. Le dégradé court sur la boîte du remplissage, du
-                haut du cadre au point le plus bas de la série. */}
-            <stop offset="0%" stopColor={teinte} stopOpacity="0.02" />
-            <stop offset="100%" stopColor={teinte} stopOpacity="0.26" />
+                point le plus haut de la série au plancher. */}
+            <stop offset="0%" stopColor={teinte} stopOpacity="0.28" />
+            <stop offset="100%" stopColor={teinte} stopOpacity="0.02" />
           </linearGradient>
         </defs>
 
