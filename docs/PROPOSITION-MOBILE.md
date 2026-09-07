@@ -12,7 +12,24 @@ dépôt, à l'atelier, sur le parking. Il fait peu de choses, vite. Une
 application web installable (PWA) sur la même adresse, mêmes données, mêmes
 droits ; une saisie faite sans réseau part au retour du réseau.
 
-## Six écrans
+## Complété le 7 septembre au soir, sur cinq retours du métier
+
+- La **photo de la pièce justificative est obligatoire** : plein, dépense,
+  réponse à une demande de relevé, réserve sur un transfert.
+- **L'administrateur approuve** tout écart d'un accès par rapport à son profil.
+- Le **détenteur** d'un véhicule (chauffeur titulaire ou attributaire) a un
+  compte réduit : son véhicule, les demandes reçues, les transferts à signer.
+  Rien d'autre, aucun accès au bureau.
+- Le parc **pousse des demandes ciblées** au détenteur — relevé de compteur en
+  premier, puis jauge, position, contrôle du matin — à une personne, à
+  plusieurs, ou à tous les détenteurs d'un site ; réponse avec photo,
+  suivi de qui a répondu et qui tarde.
+- Une **fiche de transfert** accompagne toute remise d'un véhicule à un
+  chauffeur ou à un récipiendaire : compteur, carburant, documents à bord,
+  équipements, réserves avec photos, signature de celui qui remet et de
+  celui qui reçoit. Elle ouvre l'affectation qui suit et ferme la précédente.
+
+## Huit écrans
 
 1. **Accueil**, réduit au périmètre de la personne : disponibles, en panne,
    à faire aujourd'hui, quatre gestes (relevé, plein, panne, chercher).
@@ -27,8 +44,12 @@ droits ; une saisie faite sans réseau part au retour du réseau.
    déclenche (hors service, alerte maintenance, incident).
 6. **Atelier** (maintenance) : ordres ouverts, clôture d'une intervention
    depuis la fosse, retour en service en un geste.
+7. **Demandes du détenteur** : la demande poussée par le parc, la réponse
+   avec photo du compteur, les autres demandes possibles.
+8. **Fiche de transfert** : remettant, récipiendaire, compteur, carburant,
+   état des lieux, deux signatures sur l'écran.
 
-## Cinq profils
+## Six profils
 
 | Profil | Rôles actuels | Téléphone |
 | --- | --- | --- |
@@ -37,6 +58,7 @@ droits ; une saisie faite sans réseau part au retour du réseau.
 | Maintenance | responsable-maintenance | atelier, clôture d'intervention, réparation ↔ service, panne, relevé |
 | Agent terrain | correspondant-site, responsable-carburant | son site : relevé, plein, panne, service ↔ panne, document renouvelé |
 | Lecteur | controle-de-gestion, achats, direction | chiffres d'accueil, fiche rapide sans action, alertes |
+| Détenteur | nouveau, lié au chauffeur ou à l'attributaire | son véhicule, ses demandes, ses transferts à signer |
 
 La liste du métier dit « Admin » deux fois ; le second a été lu comme l'agent
 de terrain, à confirmer.
@@ -51,17 +73,28 @@ En base : une table `acces_utilisateur` rendue par `get_me()` et lue par les
 politiques RLS. Les huit rôles actuels deviennent les défauts des cinq
 profils.
 
+Deux objets nouveaux en base : la **demande** (type, destinataires,
+échéance, réponse, photo, horodatage) et la **fiche de transfert**
+(véhicule, remettant, récipiendaire, compteur, carburant, documents,
+équipements, réserves, photos, deux signatures).
+
 ## L'ordre proposé
 
 1. La fiche d'accès et le modèle par personne, au bureau.
 2. La fiche rapide et le statut sur le téléphone.
-3. Relevé, plein, panne avec photo.
-4. L'atelier.
+3. Relevé, plein, panne, photo obligatoire.
+4. Le compte détenteur, les demandes poussées et leur suivi.
+5. La fiche de transfert.
+6. L'atelier.
 
-## À décider
+## Décidé le 7 septembre
+
+Photo justificative obligatoire ; écarts de profil approuvés par
+l'administrateur ; compte détenteur ; demandes poussées ; fiche de transfert.
+
+## Reste à décider
 
 1. Le second « Admin » : agent terrain, ou autre chose ?
 2. Le périmètre d'un agent terrain : son site seul, ou aussi les véhicules de passage ?
 3. La panne passe-t-elle le véhicule hors service dès l'envoi, ou après confirmation ?
-4. Un plein saisi sans photo du ticket : accepté, ou en attente de justificatif ?
-5. Qui approuve un accès qui s'écarte du profil ?
+4. Le détenteur reçoit-il ses demandes par l'application seule, ou aussi par SMS ?
