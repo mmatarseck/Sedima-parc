@@ -93,12 +93,18 @@ comme aujourd'hui.
   cette référence plutôt qu'à la période précédente.
 - Aucun changement pour les courbes ni pour la troisième rangée.
 
-## À décider
+## Décidé et construit le 8 septembre 2026
 
-1. Le défaut à cinq proposé ci-dessus, ou un autre.
-2. « Hier même heure » ou « hier en fin de journée » comme référence des
-   états instantanés : la fin de journée est plus stable, l'heure est plus
-   parlante à 8 h.
-3. Le seuil de « hors service » : en nombre, ou en part du parc engagé.
-4. Faut-il garder la possibilité de mettre un indicateur de période en
-   pastille, ou réserver les pastilles au moment.
+Le métier a tranché : la référence des états est **hier en fin de journée** ;
+le seuil du hors service est **en nombre** ; les indicateurs de période
+**restent aux courbes**, jamais en pastille ; le défaut à cinq est retenu.
+
+Construit le soir même : `src/domaine/pastilles.ts` (quinze pastilles,
+`evaluerPastille` avec référence, seuil et quatorze jours),
+`src/donnees/situation-demo.ts` (les situations journalières des quatre
+dernières semaines, déduites des fiches, des incidents, des chauffeurs, des
+ordres, de la caisse et de la cuve), la rangée et le sélecteur du tableau de
+bord. Les seuils sont des constantes du catalogue ; ils passeront en
+paramètres quand le métier voudra les régler. La « demande sans réponse »
+attend le module des demandes. En base, `situation_journaliere()` reste à
+écrire dans la lignée de `lire_parc()`.

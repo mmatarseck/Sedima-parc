@@ -10,23 +10,18 @@ import {
   AXES,
   COURBES_DEFAUT,
   cumuler,
-  evaluerIndicateur,
   INDICATEUR_PAR_ID,
-  INDICATEURS,
   INDICATEURS_COURBE,
-  limiterPastilles,
   MAX_COURBES,
-  MAX_PASTILLES,
-  PASTILLES_DEFAUT,
   type Cumul,
   type DefinitionIndicateur,
   type FaitsFlotteMois,
   type FaitsVehiculeMois,
   type SituationJour,
-  type ValeurIndicateur,
   type VehiculeTableau,
 } from "@/domaine/tableau-bord";
 import { BUSINESS_UNIT, CATEGORIE_FLOTTE } from "@/domaine/libelles";
+import { MAX_PASTILLES, MOMENT, PASTILLE_PAR_ID, PASTILLES, PASTILLES_DEFAUT, evaluerPastille, limiterPastilles, type SituationJournaliere } from "@/domaine/pastilles";
 import { trouverRole } from "@/domaine/roles";
 import type { Alerte } from "@/donnees/tableau-bord-demo";
 import { lireRole } from "@/lib/session-demo";
@@ -113,24 +108,6 @@ function FiltreChoix<T extends string>({ etiquette, valeur, options, onChange }:
   );
 }
 
-/** La cible telle qu'on la lit sur la période retenue. */
-function cibleLisible(v: ValeurIndicateur): string {
-  const d = v.definition;
-  if (v.etat === "non-alimente") return d.aVenir ?? "source à brancher";
-  if (v.etat === "sans-donnee") return "aucune donnée sur la période";
-  if (!d.parMois || v.cible === null || d.cible === undefined) return d.cibleTexte;
-  if (Math.abs(v.cible - d.cible.valeur) < 0.05) return d.cibleTexte;
-  const unite = d.unite ? " " + d.unite : "";
-  return "Cible " + (d.cible.sens === "inf" ? "≤" : "≥") + " " + nombre(v.cible, v.cible < 10 ? 1 : 0) + unite + " sur la période";
-}
-
-/** La valeur d'un indicateur, dans son unité et à ses décimales. */
-function valeurAffichee(d: DefinitionIndicateur, valeur: number | null): string {
-  if (valeur === null) return "—";
-  if (d.unite === "F") return montantCourt(valeur).replace(/\s?F$/, "");
-  return nombre(valeur, d.decimales ?? 0);
-}
-
 /** La lettre de l'axe, en puce neutre : la couleur est réservée à l'alerte. */
 function PuceAxe({ axe, petite }: { axe: string; petite?: boolean }) {
   const nom = AXES.find((a) => a.cle === axe)?.nom ?? axe;
@@ -185,6 +162,7 @@ export function EcranTableauBord({
   jour,
   alertes,
   aujourdhui,
+  situations,
 }: {
   mois: string[];
   vehicules: VehiculeTableau[];
@@ -195,6 +173,8 @@ export function EcranTableauBord({
   jour: SituationJour;
   alertes: Alerte[];
   aujourdhui: string;
+  /** Les situations journalières des quatre dernières semaines : la matière des pastilles. */
+  situations: SituationJournaliere[];
 }) {
   const [periode, setPeriode] = useState<Periode>("mois");
   const [bu, setBu] = useState<string>("tous");
@@ -288,14 +268,6 @@ export function EcranTableauBord({
     if (periode === "semaine") return cumuler(semaine.filter((f) => retenus.has(f.vehiculeId)), flotteSemaine, jour, joursNominaux);
     return cumulDe(periode === "annee" ? moisExercice : [moisCourant]);
   }, [periode, semaine, flotteSemaine, retenus, jour, joursNominaux, cumulDe, moisExercice, moisCourant]);
-  const cumulPrecedent = useMemo(() => {
-    if (periode === "semaine") return null;
-    /* L'année se compare à la même période de l'année précédente — janvier
-       au mois en cours —, pas à douze mois pleins. */
-    const fenetre = periode === "annee" ? moisPrecedents.slice(0, moisExercice.length).filter((m) => moisServis.has(m)) : mois.slice(-2, -1);
-    return fenetre.length ? cumulDe(fenetre) : null;
-  }, [periode, cumulDe, mois, moisPrecedents, moisExercice, moisServis]);
-
   /* Chaque mois cumulé pour lui-même : la seule façon d'obtenir une valeur
      mensuelle d'un indicateur qui, sinon, se lit sur toute la période. */
   const valeurDuMois = useMemo(() => {
@@ -311,17 +283,12 @@ export function EcranTableauBord({
     };
   }, [cumulDe]);
 
-  const pastilles = useMemo(
-    () =>
-      (monte ? selection : PASTILLES_DEFAUT).map((id) => {
-        const d = INDICATEUR_PAR_ID.get(id)!;
-        const v = evaluerIndicateur(d, cumul);
-        const precedent = cumulPrecedent ? evaluerIndicateur(d, cumulPrecedent).valeur : null;
-        const douze = moisCalendrier.map((m) => (moisServis.has(m) ? valeurDuMois(d, m) : null));
-        return { d, v, precedent, douze };
-      }),
-    [monte, selection, cumul, cumulPrecedent, moisCalendrier, moisServis, valeurDuMois],
-  );
+  /* Les pastilles disent l'état du moment (décision du 8 septembre 2026) :
+     elles se calculent sur les situations journalières, bornées au périmètre
+     — BU, catégorie, site — mais pas à la période, qui ne vaut que pour les
+     courbes. La référence est hier en fin de journée, ou la semaine passée. */
+  const situationsRetenues = useMemo(() => (filtreVehicule ? situations.map((s) => ({ ...s, vehicules: s.vehicules.filter((v) => retenus.has(v.vehiculeId)) })) : situations), [situations, retenus, filtreVehicule]);
+  const pastilles = useMemo(() => (monte ? selection : PASTILLES_DEFAUT).map((id) => evaluerPastille(PASTILLE_PAR_ID.get(id)!, situationsRetenues)), [monte, selection, situationsRetenues]);
 
   const series = useMemo(
     () =>
@@ -430,7 +397,6 @@ export function EcranTableauBord({
   ]
     .filter(Boolean)
     .join(" · ");
-  const vsPeriode = PERIODES.find((p) => p.cle === periode)!.vs;
   const courbesAffichees = monte ? courbes : COURBES_DEFAUT;
 
   return (
@@ -455,59 +421,45 @@ export function EcranTableauBord({
         </div>
       </div>
 
-      {/* ---- Rangée 1 : les pastilles ---- */}
+      {/* ---- Rangée 1 : les pastilles du moment ---- */}
       {pastilles.length === 0 ? (
         <div className="carte shrink-0 px-5 py-8 text-center">
-          <p className="meta">Aucun indicateur retenu. Ouvrez « Choisir les indicateurs » pour composer votre rangée.</p>
+          <p className="meta">Aucune pastille retenue. Ouvrez « Choisir les indicateurs » pour composer votre rangée.</p>
         </div>
       ) : (
         <div className="grid shrink-0 grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-          {pastilles.map(({ d, v, precedent, douze }) => {
-            const mal = v.etat === "ko";
-            const diff = v.valeur !== null && precedent !== null ? v.valeur - precedent : null;
-            const pire = diff === null || !d.cible ? null : d.cible.sens === "inf" ? diff > 0 : diff < 0;
-            const ecart =
-              diff === null
-                ? null
-                : d.unite === "%"
-                  ? `${nombre(Math.abs(diff), 1)} pt`
-                  : precedent
-                    ? `${nombre((Math.abs(diff) / Math.abs(precedent)) * 100, 1)} %`
-                    : nombre(Math.abs(diff), d.decimales ?? 0);
+          {pastilles.map((p) => {
+            const d = p.definition;
+            const diff = p.valeur !== null && p.reference !== null ? p.valeur - p.reference : null;
+            /* La flèche dit le sens ; la couleur ne dit que le rouge du seuil. */
+            const bonSens = diff === null || diff === 0 || !d.seuil ? null : d.seuil.sens === "inf" ? diff < 0 : diff > 0;
             return (
               <Link
                 key={d.id}
                 href={d.href}
-                title={`${d.libelle} — ouvrir l'écran où la valeur se vérifie`}
-                className={`carte relative grid min-h-[148px] grid-rows-[auto_auto_auto_1fr] gap-1 overflow-hidden px-4 pt-3 pb-2 transition-colors hover:bg-surface-2 ${mal ? "border-defavorable-bordure" : ""}`}
+                title={`${d.libelle} — ouvrir l'écran qui explique le chiffre`}
+                className={`carte relative grid min-h-[148px] grid-rows-[auto_auto_auto_auto_1fr] gap-1 overflow-hidden px-4 pt-3 pb-2 transition-colors hover:bg-surface-2 ${p.alerte ? "border-defavorable-bordure" : ""}`}
               >
-                {mal ? <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px] bg-defavorable" /> : null}
+                {p.alerte ? <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px] bg-defavorable" /> : null}
                 <span className="flex min-h-[32px] items-start gap-2">
                   <PuceAxe axe={d.axe} />
                   <span className="line-clamp-2 text-[12.5px] leading-[1.3] font-semibold text-texte">{d.libelle}</span>
-                  {d.code ? <span className="code ml-auto shrink-0 pt-0.5 text-[10px] tracking-wide text-attenue">{d.code}</span> : null}
+                  <span className="ml-auto shrink-0 pt-0.5 text-[10px] font-semibold tracking-[0.06em] text-attenue uppercase">{MOMENT[d.moment]}</span>
                 </span>
-                <span className={`flex items-baseline gap-1 text-[27px] leading-none font-bold tracking-[-0.03em] tabular-nums ${v.valeur === null ? "text-attenue-2" : "text-texte"}`}>
-                  {valeurAffichee(d, v.valeur)}
-                  {v.valeur !== null && d.unite ? <small className="text-[13px] font-medium tracking-normal text-texte-2">{d.unite}</small> : null}
+                <span className={`flex items-baseline gap-1.5 text-[27px] leading-none font-bold tracking-[-0.03em] tabular-nums ${p.valeur === null ? "text-attenue-2" : p.alerte ? "text-defavorable" : "text-texte"}`}>
+                  {p.valeur === null ? "—" : nombre(p.valeur, d.decimales ?? 0)}
+                  {p.valeur !== null && d.unite ? <small className="text-[13px] font-medium tracking-normal text-texte-2">{d.unite}</small> : null}
+                  {p.complement ? <small className="truncate text-[12px] font-medium tracking-normal text-texte-2">{p.complement}</small> : null}
                 </span>
-                <span className="flex min-w-0 items-center gap-2 text-[11.5px] text-texte-2">
-                  {diff !== null && ecart ? (
-                    <>
-                      <span className={`inline-flex shrink-0 items-center gap-0.5 font-semibold ${diff === 0 ? "" : pire ? (mal ? "text-defavorable" : "") : "text-favorable"}`}>
-                        {diff === 0 ? "=" : diff > 0 ? "▲" : "▼"} {ecart}
-                      </span>
-                      <span className="shrink-0">{vsPeriode}</span>
-                    </>
-                  ) : v.valeur === null ? (
-                    <span className="shrink-0">{v.etat === "non-alimente" ? "à alimenter" : "sans donnée"}</span>
-                  ) : null}
-                  <span className="ml-auto truncate" title={cibleLisible(v)}>
-                    {cibleLisible(v)}
-                  </span>
+                <span className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-texte-2">
+                  {diff !== null ? <span className={`shrink-0 font-semibold ${diff === 0 ? "" : bonSens === false && p.alerte ? "text-defavorable" : bonSens ? "text-favorable" : ""}`}>{diff === 0 ? "=" : diff > 0 ? "▲" : "▼"}</span> : null}
+                  <span className="truncate">{p.referenceTexte || (p.valeur === null ? "sans donnée" : "")}</span>
+                </span>
+                <span className="truncate text-[11px] text-attenue" title={d.seuilTexte}>
+                  {d.seuilTexte}
                 </span>
                 <span className="-mx-1 -mb-1 self-end">
-                  <Etincelle valeurs={douze} cible={d.parMois ? (d.cible?.valeur ?? null) : (v.cible ?? d.cible?.valeur ?? null)} horsCible={mal} />
+                  <Etincelle valeurs={p.quatorze} cible={d.seuil?.valeur ?? null} horsCible={p.alerte} />
                 </span>
               </Link>
             );
@@ -731,7 +683,11 @@ export function EcranTableauBord({
               const liste = pourPastilles ? selection : courbes;
               const max = pourPastilles ? MAX_PASTILLES : MAX_COURBES;
               const plein = liste.length >= max;
-              const candidats = pourPastilles ? INDICATEURS : INDICATEURS_COURBE;
+              /* Les pastilles n'offrent que l'état du moment ; les indicateurs de
+                 période restent aux courbes (décision du 8 septembre 2026). */
+              const candidats: { id: string; axe: string; libelle: string; precision: string; aVenir: boolean }[] = pourPastilles
+                ? PASTILLES.map((p) => ({ id: p.id, axe: p.axe, libelle: p.libelle, precision: MOMENT[p.moment], aVenir: false }))
+                : INDICATEURS_COURBE.map((d) => ({ id: d.id, axe: d.axe, libelle: d.libelle, precision: d.code ?? d.cibleTexte, aVenir: Boolean(d.aVenir) }));
               const basculerChoix = (id: string, coche: boolean) => {
                 const suivante = coche ? liste.filter((x) => x !== id) : [...liste, id];
                 if (pourPastilles) enregistrer(suivante);
@@ -741,7 +697,7 @@ export function EcranTableauBord({
                 <>
                   <div className="flex items-baseline gap-3 border-b border-bordure px-5 pt-4 pb-3">
                     <h2 id="panneau-titre" className="text-[16px] font-bold text-texte">
-                      {pourPastilles ? "Indicateurs affichés" : "Courbes affichées"}
+                      {pourPastilles ? "Pastilles du moment" : "Courbes affichées"}
                     </h2>
                     <span className={`text-[12.5px] font-semibold ${plein ? "text-defavorable" : "text-texte-2"}`}>
                       {liste.length} sur {max}
@@ -776,7 +732,7 @@ export function EcranTableauBord({
                                       {d.libelle}
                                       {d.aVenir ? <span className="ml-1.5 text-[11.5px] font-normal text-attenue">· à alimenter</span> : null}
                                     </span>
-                                    <span className="ml-auto shrink-0 text-[11.5px] whitespace-nowrap text-attenue">{d.code ?? d.cibleTexte}</span>
+                                    <span className="ml-auto shrink-0 text-[11.5px] whitespace-nowrap text-attenue">{d.precision}</span>
                                   </label>
                                 </li>
                               );
@@ -787,7 +743,7 @@ export function EcranTableauBord({
                     })}
                   </div>
                   <div className="flex items-center gap-3 border-t border-bordure px-5 py-3 text-[12px] text-texte-2">
-                    <span>{pourPastilles ? "Cinq au plus, sur une seule rangée. Décochez-en un pour en choisir un autre." : "Huit courbes au plus, sur deux rangées de quatre, chacune sur sa propre échelle."}</span>
+                    <span>{pourPastilles ? "Cinq au plus, sur une seule rangée : l'état du moment, comparé à hier ou à la semaine passée. La tendance est aux courbes." : "Huit courbes au plus, sur deux rangées de quatre, chacune sur sa propre échelle."}</span>
                     <button type="button" onClick={() => (pourPastilles ? enregistrer([...PASTILLES_DEFAUT]) : enregistrerCourbes([...COURBES_DEFAUT]))} className="bouton-secondaire ml-auto h-8 shrink-0 text-[12px]">
                       Par défaut
                     </button>

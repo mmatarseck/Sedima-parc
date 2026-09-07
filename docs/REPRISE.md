@@ -790,6 +790,33 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   pas les données de démonstration. La région Vercel est posée sur `cdg1`
   (Paris), celle du projet Supabase (`eu-west-3`) : `vercel.json`.
 
+### Les pastilles disent le moment (8 septembre 2026)
+
+- Décision du métier : les pastilles montrent l'état instantané ou une
+  période courte — hier, la semaine passée, la semaine en cours —, pas la
+  tendance ; référence **hier en fin de journée** ; seuils **en nombre** ;
+  les indicateurs de période restent aux courbes. `PROPOSITION-PASTILLES.md`.
+- `src/domaine/pastilles.ts` : quinze pastilles par axe (hors service
+  maintenant, prêts à charger, immobilisés depuis plus de 7 jours, pannes
+  et accidents de la semaine, jours sans accident, échéances à 7 jours,
+  immobilisés administrativement, sans relevé, carburant et dépenses de la
+  semaine, autonomie de la cuve, caisse, chauffeurs indisponibles, ordres
+  ouverts), chacune avec `calcul`, `reference`, `seuil` ou `alerte`,
+  `complement`, `href` ; `evaluerPastille` rend valeur, référence en clair,
+  alerte et quatorze jours. `PASTILLES_DEFAUT` : hors service, prêts,
+  échéances, carburant, jours sans accident.
+- `src/donnees/situation-demo.ts` : `situationsJournalieres(aujourdhui, 28)`,
+  une situation par jour (véhicule par véhicule et flotte), déduite des
+  fiches, incidents, chauffeurs, ordres, caisse, cuve. Le tableau de bord
+  la reçoit en propriété et borne les pastilles au périmètre (BU,
+  catégorie, site), pas à la période. Le sélecteur ne propose plus que les
+  pastilles du moment ; les anciennes sélections d'indicateurs sont
+  ignorées (`limiterPastilles`).
+- Vérifié en démonstration : cinq pastilles rendues avec valeur,
+  complément, référence, seuil et mini-courbe ; quinze au choix. Reste :
+  les seuils en paramètres, `situation_journaliere()` en base, la pastille
+  « demandes sans réponse » avec le module des demandes.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

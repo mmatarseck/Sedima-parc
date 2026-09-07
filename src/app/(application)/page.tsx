@@ -1,5 +1,6 @@
 import { EcranTableauBord } from "@/composants/tableau/EcranTableauBord";
 import { titrePage } from "@/domaine/marque";
+import { situationsJournalieres } from "@/donnees/situation-demo";
 import { DATE_REFERENCE, donneesTableau } from "@/donnees/tableau-bord-demo";
 
 export const metadata = { title: titrePage("Tableau de bord") };
@@ -13,5 +14,7 @@ export const metadata = { title: titrePage("Tableau de bord") };
  */
 export default function PageTableauBord() {
   const d = donneesTableau();
-  return <EcranTableauBord mois={d.mois} vehicules={d.vehicules} faits={d.faits} flotte={d.flotte} semaine={d.semaine} flotteSemaine={d.flotteSemaine} jour={d.jour} alertes={d.alertes} aujourdhui={DATE_REFERENCE} />;
+  /* Les pastilles lisent l'état du moment : les situations journalières des
+     quatre dernières semaines (décision du métier du 8 septembre 2026). */
+  return <EcranTableauBord mois={d.mois} vehicules={d.vehicules} faits={d.faits} flotte={d.flotte} semaine={d.semaine} flotteSemaine={d.flotteSemaine} jour={d.jour} alertes={d.alertes} aujourdhui={DATE_REFERENCE} situations={situationsJournalieres(DATE_REFERENCE)} />;
 }
