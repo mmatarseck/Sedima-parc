@@ -136,10 +136,13 @@ donc réel mais modeste ; le gain des points 1 et 2 est celui qui compte
 pour l'utilisateur à Dakar. La mesure « avant » de la version en ligne
 (1,5 à 3 s par liste) se refera après que la migration 0009 sera jouée.
 
-**Pas appliqué, à décider.** La région de la fonction Vercel : elle doit
-être celle du projet Supabase, à lire dans le tableau de bord Supabase
-(Settings › General › Region) — `fra1` pour Francfort, `cdg1` pour Paris,
-`lhr1` pour Londres — puis `vercel.json` : `{ "regions": ["fra1"] }`.
+4. **La fonction Vercel à côté de la base.** Le projet Supabase est en
+   `eu-west-3` (AWS Paris, réponse du métier) ; `vercel.json` pose
+   `"regions": ["cdg1"]` — la fonction serveur tourne à Paris, où le cache
+   statique répondait déjà, au lieu de la région par défaut de Vercel aux
+   États-Unis. Chaque requête vers Supabase passe d'une traversée de
+   l'Atlantique à quelques millisecondes ; prend effet au prochain
+   déploiement.
 
 ## Ce que je propose de faire en premier
 

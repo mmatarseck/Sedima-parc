@@ -787,8 +787,8 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   une, repli automatique tant que la fonction n'est pas jouée, vérifié dans
   PGlite ; modale de transaction et index de recherche chargés à la
   demande. Correction : les blocs partagés sont React, Next et Supabase,
-  pas les données de démonstration. Reste à décider : la région Vercel,
-  à aligner sur celle du projet Supabase.
+  pas les données de démonstration. La région Vercel est posée sur `cdg1`
+  (Paris), celle du projet Supabase (`eu-west-3`) : `vercel.json`.
 
 **À faire, dans l'ordre.**
 
