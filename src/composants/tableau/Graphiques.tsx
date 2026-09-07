@@ -625,7 +625,7 @@ export function Anneau({ parts, total, libelleTotal, formater }: { parts: PartAn
 
   return (
     <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
-      <svg viewBox="0 0 140 140" className="h-[150px] w-[150px] shrink-0" role="img" aria-label={`Répartition — ${libelleTotal}`}>
+      <svg viewBox="0 0 140 140" className="h-[104px] w-[104px] shrink-0" role="img" aria-label={`Répartition — ${libelleTotal}`}>
         <circle cx="70" cy="70" r={rayon} fill="none" stroke="var(--color-surface-3)" strokeWidth="18" />
         {parts.map((p) => {
           const part = p.valeur / total;
@@ -666,12 +666,13 @@ export function Anneau({ parts, total, libelleTotal, formater }: { parts: PartAn
             <>
               <span className="mt-[5px] size-2.5 shrink-0 rounded-[3px]" style={{ background: p.teinte }} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] text-texte">{p.libelle}</span>
-                {p.precision ? <span className="meta block truncate">{p.precision}</span> : null}
+                {/* En entier, quitte à passer à la ligne : un libellé coupé ne dit plus où va l'argent. */}
+                <span className="block text-[13px] leading-snug text-texte">{p.libelle}</span>
+                {p.precision ? <span className="meta block leading-snug">{p.precision}</span> : null}
               </span>
-              <span className="shrink-0 text-right">
-                <span className="code block text-[12.5px] font-medium text-texte">{formater(p.valeur)}</span>
-                <span className="meta code block">{nombre(part, 1)} %</span>
+              {/* Montant et part sur une ligne : la colonne reste étroite, le libellé garde la place. */}
+              <span className="code shrink-0 text-right text-[12px] font-medium whitespace-nowrap text-texte">
+                {formater(p.valeur)} <span className="meta text-[11px]">{nombre(part, 0)} %</span>
               </span>
             </>
           );

@@ -98,6 +98,8 @@ import { NIVEAU_PRESTATAIRE, ageDette, avanceOuverte, noterPrestataire } from "@
 import { activiteTransport, ancienneteMois, avancesDe, dettesDe, evaluationsDe, repriseDe } from "./compte-prestataire-demo";
 import { fichePrestataire } from "./fiche-prestataire-demo";
 import { relevesTransport } from "./releve-demo";
+import { ETAT_LEGER, REGIME_USAGE, echeancierPlanCar } from "@/domaine/parc-leger";
+import { attributaires as tousAttributaires, depensesForfaits, forfaitsCarburant, vehiculesLegers } from "./parc-leger-demo";
 
 /* -- Le contexte d'un rapport -------------------------------------------------- */
 
@@ -1661,7 +1663,225 @@ export function construireRapport(id: string, c: ContexteRapport = CONTEXTE_PAR_
       return comptesPrestataires();
     case "prestataires-evaluations":
       return notationPrestataires();
+    case "parc-leger-inventaire":
+      return inventaireLeger(parametres);
+    case "parc-leger-attributaires":
+      return attributairesLeger(parametres);
+    case "parc-leger-plan-car":
+      return planCarLeger(parametres);
+    case "parc-leger-forfaits":
+      return forfaitsLeger(c, parametres);
+    case "parc-leger-charges-bu":
+      return chargesLegerParBu(c, parametres);
+    case "parc-leger-renouvellement":
+      return renouvellementLeger();
+    case "parc-leger-immobilises":
+      return immobilisesLeger();
+    case "parc-leger-pool":
+      return poolLeger();
     default:
       return [];
   }
+}
+
+/* -- Le parc léger ------------------------------------------------------------
+   Cadrage du 7 septembre 2026. Les lignes viennent de l'inventaire du dossier
+   DO (`parc-leger-demo.ts`) ; les forfaits, de la même fabrique que le budget
+   et les coûts. Le régime d'usage et l'état se lisent en pastilles ; la BU
+   est celle de l'agent. */
+
+const tonEtatLeger = (e: keyof typeof ETAT_LEGER): ValeurEtat => etat(ETAT_LEGER[e].libelle, ETAT_LEGER[e].ton, ["actif", "pool", "a-recevoir", "panne", "a-reformer"].indexOf(e));
+
+function inventaireLeger(parametres: Parametres): LigneRapport[] {
+  const parId = new Map(tousAttributaires().map((a) => [a.id, a]));
+  const forfaitPar = new Map(forfaitsCarburant().map((f) => [f.attributaireId, f.montantMensuel ?? parametres.parcLeger.forfaitCarburantMensuel]));
+  return vehiculesLegers().map((v) => {
+    const a = v.attributaireId ? (parId.get(v.attributaireId) ?? null) : null;
+    return {
+      immatriculation: v.immatriculationAffichee,
+      immatriculationCanonique: v.immatriculation,
+      vehicule: `${v.marque} ${v.modele}`,
+      marque: v.marque,
+      modele: v.modele,
+      annee: v.annee === null ? null : String(v.annee),
+      km: v.kilometrage,
+      categorie: CATEGORIE_VEHICULE[v.categorie],
+      regime: REGIME_USAGE[v.regime].libelle,
+      etat: tonEtatLeger(v.etat),
+      attributaire: a?.nom ?? v.pool,
+      fonction: a?.fonction ?? null,
+      departement: v.departement,
+      businessUnit: v.businessUnit ? BUSINESS_UNIT[v.businessUnit] : null,
+      planCar: v.planCar !== null,
+      forfait: a && forfaitPar.has(a.id) && (v.etat === "actif" || v.etat === "a-recevoir") ? forfaitPar.get(a.id)! : null,
+      lot: v.lot,
+      observation: v.commentaire,
+    };
+  });
+}
+
+function attributairesLeger(parametres: Parametres): LigneRapport[] {
+  const vehicules = vehiculesLegers();
+  const forfaitPar = new Map(forfaitsCarburant().map((f) => [f.attributaireId, f.montantMensuel ?? parametres.parcLeger.forfaitCarburantMensuel]));
+  return tousAttributaires().map((a) => {
+    const tenus = vehicules.filter((v) => v.attributaireId === a.id);
+    const forfait = forfaitPar.get(a.id) ?? null;
+    return {
+      nom: a.nom,
+      fonction: a.fonction,
+      departement: a.departement,
+      businessUnit: a.businessUnit ? BUSINESS_UNIT[a.businessUnit] : null,
+      vehicules: tenus.length,
+      immatriculations: tenus.map((v) => v.immatriculationAffichee).join(", ") || null,
+      regime: [...new Set(tenus.map((v) => REGIME_USAGE[v.regime].libelle))].join(", ") || null,
+      planCar: tenus.some((v) => v.planCar !== null),
+      forfait,
+      chargeAnnuelle: forfait === null ? null : forfait * 12,
+    };
+  });
+}
+
+function planCarLeger(parametres: Parametres): LigneRapport[] {
+  const parId = new Map(tousAttributaires().map((a) => [a.id, a]));
+  const forfaitPar = new Map(forfaitsCarburant().map((f) => [f.attributaireId, f.montantMensuel ?? parametres.parcLeger.forfaitCarburantMensuel]));
+  return vehiculesLegers()
+    .filter((v) => v.planCar !== null)
+    .map((v) => {
+      const a = v.attributaireId ? (parId.get(v.attributaireId) ?? null) : null;
+      const e = echeancierPlanCar(v.planCar!, parametres.parcLeger.planCarDureeMois, DATE_REFERENCE);
+      return {
+        immatriculation: v.immatriculationAffichee,
+        immatriculationCanonique: v.immatriculation,
+        vehicule: `${v.marque} ${v.modele}`,
+        attributaire: a?.nom ?? null,
+        fonction: a?.fonction ?? null,
+        businessUnit: v.businessUnit ? BUSINESS_UNIT[v.businessUnit] : null,
+        dureeMois: e.dureeMois,
+        debut: v.planCar!.debut ?? "à renseigner",
+        moisEcoules: e.moisEcoules,
+        cessionPrevue: e.cessionPrevue ?? "début à renseigner",
+        statut: v.planCar!.statut === "cede" ? etat("Cédé", "neutre", 1) : etat("En cours", "favorable", 0),
+        forfait: a ? (forfaitPar.get(a.id) ?? null) : null,
+      };
+    });
+}
+
+function forfaitsLeger(c: ContexteRapport, parametres: Parametres): LigneRapport[] {
+  const { debut, fin } = resoudrePeriode(c.periode, DATE_REFERENCE);
+  const parId = new Map(tousAttributaires().map((a) => [a.id, a]));
+  const parVehicule = new Map(vehiculesLegers().map((v) => [v.id, v]));
+  const parCarte = new Map<string, { montant: number; mois: Set<string>; forfait: number; vehiculeId: string }>();
+  for (const d of depensesForfaits(DATE_REFERENCE, parametres.parcLeger.forfaitCarburantMensuel)) {
+    if (!dansLaPeriode(d.date, debut, fin)) continue;
+    const v = parVehicule.get(d.vehiculeId);
+    const cle = v?.attributaireId ?? d.vehiculeId;
+    const x = parCarte.get(cle) ?? { montant: 0, mois: new Set<string>(), forfait: d.montant, vehiculeId: d.vehiculeId };
+    x.montant += d.montant;
+    x.mois.add(d.mois);
+    parCarte.set(cle, x);
+  }
+  return [...parCarte.entries()].map(([cle, x]) => {
+    const a = parId.get(cle) ?? null;
+    const v = parVehicule.get(x.vehiculeId)!;
+    return {
+      attributaire: a?.nom ?? v.pool ?? "—",
+      fonction: a?.fonction ?? null,
+      immatriculation: v.immatriculationAffichee,
+      immatriculationCanonique: v.immatriculation,
+      vehicule: `${v.marque} ${v.modele}`,
+      departement: v.departement,
+      businessUnit: v.businessUnit ? BUSINESS_UNIT[v.businessUnit] : null,
+      forfait: x.forfait,
+      mois: x.mois.size,
+      montant: x.montant,
+    };
+  });
+}
+
+function chargesLegerParBu(c: ContexteRapport, parametres: Parametres): LigneRapport[] {
+  const { debut, fin } = resoudrePeriode(c.periode, DATE_REFERENCE);
+  const vehicules = vehiculesLegers().filter((v) => v.regime !== "exploitation");
+  const forfaitPar = new Map(forfaitsCarburant().map((f) => [f.attributaireId, f.montantMensuel ?? parametres.parcLeger.forfaitCarburantMensuel]));
+  const parBu = new Map<string, { vehicules: number; service: number; fonction: number; cartes: Set<string>; forfaitMensuel: number; montant: number }>();
+  const de = (bu: string) => {
+    let x = parBu.get(bu);
+    if (!x) {
+      x = { vehicules: 0, service: 0, fonction: 0, cartes: new Set(), forfaitMensuel: 0, montant: 0 };
+      parBu.set(bu, x);
+    }
+    return x;
+  };
+  for (const v of vehicules) {
+    const bu = v.businessUnit ? BUSINESS_UNIT[v.businessUnit] : "Sans BU";
+    const x = de(bu);
+    x.vehicules += 1;
+    if (v.regime === "service") x.service += 1;
+    if (v.regime === "fonction") x.fonction += 1;
+    if (v.attributaireId && forfaitPar.has(v.attributaireId) && (v.etat === "actif" || v.etat === "a-recevoir") && !x.cartes.has(v.attributaireId)) {
+      x.cartes.add(v.attributaireId);
+      x.forfaitMensuel += forfaitPar.get(v.attributaireId)!;
+    }
+  }
+  for (const d of depensesForfaits(DATE_REFERENCE, parametres.parcLeger.forfaitCarburantMensuel)) {
+    if (!dansLaPeriode(d.date, debut, fin)) continue;
+    de(d.businessUnit ? BUSINESS_UNIT[d.businessUnit] : "Sans BU").montant += d.montant;
+  }
+  const total = [...parBu.values()].reduce((s, x) => s + x.montant, 0);
+  return [...parBu.entries()]
+    .sort((a, b) => b[1].montant - a[1].montant)
+    .map(([bu, x]) => ({ businessUnit: bu, vehicules: x.vehicules, service: x.service, fonction: x.fonction, cartes: x.cartes.size, forfaitMensuel: x.forfaitMensuel, montant: x.montant, part: total > 0 ? arrondir((x.montant / total) * 100) : null }));
+}
+
+function renouvellementLeger(): LigneRapport[] {
+  const parId = new Map(tousAttributaires().map((a) => [a.id, a]));
+  return vehiculesLegers()
+    .filter((v) => v.lot !== null)
+    .sort((a, b) => a.lot!.localeCompare(b.lot!) || a.etat.localeCompare(b.etat))
+    .map((v) => {
+      const a = v.attributaireId ? (parId.get(v.attributaireId) ?? null) : null;
+      return {
+        lot: v.lot,
+        vehicule: `${v.immatriculation ? v.immatriculationAffichee + " · " : ""}${v.marque} ${v.modele}`,
+        etat: tonEtatLeger(v.etat),
+        beneficiaire: a?.nom ?? v.pool ?? null,
+        fonction: a?.fonction ?? null,
+        departement: v.departement,
+        businessUnit: v.businessUnit ? BUSINESS_UNIT[v.businessUnit] : null,
+        regime: REGIME_USAGE[v.regime].libelle,
+        devenir: v.commentaire,
+      };
+    });
+}
+
+function immobilisesLeger(): LigneRapport[] {
+  return vehiculesLegers()
+    .filter((v) => v.etat === "panne" || v.etat === "a-reformer")
+    .map((v) => ({
+      immatriculation: v.immatriculationAffichee,
+      immatriculationCanonique: v.immatriculation,
+      vehicule: `${v.marque} ${v.modele}`,
+      annee: v.annee === null ? null : String(v.annee),
+      km: v.kilometrage,
+      etat: tonEtatLeger(v.etat),
+      departement: v.departement,
+      businessUnit: v.businessUnit ? BUSINESS_UNIT[v.businessUnit] : null,
+      ancienDetenteur: v.commentaire?.match(/ancien véhicule d[e'’]\s*([^—,.]+)/i)?.[1]?.trim() ?? null,
+      motif: v.commentaire,
+    }));
+}
+
+function poolLeger(): LigneRapport[] {
+  return vehiculesLegers()
+    .filter((v) => v.etat === "pool")
+    .map((v) => ({
+      immatriculation: v.immatriculationAffichee,
+      immatriculationCanonique: v.immatriculation,
+      vehicule: `${v.marque} ${v.modele}`,
+      categorie: CATEGORIE_VEHICULE[v.categorie],
+      pool: v.pool ?? v.departement,
+      departement: v.departement,
+      businessUnit: v.businessUnit ? BUSINESS_UNIT[v.businessUnit] : null,
+      etat: tonEtatLeger(v.etat),
+      observation: v.commentaire,
+    }));
 }

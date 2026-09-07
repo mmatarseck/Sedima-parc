@@ -565,12 +565,20 @@ charge se rattache à **la BU de l'agent** ; les véhicules de service vont
   PGlite. `verifier-seed.sql` porte les nouveaux comptes. En mode réel, la
   liste Flotte ne lit que le régime `exploitation`.
 
+- **les rapports** (demande du 7 septembre, soir) : une rubrique « Parc
+  léger » dans Rapports, huit rapports décrits dans le catalogue et servis
+  par `rapports-demo.ts` — inventaire, attributaires, plan car, forfaits
+  carburant (sur la période), charges par business unit (sur la période),
+  renouvellement 2026 (le plan de cascade), véhicules immobilisés, véhicules
+  de pool. Filtres, colonnes, totaux et export viennent du descripteur, comme
+  pour les autres.
+
 **Ce qui reste** : la maintenance des véhicules légers (aucun historique
 chiffré dans le dossier, seulement la note « Parc Automobile Réalisation
 pour légers » qui décrit les travaux) ; les dates de début des plans car (la
-feuille CAR-PLAN n'en a pas) ; l'écran Parc léger lu en base (il est encore
-en démonstration) ; la fusion dans la liste Flotte avec un filtre de régime,
-à décider avec le métier. Les attributaires du plan car reçoivent
+feuille CAR-PLAN n'en a pas) ; l'écran Parc léger et ses rapports lus en base
+(encore en démonstration) ; la fusion dans la liste Flotte avec un filtre de
+régime, à décider avec le métier. Les attributaires du plan car reçoivent
 aujourd'hui un forfait carburant comme les autres véhicules de fonction : à
 confirmer.
 

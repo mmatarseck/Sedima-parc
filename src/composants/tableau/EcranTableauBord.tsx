@@ -384,14 +384,14 @@ export function EcranTableauBord({
     /* Une ligne par part, sans sous-titre : la vue tient sur un écran, et le
        détail se lit sur l'écran que chaque part ouvre. */
     const parts: PartAnneau[] = [
-      { cle: "maintenance", libelle: "Maintenance du parc", valeur: maintenance, teinte: "var(--color-accent-tres-fonce)", href: "/maintenance" },
-      { cle: "autres", libelle: "Carburant, assurances, autres", valeur: autres, teinte: "var(--color-accent)" },
+      { cle: "maintenance", libelle: "Maintenance", valeur: maintenance, teinte: "var(--color-accent-tres-fonce)", href: "/maintenance" },
+      { cle: "autres", libelle: "Carburant et autres", valeur: autres, teinte: "var(--color-accent)" },
     ];
     if (!filtreVehicule) {
       parts.push(
         { cle: "affretements", libelle: "Affrètements", valeur: tiers.reduce((s, f) => s + f.coutAffretements, 0), teinte: "var(--color-texte-2)", href: "/transporteurs?vue=affretements" },
-        { cle: "mad", libelle: "Mises à disposition ADEX", valeur: tiers.reduce((s, f) => s + f.coutMisesADisposition, 0), teinte: "var(--color-attenue)", href: "/transporteurs?vue=mad" },
-        { cle: "prestations", libelle: "Prestations hors grille", valeur: tiers.reduce((s, f) => s + f.coutPrestations, 0), teinte: "var(--color-attenue-2)", href: "/transporteurs?vue=prestations" },
+        { cle: "mad", libelle: "Mises à disposition", valeur: tiers.reduce((s, f) => s + f.coutMisesADisposition, 0), teinte: "var(--color-attenue)", href: "/transporteurs?vue=mad" },
+        { cle: "prestations", libelle: "Prestations", valeur: tiers.reduce((s, f) => s + f.coutPrestations, 0), teinte: "var(--color-attenue-2)", href: "/transporteurs?vue=prestations" },
       );
     }
     const retenues = parts.filter((x) => x.valeur > 0);
@@ -438,12 +438,14 @@ export function EcranTableauBord({
       {/* ---- En-tête et filtres, appliqués à toute la page ---- */}
       <div className="flex shrink-0 flex-wrap items-end justify-between gap-3">
         <TitreEcran titre="Tableau de bord" sousTitre={`Vue équipe parc · ${contexte} · au ${formaterDate(aujourdhui)} · ${cumul.vehicules} véhicule${cumul.vehicules > 1 ? "s" : ""}, ${cumul.engages} engagé${cumul.engages > 1 ? "s" : ""}`} />
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Le bouton de choix reste collé à droite, même quand les filtres passent
+            sur deux lignes : c'est l'action de la rangée, pas un filtre de plus. */}
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Segments valeur={periode} onChange={setPeriode} />
           <FiltreChoix etiquette="BU" valeur={bu} options={bus.map((b) => ({ cle: b as string, libelle: BUSINESS_UNIT[b] }))} onChange={setBu} />
           <FiltreChoix etiquette="Catégorie" valeur={categorie} options={categories.map((c) => ({ cle: c as string, libelle: CATEGORIE_FLOTTE[c] }))} onChange={setCategorie} />
           <FiltreChoix etiquette="Site" valeur={site} options={sites.map((s) => ({ cle: s, libelle: s }))} onChange={setSite} />
-          <button type="button" onClick={() => setPanneau("pastilles")} aria-expanded={panneau === "pastilles"} className="bouton-principal h-7 gap-1.5 px-3 text-[12.5px]">
+          <button type="button" onClick={() => setPanneau("pastilles")} aria-expanded={panneau === "pastilles"} className="bouton-principal ml-auto h-7 gap-1.5 px-3 text-[12.5px]">
             <SlidersHorizontal className="size-3.5" strokeWidth={2} />
             Choisir les indicateurs
             <span className="rounded-full bg-white/25 px-1.5 text-[11px]">
@@ -603,11 +605,12 @@ export function EcranTableauBord({
               <p className="meta px-3 py-4">Rien à traiter sur ce périmètre.</p>
             ) : (
               alertesRetenues.slice(0, 5).map((a) => (
-                <Link key={`${a.immatriculation}-${a.libelle}`} href={a.href} className="grid grid-cols-[8px_84px_1fr_auto] items-center gap-2.5 rounded-[10px] px-3 py-1.5 hover:bg-surface-2">
+                <Link key={`${a.immatriculation}-${a.libelle}`} href={a.href} title={`${a.immatriculationAffichee} · ${a.libelle} · ${a.echeance}`} className="grid grid-cols-[8px_74px_1fr_auto] items-center gap-2 rounded-[10px] px-3 py-1.5 hover:bg-surface-2">
                   <span className="size-2 rounded-full" style={{ background: a.niveau === "critique" ? "var(--color-defavorable)" : "var(--color-attenue-2)" }} />
-                  <span className="code text-[12px] font-semibold text-accent-tres-fonce">{a.immatriculationAffichee}</span>
+                  <span className="code text-[11px] font-semibold text-accent-tres-fonce">{a.immatriculationAffichee}</span>
+                  {/* La description a la place ; l'échéance et l'immatriculation se font petites. */}
                   <span className="truncate text-[12.5px] text-texte">{a.libelle}</span>
-                  <span className={`text-[12px] whitespace-nowrap ${a.niveau === "critique" ? "font-semibold text-defavorable" : "text-texte-2"}`}>{a.echeance}</span>
+                  <span className={`text-[10.5px] whitespace-nowrap ${a.niveau === "critique" ? "font-semibold text-defavorable" : "text-texte-2"}`}>{a.echeance}</span>
                 </Link>
               ))
             )}
