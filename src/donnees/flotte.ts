@@ -176,7 +176,10 @@ function ilYADouzeMois(aujourdhui: string): string {
 export async function lireParc(client: SupabaseClient, aujourdhui: string): Promise<ParcBrut> {
   const depuis = ilYADouzeMois(aujourdhui);
   const [vehicules, sites, chauffeurs, affectations, documents, licences, licencesVehicules, releves, depenses, pleins, interventions] = await Promise.all([
-    tout<LigneVehicule>("véhicules", (de, a) => client.from("vehicule").select("*").order("immatriculation").range(de, a)),
+    /* La liste Flotte est celle du transport : les véhicules de service et de
+       fonction (0004) ont leur écran, Parc léger, tant que la fusion n'est pas
+       décidée avec le métier. */
+    tout<LigneVehicule>("véhicules", (de, a) => client.from("vehicule").select("*").eq("regime", "exploitation").order("immatriculation").range(de, a)),
     tout<LigneSite>("sites", (de, a) => client.from("site").select("id, code, libelle, region, type").range(de, a)),
     tout<LigneChauffeurCourt>("chauffeurs", (de, a) => client.from("chauffeur").select("id, nom, prenom").range(de, a)),
     tout<LigneAffectation>("affectations", (de, a) => client.from("affectation").select("vehicule_id, chauffeur_id, role, debut, fin").range(de, a)),

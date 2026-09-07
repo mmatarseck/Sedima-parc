@@ -22,8 +22,13 @@ import { demandesAchat } from "./caisse-demo";
 import { DATE_REFERENCE } from "./chauffeurs-demo";
 import { fichePourImmatriculation } from "./fiche-demo";
 import { FLOTTE } from "./parc-demo";
+import { depensesForfaits } from "./parc-leger-demo";
+import { PARAMETRES_DEFAUT } from "@/domaine/parametres";
 
 const EXERCICE = DATE_REFERENCE.slice(0, 4);
+
+/** Les forfaits carburant du parc léger, en dépenses mensuelles — cadrage du 7 septembre 2026. */
+const forfaits = () => depensesForfaits(DATE_REFERENCE, PARAMETRES_DEFAUT.parcLeger.forfaitCarburantMensuel);
 
 /* -- Le réalisé, poste par poste et business unit par business unit ---------------- */
 
@@ -53,6 +58,12 @@ function realise(depuis: string, jusqua: string): Map<string, number> {
       parCle.set(k, (parCle.get(k) ?? 0) + d.montant);
     }
   }
+  /* Le parc léger : les forfaits carburant, sur la BU de l'agent. */
+  for (const d of forfaits()) {
+    if (d.date < depuis || d.date > jusqua) continue;
+    const k = cle(d.poste, d.businessUnit);
+    parCle.set(k, (parCle.get(k) ?? 0) + d.montant);
+  }
   return parCle;
 }
 
@@ -73,6 +84,7 @@ function moisAvecDepenses(depuis: string, jusqua: string): number {
     if (!f) continue;
     for (const d of f.depenses) if (d.date >= depuis && d.date <= jusqua) mois.add(d.date.slice(0, 7));
   }
+  for (const d of forfaits()) if (d.date >= depuis && d.date <= jusqua) mois.add(d.mois);
   return mois.size;
 }
 
@@ -471,6 +483,23 @@ export function fichePoste(cleUrl: string): FichePoste | null {
         vehicule: `${l.vehicule.marque} ${l.vehicule.appellation}`,
       });
     }
+  }
+  /* Les forfaits carburant du parc léger : une ligne par véhicule de fonction et par mois. */
+  for (const d of forfaits()) {
+    if (d.poste !== poste || d.date < DEBUT_EXERCICE || d.date > DATE_REFERENCE) continue;
+    depenses.push({
+      numero: d.numero,
+      date: d.date,
+      libelle: d.libelle,
+      montant: d.montant,
+      beneficiaire: d.beneficiaire,
+      origine: d.origine,
+      justificatif: d.justificatif,
+      businessUnit: d.businessUnit,
+      immatriculation: d.immatriculation,
+      immatriculationAffichee: d.immatriculationAffichee,
+      vehicule: d.vehicule,
+    });
   }
   depenses.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 

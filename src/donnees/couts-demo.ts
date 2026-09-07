@@ -15,7 +15,7 @@ import { PARAMETRES_DEFAUT } from "@/domaine/parametres";
 import type { PosteDepense } from "@/domaine/types";
 import { fichePourImmatriculation } from "./fiche-demo";
 import { FLOTTE } from "./parc-demo";
-import { forfaitsCarburant, vehiculesLegers } from "./parc-leger-demo";
+import { depensesForfaits, vehiculesLegers } from "./parc-leger-demo";
 
 /** Date de référence du jeu de démonstration, comme dans les autres modules. */
 const AUJOURDHUI = "2026-09-02";
@@ -23,8 +23,6 @@ const AUJOURDHUI = "2026-09-02";
 const PROFONDEUR_MOIS = 24;
 /** Consommation de référence d'un véhicule léger, aux 100 km — sans plein, elle ne sert qu'au verdict. */
 const REFERENCE_L100_LEGER = 9;
-/** Premier mois où les forfaits carburant sont portés en charge dans la démonstration. */
-const DEBUT_FORFAITS = "2025-01";
 
 let CACHE: DonneesVehicule[] | null = null;
 
@@ -40,12 +38,11 @@ export function donneesCouts(): DonneesVehicule[] {
      kilométrage, qui n'entre donc pas dans la consommation aux 100 km. Sa
      maintenance viendra avec les fiches ; pour l'instant, la ligne porte le
      forfait seul, sur la BU de l'agent. */
-  const regles = PARAMETRES_DEFAUT.parcLeger;
-  const forfaitPar = new Map(forfaitsCarburant().map((f) => [f.attributaireId, f.montantMensuel ?? regles.forfaitCarburantMensuel]));
+  const parVehiculeMois = new Map<string, number>();
+  for (const d of depensesForfaits(AUJOURDHUI, PARAMETRES_DEFAUT.parcLeger.forfaitCarburantMensuel)) parVehiculeMois.set(`${d.vehiculeId}|${d.mois}`, d.montant);
   const legers: DonneesVehicule[] = vehiculesLegers()
     .filter((v) => v.immatriculation !== null && v.etat !== "a-reformer")
     .map((v) => {
-      const forfait = v.attributaireId ? (forfaitPar.get(v.attributaireId) ?? 0) : 0;
       return {
         vehiculeId: v.id,
         immatriculation: v.immatriculation!,
@@ -58,7 +55,10 @@ export function donneesCouts(): DonneesVehicule[] {
         statut: v.etat === "panne" ? "en-reparation" : "en-service",
         referenceL100: REFERENCE_L100_LEGER,
         ageAnnees: v.annee ? Number(AUJOURDHUI.slice(0, 4)) - v.annee : null,
-        mois: moisServis.map((mois) => ({ mois, km: 0, litres: 0, parPoste: forfait > 0 && mois >= DEBUT_FORFAITS ? { carburant: forfait } : {}, curatifs: 0, immobilisationJours: 0 })),
+        mois: moisServis.map((mois) => {
+          const forfait = parVehiculeMois.get(`${v.id}|${mois}`);
+          return { mois, km: 0, litres: 0, parPoste: forfait ? { carburant: forfait } : {}, curatifs: 0, immobilisationJours: 0 };
+        }),
       } satisfies DonneesVehicule;
     });
 

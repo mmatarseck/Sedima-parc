@@ -33,6 +33,7 @@ import { relevesTransport } from "@/donnees/releve-demo";
 import { enveloppes } from "@/donnees/budget-demo";
 import { avances, evaluations } from "@/donnees/compte-prestataire-demo";
 import { PROGRAMMES } from "@/donnees/entretien-demo";
+import { attributaires, forfaitsCarburant, vehiculesLegers } from "@/donnees/parc-leger-demo";
 import { normaliserLocalite } from "@/domaine/flotte-tierce";
 import { normaliser as normaliserPlaque } from "@/domaine/immatriculation";
 
@@ -109,11 +110,54 @@ inserer(
 const vehiculeId = (id: string | null) => (id ? uuid(`vehicule:${id}`) : null);
 inserer(
   "vehicule",
-  ["id", "immatriculation", "vin", "marque", "appellation", "type_modele", "categorie", "categorie_flotte", "usage", "transport_special", "energie", "business_unit", "site_id", "statut", "engage", "premiere_mise_en_circulation", "date_immatriculation", "puissance_cv", "cylindree", "ptac", "ptra", "poids_vide", "charge_utile", "capacite_reservoir", "valeur_acquisition", "duree_amortissement_annees", "photo", "commentaire"],
+  ["id", "immatriculation", "vin", "marque", "appellation", "type_modele", "categorie", "categorie_flotte", "usage", "transport_special", "energie", "business_unit", "site_id", "statut", "engage", "premiere_mise_en_circulation", "date_immatriculation", "puissance_cv", "cylindree", "ptac", "ptra", "poids_vide", "charge_utile", "capacite_reservoir", "valeur_acquisition", "duree_amortissement_annees", "photo", "commentaire", "regime"],
   FLOTTE.map(({ vehicule: v }) => [
     vehiculeId(v.id), v.immatriculation, v.vin, v.marque, v.appellation, v.typeModele, v.categorie, v.categorieFlotte, v.usage, v.transportSpecial, v.energie ?? "gasoil", v.businessUnit, siteId(v.siteId), v.statut, v.engage,
-    v.premiereMiseEnCirculation, v.dateImmatriculation, v.puissanceCv, v.cylindree, v.ptac, v.ptra, v.poidsVide, v.chargeUtile, v.capaciteReservoir, v.valeurAcquisition, v.dureeAmortissementAnnees, v.photo ?? null, v.commentaire,
+    v.premiereMiseEnCirculation, v.dateImmatriculation, v.puissanceCv, v.cylindree, v.ptac, v.ptra, v.poidsVide, v.chargeUtile, v.capaciteReservoir, v.valeurAcquisition, v.dureeAmortissementAnnees, v.photo ?? null, v.commentaire, "exploitation",
   ]),
+);
+
+/* -- Le parc léger (0004) : véhicules de service, de fonction, plan car ------------ */
+
+/* Les véhicules légers immatriculés entrent dans `vehicule` avec leur régime ;
+   leur état du dossier se traduit en statut. Un léger déjà présent dans la
+   flotte de transport (même immatriculation) n'est pas doublé. */
+const immatsFlotte = new Set(FLOTTE.map((l) => l.vehicule.immatriculation));
+const STATUT_LEGER: Record<string, string> = { actif: "en-service", pool: "en-backup", panne: "en-reparation", "a-reformer": "retrait-en-cours" };
+const legers = vehiculesLegers().filter((v) => v.immatriculation !== null && !immatsFlotte.has(v.immatriculation));
+inserer(
+  "vehicule",
+  ["id", "immatriculation", "marque", "appellation", "categorie", "categorie_flotte", "usage", "transport_special", "energie", "business_unit", "statut", "engage", "premiere_mise_en_circulation", "commentaire", "regime"],
+  legers.map((v) => [
+    vehiculeId(v.id), v.immatriculation, v.marque, v.modele, v.categorie, "interne", v.categorie === "bus" ? "autre" : "utilitaire", false, "gasoil", v.businessUnit, STATUT_LEGER[v.etat] ?? "en-service", false,
+    v.annee ? `${v.annee}-01-01` : null, [v.lot, v.commentaire].filter(Boolean).join(" — ") || null, v.regime,
+  ]),
+);
+
+const attributaireId = (id: string | null) => (id ? uuid(`attributaire:${id}`) : null);
+inserer(
+  "attributaire",
+  ["id", "nom", "fonction", "departement", "business_unit"],
+  attributaires().map((a) => [attributaireId(a.id), a.nom, a.fonction, a.departement, a.businessUnit]),
+);
+inserer(
+  "attribution_legere",
+  ["id", "vehicule_id", "attributaire_id", "pool", "debut", "plan_car", "plan_car_duree_mois", "plan_car_debut", "plan_car_statut", "commentaire"],
+  legers
+    .filter((v) => v.attributaireId || v.pool)
+    .map((v) => [uuid(`attribution:${v.id}`), vehiculeId(v.id), attributaireId(v.attributaireId), v.attributaireId ? null : v.pool, null, v.planCar !== null, v.planCar?.dureeMois ?? null, v.planCar?.debut ?? null, v.planCar?.statut ?? "en-cours", v.commentaire]),
+);
+inserer(
+  "forfait_carburant",
+  ["attributaire_id", "montant_mensuel", "carte"],
+  forfaitsCarburant().map((f) => [attributaireId(f.attributaireId), f.montantMensuel, f.carte]),
+);
+inserer(
+  "vehicule_a_recevoir",
+  ["id", "lot", "marque", "modele", "categorie", "regime", "attributaire_id", "pool", "business_unit", "commentaire"],
+  vehiculesLegers()
+    .filter((v) => v.immatriculation === null)
+    .map((v) => [uuid(`a-recevoir:${v.id}`), v.lot, v.marque, v.modele, v.categorie, v.regime, attributaireId(v.attributaireId), v.attributaireId ? null : v.pool, v.businessUnit, v.commentaire]),
 );
 
 const chauffeurs = listeChauffeurs();
@@ -351,7 +395,7 @@ const entete = `-- =============================================================
 -- GÉNÉRÉ par scripts/generer-seed.mts : ne pas modifier à la main, relancer.
 -- ${total} lignes. Rejouable : chaque insertion est \`on conflict do nothing\`.
 --
--- Prérequis : les migrations 0001 à 0003. Les comptes (profil) ne sont pas
+-- Prérequis : les migrations 0001 à 0004. Les comptes (profil) ne sont pas
 -- dans ce fichier — ils citent auth.users, qui n'existe qu'une fois les
 -- personnes invitées.
 -- ============================================================================

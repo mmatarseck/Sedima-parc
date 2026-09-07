@@ -59,7 +59,7 @@ type Periode = "semaine" | "mois" | "annee";
 const PERIODES: { cle: Periode; libelle: string; vs: string }[] = [
   { cle: "semaine", libelle: "Semaine", vs: "vs semaine précédente" },
   { cle: "mois", libelle: "Mois en cours", vs: "vs mois précédent" },
-  { cle: "annee", libelle: "Année", vs: "vs année précédente" },
+  { cle: "annee", libelle: "Année", vs: "vs même période l'an passé" },
 ];
 
 const MOIS_LONG = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
@@ -250,6 +250,16 @@ export function EcranTableauBord({
 
   /* ---- La fenêtre : période et périmètre, appliqués à toute la page ---- */
   const moisCourant = mois[mois.length - 1]!;
+  /* L'année se lit **en année civile**, de janvier à décembre (demande du
+     métier, 7 septembre 2026) — pas en douze mois glissants. L'exercice
+     courant va de janvier au mois en cours ; l'année précédente lui sert de
+     comparaison, mois pour mois. Les mois à venir restent vides sur les
+     courbes : ils font partie de l'année, ils ne sont pas encore écrits. */
+  const exercice = moisCourant.slice(0, 4);
+  const moisServis = useMemo(() => new Set(mois), [mois]);
+  const moisCalendrier = useMemo(() => Array.from({ length: 12 }, (_, i) => `${exercice}-${String(i + 1).padStart(2, "0")}`), [exercice]);
+  const moisPrecedents = useMemo(() => moisCalendrier.map((m) => `${Number(exercice) - 1}${m.slice(4)}`), [moisCalendrier, exercice]);
+  const moisExercice = useMemo(() => moisCalendrier.filter((m) => m <= moisCourant), [moisCalendrier, moisCourant]);
   const retenus = useMemo(
     () => new Set(vehicules.filter((v) => (bu === "tous" || v.businessUnit === bu) && (categorie === "tous" || v.categorieFlotte === categorie) && (site === "tous" || v.site === site)).map((v) => v.id)),
     [vehicules, bu, categorie, site],
@@ -276,13 +286,15 @@ export function EcranTableauBord({
      et pas de semaine d'avant : son écart reste muet. */
   const cumul = useMemo(() => {
     if (periode === "semaine") return cumuler(semaine.filter((f) => retenus.has(f.vehiculeId)), flotteSemaine, jour, joursNominaux);
-    return cumulDe(periode === "annee" ? mois.slice(-12) : [moisCourant]);
-  }, [periode, semaine, flotteSemaine, retenus, jour, joursNominaux, cumulDe, mois, moisCourant]);
+    return cumulDe(periode === "annee" ? moisExercice : [moisCourant]);
+  }, [periode, semaine, flotteSemaine, retenus, jour, joursNominaux, cumulDe, moisExercice, moisCourant]);
   const cumulPrecedent = useMemo(() => {
     if (periode === "semaine") return null;
-    const fenetre = periode === "annee" ? mois.slice(-24, -12) : mois.slice(-2, -1);
+    /* L'année se compare à la même période de l'année précédente — janvier
+       au mois en cours —, pas à douze mois pleins. */
+    const fenetre = periode === "annee" ? moisPrecedents.slice(0, moisExercice.length).filter((m) => moisServis.has(m)) : mois.slice(-2, -1);
     return fenetre.length ? cumulDe(fenetre) : null;
-  }, [periode, cumulDe, mois]);
+  }, [periode, cumulDe, mois, moisPrecedents, moisExercice, moisServis]);
 
   /* Chaque mois cumulé pour lui-même : la seule façon d'obtenir une valeur
      mensuelle d'un indicateur qui, sinon, se lit sur toute la période. */
@@ -305,22 +317,30 @@ export function EcranTableauBord({
         const d = INDICATEUR_PAR_ID.get(id)!;
         const v = evaluerIndicateur(d, cumul);
         const precedent = cumulPrecedent ? evaluerIndicateur(d, cumulPrecedent).valeur : null;
-        const douze = mois.slice(-12).map((m) => valeurDuMois(d, m));
+        const douze = moisCalendrier.map((m) => (moisServis.has(m) ? valeurDuMois(d, m) : null));
         return { d, v, precedent, douze };
       }),
-    [monte, selection, cumul, cumulPrecedent, mois, valeurDuMois],
+    [monte, selection, cumul, cumulPrecedent, moisCalendrier, moisServis, valeurDuMois],
   );
 
-  const series = useMemo(() => {
-    const douze = mois.slice(-12);
-    const douzeAvant = mois.slice(-24, -12);
-    return new Map<string, PointCourbe[]>(
-      (monte ? courbes : COURBES_DEFAUT).map((id) => {
-        const d = INDICATEUR_PAR_ID.get(id)!;
-        return [id, douze.map((m, i) => ({ mois: m, valeur: valeurDuMois(d, m), precedent: douzeAvant[i] ? valeurDuMois(d, douzeAvant[i]!) : null, moisPrecedent: douzeAvant[i] ?? null }))];
-      }),
-    );
-  }, [mois, courbes, monte, valeurDuMois]);
+  const series = useMemo(
+    () =>
+      new Map<string, PointCourbe[]>(
+        (monte ? courbes : COURBES_DEFAUT).map((id) => {
+          const d = INDICATEUR_PAR_ID.get(id)!;
+          return [
+            id,
+            moisCalendrier.map((m, i) => ({
+              mois: m,
+              valeur: moisServis.has(m) ? valeurDuMois(d, m) : null,
+              precedent: moisServis.has(moisPrecedents[i]!) ? valeurDuMois(d, moisPrecedents[i]!) : null,
+              moisPrecedent: moisPrecedents[i] ?? null,
+            })),
+          ];
+        }),
+      ),
+    [moisCalendrier, moisPrecedents, moisServis, courbes, monte, valeurDuMois],
+  );
 
   /**
    * Ce qu'une courbe dit d'elle-même : dernière valeur, hors cible ou non,
@@ -356,7 +376,7 @@ export function EcranTableauBord({
   /* Où va l'argent : les charges du parc suivent les filtres ; le transport
      tiers n'est pas porté par un véhicule, il sort dès qu'un filtre est posé. */
   const repartition = useMemo(() => {
-    const douze = new Set(mois.slice(-12));
+    const douze = new Set(moisExercice);
     const duParc = faits.filter((f) => retenus.has(f.vehiculeId) && douze.has(f.mois));
     const maintenance = duParc.reduce((somme, f) => somme + f.coutMaintenance, 0);
     const autres = Math.max(0, duParc.reduce((somme, f) => somme + f.cout, 0) - maintenance);
@@ -376,11 +396,11 @@ export function EcranTableauBord({
     }
     const retenues = parts.filter((x) => x.valeur > 0);
     return { parts: retenues, total: retenues.reduce((s, x) => s + x.valeur, 0) };
-  }, [mois, faits, flotte, retenus, filtreVehicule]);
+  }, [moisExercice, faits, flotte, retenus, filtreVehicule]);
 
   /* Qui fait le coût du parc : un total ne se corrige pas, des véhicules si. */
   const contributions = useMemo(() => {
-    const douze = new Set(mois.slice(-12));
+    const douze = new Set(moisExercice);
     const parVehicule = new Map<string, number>();
     for (const f of faits) {
       if (!retenus.has(f.vehiculeId) || !douze.has(f.mois)) continue;
@@ -395,13 +415,13 @@ export function EcranTableauBord({
         return { cle: id, libelle: v ? `${v.immatriculationAffichee} · ${v.libelle}` : id, valeur, href: v ? `/flotte/${v.immatriculation}` : undefined };
       });
     return { lignes: classees, total, univers: parVehicule.size };
-  }, [mois, faits, retenus, vehicules]);
+  }, [moisExercice, faits, retenus, vehicules]);
 
   const sites = useMemo(() => [...new Set(vehicules.map((v) => v.site).filter((s): s is string => s !== null))].sort(), [vehicules]);
   const bus = useMemo(() => [...new Set(vehicules.map((v) => v.businessUnit).filter((b): b is NonNullable<typeof b> => b !== null))], [vehicules]);
   const categories = useMemo(() => [...new Set(vehicules.map((v) => v.categorieFlotte))], [vehicules]);
 
-  const libellePeriode = periode === "semaine" ? "7 derniers jours" : periode === "mois" ? libelleMoisLong(moisCourant) : "12 derniers mois";
+  const libellePeriode = periode === "semaine" ? "7 derniers jours" : periode === "mois" ? libelleMoisLong(moisCourant) : `année ${exercice}, depuis janvier`;
   const contexte = [
     libellePeriode,
     bu === "tous" ? "toutes les BU" : BUSINESS_UNIT[bu as keyof typeof BUSINESS_UNIT],
@@ -496,16 +516,16 @@ export function EcranTableauBord({
       {/* ---- Rangée 2 : les courbes ---- */}
       <div className="carte flex shrink-0 flex-col px-5 pt-3.5 pb-3">
         <div className="mb-2 flex flex-wrap items-baseline gap-3">
-          <h2 className="titre-bloc">Évolution sur douze mois</h2>
-          <span className="meta">une échelle par courbe · {filtreVehicule ? "périmètre filtré" : "tout le parc"}</span>
+          <h2 className="titre-bloc">Évolution sur {exercice}</h2>
+          <span className="meta">janvier à décembre, une échelle par courbe · {filtreVehicule ? "périmètre filtré" : "tout le parc"}</span>
           <span className="ml-auto flex items-center gap-3.5 text-[11.5px] text-texte-2">
             <span className="inline-flex items-center gap-1.5">
               <i className="inline-block w-4 border-t-2 border-accent-tres-fonce" />
-              douze derniers mois
+              {exercice}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <i className="inline-block w-4 border-t-2 border-dashed border-attenue-2" />
-              douze mois précédents
+              {Number(exercice) - 1}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <i className="inline-block w-4 border-t-2 border-dotted border-attenue" />
@@ -549,7 +569,7 @@ export function EcranTableauBord({
                       {d.unite ? <small className="ml-0.5 text-[10px] font-semibold text-attenue">{d.unite}</small> : null}
                     </span>
                     {variation !== null && variation !== 0 ? (
-                      <span title="Douze derniers mois contre les douze précédents" className={`code shrink-0 text-[11px] font-medium ${mieux === true ? "text-favorable" : mieux === false && mal ? "text-defavorable" : "text-texte-2"}`}>
+                      <span title={`${exercice} contre ${Number(exercice) - 1}, sur les mêmes mois`} className={`code shrink-0 text-[11px] font-medium ${mieux === true ? "text-favorable" : mieux === false && mal ? "text-defavorable" : "text-texte-2"}`}>
                         {variation > 0 ? "+" : ""}
                         {variation} % sur un an
                       </span>
@@ -603,11 +623,11 @@ export function EcranTableauBord({
           </div>
         </Carte>
 
-        <Carte titre="Où passe l'argent du transport" precision={filtreVehicule ? "Douze mois · charges du parc filtré, transport tiers exclu" : "Douze mois · charges du parc et transport confié à des tiers"}>
-          <Anneau parts={repartition.parts} total={repartition.total} libelleTotal="sur douze mois" formater={(v) => montantCourt(v)} />
+        <Carte titre="Où passe l'argent du transport" precision={filtreVehicule ? `Depuis janvier ${exercice} · charges du parc filtré, transport tiers exclu` : `Depuis janvier ${exercice} · charges du parc et transport confié à des tiers`}>
+          <Anneau parts={repartition.parts} total={repartition.total} libelleTotal={`depuis janvier ${exercice}`} formater={(v) => montantCourt(v)} />
         </Carte>
 
-        <Carte titre="Les véhicules qui pèsent le plus" precision="Coût complet sur douze mois — un total ne se corrige pas, des véhicules si">
+        <Carte titre="Les véhicules qui pèsent le plus" precision={`Coût complet depuis janvier ${exercice} — un total ne se corrige pas, des véhicules si`}>
           <BarresContribution lignes={contributions.lignes} total={contributions.total} formater={(v) => montantCourt(v)} teinte="var(--color-texte-2)" universLibelle="véhicules" universTotal={contributions.univers} />
         </Carte>
       </div>
@@ -632,7 +652,7 @@ export function EcranTableauBord({
                       </h2>
                       <p className="meta mt-0.5">
                         {axe?.nom}
-                        {d.code ? ` · ${d.code}` : ""} · douze derniers mois · {filtreVehicule ? "périmètre filtré" : "tout le parc"} · {d.cibleTexte}
+                        {d.code ? ` · ${d.code}` : ""} · janvier à décembre {exercice}, contre {Number(exercice) - 1} · {filtreVehicule ? "périmètre filtré" : "tout le parc"} · {d.cibleTexte}
                       </p>
                     </div>
                     <span className="ml-auto flex shrink-0 items-baseline gap-3">

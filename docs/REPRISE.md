@@ -440,6 +440,12 @@ Ce qui est construit dans `EcranTableauBord.tsx`, une seule vue à 1 440 × 900
 - **le rouge n'apparaît que sur ce qui appelle une action** : filet et courbe
   d'une pastille hors cible, tronçon de courbe hors cible, échéance échue.
   Les teintes des axes ne colorent plus rien ;
+- **l'année se lit en année civile** (demande du 7 septembre, soir) : les
+  courbes vont de janvier à décembre de l'exercice, les mois à venir restent
+  vides, l'année précédente sert de comparaison mois pour mois ; la période
+  « Année » cumule de janvier au mois en cours et se compare à la même
+  période de l'an passé ; les cartes du bas comptent « depuis janvier ».
+  Plus de douze mois glissants nulle part sur cet écran ;
 - **un clic sur une courbe l'agrandit** (demande du 7 septembre) : le
   graphique en grand avec sa légende, et le détail mois par mois — valeur,
   même mois l'an passé, écart — dans une fenêtre qui se ferme par Échap ;
@@ -542,16 +548,31 @@ charge se rattache à **la BU de l'agent** ; les véhicules de service vont
   (contre 19 et 237 M F) ; le tableau de bord, lui, reste sur les faits de
   transport — c'est voulu, et à dire au métier.
 
+**Fait ensuite, le même soir** :
+
+- **le budget** lit les forfaits : `depensesForfaits()` dans
+  `parc-leger-demo.ts` fabrique une dépense de carburant par véhicule de
+  fonction et par mois depuis janvier 2025, sur la BU de l'agent ; le budget
+  (base 2025, réalisé 2026, page du poste carburant) et les coûts la lisent
+  tous deux — la même somme des deux côtés ;
+- **la base** : `0004_parc_leger.sql` — `regime` sur `vehicule`, tables
+  `attributaire`, `attribution_legere` (avec le plan car : durée, début,
+  statut, pas de mensualité), `forfait_carburant`, `vehicule_a_recevoir`
+  (les quinze du lot 2, sans immatriculation) ; le seed verse 100 véhicules
+  légers immatriculés dans `vehicule` (un doublon avec la flotte de
+  transport écarté), 77 attributaires, 100 attributions, 34 forfaits, 15
+  à recevoir — **6 281 lignes sur 36 tables, six parties, zéro erreur** dans
+  PGlite. `verifier-seed.sql` porte les nouveaux comptes. En mode réel, la
+  liste Flotte ne lit que le régime `exploitation`.
+
 **Ce qui reste** : la maintenance des véhicules légers (aucun historique
 chiffré dans le dossier, seulement la note « Parc Automobile Réalisation
-pour légers » qui décrit les travaux) ; les dates de début des plans car
-(la feuille CAR-PLAN n'en a pas) ; le budget (les forfaits n'entrent pas
-encore dans `budget-demo`) ; l'intégration des véhicules légers à la liste
-Flotte avec un filtre de régime, et à la base — migration 0004 : colonne
-`regime` sur `vehicule`, tables `attributaire`, `attribution_legere`,
-`plan_car`, `forfait_carburant`, puis le seed. Les attributaires du plan car
-reçoivent aujourd'hui un forfait carburant comme les autres véhicules de
-fonction : à confirmer.
+pour légers » qui décrit les travaux) ; les dates de début des plans car (la
+feuille CAR-PLAN n'en a pas) ; l'écran Parc léger lu en base (il est encore
+en démonstration) ; la fusion dans la liste Flotte avec un filtre de régime,
+à décider avec le métier. Les attributaires du plan car reçoivent
+aujourd'hui un forfait carburant comme les autres véhicules de fonction : à
+confirmer.
 
 **À faire, dans l'ordre.**
 

@@ -106,6 +106,10 @@ Trois migrations, dans l'ordre :
   entamé (jours calendaires de 1 à 31), et la licence de transport a sa table,
   `licence_transport`, avec son périmètre (`licence_vehicule`) : elle est
   portée par la flotte, pas recopiée sur chaque véhicule.
+- `0004_parc_leger.sql` — le parc léger : un régime d'usage sur chaque
+  véhicule (exploitation, service, fonction), les attributaires, les
+  attributions avec le plan car, les forfaits carburant, les véhicules à
+  recevoir.
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.
