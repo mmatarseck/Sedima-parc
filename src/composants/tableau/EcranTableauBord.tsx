@@ -517,7 +517,7 @@ export function EcranTableauBord({
 
       {/* ---- Rangée 2 : les courbes ---- */}
       <div className="carte flex shrink-0 flex-col px-5 pt-3.5 pb-3">
-        <div className="mb-2 flex flex-wrap items-baseline gap-3">
+        <div className="mb-2 flex flex-wrap items-center gap-3">
           <h2 className="titre-bloc">Évolution sur {exercice}</h2>
           <span className="meta">janvier à décembre, une échelle par courbe · {filtreVehicule ? "périmètre filtré" : "tout le parc"}</span>
           <span className="ml-auto flex items-center gap-3.5 text-[11.5px] text-texte-2">
@@ -534,8 +534,13 @@ export function EcranTableauBord({
               cible
             </span>
           </span>
-          <button type="button" onClick={() => setPanneau("courbes")} aria-expanded={panneau === "courbes"} className="text-[12px] font-semibold text-accent-fonce hover:underline">
-            Choisir les courbes · {courbesAffichees.length} / {MAX_COURBES}
+          {/* Même bouton que « Choisir les indicateurs », à droite : un seul geste pour composer la page. */}
+          <button type="button" onClick={() => setPanneau("courbes")} aria-expanded={panneau === "courbes"} className="bouton-principal h-7 gap-1.5 px-3 text-[12.5px]">
+            <SlidersHorizontal className="size-3.5" strokeWidth={2} />
+            Choisir les courbes
+            <span className="rounded-full bg-white/25 px-1.5 text-[11px]">
+              {courbesAffichees.length} / {MAX_COURBES}
+            </span>
           </button>
         </div>
         {courbesAffichees.length === 0 ? (

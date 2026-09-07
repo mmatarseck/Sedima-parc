@@ -64,7 +64,7 @@ const DATE = (cle: string, libelle = "Date"): ChampEdition => ({ cle, libelle, t
  * qui existe, on écrit ce qui n'existe pas encore, et la création l'apprend —,
  * catégories en choix, familles et ajouts du métier confondus.
  */
-function champsIdentiteVehicule(): ChampEdition[] {
+export function champsIdentiteVehicule(): ChampEdition[] {
   const { marques, categories } = lireParametres().vehicules;
   /* Les marques que le parc porte déjà sans être au référentiel se proposent
      aussi, sous le nom du référentiel quand il les connaît. */

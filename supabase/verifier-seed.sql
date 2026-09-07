@@ -3,8 +3,8 @@
 -- Les attendus sont ceux du générateur (npm run generer-seed) au 6 septembre 2026.
 select t.nom as "table", t.attendu, r.n as "en base", case when r.n = t.attendu then 'ok' else 'ÉCART' end as etat
 from (values
-  ('site', 9), ('prestataire', 33), ('type_document', 8), ('vehicule', 119), ('chauffeur', 21),
-  ('attributaire', 77), ('attribution_legere', 100), ('forfait_carburant', 34), ('vehicule_a_recevoir', 15),
+  ('site', 9), ('prestataire', 33), ('type_document', 8), ('vehicule', 129), ('chauffeur', 21),
+  ('attributaire', 77), ('attribution_legere', 110), ('forfait_carburant', 34), ('vehicule_a_recevoir', 5),
   ('affectation', 17), ('document', 109), ('licence_transport', 2), ('licence_vehicule', 4),
   ('depense', 1103), ('plein', 460), ('releve_kilometrique', 615), ('intervention', 95),
   ('incident', 35), ('sanction', 9), ('indisponibilite', 18), ('parametre', 3),

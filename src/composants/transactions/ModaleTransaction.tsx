@@ -7,7 +7,8 @@ import { Echeance } from "@/composants/interface/Pastille";
 import { CHAMP_DATE, moisDe, peutCloturer, type ChampEdition, type Creation, type Modification } from "@/domaine/cloture";
 import { TYPE_TRANSACTION, type TypeTransaction } from "@/domaine/reference";
 import { enregistrerCreation, enregistrerModification, lireClotures, lireHistorique } from "@/lib/clotures-demo";
-import { ChampReference, resoudreReference } from "./ChampReference";
+import { resoudreReference } from "./ChampReference";
+import { ChampSaisie } from "./ChampSaisie";
 import { date as formaterDate } from "@/lib/format";
 import { lireRole } from "@/lib/session-demo";
 
@@ -249,60 +250,14 @@ export function ModaleTransaction({
             {/* ---- Champs ---- */}
             <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
               {champs.map((c) => {
-                const v = saisie[c.cle];
                 const large = c.type === "texte-long" || c.type === "reference";
-                const commun = "h-9 w-full rounded-[10px] border border-bordure-champ bg-surface px-3 text-[13px] text-texte outline-none focus:border-accent";
                 return (
                   <label key={c.cle} className={`flex flex-col gap-1.5 ${large ? "sm:col-span-2" : ""}`}>
                     <span className="label-champ">
                       {c.libelle}
                       {c.obligatoire ? <span className="text-defavorable"> ●</span> : null}
                     </span>
-                    {c.type === "oui-non" ? (
-                      <button type="button" role="switch" aria-checked={Boolean(v)} onClick={() => changer(c.cle, !saisie[c.cle])} className="flex h-9 items-center gap-2.5 text-[13px] text-texte">
-                        <span className={`relative inline-block h-5 w-9 rounded-full transition-colors ${v ? "bg-accent" : "bg-bordure-champ"}`}>
-                          <span className={`absolute top-0.5 size-4 rounded-full bg-white transition-all ${v ? "left-[18px]" : "left-0.5"}`} />
-                        </span>
-                        {v ? "Oui" : "Non"}
-                      </button>
-                    ) : c.type === "choix" ? (
-                      <select value={String(v ?? "")} onChange={(e) => changer(c.cle, e.target.value)} className={commun}>
-                        <option value="">—</option>
-                        {c.options?.map((o) => (
-                          <option key={o.valeur} value={o.valeur}>
-                            {o.libelle}
-                          </option>
-                        ))}
-                      </select>
-                    ) : c.type === "texte-long" ? (
-                      <textarea value={String(v ?? "")} onChange={(e) => changer(c.cle, e.target.value)} rows={3} className={`${commun} h-auto resize-none py-2 leading-relaxed`} />
-                    ) : c.type === "suggestion" ? (
-                      /* Texte libre avec la liste du référentiel en suggestion : on
-                         choisit ce qui existe, on écrit ce qui n'existe pas encore. */
-                      <>
-                        <input type="text" list={`suggestions-${c.cle}`} autoComplete="off" value={String(v ?? "")} onChange={(e) => changer(c.cle, e.target.value)} className={commun} />
-                        <datalist id={`suggestions-${c.cle}`}>
-                          {(c.suggestionsDe ? c.suggestionsDe(saisie) : (c.options ?? [])).map((o) => (
-                            <option key={o.valeur} value={o.valeur}>
-                              {o.libelle !== o.valeur ? o.libelle : undefined}
-                            </option>
-                          ))}
-                        </datalist>
-                      </>
-                    ) : c.type === "reference" ? (
-                      <ChampReference valeur={String(v ?? "")} onChange={(valeur) => changer(c.cle, valeur)} types={c.references} immatriculation={immatFormulaire} />
-                    ) : (
-                      <span className="relative">
-                        <input
-                          type={c.type === "date" ? "date" : "text"}
-                          inputMode={c.type === "nombre" ? "decimal" : undefined}
-                          value={String(v ?? "")}
-                          onChange={(e) => changer(c.cle, e.target.value)}
-                          className={`${commun} ${c.unite ? "pr-12" : ""} ${c.type === "nombre" ? "code text-right" : ""}`}
-                        />
-                        {c.unite ? <span className="meta pointer-events-none absolute top-1/2 right-3 -translate-y-1/2">{c.unite}</span> : null}
-                      </span>
-                    )}
+                    <ChampSaisie champ={c} valeur={saisie[c.cle] ?? ""} saisie={saisie} onChange={(valeur) => changer(c.cle, valeur)} immatriculation={immatFormulaire} />
                   </label>
                 );
               })}

@@ -257,12 +257,16 @@ export function fabriquerLigneFlotte(c: Creation): LigneFlotte {
   const vt = s(v.premiereVisiteTechnique);
   const j = vt ? joursRestants(vt, new Date("2026-09-02T00:00:00Z")) : null;
   const km = n(v.kilometrage);
+  const statut = (s(v.statut) as LigneFlotte["vehicule"]["statut"] | null) ?? "en-service";
+  const regime = s(v.regime) as LigneFlotte["vehicule"]["regime"] | null;
   return {
     vehicule: {
       id: canonique,
+      ...(regime && regime !== "exploitation" ? { regime } : {}),
       immatriculation: canonique,
       immatriculationAffichee: afficher(canonique),
       vin: s(v.vin),
+      photo: s(v.photo),
       marque: s(v.marque) ?? "",
       appellation: s(v.appellation) ?? "",
       typeModele: s(v.typeModele),
@@ -276,19 +280,19 @@ export function fabriquerLigneFlotte(c: Creation): LigneFlotte {
       engage: v.engage === undefined || v.engage === null ? true : oui(v.engage),
       premiereMiseEnCirculation: s(v.premiereMiseEnCirculation),
       dateImmatriculation: s(v.dateImmatriculation),
-      puissanceCv: null,
-      cylindree: null,
-      ptac: null,
-      ptra: null,
-      poidsVide: null,
+      puissanceCv: n(v.puissanceCv),
+      cylindree: n(v.cylindree),
+      ptac: n(v.ptac),
+      ptra: n(v.ptra),
+      poidsVide: n(v.poidsVide),
       chargeUtile: n(v.chargeUtile),
       energie: (s(v.energie) as Energie) ?? "gasoil",
-      capaciteReservoir: null,
+      capaciteReservoir: n(v.capaciteReservoir),
       businessUnit: (s(v.businessUnit) as BusinessUnit) ?? null,
       siteId: s(v.siteId),
-      statut: "en-service",
+      statut,
       valeurAcquisition: n(v.valeurAcquisition),
-      dureeAmortissementAnnees: null,
+      dureeAmortissementAnnees: n(v.dureeAmortissementAnnees),
       commentaire: s(v.commentaire),
     },
     chauffeurTitulaire: null,
@@ -300,7 +304,7 @@ export function fabriquerLigneFlotte(c: Creation): LigneFlotte {
     prochaineEcheanceEntretien: null,
     coutDouzeMois: null,
     attelageCourant: null,
-    statutEffectif: "en-service",
+    statutEffectif: statut,
     immobilisationAdministrative: [],
   };
 }

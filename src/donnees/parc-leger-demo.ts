@@ -30,22 +30,24 @@ const BRUT: Brut[] = [
   ["AB903JW", "Toyota", "Hilux DC", 2026, null, "camionnette", "service", "actif", "Adji Néné Boye", "Commerciale Farine, Dakar", "Commercial", "commercial", "Lot 1 - 04", "Neuf. Sans véhicule depuis son recrutement"],
   ["AB907JW", "Toyota", "Hilux DC", 2026, null, "camionnette", "service", "actif", "Arfand Bakary Coly", "Commercial, Zone Thiès et périphéries", "Commercial", "commercial", "Lot 1 - 05", "Neuf. Libère AA389JG pour Ibrahima Camara"],
 
-  /* -- Lot 2 : quinze véhicules neufs à commander (La Sénégalaise de l'Automobile, 19,94 M F l'unité) -- */
-  ["lot-2-01", "Mitsubishi", "L200 DC", null, null, "camionnette", "service", "a-recevoir", "Aly Gaye", "Technicien intégration, Pôle Intégrés", "Commercial", "commercial", "Lot 2 - 01", "Remplace DK1307BB, à réformer"],
-  ["lot-2-02", "Mitsubishi", "L200 DC", null, null, "camionnette", "service", "a-recevoir", "Bakary Sow", "Commercial Farine, Zone Sud", "Commercial", "commercial", "Lot 2 - 02", "Remplace AB078JS, à réformer"],
-  ["lot-2-03", "Mitsubishi", "L200 DC", null, null, "camionnette", "service", "a-recevoir", "Bineta Djiba", "Commerciale axe Kaolack-Ziguinchor", "Commercial", "commercial", "Lot 2 - 03", "Libère AA022EA pour Mourtalla Thiaw"],
-  ["lot-2-04", "Mitsubishi", "L200 DC", null, null, "camionnette", "service", "a-recevoir", "Yacine Siby", "Responsable Dépôts", "Logistique", "siege", "Lot 2 - 04", "Sans véhicule"],
-  ["lot-2-05", "Mitsubishi", "L200 DC (alternatif C3 ou Sonet)", null, null, "vehicule-leger", "fonction", "a-recevoir", "Maimouna Gaye", "Responsable Pôle Farine & Bétail", "Commercial", "commercial", "Lot 2 - 05", "Remplace DK5679BL, à réformer"],
+  /* -- Lot 2 : quinze véhicules neufs (La Sénégalaise de l'Automobile, 19,94 M F l'unité). Dix reçus et
+     assurés le 19 août 2026, affectés par le métier le 7 septembre 2026 dans l'ordre des lignes du lot ;
+     Maimouna Gaye garde le L200 ; les postes à recruter d'ici la fin de l'année attendent. -- */
+  ["AB565KP", "Mitsubishi", "L200 DC", 2026, null, "camionnette", "service", "actif", "Aly Gaye", "Technicien intégration, Pôle Intégrés", "Commercial", "commercial", "Lot 2 - 01", "Remplace DK1307BB, à réformer"],
+  ["AB609KP", "Mitsubishi", "L200 DC", 2026, null, "camionnette", "service", "actif", "Bakary Sow", "Commercial Farine, Zone Sud", "Commercial", "commercial", "Lot 2 - 02", "Remplace AB078JS, à réformer"],
+  ["AB611KP", "Mitsubishi", "L200 DC", 2026, null, "camionnette", "service", "actif", "Bineta Djiba", "Commerciale axe Kaolack-Ziguinchor", "Commercial", "commercial", "Lot 2 - 03", "Libère AA022EA pour Mourtalla Thiaw"],
+  ["AB612KP", "Mitsubishi", "L200 DC", 2026, null, "camionnette", "service", "actif", "Yacine Siby", "Responsable Dépôts", "Logistique", "siege", "Lot 2 - 04", "Sans véhicule"],
+  ["AB614KP", "Mitsubishi", "L200 DC", 2026, null, "camionnette", "fonction", "actif", "Maimouna Gaye", "Responsable Pôle Farine & Bétail", "Commercial", "commercial", "Lot 2 - 05", "Remplace DK5679BL, à réformer"],
   ["lot-2-06", "Mitsubishi", "L200 DC", null, null, "camionnette", "service", "a-recevoir", "Amacodou Ndiaye", "Commercial Ziguinchor, navette Kédougou-Tamba-Matam", "Commercial", "commercial", "Lot 2 - 06", "Libère AA119AH pour le futur Responsable Logistique"],
   ["lot-2-07", "Mitsubishi", "L200 DC", null, null, "camionnette", "fonction", "a-recevoir", "Amadou Yoro Ba", "Responsable Pôle Aviculture", "Commercial", "commercial", "Lot 2 - 07", "Libère AA397JG pour Alioune Diop"],
-  ["lot-2-08", "Mitsubishi", "L200 DC", null, null, "camionnette", "service", "a-recevoir", "Moustapha Mboup", "Commercial axe Diourbel-Linguère", "Commercial", "commercial", "Lot 2 - 08", "Libère AA023EA pour Alla Faye"],
+  ["AB615KP", "Mitsubishi", "L200 DC", 2026, null, "camionnette", "service", "actif", "Moustapha Mboup", "Commercial axe Diourbel-Linguère", "Commercial", "commercial", "Lot 2 - 08", "Libère AA023EA pour Alla Faye"],
   ["lot-2-09", "Mitsubishi", "L200 DC", null, null, "camionnette", "service", "a-recevoir", "Pape Bouba Gaye", "Commercial Dakar et banlieue", "Commercial", "commercial", "Lot 2 - 09", "Libère AA131EX pour le transport de poussins"],
-  ["lot-2-10", "Mitsubishi", "L200 DC", null, null, "camionnette", "fonction", "a-recevoir", "Dr Babacar Soumaré", "Responsable Pôle SATV", "SATV", "commercial", "Lot 2 - 10", "Libère AA386JG pour Mamadou Gueye"],
+  ["AB616KP", "Mitsubishi", "L200 DC", 2026, null, "camionnette", "fonction", "actif", "Dr Babacar Soumaré", "Responsable Pôle SATV", "SATV", "commercial", "Lot 2 - 10", "Libère AA386JG pour Mamadou Gueye"],
   ["lot-2-11", "Mitsubishi", "L200 DC", null, null, "camionnette", "service", "a-recevoir", null, "Commercial Sud 2 — recrutement au 1er octobre 2026", "Commercial", "commercial", "Lot 2 - 11", "Poste en cours de recrutement"],
-  ["lot-2-12", "Mitsubishi", "L200 DC", null, null, "camionnette", "service", "a-recevoir", "Adama Wane", "Responsable Couvoir", "DTPA", "couvoir", "Lot 2 - 12", "Libère AA019EA pour Khady Mbaye, après réparation"],
+  ["AB617KP", "Mitsubishi", "L200 DC", 2026, null, "camionnette", "service", "actif", "Adama Wane", "Responsable Couvoir", "DTPA", "couvoir", "Lot 2 - 12", "Libère AA019EA pour Khady Mbaye, après réparation"],
   ["lot-2-13", "Mitsubishi", "L200 DC", null, null, "camionnette", "service", "a-recevoir", null, "Commercial Zone Nord 2 — recrutement au 1er octobre 2026", "Commercial", "commercial", "Lot 2 - 13", "Poste en cours de recrutement"],
-  ["lot-2-14", "Mitsubishi", "L200 DC", null, null, "camionnette", "service", "a-recevoir", "Papa Samba Mbengue", "Responsable Maintenance Fermes et Couvoir", "DT", "fermes", "Lot 2 - 14", "Nouvelle recrue"],
-  ["lot-2-15", "Mitsubishi", "L200 DC", null, null, "camionnette", "service", "a-recevoir", "Cheikhou Keïta", "Responsable Maintenance Abattoir", "DT", "abattoir", "Lot 2 - 15", "Libère DK1306BB pour Ibrahima Faye"],
+  ["AB619KP", "Mitsubishi", "L200 DC", 2026, null, "camionnette", "service", "actif", "Papa Samba Mbengue", "Responsable Maintenance Fermes et Couvoir", "DT", "fermes", "Lot 2 - 14", "Nouvelle recrue"],
+  ["AB622KP", "Mitsubishi", "L200 DC", 2026, null, "camionnette", "service", "actif", "Cheikhou Keïta", "Responsable Maintenance Abattoir", "DT", "abattoir", "Lot 2 - 15", "Libère DK1306BB pour Ibrahima Faye"],
 
   /* -- Véhicules libérés et redéployés par la cascade -- */
   ["AB792JA", "Toyota", "Hilux BA", 2020, 90_000, "camionnette", "fonction", "actif", "Abdoulaye Soumboundou", "Directeur DTPA", "DO", "fermes", "Lot 1 - 01", "Ancien véhicule d'Assane Gueye — défauts tableau de bord, à réparer"],

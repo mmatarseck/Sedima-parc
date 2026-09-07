@@ -651,6 +651,40 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   porte `parametre`)** — sans 0006, la lecture de la flotte échoue sur la
   colonne absente.
 
+### Le lot 2 affecté, la création d'un véhicule refondue (7 septembre 2026, nuit)
+
+- **Lot 2** : dix L200 reçus et assurés le 19 août portent leur plaque dans
+  `parc-leger-demo.ts` (AB 565, 609, 611, 612, 614, 615, 616, 617, 619,
+  622 KP), affectés dans l'ordre des lignes du lot, sur deux décisions du
+  métier : Maimouna Gaye garde le L200, les postes à recruter d'ici la fin
+  de l'année ne s'équipent pas (ni les deux recrutements, ni le responsable
+  logistique qui devait reprendre le véhicule d'Amacodou Ndiaye — sa ligne
+  attend aussi). Cinq lignes restent à recevoir. Seed régénéré : 129
+  véhicules, 5 à recevoir, 110 attributions ; `verifier-seed.sql` à jour ;
+  PGlite zéro erreur. Le tableau est dans `RAPPROCHEMENT-PARC.md` §1.
+- **Nouveau véhicule, sur le modèle de Fleetio** (demande du métier) : une
+  page `/flotte/nouveau` (`EcranNouveauVehicule.tsx`, sections dans
+  `sections-vehicule.ts`) — un rail de six sections à gauche (Détails,
+  Entretien, Cycle de vie, Finances, Caractéristiques, Réglages), des cartes
+  à droite, les actions en haut et en bas, « Enregistrer et ajouter un
+  autre » pour la série. Le rail compte les valeurs obligatoires qui
+  manquent par section. La modale de transaction ne sert plus à créer un
+  véhicule ; elle sert toujours à le modifier.
+- **Le champ combiné** (`ChampCombo.tsx`) : une liste déroulante filtrée en
+  tapant, où ce qui n'existe pas se crée d'un clic sur « + Créer « … » »,
+  sans quitter la vue — marque, modèle, site, fournisseur, régime de
+  propriété, entité. Un champ de saisie unique (`ChampSaisie.tsx`) rend
+  chaque type dans la modale comme dans la page. Vérifié dans le navigateur :
+  « Mitsu » filtre sur Mitsubishi, « Dongfeng » se crée, ses modèles partent
+  vides, la création en série remet le formulaire à zéro et affiche le
+  numéro, la liste Flotte montre le véhicule, le référentiel a appris la
+  marque.
+- Tableau de bord : « Choisir les courbes » a le même bouton vert que
+  « Choisir les indicateurs », à droite.
+- Pas repris de Fleetio : le décodage du VIN (service externe), l'ajout de
+  plusieurs véhicules en une fois (un import du classeur d'inventaire serait
+  plus juste), les champs que la fiche ne porte pas (volumes, jantes, EPA).
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.
