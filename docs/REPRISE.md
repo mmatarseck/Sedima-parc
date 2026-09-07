@@ -885,8 +885,43 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   téléphone, lot passé à 1/2 ; PGlite : 0001–0011 rejouées, vingt demandes
   semées, la fonction compte les mêmes demandes sans réponse que la table.
 - Reste : la photo elle-même (le stockage : seul le nom est gardé) ; le
-  courriel au détenteur (fonction de notification de la plateforme) ; la
-  fiche de transfert (étape 5) ; l'atelier (étape 6).
+  courriel au détenteur (fonction de notification de la plateforme) ;
+  l'atelier (étape 6).
+
+### La fiche de transfert (8 septembre 2026)
+
+- Cadrage mobile, étape 5 : toute remise d'un véhicule s'accompagne d'une
+  fiche — qui remet, qui reçoit (chauffeur, attributaire, le parc, un
+  tiers), compteur, carburant, documents à bord, équipements, réserves
+  avec photos, deux signatures sur l'écran. Complète, elle **ouvre
+  l'affectation du récipiendaire et ferme la précédente**.
+- `src/domaine/transferts.ts` : `Transfert` (numéro TRF-AAAA-NNNN, parties
+  figées, état des lieux, signatures en PNG), `statutTransfert` (à signer,
+  signée par l'un ou l'autre, complète, annulée), `affectationSuivante`,
+  `EQUIPEMENTS_STANDARD`, `normaliserTransfert`.
+- Écrans : `/transferts` (liste, entrée « Fiches de transfert » du groupe
+  Exploitation, module `transferts`), `/transferts/nouveau` (la fiche en
+  une colonne, la même sur le bureau et le téléphone : `FicheTransfert`,
+  `SignaturePad` au doigt ou à la souris), `/transferts/[id]` (lecture, et
+  la signature qui manque — un détenteur signe la sienne, qui a la saisie
+  signe l'une ou l'autre sur son écran), `/telephone/transferts` (à
+  signer, complètes). L'accueil du téléphone liste les fiches à signer.
+- Stockage : `src/lib/transferts-demo.ts` (démonstration ; une fiche
+  complète crée l'affectation par la transaction du planning, le
+  détenteur est prévenu à la cloche), `src/lib/transferts-actions.ts`
+  (créer, signer, annuler ; `appliquer_transfert()` à la seconde
+  signature), `src/donnees/transferts.ts`. Migration
+  `0012_transferts.sql` : table, politiques (parties et périmètre),
+  fonction d'application en SECURITY DEFINER. Seed : deux fiches.
+- Vérifié : PGlite (0001–0012, refus sans les deux signatures, une seule
+  affectation titulaire ouverte après, la précédente fermée la veille,
+  rejeu sans effet) ; démonstration (fiche dressée et signée des deux
+  côtés au bureau → complète, affectation créée ; fiche en attente signée
+  par le détenteur sur le téléphone → complète).
+- Reste : l'atelier (étape 6) ; le stockage des photos et des signatures
+  (les PNG vivent dans la ligne, ~2 Ko chacun, acceptable) ; la fermeture
+  de l'affectation précédente en démonstration (le planning ne la voit
+  que par la base).
 
 **À faire, dans l'ordre.**
 

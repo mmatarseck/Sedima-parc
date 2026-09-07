@@ -2,7 +2,7 @@
 -- SEDIMA Parc — jeu de démonstration, versé dans la base.
 --
 -- GÉNÉRÉ par scripts/generer-seed.mts : ne pas modifier à la main, relancer.
--- 6313 lignes. Rejouable : chaque insertion est `on conflict do nothing`.
+-- 6315 lignes. Rejouable : chaque insertion est `on conflict do nothing`.
 --
 -- Prérequis : les migrations 0001 à 0005. Les comptes (profil) ne sont pas
 -- dans ce fichier — ils citent auth.users, qui n'existe qu'une fois les
@@ -3028,6 +3028,12 @@ insert into demande (id, numero, lot, type, vehicule_id, chauffeur_id, attributa
   ('f2057ff6-c0e4-4474-a91e-7e37f2569e1d', 'DEM-2026-0018', 'lot-2026-09-02-controle', 'controle-matin', '8d2764b4-7eca-4cbe-a4fd-3b4de3fbd6cd', '30cc453e-0f3c-41dd-afac-3c158d61e9ab', null, 'Badji Kadji', null, '2026-09-02T06:30:00.000Z', 'Responsable Carburant', '2026-09-02T09:00:00.000Z', null, null, null, null, null),
   ('b65d1921-8acc-4ba4-abbc-04d219a1be7d', 'DEM-2026-0019', 'lot-2026-09-02-controle', 'controle-matin', '5ea29a70-699c-4686-ada1-f5efd0b6abd6', 'f548681f-01d3-468c-aef9-024d63d3d151', null, 'Libasse Diop', null, '2026-09-02T06:30:00.000Z', 'Responsable Carburant', '2026-09-02T09:00:00.000Z', null, null, null, null, null),
   ('42c105b0-4f62-4794-a9a5-7fd2556b7c76', 'DEM-2026-0020', 'lot-2026-09-02-controle', 'controle-matin', 'af1abf6c-3a24-42a6-ad9b-1f0fa24c7866', '114caa97-a872-4155-aefe-d4c691ab4ee7', null, 'Birago Wane', null, '2026-09-02T06:30:00.000Z', 'Responsable Carburant', '2026-09-02T09:00:00.000Z', null, null, null, null, null)
+on conflict do nothing;
+
+-- transfert (2)
+insert into transfert (id, numero, vehicule_id, remettant_genre, remettant_chauffeur_id, remettant_attributaire_id, remettant_nom, recipiendaire_genre, recipiendaire_chauffeur_id, recipiendaire_attributaire_id, recipiendaire_nom, date, motif, km, carburant, documents_a_bord, equipements, reserves, commentaire, signature_remettant, signature_recipiendaire, appliquee_le, cree_par_nom) values
+  ('9468d99b-2b21-4839-ac8c-777c54d43744', 'TRF-2026-0001', 'a033ff63-c9bc-4584-a444-124e4c5b2c33', 'parc', null, null, 'Dépôt Keur Massar', 'chauffeur', '9b2044d0-74db-4b02-a72a-07bdbd54f7b0', null, 'Talla Diène', '2026-08-02T08:15:00.000Z', 'Nouvelle affectation', 353779, 50, '{"carte-grise","assurance","visite-technique"}', '[{"libelle":"Roue de secours","present":true},{"libelle":"Cric et manivelle","present":true},{"libelle":"Triangle de signalisation","present":true},{"libelle":"Extincteur","present":true},{"libelle":"Trousse de secours","present":false},{"libelle":"Gilet fluorescent","present":true},{"libelle":"Carte carburant","present":true},{"libelle":"Double des clés","present":true},{"libelle":"Sangles et bâche","present":true}]', '[{"texte":"Rayure sur l''aile arrière gauche, antérieure à la remise","photo":"reserve-AA977MR-aile.jpg"}]', null, '{"nom":"Responsable Carburant","le":"2026-08-02T08:20:00.000Z","trace":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="}', '{"nom":"Talla Diène","le":"2026-08-02T08:22:00.000Z","trace":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="}', '2026-08-02T08:15:00.000Z', 'Responsable Carburant'),
+  ('ca1b6b9c-45b8-4749-adaf-54e76e1d0979', 'TRF-2026-0002', '494b1755-733e-4c01-aa0a-fde07dd3bede', 'parc', null, null, 'Dépôt Thiès', 'chauffeur', 'aed32383-1769-4da7-a770-2200dc5b7f56', null, 'Moustapha Diaw', '2026-09-02T09:40:00.000Z', 'Retour d''atelier', 343500, 25, '{"carte-grise","assurance","visite-technique"}', '[{"libelle":"Roue de secours","present":true},{"libelle":"Cric et manivelle","present":true},{"libelle":"Triangle de signalisation","present":true},{"libelle":"Extincteur","present":true},{"libelle":"Trousse de secours","present":true},{"libelle":"Gilet fluorescent","present":true},{"libelle":"Carte carburant","present":true},{"libelle":"Double des clés","present":true},{"libelle":"Sangles et bâche","present":true}]', '[]', 'Plaquettes de frein remplacées, pneus avant neufs.', '{"nom":"Correspondant Thiès","le":"2026-09-02T09:45:00.000Z","trace":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="}', null, null, 'Correspondant Thiès')
 on conflict do nothing;
 
 -- parametre (4)

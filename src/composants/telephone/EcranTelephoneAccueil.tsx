@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Fuel, Gauge, Inbox, Search, TriangleAlert } from "lucide-react";
+import { Fuel, Gauge, Inbox, PenLine, Search, TriangleAlert } from "lucide-react";
+import { statutTransfert, type Transfert } from "@/domaine/transferts";
+import { lireTransferts } from "@/lib/transferts-demo";
+import { mesTransferts } from "./EcranTelephoneTransferts";
 import { TYPE_DEMANDE, statutDemande, type Demande } from "@/domaine/demandes";
 import { lireDemandes } from "@/lib/demandes-demo";
 import { mesDemandes } from "./EcranTelephoneDemandes";
@@ -24,15 +27,20 @@ import { Bloc, Chiffre, EnTeteTelephone, Ligne } from "./Telephone";
 
 const OPERATIONNELS = new Set(["en-service", "en-backup"]);
 
-export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, maintenant }: { lignes: LigneFlotte[]; aujourdhui: string; demandes: Demande[]; maintenant: string }) {
+export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, transferts, maintenant }: { lignes: LigneFlotte[]; aujourdhui: string; demandes: Demande[]; transferts: Transfert[]; maintenant: string }) {
   const [acces, setAcces] = useState<AccesCourant | null>(null);
   const [nom, setNom] = useState("");
   const [listeDemandes, setListeDemandes] = useState<Demande[]>(demandes);
+  const [listeTransferts, setListeTransferts] = useState<Transfert[]>(transferts);
   useEffect(() => {
     setAcces(lireAccesCourant());
     setNom(lireIdentite()?.nom ?? trouverRole(lireRole()).nom);
     setListeDemandes(lireDemandes(demandes));
-  }, [demandes]);
+    setListeTransferts(lireTransferts(transferts));
+  }, [demandes, transferts]);
+
+  /* Les fiches de transfert qui attendent une signature : les miennes pour un détenteur, celles du périmètre sinon. */
+  const transfertsASigner = useMemo(() => (acces ? mesTransferts(listeTransferts, acces).filter((t) => { const s = statutTransfert(t); return s !== "complete" && s !== "annulee"; }) : []), [listeTransferts, acces]);
 
   /* Les demandes qui attendent : les miennes pour un détenteur, celles du périmètre sinon. */
   const demandesOuvertes = useMemo(() => (acces ? mesDemandes(listeDemandes, acces).filter((d) => statutDemande(d, maintenant) === "a-repondre" || statutDemande(d, maintenant) === "en-retard") : []), [listeDemandes, acces, maintenant]);
@@ -66,8 +74,14 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, maintenant
           {demandesOuvertes.slice(0, 4).map((d) => (
             <Ligne key={d.id} icone={<Inbox className="size-4" strokeWidth={2} />} ton={statutDemande(d, maintenant) === "en-retard" ? "defavorable" : "vigilance"} titre={TYPE_DEMANDE[d.type].libelle} precision={`${d.vehicule.immatriculation} · ${statutDemande(d, maintenant) === "en-retard" ? "en retard" : "à répondre"}`} href="/telephone/demandes" />
           ))}
+          {transfertsASigner.map((t) => (
+            <Ligne key={t.id} icone={<PenLine className="size-4" strokeWidth={2} />} ton="vigilance" titre={`Fiche de transfert · ${t.motif}`} precision={`${t.vehicule.immatriculation} · à signer`} href={`/transferts/${t.id}`} />
+          ))}
         </Bloc>
-        <Geste href="/telephone/demandes" icone={<Inbox className="size-4" strokeWidth={2} />} libelle="Mes demandes" />
+        <div className="grid grid-cols-2 gap-2">
+          <Geste href="/telephone/demandes" icone={<Inbox className="size-4" strokeWidth={2} />} libelle="Mes demandes" />
+          <Geste href="/telephone/transferts" icone={<PenLine className="size-4" strokeWidth={2} />} libelle="Mes transferts" />
+        </div>
       </div>
     );
   }
@@ -96,6 +110,7 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, maintenant
         })}
         {sansReleve > 0 ? <Ligne icone="km" titre="Relevés de la semaine" precision={`${sansReleve} véhicule${sansReleve > 1 ? "s" : ""} sans relevé depuis 7 jours`} href="/telephone/vehicules?geste=releve" /> : null}
         {demandesOuvertes.length > 0 ? <Ligne icone={<Inbox className="size-4" strokeWidth={2} />} ton={enRetard > 0 ? "defavorable" : "vigilance"} titre="Demandes sans réponse" precision={`${demandesOuvertes.length} en attente${enRetard ? `, dont ${enRetard} en retard` : ""}`} href="/telephone/demandes" /> : null}
+        {transfertsASigner.length > 0 ? <Ligne icone={<PenLine className="size-4" strokeWidth={2} />} ton="vigilance" titre="Fiches de transfert à signer" precision={`${transfertsASigner.length} fiche${transfertsASigner.length > 1 ? "s" : ""} en attente d'une signature`} href="/telephone/transferts" /> : null}
         {immobilises.slice(0, 3).map((l) => (
           <Ligne key={`i-${l.vehicule.id}`} icone="!" ton="defavorable" titre={`${l.vehicule.immatriculationAffichee} · ${l.vehicule.marque} ${l.vehicule.appellation}`} precision={l.immobilisationAdministrative?.length ? "immobilisé administrativement" : "immobilisé"} href={`/telephone/vehicules/${l.vehicule.id}`} />
         ))}

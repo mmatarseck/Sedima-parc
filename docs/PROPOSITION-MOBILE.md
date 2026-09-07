@@ -108,4 +108,8 @@ pas de SMS. Tout est arbitré ; la construction commence par la fiche d'accès.
    Demandes au bureau, réponse avec photo sur le téléphone, suivi par lot,
    pastille « Demandes sans réponse », migration 0011.
 
-Restent la fiche de transfert (5) et l'atelier (6).
+5. **La fiche de transfert** (8 septembre) : en une colonne, deux
+   signatures sur l'écran, complète elle ouvre l'affectation qui suit ;
+   migration 0012.
+
+Reste l'atelier (6).

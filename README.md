@@ -142,6 +142,12 @@ Neuf migrations, dans l'ordre :
   envoyer avec la saisie du module hors détenteur, répondre en tant que
   destinataire, annuler avec la gestion. `situation_journaliere()` compte
   les demandes sans réponse à l'échéance.
+- `0012_transferts.sql` — la table `transfert` : la fiche de remise d'un
+  véhicule (qui remet, qui reçoit, compteur, carburant, documents à bord,
+  équipements, réserves avec photos, deux signatures en PNG) ;
+  `appliquer_transfert()`, en SECURITY DEFINER, ferme l'affectation
+  titulaire en cours et ouvre celle du récipiendaire quand les deux
+  signatures sont là.
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.

@@ -1,4 +1,5 @@
 import {
+  ArrowLeftRight,
   BarChart3,
   CalendarRange,
   ClipboardList,
@@ -72,6 +73,7 @@ export const NAVIGATION: GroupeNavigation[] = [
       { module: "flotte", href: "/disponibilite", libelle: "Disponibilité du jour", icone: ClipboardList, livre: true },
       { module: "chauffeurs", href: "/chauffeurs", libelle: "Chauffeurs", icone: Users, livre: true },
       { module: "chauffeurs", href: "/affectations", libelle: "Affectations", icone: CalendarRange, livre: true },
+      { module: "transferts", href: "/transferts", libelle: "Fiches de transfert", icone: ArrowLeftRight, livre: true },
       { module: "transporteurs", href: "/transporteurs", libelle: "Transporteurs", icone: Handshake, livre: true },
     ],
   },

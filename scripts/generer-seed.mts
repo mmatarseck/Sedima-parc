@@ -28,6 +28,7 @@ import { listePrestataires } from "@/donnees/prestataires-demo";
 import { listeIncidents } from "@/donnees/incidents-demo";
 import { PARAMETRES_DEFAUT } from "@/domaine/parametres";
 import { demandesDemo } from "@/donnees/demandes-demo";
+import { transfertsDemo } from "@/donnees/transferts-demo";
 import { affretements, grillesTarifaires, misesADisposition, prestations, transporteurs } from "@/donnees/transporteurs-demo";
 import { camionsTiers, chauffeursTiers, profilTransporteur, rattachements } from "@/donnees/flotte-tierce-demo";
 import { relevesTransport } from "@/donnees/releve-demo";
@@ -268,6 +269,14 @@ inserer(
   "demande",
   ["id", "numero", "lot", "type", "vehicule_id", "chauffeur_id", "attributaire_id", "destinataire_nom", "message", "emise_le", "emise_par_nom", "echeance", "repondue_le", "reponse_valeur", "reponse_texte", "reponse_photo", "reponse_commentaire"],
   demandesDemo().map((d) => [uuid(`demande:${d.numero}`), d.numero, d.lot, d.type, vehiculeId(d.vehicule.id), d.detenteur.genre === "chauffeur" ? chauffeurId(d.detenteur.id) : null, d.detenteur.genre === "attributaire" ? attributaireId(d.detenteur.id) : null, d.detenteur.nom, d.message, d.emiseLe, d.emisePar, d.echeance, d.reponse?.le ?? null, d.reponse?.valeur ?? null, d.reponse?.texte ?? null, d.reponse?.photo ?? null, d.reponse?.commentaire ?? null]),
+);
+
+/* -- Fiches de transfert (0012) --------------------------------------------------- */
+
+inserer(
+  "transfert",
+  ["id", "numero", "vehicule_id", "remettant_genre", "remettant_chauffeur_id", "remettant_attributaire_id", "remettant_nom", "recipiendaire_genre", "recipiendaire_chauffeur_id", "recipiendaire_attributaire_id", "recipiendaire_nom", "date", "motif", "km", "carburant", "documents_a_bord", "equipements", "reserves", "commentaire", "signature_remettant", "signature_recipiendaire", "appliquee_le", "cree_par_nom"],
+  transfertsDemo().map((t) => [uuid(`transfert:${t.numero}`), t.numero, vehiculeId(t.vehicule.id), t.remettant.genre, t.remettant.genre === "chauffeur" ? chauffeurId(t.remettant.id) : null, t.remettant.genre === "attributaire" ? attributaireId(t.remettant.id) : null, t.remettant.nom, t.recipiendaire.genre, t.recipiendaire.genre === "chauffeur" ? chauffeurId(t.recipiendaire.id) : null, t.recipiendaire.genre === "attributaire" ? attributaireId(t.recipiendaire.id) : null, t.recipiendaire.nom, t.date, t.motif, t.km, t.carburant, t.documentsABord, JSON.stringify(t.equipements), JSON.stringify(t.reserves), t.commentaire, t.signatureRemettant ? JSON.stringify(t.signatureRemettant) : null, t.signatureRecipiendaire ? JSON.stringify(t.signatureRecipiendaire) : null, t.appliquee ? t.date : null, t.creePar]),
 );
 
 /* -- Paramètres ------------------------------------------------------------------- */
