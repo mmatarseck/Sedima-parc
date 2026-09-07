@@ -18,11 +18,12 @@ const MOTIFS: Record<string, string> = {
 /**
  * Page de garde.
  *
- * Même langage que le reste de l'application : fond froid très clair, une
- * carte blanche centrée à rayon généreux, contrôles arrondis, une seule
- * touche de vert sur l'action principale. Deux halos teintés, très doux,
- * donnent de la profondeur au fond sans le charger — c'est le parti pris des
- * références pour les écrans de formulaire.
+ * Retravaillée le 8 septembre 2026 sur la photo de la citerne vrac SEDIMA :
+ * à gauche, le camion en pleine hauteur, la marque et une légende posées sur
+ * un voile sombre ; à droite, la carte de connexion, dans le même langage
+ * que le reste de l'application — fond froid très clair, carte blanche à
+ * rayon généreux, une seule touche de vert sur l'action principale. Sur un
+ * téléphone, la photo devient un bandeau au-dessus de la carte.
  *
  * Tant qu'aucun projet Supabase n'est configuré, le formulaire ne vaut pas
  * authentification et l'entrée se fait par les comptes de démonstration. Cet
@@ -96,33 +97,42 @@ export function FormulaireConnexion() {
     "h-11 w-full rounded-[10px] border border-bordure-champ bg-surface px-3.5 text-[13.5px] text-texte outline-none transition-colors placeholder:text-attenue focus:border-accent focus:ring-4 focus:ring-accent/15";
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-fond">
-      {/* Halos de fond — décoratifs, hors du flux, jamais au-dessus du contenu. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-40 -left-32 size-[560px] rounded-full opacity-70 blur-3xl"
-        style={{ background: "radial-gradient(closest-side, rgba(120,178,37,0.22), rgba(120,178,37,0))" }}
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-40 -bottom-48 size-[640px] rounded-full opacity-70 blur-3xl"
-        style={{ background: "radial-gradient(closest-side, rgba(34,39,43,0.10), rgba(34,39,43,0))" }}
-      />
-
-      <div className="relative flex min-h-screen flex-col items-center justify-center px-5 py-10">
-        {/* Marque */}
-        <div className="mb-7 flex items-center gap-3">
-          <Image src="/sedima-picto.png" alt="" width={44} height={44} priority className="size-11 object-contain" />
+    <div className="relative min-h-screen overflow-hidden bg-fond lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(460px,5fr)]">
+      {/* La photo : la citerne vrac SEDIMA, pleine hauteur à gauche, bandeau
+          sur un téléphone. Le voile sombre monte du bas pour porter la marque
+          et la légende sans éteindre le jaune du camion. */}
+      <section className="relative h-[240px] overflow-hidden bg-encre sm:h-[300px] lg:h-auto lg:min-h-screen">
+        <Image src="/sedima-vrac.jpg" alt="Citerne vrac SEDIMA attelée, prête à livrer" fill priority sizes="(min-width: 1024px) 58vw, 100vw" className="object-cover object-[62%_45%]" />
+        <div aria-hidden="true" className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(34,39,43,0.28) 0%, rgba(34,39,43,0) 32%, rgba(34,39,43,0) 55%, rgba(34,39,43,0.82) 100%)" }} />
+        <div className="absolute inset-x-0 top-0 flex items-center gap-3 px-6 pt-5 lg:px-10 lg:pt-8">
+          <span className="grid size-11 shrink-0 place-items-center rounded-[12px] bg-surface/95 shadow-flottante">
+            <Image src="/sedima-picto.png" alt="" width={30} height={30} priority className="size-[30px] object-contain" />
+          </span>
           <span className="leading-tight">
-            <span className="block text-[15px] font-semibold tracking-[-0.01em] text-texte">{NOM_APPLICATION}</span>
-            <span className="meta block">{SOUS_TITRE_APPLICATION}</span>
+            <span className="block text-[15px] font-semibold tracking-[-0.01em] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">{NOM_APPLICATION}</span>
+            <span className="block text-[12px] text-white/85 drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">{SOUS_TITRE_APPLICATION}</span>
           </span>
         </div>
+        <div className="absolute inset-x-0 bottom-0 px-6 pb-5 lg:px-10 lg:pb-10">
+          <p className="max-w-[520px] text-[22px] leading-[1.15] font-semibold tracking-[-0.02em] text-white lg:text-[34px]">Le parc qui livre l&apos;aliment, chaque jour.</p>
+          <p className="mt-2 hidden max-w-[520px] text-[13.5px] leading-[1.5] text-white/80 sm:block">
+            Camions, citernes vrac, véhicules de service et de fonction : un seul endroit pour savoir ce qui roule, ce qui coûte et ce qui arrive à échéance.
+          </p>
+          <p className="mt-3 hidden text-[11.5px] tracking-[0.08em] text-white/60 uppercase lg:block">Citerne vrac Niokko Bokk · SEDIMA SA · Sénégal</p>
+        </div>
+      </section>
 
-        {/* Carte de connexion */}
+      {/* La carte de connexion, sur le fond de l'application. */}
+      <div className="relative flex flex-col items-center justify-center px-5 py-8 lg:min-h-screen lg:px-10 lg:py-10">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-40 -bottom-48 size-[560px] rounded-full opacity-70 blur-3xl"
+          style={{ background: "radial-gradient(closest-side, rgba(120,178,37,0.18), rgba(120,178,37,0))" }}
+        />
+
         <form
           onSubmit={soumettre}
-          className="w-full max-w-[440px] rounded-[20px] border border-bordure bg-surface px-8 py-8 shadow-flottante sm:px-9"
+          className="relative w-full max-w-[440px] rounded-[20px] border border-bordure bg-surface px-8 py-8 shadow-flottante sm:px-9"
         >
           <h1 className="text-[24px] leading-tight font-semibold tracking-[-0.02em] text-texte">Connexion</h1>
           <p className="mt-1.5 text-[13px] leading-[1.5] text-texte-2">
@@ -233,7 +243,7 @@ export function FormulaireConnexion() {
           ) : null}
         </form>
 
-        <p className="mt-7 text-center text-[12px] text-attenue">
+        <p className="relative mt-7 text-center text-[12px] text-attenue">
           SEDIMA SA · Agro-industrie · Sénégal
           <span className="mx-2 text-attenue-2">—</span>
           Aviculture · Minoterie · Abattoirs
