@@ -779,7 +779,16 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   base, 0,5 s par aller-retour depuis Dakar — ; (3) du navigateur — les
   données de démonstration embarquées par la modale, le champ de référence
   et la recherche globale (blocs de 235 et 202 Ko, mise en page 148 Ko).
-  Propositions ordonnées dans le document ; rien n'est encore appliqué.
+  Propositions ordonnées dans le document.
+- **Appliqué le soir même** (section « Ce qui a été appliqué » du document) :
+  `React.cache()` sur les lectures partagées par la mise en page et la page ;
+  migration `0009_lecture_en_une_requete.sql` — `lire_parc()` et
+  `lire_chauffeurs()` en un JSON, quatorze et neuf requêtes remplacées par
+  une, repli automatique tant que la fonction n'est pas jouée, vérifié dans
+  PGlite ; modale de transaction et index de recherche chargés à la
+  demande. Correction : les blocs partagés sont React, Next et Supabase,
+  pas les données de démonstration. Reste à décider : la région Vercel,
+  à aligner sur celle du projet Supabase.
 
 **À faire, dans l'ordre.**
 

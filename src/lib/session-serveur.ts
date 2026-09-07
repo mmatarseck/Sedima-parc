@@ -8,6 +8,7 @@
  * nom vient du profil.
  * ==========================================================================*/
 
+import { cache } from "react";
 import type { AccesCourant } from "@/domaine/acces";
 import type { Role } from "@/domaine/roles";
 import { authentificationReelle } from "@/lib/session-demo";
@@ -32,7 +33,7 @@ export type EtatSession = { etat: "demonstration" } | { etat: "anonyme" } | { et
  * dont le profil n'a pas encore été posé est « sans profil » : l'application
  * le dit plutôt que de lui montrer des listes vides.
  */
-export async function sessionCourante(): Promise<EtatSession> {
+async function sessionCouranteBrut(): Promise<EtatSession> {
   if (!authentificationReelle()) return { etat: "demonstration" };
   const client = await clientServeur();
   const {
@@ -47,3 +48,6 @@ export async function sessionCourante(): Promise<EtatSession> {
     session: { ...moi, nom: profil?.nom ?? user.email ?? "Compte", courriel: user.email ?? null },
   };
 }
+
+/** Une lecture par requête : la mise en page et la page qui appellent `sessionCourante()` partagent le même résultat (revue du 8 septembre 2026). */
+export const sessionCourante = cache(sessionCouranteBrut);

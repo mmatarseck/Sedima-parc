@@ -7,6 +7,7 @@ import { Echeance } from "@/composants/interface/Pastille";
 import { CHAMP_DATE, moisDe, peutCloturer, type ChampEdition, type Creation, type Modification } from "@/domaine/cloture";
 import { TYPE_TRANSACTION, type TypeTransaction } from "@/domaine/reference";
 import { enregistrerCreation, enregistrerModification, lireClotures, lireHistorique } from "@/lib/clotures-demo";
+import { champsCourants } from "./champs";
 import { resoudreReference } from "./ChampReference";
 import { ChampSaisie } from "./ChampSaisie";
 import { date as formaterDate } from "@/lib/format";
@@ -54,7 +55,7 @@ export function ModaleTransaction({
   type,
   numero,
   titre,
-  champs,
+  champs: champsDonnes,
   valeurs,
   href,
   onFermer,
@@ -73,7 +74,8 @@ export function ModaleTransaction({
   /** Nul à la création : le numéro est attribué à l'enregistrement. */
   numero: string | null;
   titre: string;
-  champs: ChampEdition[];
+  /** Les champs à proposer ; ceux du type par défaut, relus des paramètres pour un véhicule. */
+  champs?: ChampEdition[];
   valeurs: Record<string, unknown>;
   /** Adresse de la fiche, pour que la demande y ramène. */
   href: string;
@@ -81,6 +83,7 @@ export function ModaleTransaction({
   onEnregistre: () => void;
 }) {
   const creation = mode === "creation";
+  const champs = useMemo(() => champsDonnes ?? champsCourants(type), [champsDonnes, type]);
   const [saisie, setSaisie] = useState<Record<string, string | boolean>>(() => Object.fromEntries(champs.map((c) => [c.cle, valeurInitiale(c, valeurs[c.cle])])));
   const [motif, setMotif] = useState("");
   const [historique, setHistorique] = useState<Modification[]>([]);

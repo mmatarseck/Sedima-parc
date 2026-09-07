@@ -4,8 +4,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ChampEdition, Creation } from "@/domaine/cloture";
 import type { TypeTransaction } from "@/domaine/reference";
 import { lireCreations, lireToutesCreations, lireToutesSurcharges } from "@/lib/clotures-demo";
-import { champsCourants } from "./champs";
-import { ModaleTransaction } from "./ModaleTransaction";
+import dynamic from "next/dynamic";
+
+/* La modale — et avec elle les champs, le catalogue des références et les
+   listes de choix — ne se charge qu'à la première ouverture : un lecteur qui
+   ne crée rien ne la télécharge pas (revue de performance du 8 septembre 2026). */
+const ModaleTransaction = dynamic(() => import("./ModaleTransaction").then((m) => m.ModaleTransaction), { ssr: false });
 
 /* ============================================================================
  * Contexte d'édition d'une fiche.
@@ -129,7 +133,7 @@ export function FournisseurEdition({ sujet, href, children }: { sujet: string; h
           type={courante.d.type}
           numero={courante.d.numero}
           titre={courante.d.titre}
-          champs={courante.d.champs ?? champsCourants(courante.d.type)}
+          champs={courante.d.champs}
           valeurs={surcharger({ numero: courante.d.numero, ...courante.d.valeurs })}
           href={href}
           onFermer={() => setCourante(null)}

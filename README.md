@@ -93,7 +93,7 @@ supabase link --project-ref <ref-du-projet>
 supabase db push
 ```
 
-Huit migrations, dans l'ordre :
+Neuf migrations, dans l'ordre :
 
 - `0001_socle.sql` — référentiels, flotte, chauffeurs, transactions, trace des
   modifications, clôture des mois, paramètres — avec les politiques RLS et
@@ -124,6 +124,10 @@ Huit migrations, dans l'ordre :
   module (`mon_niveau`, `peut`) et un périmètre (`dans_mon_perimetre`) ;
   `get_me()` rend profil, périmètre, niveaux et sanctions. Sans fiche, le
   rôle historique donne les niveaux de son profil (`niveau_par_role`).
+- `0009_lecture_en_une_requete.sql` — `lire_parc(depuis)` et
+  `lire_chauffeurs(depuis)` rendent en un JSON ce que les listes Flotte et
+  Chauffeurs lisaient en quatorze et neuf requêtes ; l'application y revient
+  d'elle-même tant que la fonction n'est pas jouée.
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.

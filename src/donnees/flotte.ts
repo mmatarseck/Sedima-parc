@@ -18,6 +18,7 @@
  * (`plan_vehicule` est vide). La date de référence est celle du jour.
  * ==========================================================================*/
 
+import { cache } from "react";
 import { exigeDocument, immobilisationAdministrative } from "@/domaine/documents";
 import { echeancesDuPlan, type CompteursVehicule } from "@/domaine/entretien";
 import type { EtatDocument } from "@/domaine/fiche";
@@ -288,9 +289,59 @@ function ilYADouzeMois(aujourdhui: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Le parc et ses transactions récentes, lus avec la session de l'utilisateur. */
+/** Ce que `lire_parc()` (0009) rend d'un coup, sous les noms des tables. */
+interface ParcJson {
+  vehicules: LigneVehicule[];
+  sites: LigneSite[];
+  chauffeurs: LigneChauffeurCourt[];
+  affectations: LigneAffectation[];
+  documents: LigneDocument[];
+  licences: LigneLicence[];
+  licences_vehicules: LigneLicenceVehicule[];
+  releves: LigneReleve[];
+  depenses: LigneDepense[];
+  pleins: LignePlein[];
+  interventions: LigneIntervention[];
+  attributions: LigneAttribution[];
+  attributaires: LigneAttributaire[];
+  a_recevoir: LigneARecevoir[];
+}
+
+/**
+ * Le parc et ses transactions récentes, lus avec la session de l'utilisateur.
+ *
+ * En une requête depuis la revue de performance du 8 septembre 2026 : la
+ * fonction `lire_parc()` rend tout en un JSON, sans pagination, à 0,5 s
+ * l'aller-retour depuis Dakar. Tant qu'elle n'est pas jouée en base, les
+ * quatorze lectures d'avant prennent le relais — la page ne casse pas.
+ */
 export async function lireParc(client: SupabaseClient, aujourdhui: string): Promise<ParcBrut> {
   const depuis = ilYADouzeMois(aujourdhui);
+  const enUn = await client.rpc("lire_parc", { depuis }).maybeSingle<ParcJson>();
+  if (!enUn.error && enUn.data) {
+    const j = enUn.data;
+    return {
+      aujourdhui,
+      attributions: j.attributions,
+      attributaires: new Map(j.attributaires.map((a) => [a.id, a])),
+      aRecevoir: j.a_recevoir,
+      vehicules: j.vehicules,
+      sites: new Map(j.sites.map((s) => [s.id, { id: s.id, code: s.code, libelle: s.libelle, region: s.region, type: s.type }])),
+      chauffeurs: new Map(j.chauffeurs.map((c) => [c.id, c])),
+      affectations: j.affectations,
+      documents: j.documents,
+      licences: j.licences,
+      licencesVehicules: j.licences_vehicules,
+      releves: j.releves,
+      depenses: j.depenses,
+      pleins: j.pleins,
+      interventions: j.interventions,
+    };
+  }
+  return lireParcEnQuatorze(client, aujourdhui, depuis);
+}
+
+async function lireParcEnQuatorze(client: SupabaseClient, aujourdhui: string, depuis: string): Promise<ParcBrut> {
   const [vehicules, sites, chauffeurs, affectations, documents, licences, licencesVehicules, releves, depenses, pleins, interventions, attributions, attributaires, aRecevoir] = await Promise.all([
     /* Tout le parc, transport et léger : la liste Flotte les réunit depuis le
        7 septembre 2026, et c'est le régime qui les distingue. */
@@ -517,7 +568,7 @@ export function ligneDepuisLaBase(brut: LigneVehicule, parc: ParcBrut, parametre
 /* -- Ce que la page appelle -------------------------------------------------- */
 
 /** Les lignes de la liste Flotte, statut effectif et immobilisation compris. */
-export async function lignesFlotte(parametres: Parametres): Promise<LigneFlotte[]> {
+async function lignesFlotteBrut(parametres: Parametres): Promise<LigneFlotte[]> {
   if (!authentificationReelle()) {
     /* Le statut effectif vient des documents de la fiche : un document critique
        manquant ou échu immobilise le véhicule administrativement. Le coût sur
@@ -564,3 +615,6 @@ export async function lignesFlotte(parametres: Parametres): Promise<LigneFlotte[
   });
   return [...parc.vehicules.map((v) => ligneDepuisLaBase(v, parc, parametres)), ...aRecevoir];
 }
+
+/** Une lecture par requête : la liste, le téléphone et Paramètres › Véhicules partagent le même parc quand ils sont rendus ensemble. */
+export const lignesFlotte = cache(lignesFlotteBrut);

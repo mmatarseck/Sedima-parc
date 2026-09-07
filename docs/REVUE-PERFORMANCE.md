@@ -103,6 +103,44 @@ Proposition :
 3. **La modale de transaction se charge à la demande** (`next/dynamic`) :
    un lecteur qui ne crée rien ne la télécharge pas.
 
+## Ce qui a été appliqué (8 septembre 2026, soir)
+
+1. **Une lecture par requête.** `parametresServeur()`, `lignesFlotte()`,
+   `sessionCourante()` et `accesServeur()` sont enveloppées dans
+   `React.cache()` : la mise en page et la page qui les appellent dans la
+   même requête partagent le résultat. Les paramètres, lus deux fois par
+   page, ne le sont plus qu'une fois.
+2. **Le parc et les chauffeurs en une requête.** Migration
+   `0009_lecture_en_une_requete.sql` : `lire_parc(depuis)` et
+   `lire_chauffeurs(depuis)` rendent en un JSON, sous les noms des tables,
+   ce que `lireParc` lisait en quatorze requêtes et `lireChauffeurs` en
+   neuf, sans pagination. Le code de dérivation ne change pas ; tant que la
+   fonction n'est pas jouée en base, l'application revient d'elle-même aux
+   lectures d'avant. Vérifié dans PGlite (`tester-lecture.mjs`) : les
+   quatorze et neuf listes ont exactement les comptes des tables, les dates
+   sont des chaînes ISO, les tableaux restent des tableaux ; le JSON du parc
+   pèse 383 Ko et se calcule en 31 ms. Sur une page Flotte en ligne, cela
+   remplace quatorze allers-retours à 0,5 s, dont des pages successives,
+   par un seul.
+3. **La modale de transaction et l'index de la recherche se chargent à la
+   demande** (`next/dynamic` dans `ContexteEdition`, `import()` dans
+   `RechercheGlobale` à la première ouverture). Vérifié dans le navigateur :
+   la recherche « AA 032 » trouve le véhicule une fois l'index chargé.
+
+**Une correction à la revue.** En ouvrant les blocs partagés de 235, 202 et
+196 Ko, ce ne sont pas les données de démonstration : c'est React, le
+cadre de Next et le client Supabase. Les données de démonstration pèsent
+dans la mise en page (l'assistant, 147 Ko avec lui) et dans les pages qui
+importent `champs.ts`, pas dans les blocs partagés. Le gain du point 3 est
+donc réel mais modeste ; le gain des points 1 et 2 est celui qui compte
+pour l'utilisateur à Dakar. La mesure « avant » de la version en ligne
+(1,5 à 3 s par liste) se refera après que la migration 0009 sera jouée.
+
+**Pas appliqué, à décider.** La région de la fonction Vercel : elle doit
+être celle du projet Supabase, à lire dans le tableau de bord Supabase
+(Settings › General › Region) — `fra1` pour Francfort, `cdg1` pour Paris,
+`lhr1` pour Londres — puis `vercel.json` : `{ "regions": ["fra1"] }`.
+
 ## Ce que je propose de faire en premier
 
 Dans l'ordre, chacun se recette seul : (1) `React.cache()` sur les deux

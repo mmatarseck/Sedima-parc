@@ -194,9 +194,19 @@ export interface ChauffeursBrut {
   depenses: LigneDepense[];
 }
 
-/** Les chauffeurs et ce qui les entoure, lus avec la session de l'utilisateur. */
+/**
+ * Les chauffeurs et ce qui les entoure, lus avec la session de l'utilisateur —
+ * en une requête par `lire_chauffeurs()` (0009), les neuf lectures d'avant
+ * en repli tant que la fonction n'est pas jouée en base.
+ */
 export async function lireChauffeurs(client: SupabaseClient, aujourdhui: string): Promise<ChauffeursBrut> {
   const depuis = ilYADouzeMois(aujourdhui);
+  const enUn = await client.rpc("lire_chauffeurs", { depuis }).maybeSingle<Omit<ChauffeursBrut, "aujourdhui">>();
+  if (!enUn.error && enUn.data) return { aujourdhui, ...enUn.data };
+  return lireChauffeursEnNeuf(client, aujourdhui, depuis);
+}
+
+async function lireChauffeursEnNeuf(client: SupabaseClient, aujourdhui: string, depuis: string): Promise<ChauffeursBrut> {
   const [chauffeurs, sites, vehicules, affectations, indisponibilites, documents, incidents, releves, depenses] = await Promise.all([
     tout<LigneChauffeurBase>("chauffeurs", (de, a) => client.from("chauffeur").select("*").range(de, a)),
     tout<LigneSite>("sites", (de, a) => client.from("site").select("id, code, libelle, region, type").range(de, a)),

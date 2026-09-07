@@ -1,4 +1,5 @@
 import { normaliserAcces, profilPourRole, type AccesUtilisateur } from "@/domaine/acces";
+import { cache } from "react";
 import type { Role } from "@/domaine/roles";
 import { ACCES_DEMO } from "@/donnees/acces-demo";
 import { authentificationReelle } from "@/lib/session-demo";
@@ -40,7 +41,7 @@ interface LigneProfil {
   cree_le: string;
 }
 
-export async function accesServeur(): Promise<AccesUtilisateur[]> {
+async function accesServeurBrut(): Promise<AccesUtilisateur[]> {
   if (!authentificationReelle()) return ACCES_DEMO;
   const client = await clientServeur();
   const [acces, profils] = await Promise.all([client.from("acces_utilisateur").select("*").returns<LigneAcces[]>(), client.from("profil").select("utilisateur_id, nom, role, actif, cree_le").returns<LigneProfil[]>()]);
@@ -79,3 +80,6 @@ export async function accesServeur(): Promise<AccesUtilisateur[]> {
   }
   return fiches.sort((a, b) => `${a.nom} ${a.prenom}`.localeCompare(`${b.nom} ${b.prenom}`, "fr"));
 }
+
+/** Une lecture par requête : la mise en page et la page qui appellent `accesServeur()` partagent le même résultat (revue du 8 septembre 2026). */
+export const accesServeur = cache(accesServeurBrut);

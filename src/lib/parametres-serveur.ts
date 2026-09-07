@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { COOKIE_PARAMETRES, appliquerLibelles, fusionnerParametres, type Parametres } from "@/domaine/parametres";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
@@ -13,7 +14,7 @@ import { clientServeur } from "@/lib/supabase";
  * par le serveur, avant de construire les fiches : la lecture alimente aussi
  * le registre des libellés, pour que TYPE_DOCUMENT nomme les documents ajoutés.
  */
-export async function parametresServeur(): Promise<Parametres> {
+async function parametresServeurBrut(): Promise<Parametres> {
   const p = authentificationReelle() ? await depuisLaBase() : await depuisLeCookie();
   appliquerLibelles(p);
   return p;
@@ -63,3 +64,6 @@ async function depuisLeCookie(): Promise<Parametres> {
     return fusionnerParametres(null);
   }
 }
+
+/** Une lecture par requête : la mise en page et la page qui appellent `parametresServeur()` partagent le même résultat (revue du 8 septembre 2026). */
+export const parametresServeur = cache(parametresServeurBrut);
