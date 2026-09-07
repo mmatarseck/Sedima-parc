@@ -454,6 +454,63 @@ Ce qui est construit dans `EcranTableauBord.tsx`, une seule vue à 1 440 × 900
 restent dans le domaine sans usage : à retirer quand on sera sûr que le
 bandeau des axes ne revient pas.
 
+### Le parc léger : service, fonction, plan car (cadrage du 7 septembre 2026, à intégrer)
+
+Dit par le métier, à l'oral, à la suite de la refonte du tableau de bord.
+**Rien n'est construit** ; c'est le cahier des charges de la prochaine
+extension du périmètre.
+
+Le parc ne se limite pas aux véhicules de transport de marchandises. Il y a
+aussi le **parc de véhicules légers**, en deux familles :
+
+- **les véhicules de service** — remis aux agents de terrain (commerciaux,
+  agents de maintenance…) pour faire leur travail, **y compris les quinze
+  plus cinq véhicules achetés récemment** ;
+- **les véhicules de fonction** — attribués à des personnes selon leur niveau
+  de responsabilité. Parmi eux, un sous-ensemble relève d'un **plan car** :
+  le véhicule est donné à un agent nommément désigné, qui **paie un montant
+  défini chaque mois** ; au terme d'une période prédéfinie (quatre ou cinq
+  ans, à confirmer), le véhicule lui est **affecté définitivement**.
+
+Pourquoi le parc les suit : **la maintenance est à la charge du parc**, pour
+toutes ces familles, plan car compris. Et le **carburant** de ces personnes
+est un **forfait mensuel** versé sur une carte carburant, qui doit être
+**absorbé directement en charge**.
+
+Ce que ça change, et ce que ça ne change pas : ces véhicules **n'entrent pas
+dans les charges de livraison** (coût à la tonne, externalisation, tonnes
+portées), mais **entrent dans les charges de maintenance et de carburant du
+parc**. Le périmètre `exploitation | complet` de `src/domaine/couts.ts` est
+le point d'ancrage naturel.
+
+**Pistes de modélisation** (à valider avec le métier avant de coder) :
+
+- un **régime d'usage** sur le véhicule — `exploitation`, `service`,
+  `fonction` — distinct de la catégorie de flotte (qui dit qui possède) et
+  de la catégorie de véhicule (qui dit ce qu'est l'engin) ;
+- un **attributaire** qui n'est pas un chauffeur : la personne (nom,
+  fonction, matricule RH, niveau) à qui un véhicule de fonction est
+  attribué, avec sa période ; un véhicule de service serait rattaché à un
+  service ou à un site, ou à une personne ;
+- un **plan car** porté par l'affectation : mensualité, début, durée, date
+  de cession prévue, statut (en cours, cédé). Comme pour les sanctions
+  (Q69), la mensualité serait une **trace**, pas une donnée de paie ;
+- une **dépense de carburant au forfait** : poste `carburant`, origine
+  « forfait carte », montant fixe mensuel par carte, **sans plein ni
+  kilométrage** — donc exclue de la consommation aux 100 km, incluse dans
+  les charges ;
+- les indicateurs de livraison (`C_CDM_SEDI`, `C_TED_EXT`…) restent sur le
+  régime `exploitation` ; les coûts complets, le budget et la maintenance
+  couvrent tout ; un rapport « Parc léger » par véhicule et par attributaire.
+
+**Questions ouvertes** : la durée exacte du plan car ; si la mensualité se
+suit dans l'application ou seulement la date de cession ; le montant du
+forfait carburant (par niveau ? par personne ?) et s'il se rapproche des
+consommations réelles de la carte ; la BU de rattachement des véhicules de
+fonction et de service pour le budget (siège, support ?) ; si les véhicules
+de service sont affectés à un pool ou à une personne nommée ; si les vingt
+véhicules récents sont déjà dans l'inventaire de référence.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.
