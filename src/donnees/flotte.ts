@@ -32,6 +32,84 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { passagesReleves, programmeParDefaut } from "./entretien-demo";
 import { fichePourImmatriculation } from "./fiche-demo";
 import { FLOTTE } from "./parc-demo";
+import { PARAMETRES_DEFAUT } from "@/domaine/parametres";
+import type { EtatLeger, VehiculeLeger } from "@/domaine/parc-leger";
+import { attributairePour, depensesForfaits, vehiculesLegers } from "./parc-leger-demo";
+
+/* -- Le parc léger dans la liste (fusion du 7 septembre 2026) ------------------ */
+
+/** L'état du dossier parc, traduit en statut de véhicule. */
+const STATUT_LEGER: Record<EtatLeger, Vehicule["statut"]> = { actif: "en-service", pool: "en-backup", panne: "en-reparation", "a-reformer": "retrait-en-cours", "a-recevoir": "en-mutation" };
+
+/**
+ * Un véhicule léger comme ligne de la Flotte : pas de chauffeur mais un
+ * attributaire, pas d'échéance de conformité ni d'entretien tant que ses
+ * documents et son plan ne sont pas tenus, et pour coût le forfait carburant
+ * de l'année. Les véhicules à recevoir n'y entrent pas : sans immatriculation,
+ * ce ne sont pas encore des véhicules du parc.
+ */
+export function ligneLegere(v: VehiculeLeger, coutDouzeMois: number | null): LigneFlotte {
+  const a = attributairePour(v.attributaireId);
+  const vehicule: Vehicule = {
+    id: v.id,
+    regime: v.regime,
+    immatriculation: v.immatriculation ?? v.id,
+    immatriculationAffichee: v.immatriculationAffichee,
+    vin: null,
+    marque: v.marque,
+    appellation: v.modele,
+    typeModele: null,
+    categorie: v.categorie,
+    categorieFlotte: "interne",
+    transportSpecial: false,
+    usage: v.categorie === "bus" ? "autre" : "utilitaire",
+    engage: false,
+    premiereMiseEnCirculation: v.annee ? `${v.annee}-01-01` : null,
+    dateImmatriculation: null,
+    puissanceCv: null,
+    cylindree: null,
+    ptac: null,
+    ptra: null,
+    poidsVide: null,
+    chargeUtile: null,
+    energie: "gasoil",
+    capaciteReservoir: null,
+    businessUnit: v.businessUnit,
+    siteId: null,
+    statut: STATUT_LEGER[v.etat],
+    valeurAcquisition: null,
+    dureeAmortissementAnnees: null,
+    commentaire: [v.lot, v.commentaire].filter(Boolean).join(" — ") || null,
+  };
+  return {
+    vehicule,
+    chauffeurTitulaire: null,
+    nombreSuppleants: 0,
+    site: null,
+    kilometrage: v.kilometrage,
+    dateKilometrage: null,
+    prochaineEcheanceConformite: null,
+    prochaineEcheanceEntretien: null,
+    coutDouzeMois,
+    attelageCourant: null,
+    statutEffectif: vehicule.statut,
+    immobilisationAdministrative: [],
+    attributaire: a ? { nom: a.nom, fonction: a.fonction, pool: false, planCar: v.planCar !== null } : v.pool ? { nom: v.pool, fonction: null, pool: true, planCar: false } : null,
+  };
+}
+
+/** Les lignes du parc léger de la démonstration, immatriculés seulement. */
+function lignesLegeresDemo(): LigneFlotte[] {
+  const aujourdhui = new Date().toISOString().slice(0, 10);
+  const depuis = `${Number(aujourdhui.slice(0, 4)) - 1}${aujourdhui.slice(4)}`;
+  const coutPar = new Map<string, number>();
+  for (const d of depensesForfaits(aujourdhui, PARAMETRES_DEFAUT.parcLeger.forfaitCarburantMensuel)) {
+    if (d.date >= depuis) coutPar.set(d.vehiculeId, (coutPar.get(d.vehiculeId) ?? 0) + d.montant);
+  }
+  return vehiculesLegers()
+    .filter((v) => v.immatriculation !== null)
+    .map((v) => ligneLegere(v, coutPar.get(v.id) ?? null));
+}
 
 /* -- Les lignes de la base -------------------------------------------------- */
 
@@ -64,6 +142,21 @@ interface LigneVehicule {
   duree_amortissement_annees: number | null;
   photo: string | null;
   commentaire: string | null;
+  regime: Vehicule["regime"];
+}
+
+interface LigneAttribution {
+  vehicule_id: string;
+  attributaire_id: string | null;
+  pool: string | null;
+  plan_car: boolean;
+  fin: string | null;
+}
+
+interface LigneAttributaire {
+  id: string;
+  nom: string;
+  fonction: string | null;
 }
 
 interface LigneSite {
@@ -148,6 +241,9 @@ export interface ParcBrut {
   depenses: LigneDepense[];
   pleins: LignePlein[];
   interventions: LigneIntervention[];
+  /** Le parc léger (0004) : qui tient chaque véhicule de service ou de fonction. */
+  attributions: LigneAttribution[];
+  attributaires: Map<string, LigneAttributaire>;
 }
 
 /**
@@ -175,11 +271,10 @@ function ilYADouzeMois(aujourdhui: string): string {
 /** Le parc et ses transactions récentes, lus avec la session de l'utilisateur. */
 export async function lireParc(client: SupabaseClient, aujourdhui: string): Promise<ParcBrut> {
   const depuis = ilYADouzeMois(aujourdhui);
-  const [vehicules, sites, chauffeurs, affectations, documents, licences, licencesVehicules, releves, depenses, pleins, interventions] = await Promise.all([
-    /* La liste Flotte est celle du transport : les véhicules de service et de
-       fonction (0004) ont leur écran, Parc léger, tant que la fusion n'est pas
-       décidée avec le métier. */
-    tout<LigneVehicule>("véhicules", (de, a) => client.from("vehicule").select("*").eq("regime", "exploitation").order("immatriculation").range(de, a)),
+  const [vehicules, sites, chauffeurs, affectations, documents, licences, licencesVehicules, releves, depenses, pleins, interventions, attributions, attributaires] = await Promise.all([
+    /* Tout le parc, transport et léger : la liste Flotte les réunit depuis le
+       7 septembre 2026, et c'est le régime qui les distingue. */
+    tout<LigneVehicule>("véhicules", (de, a) => client.from("vehicule").select("*").order("immatriculation").range(de, a)),
     tout<LigneSite>("sites", (de, a) => client.from("site").select("id, code, libelle, region, type").range(de, a)),
     tout<LigneChauffeurCourt>("chauffeurs", (de, a) => client.from("chauffeur").select("id, nom, prenom").range(de, a)),
     tout<LigneAffectation>("affectations", (de, a) => client.from("affectation").select("vehicule_id, chauffeur_id, role, debut, fin").range(de, a)),
@@ -190,9 +285,13 @@ export async function lireParc(client: SupabaseClient, aujourdhui: string): Prom
     tout<LigneDepense>("dépenses", (de, a) => client.from("depense").select("vehicule_id, date, montant, km, km_motif_rejet").gte("date", depuis).range(de, a)),
     tout<LignePlein>("pleins", (de, a) => client.from("plein").select("vehicule_id, date, km").gte("date", depuis).range(de, a)),
     tout<LigneIntervention>("interventions", (de, a) => client.from("intervention").select("vehicule_id, numero, date, objet, km").range(de, a)),
+    tout<LigneAttribution>("attributions", (de, a) => client.from("attribution_legere").select("vehicule_id, attributaire_id, pool, plan_car, fin").is("fin", null).range(de, a)),
+    tout<LigneAttributaire>("attributaires", (de, a) => client.from("attributaire").select("id, nom, fonction").range(de, a)),
   ]);
   return {
     aujourdhui,
+    attributions,
+    attributaires: new Map(attributaires.map((a) => [a.id, a])),
     vehicules,
     sites: new Map(sites.map((s) => [s.id, { id: s.id, code: s.code, libelle: s.libelle, region: s.region, type: s.type }])),
     chauffeurs: new Map(chauffeurs.map((c) => [c.id, c])),
@@ -240,6 +339,7 @@ export function vehiculeDepuisLaBase(v: LigneVehicule): Vehicule {
     dureeAmortissementAnnees: v.duree_amortissement_annees,
     commentaire: v.commentaire,
     photo: v.photo,
+    regime: v.regime ?? "exploitation",
   };
 }
 
@@ -354,11 +454,25 @@ export function ligneDepuisLaBase(brut: LigneVehicule, parc: ParcBrut, parametre
   const nomTitulaire = chauffeur ? `${chauffeur.prenom} ${chauffeur.nom}` : null;
 
   const compteur = dernierCompteur(brut.id, parc);
-  const documents = documentsDuVehicule(v, brut.id, parc, parametres);
+  /* Les documents et le plan d'entretien des véhicules de service et de
+     fonction ne sont pas encore tenus dans la base : les déclarer manquants
+     immobiliserait tout le parc léger d'un coup, à tort. Ils se jugent sur
+     l'exploitation seule tant que leurs pièces ne sont pas enregistrées. */
+  const exploitation = v.regime === "exploitation";
+  const documents = exploitation ? documentsDuVehicule(v, brut.id, parc, parametres) : [];
   const dates = documents.filter((d): d is DocumentSuivi & { echeance: string; joursRestants: number } => d.echeance !== null && d.joursRestants !== null).sort((a, b) => a.joursRestants - b.joursRestants);
   const conformite: EcheanceVehicule | null = dates[0] ? { type: dates[0].type, echeance: dates[0].echeance, joursRestants: dates[0].joursRestants } : null;
-  const immobilisation = immobilisationAdministrative(v, documents, parametres);
+  const immobilisation = exploitation ? immobilisationAdministrative(v, documents, parametres) : null;
   const cout = parc.depenses.filter((d) => d.vehicule_id === brut.id).reduce((s, d) => s + d.montant, 0);
+
+  /* Qui tient un véhicule léger : l'attribution en cours, personne ou pool. */
+  const attribution = exploitation ? null : (parc.attributions.find((a) => a.vehicule_id === brut.id) ?? null);
+  const personne = attribution?.attributaire_id ? (parc.attributaires.get(attribution.attributaire_id) ?? null) : null;
+  const attributaire = personne
+    ? { nom: personne.nom, fonction: personne.fonction, pool: false, planCar: attribution?.plan_car === true }
+    : attribution?.pool
+      ? { nom: attribution.pool, fonction: null, pool: true, planCar: false }
+      : null;
 
   return {
     vehicule: v,
@@ -368,11 +482,12 @@ export function ligneDepuisLaBase(brut: LigneVehicule, parc: ParcBrut, parametre
     kilometrage: compteur?.km ?? null,
     dateKilometrage: compteur?.date ?? null,
     prochaineEcheanceConformite: conformite,
-    prochaineEcheanceEntretien: prochaineEcheanceEntretien(v, brut.id, compteur, parc),
+    prochaineEcheanceEntretien: exploitation ? prochaineEcheanceEntretien(v, brut.id, compteur, parc) : null,
     coutDouzeMois: cout > 0 ? cout : null,
     attelageCourant: null,
     statutEffectif: immobilisation?.statut ?? v.statut,
     immobilisationAdministrative: immobilisation?.documents ?? [],
+    attributaire,
   };
 }
 
@@ -385,11 +500,15 @@ export async function lignesFlotte(parametres: Parametres): Promise<LigneFlotte[
        manquant ou échu immobilise le véhicule administrativement. Le coût sur
        douze mois est celui des dépenses de la fiche — la même somme que
        l'Aperçu et que Coûts & analyses, pas un chiffre à part. */
-    return FLOTTE.map((l) => {
+    const transport = FLOTTE.map((l) => {
       const f = fichePourImmatriculation(l.vehicule.immatriculation, parametres);
       const imm = f?.immobilisationAdministrative ?? null;
       return { ...l, coutDouzeMois: f?.indicateurs.coutDouzeMois ?? l.coutDouzeMois, statutEffectif: imm?.statut ?? l.vehicule.statut, immobilisationAdministrative: imm?.documents ?? [] };
     });
+    /* Le parc léger rejoint la liste (fusion du 7 septembre 2026) ; un léger
+       déjà dans la flotte de transport n'est pas doublé. */
+    const immats = new Set(transport.map((l) => l.vehicule.immatriculation));
+    return [...transport, ...lignesLegeresDemo().filter((l) => !immats.has(l.vehicule.immatriculation))];
   }
   const parc = await lireParc(await clientServeur(), new Date().toISOString().slice(0, 10));
   return parc.vehicules.map((v) => ligneDepuisLaBase(v, parc, parametres));

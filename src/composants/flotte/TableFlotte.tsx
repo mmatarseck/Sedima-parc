@@ -4,6 +4,7 @@ import { ENERGIE } from "@/domaine/libelles";
 
 import { Echeance, PastilleStatut } from "@/composants/interface/Pastille";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
+import { REGIME_USAGE } from "@/domaine/parc-leger";
 import { PhotoVehicule } from "@/composants/vehicule/PhotoVehicule";
 import {
   BUSINESS_UNIT,
@@ -42,6 +43,18 @@ const FILTRES: FiltreListe<LigneFlotte>[] = [
   { cle: "non-conformes", libelle: "Non conformes", retient: (l) => (l.prochaineEcheanceConformite?.joursRestants ?? 1) < 0 },
 ];
 
+/* Le second jeu de pilules, croisé avec l'état : le régime d'usage. Le parc
+   léger a rejoint la liste le 7 septembre 2026 ; sans ce filtre, les camions
+   se noieraient dans les pick-up de service. */
+const regimeDe = (l: LigneFlotte) => l.vehicule.regime ?? "exploitation";
+const REGIMES: FiltreListe<LigneFlotte>[] = [
+  { cle: "tous", libelle: "Tout le parc", retient: () => true },
+  { cle: "exploitation", libelle: "Exploitation", retient: (l) => regimeDe(l) === "exploitation" },
+  { cle: "service", libelle: "Service", retient: (l) => regimeDe(l) === "service" },
+  { cle: "fonction", libelle: "Fonction", retient: (l) => regimeDe(l) === "fonction" },
+  { cle: "plan-car", libelle: "Plan car", retient: (l) => l.attributaire?.planCar === true },
+];
+
 const IDENTIFIANT = {
   cle: "immat",
   libelle: "Immat.",
@@ -75,6 +88,21 @@ const COLONNES: ColonneListe<LigneFlotte>[] = [
   { cle: "vin", libelle: "VIN", parDefaut: false, largeur: 190, rendu: (l) => <span className="code block truncate text-texte-2">{l.vehicule.vin ?? "—"}</span> },
   { cle: "energie", libelle: "Énergie", parDefaut: false, largeur: 110, rendu: (l) => (l.vehicule.energie ? ENERGIE[l.vehicule.energie] : <span className="text-attenue-2">—</span>) },
   { cle: "categorie", libelle: "Catégorie", parDefaut: true, largeur: 128, rendu: (l) => <span className="block truncate">{CATEGORIE_VEHICULE[l.vehicule.categorie]}</span> },
+  /* Le régime d'usage (cadrage du 7 septembre 2026) : exploitation, service,
+     fonction — et le plan car en mention, parce qu'il change le devenir du véhicule. */
+  {
+    cle: "regime",
+    libelle: "Régime",
+    parDefaut: true,
+    largeur: 118,
+    texte: (l) => `${REGIME_USAGE[l.vehicule.regime ?? "exploitation"].libelle}${l.attributaire?.planCar ? " plan car" : ""}`,
+    rendu: (l) => (
+      <>
+        <span className="block truncate">{REGIME_USAGE[l.vehicule.regime ?? "exploitation"].libelle}</span>
+        {l.attributaire?.planCar ? <span className="meta block truncate">plan car</span> : null}
+      </>
+    ),
+  },
   { cle: "flotte", libelle: "Catégorie de flotte", parDefaut: false, largeur: 140, rendu: (l) => <span className="block truncate">{CATEGORIE_FLOTTE[l.vehicule.categorieFlotte]}</span> },
   {
     cle: "bu",
@@ -86,15 +114,23 @@ const COLONNES: ColonneListe<LigneFlotte>[] = [
   { cle: "site", libelle: "Site", parDefaut: true, largeur: 150, rendu: (l) => <span className="block truncate">{l.site?.libelle ?? <span className="text-attenue-2">—</span>}</span> },
   {
     cle: "chauffeur",
-    libelle: "Chauffeur",
+    libelle: "Chauffeur ou attributaire",
     parDefaut: true,
-    largeur: 158,
-    rendu: (l) => (
-      <>
-        <span className="block truncate">{l.chauffeurTitulaire?.nom ?? <span className="text-attenue-2">Non affecté</span>}</span>
-        {l.nombreSuppleants > 0 ? <span className="meta block truncate">+ {l.nombreSuppleants} suppléant</span> : null}
-      </>
-    ),
+    largeur: 170,
+    texte: (l) => l.attributaire?.nom ?? l.chauffeurTitulaire?.nom ?? "Non affecté",
+    rendu: (l) =>
+      l.attributaire ? (
+        /* Un véhicule de service ou de fonction : la personne qui le tient, ou le pool. */
+        <>
+          <span className={`block truncate ${l.attributaire.pool ? "text-texte-2" : ""}`}>{l.attributaire.nom}</span>
+          {l.attributaire.fonction ? <span className="meta block truncate">{l.attributaire.fonction}</span> : null}
+        </>
+      ) : (
+        <>
+          <span className="block truncate">{l.chauffeurTitulaire?.nom ?? <span className="text-attenue-2">Non affecté</span>}</span>
+          {l.nombreSuppleants > 0 ? <span className="meta block truncate">+ {l.nombreSuppleants} suppléant</span> : null}
+        </>
+      ),
   },
   {
     cle: "attelage",
@@ -177,7 +213,7 @@ const COLONNES: ColonneListe<LigneFlotte>[] = [
 ];
 
 function champsRecherche(l: LigneFlotte): string[] {
-  return [l.vehicule.immatriculationAffichee, l.vehicule.immatriculation, l.vehicule.vin ?? "", l.vehicule.marque, l.vehicule.appellation, l.chauffeurTitulaire?.nom ?? "", l.site?.libelle ?? ""];
+  return [l.vehicule.immatriculationAffichee, l.vehicule.immatriculation, l.vehicule.vin ?? "", l.vehicule.marque, l.vehicule.appellation, l.chauffeurTitulaire?.nom ?? "", l.attributaire?.nom ?? "", l.attributaire?.fonction ?? "", l.site?.libelle ?? ""];
 }
 
 export function TableFlotte({ lignes }: { lignes: LigneFlotte[] }) {
@@ -196,8 +232,10 @@ export function TableFlotte({ lignes }: { lignes: LigneFlotte[] }) {
       fixes={FIXES}
       colonnes={[COLONNE_PHOTO, ...COLONNES]}
       filtres={FILTRES}
+      filtresSecondaires={REGIMES}
+      libelleFiltresSecondaires="Filtrer par régime d'usage"
       champsRecherche={champsRecherche}
-      placeholderRecherche="Immatriculation, chauffeur, site…"
+      placeholderRecherche="Immatriculation, chauffeur, attributaire, site…"
       libelleRecherche="Rechercher un véhicule"
       libelleUnite="véhicules"
       vide="Aucun véhicule ne correspond à cette recherche."

@@ -573,12 +573,25 @@ charge se rattache à **la BU de l'agent** ; les véhicules de service vont
   de pool. Filtres, colonnes, totaux et export viennent du descripteur, comme
   pour les autres.
 
+- **la fusion dans la liste Flotte** (demande du 7 septembre, soir) : les
+  véhicules légers immatriculés entrent dans la liste (119 lignes), avec un
+  **second jeu de pilules** croisé avec l'état — `filtresSecondaires` de
+  `TableListe` : tout le parc, exploitation, service, fonction, plan car —,
+  une colonne « Régime » et la colonne « Chauffeur ou attributaire ». Le
+  régime vit sur `Vehicule.regime` (absent : exploitation) et l'attributaire
+  sur `LigneFlotte.attributaire`. En base, la liste lit `attribution_legere`
+  et `attributaire` ; les documents et le plan d'entretien des légers ne
+  sont pas jugés tant qu'ils ne sont pas tenus (sinon tout le parc léger
+  serait immobilisé administrativement d'un coup). La fiche d'un véhicule
+  léger (`FicheVehiculeLeger`) s'ouvre depuis la liste : identité,
+  attributaire, forfait, plan car, état et devenir — ses transactions
+  viendront avec la base. L'écran Parc léger reste la vue dédiée.
+
 **Ce qui reste** : la maintenance des véhicules légers (aucun historique
 chiffré dans le dossier, seulement la note « Parc Automobile Réalisation
 pour légers » qui décrit les travaux) ; les dates de début des plans car (la
-feuille CAR-PLAN n'en a pas) ; l'écran Parc léger et ses rapports lus en base
-(encore en démonstration) ; la fusion dans la liste Flotte avec un filtre de
-régime, à décider avec le métier. Les attributaires du plan car reçoivent
+feuille CAR-PLAN n'en a pas) ; l'écran Parc léger, sa fiche et ses rapports
+lus en base (encore en démonstration). Les attributaires du plan car reçoivent
 aujourd'hui un forfait carburant comme les autres véhicules de fonction : à
 confirmer.
 

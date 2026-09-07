@@ -80,8 +80,18 @@ export type UsageVehicule = "vrac" | "frigorifique" | "poussins" | "plateau" | "
  */
 export type Energie = "gasoil" | "essence" | "electrique" | "hybride";
 
+/**
+ * Ce que le véhicule fait pour l'entreprise — cadrage du 7 septembre 2026 :
+ * livrer (exploitation), servir un agent ou un pool (service), équiper une
+ * personne selon son niveau (fonction). Seule l'exploitation entre dans les
+ * charges de livraison ; tout le parc entre dans la maintenance et le carburant.
+ */
+export type RegimeUsage = "exploitation" | "service" | "fonction";
+
 export interface Vehicule {
   id: string;
+  /** Absent : exploitation — c'est le cas de toute la flotte de transport. */
+  regime?: RegimeUsage;
   immatriculation: Immatriculation;
   /** Immatriculation telle qu'affichée : « AA 032 EA ». */
   immatriculationAffichee: string;
@@ -455,6 +465,8 @@ export interface LigneFlotte {
   coutDouzeMois: number | null;
   /** L'autre moitié de l'attelage en cours, s'il y en a un. */
   attelageCourant: { immatriculation: string; immatriculationAffichee: string; role: "tracteur" | "remorque" } | null;
+  /** Pour un véhicule de service ou de fonction : qui le tient — une personne ou un pool — et s'il est en plan car. */
+  attributaire?: { nom: string; fonction: string | null; pool: boolean; planCar: boolean } | null;
   /** Le statut affiché et compté : le statut saisi, ou « hors service » si un document critique manque ou est échu. */
   statutEffectif?: StatutVehicule;
   /** Les documents critiques en cause, quand le véhicule est immobilisé administrativement. */

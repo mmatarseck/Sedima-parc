@@ -80,6 +80,8 @@ export function TableListe<T>({
   fixes = AUCUNE,
   colonnes,
   filtres,
+  filtresSecondaires,
+  libelleFiltresSecondaires = "Filtrer",
   champsRecherche,
   placeholderRecherche,
   libelleRecherche,
@@ -106,6 +108,9 @@ export function TableListe<T>({
   fixes?: ColonneListe<T>[];
   colonnes: ColonneListe<T>[];
   filtres: FiltreListe<T>[];
+  /** Un second jeu de pilules, croisé avec le premier — « Régime » sur la Flotte, à côté de l'état. */
+  filtresSecondaires?: FiltreListe<T>[];
+  libelleFiltresSecondaires?: string;
   champsRecherche: (ligne: T) => string[];
   placeholderRecherche: string;
   libelleRecherche: string;
@@ -116,6 +121,7 @@ export function TableListe<T>({
   const router = useRouter();
   const [recherche, setRecherche] = useState("");
   const [filtre, setFiltre] = useState<string>(filtres[0]?.cle ?? "tous");
+  const [filtreSecondaire, setFiltreSecondaire] = useState<string>(filtresSecondaires?.[0]?.cle ?? "tous");
   const [taillePage, setTaillePage] = useState<number>(TAILLES_PAGE[0]);
   const [page, setPage] = useState(1);
   /* Tri par clic sur un en-tête : croissant, décroissant, puis l'ordre d'origine. */
@@ -232,9 +238,11 @@ export function TableListe<T>({
     const normaliser = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
     const mots = normaliser(recherche.trim()).split(/\s+/).filter(Boolean);
     const f = filtres.find((x) => x.cle === filtre);
+    const g = filtresSecondaires?.find((x) => x.cle === filtreSecondaire);
     const toutes = [...fixes, ...colonnes];
     const retenues = lignes.filter((l) => {
       if (f && !f.retient(l)) return false;
+      if (g && !g.retient(l)) return false;
       if (mots.length === 0) return true;
       const texte = normaliser([...champsRecherche(l), texteDe(identifiant.rendu(l)), ...toutes.map((c) => (c.texte ? c.texte(l) : texteDe(c.rendu(l))))].join(" "));
       return mots.every((m) => texte.includes(m));
@@ -245,7 +253,7 @@ export function TableListe<T>({
       if (!c) return null;
       return c.tri ? c.tri(l) : valeurDeTri(c.texte ? c.texte(l) : texteDe(c.rendu(l)));
     });
-  }, [lignes, recherche, filtre, filtres, champsRecherche, tri, fixes, colonnes, identifiant]);
+  }, [lignes, recherche, filtre, filtres, filtreSecondaire, filtresSecondaires, champsRecherche, tri, fixes, colonnes, identifiant]);
 
   function EnTeteTriable({ cle: cleColonne, libelle, droite }: { cle: string; libelle: string; droite?: boolean }) {
     const actif = tri?.cle === cleColonne;
@@ -341,6 +349,27 @@ export function TableListe<T>({
             </button>
           ))}
         </div>
+        {filtresSecondaires && filtresSecondaires.length > 0 ? (
+          <div className="flex h-9 items-center gap-0.5 rounded-full bg-surface-3 p-1" role="group" aria-label={libelleFiltresSecondaires}>
+            {filtresSecondaires.map((f) => (
+              <button
+                key={f.cle}
+                type="button"
+                aria-pressed={filtreSecondaire === f.cle}
+                onClick={() => {
+                  setFiltreSecondaire(f.cle);
+                  setPage(1);
+                }}
+                className={[
+                  "h-7 rounded-full px-3 text-[12.5px] whitespace-nowrap transition-colors",
+                  filtreSecondaire === f.cle ? "bg-surface font-semibold text-texte shadow-onglet" : "font-medium text-texte-2 hover:text-texte",
+                ].join(" ")}
+              >
+                {f.libelle}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         <div className="relative ml-auto flex items-center gap-1.5">
           <span className="meta code mr-2 whitespace-nowrap">

@@ -3,7 +3,10 @@ import { FicheVehicule } from "@/composants/vehicule/FicheVehicule";
 import { FicheVehiculeCreee } from "@/composants/vehicule/FicheVehiculeCreee";
 import { afficher, normaliser } from "@/domaine/immatriculation";
 import { titrePage } from "@/domaine/marque";
+import { FicheVehiculeLeger } from "@/composants/parc-leger/FicheVehiculeLeger";
+import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
 import { fichePourImmatriculation } from "@/donnees/fiche-demo";
+import { attributairePour, forfaitsCarburant, vehiculesLegers } from "@/donnees/parc-leger-demo";
 import { parametresServeur } from "@/lib/parametres-serveur";
 import { FLOTTE } from "@/donnees/parc-demo";
 
@@ -37,6 +40,20 @@ export default async function PageVehicule({ params, searchParams }: Props) {
      fiche vierge du véhicule créé — ou l'introuvable, s'il n'en est rien. */
   if (!fiche) {
     const canonique = normaliser(decodeURIComponent(immat));
+    /* Un véhicule de service ou de fonction : sa fiche est celle du dossier
+       du parc léger (fusion du 7 septembre 2026). */
+    const leger = vehiculesLegers().find((v) => v.immatriculation === canonique);
+    if (leger) {
+      return (
+        <FicheVehiculeLeger
+          vehicule={leger}
+          attributaire={attributairePour(leger.attributaireId)}
+          forfait={forfaitsCarburant().find((f) => f.attributaireId === leger.attributaireId) ?? null}
+          regles={parametres.parcLeger}
+          aujourdhui={DATE_REFERENCE}
+        />
+      );
+    }
     return (
       <FournisseurEdition sujet={`vehicule:${canonique}`} href={`/flotte/${canonique}`}>
         <FicheVehiculeCreee immatriculation={canonique} ongletInitial={onglet} discussionInitiale={discussion === "1"} cible={ref} />

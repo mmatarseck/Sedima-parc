@@ -20,11 +20,11 @@
  * retient la durée et la date de cession.
  * ==========================================================================*/
 
-import type { BusinessUnit } from "./types";
+import type { BusinessUnit, RegimeUsage } from "./types";
 import type { Ton } from "./libelles";
 
-/** Ce que le véhicule fait pour l'entreprise : livrer, servir un agent, ou équiper une personne. */
-export type RegimeUsage = "exploitation" | "service" | "fonction";
+/** Ce que le véhicule fait pour l'entreprise : livrer, servir un agent, ou équiper une personne. Défini avec le véhicule (`types.ts`). */
+export type { RegimeUsage };
 
 export const REGIME_USAGE: Record<RegimeUsage, { libelle: string; precision: string }> = {
   exploitation: { libelle: "Exploitation", precision: "Livraison et transport — compte dans le coût à la tonne" },
