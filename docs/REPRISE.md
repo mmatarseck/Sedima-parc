@@ -719,6 +719,38 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   terrain sur Keur Massar, écart maintenance en lecture approuvé, relue dans
   la liste ; icône, manifeste et apple-icon servis.
 
+### Le serveur applique la fiche d'accès (8 septembre 2026, nuit)
+
+- **Migration `0008_acces_applique.sql`** : `niveau_par_role` (les défauts
+  de chaque profil, par rôle historique, nuances des anciens rôles gardées),
+  `mon_niveau(module)` (l'écart approuvé, sinon le défaut), `peut(module,
+  minimum)`, `dans_mon_perimetre(site, bu, régime)` (une valeur absente sur
+  la ligne ne ferme rien ; sans fiche, la règle du correspondant de site),
+  `peut_cloturer()` (saisie des paramètres). `peut_administrer`,
+  `peut_ecrire_parc`, `peut_ecrire_transport`, `peut_ecrire_entretien`,
+  `voit_sanctions` sont redéfinies sur ces niveaux, donc les politiques qui
+  les appellent suivent. Celles qui citaient des rôles sont refaites : lecture
+  du parc et des chauffeurs par périmètre ; document, dépense, plein, relevé,
+  intervention, incident en **saisie à l'insertion, gestion pour le reste**.
+  `get_me()` rend profil, périmètre, niveaux et sanctions.
+- **Côté application** : `UtilisateurCourant.acces` et `SessionServeur.acces`
+  ; `AmorceSession` pose la fiche dans le navigateur
+  (`src/lib/acces-courant.ts` : `lireAccesCourant`, `niveauCourant`,
+  `peutCourant`, `voitSanctionsCourant`) ; en démonstration, le rôle choisi
+  donne les défauts de son profil (`accesDepuisRole`). Le rail ne montre que
+  les modules où la personne a un accès (`module` sur chaque entrée de
+  `navigation.ts`) ; « Ajouter un véhicule » n'apparaît qu'avec la gestion de
+  la flotte ; les sanctions suivent la fiche.
+- **Vérifié** : `tester-acces.mjs` (PGlite, prédicats des politiques
+  évalués explicitement, PGlite lisant en superutilisateur) — sans fiche les
+  défauts du rôle, écart ignoré puis appliqué à l'approbation, périmètre
+  site + régime, `get_me()`, sanctions par écart, détenteur sans parc : tout
+  passe. Dans le navigateur, le correspondant de site voit un rail réduit et
+  pas de bouton de création ; l'administrateur voit tout.
+- **Reste** : les écrans eux-mêmes ne bornent pas encore leurs listes au
+  périmètre en démonstration (en base, les politiques le font) ; les modules
+  demandes et transferts n'ont pas encore de table.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

@@ -16,6 +16,7 @@ import {
   Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import type { Module } from "@/domaine/acces";
 
 export interface EntreeNavigation {
   href: string;
@@ -25,6 +26,8 @@ export interface EntreeNavigation {
   compteur?: number;
   /** Faux tant que l'écran n'est pas livré : l'entrée reste visible mais inerte. */
   livre: boolean;
+  /** Le module dont dépend l'entrée : elle disparaît pour qui n'y a aucun accès. Absent : toujours visible. */
+  module?: Module;
 }
 
 export interface GroupeNavigation {
@@ -64,33 +67,33 @@ export const NAVIGATION: GroupeNavigation[] = [
          service, fonction, plan car, et les véhicules commandés à recevoir —,
          distingués par le régime d'usage. L'écran « Parc léger » a été retiré
          le soir même à la demande du métier : une seule liste, des filtres. */
-      { href: "/flotte", libelle: "Flotte", icone: Truck, livre: true },
-      { href: "/disponibilite", libelle: "Disponibilité du jour", icone: ClipboardList, livre: true },
-      { href: "/chauffeurs", libelle: "Chauffeurs", icone: Users, livre: true },
-      { href: "/affectations", libelle: "Affectations", icone: CalendarRange, livre: true },
-      { href: "/transporteurs", libelle: "Transporteurs", icone: Handshake, livre: true },
+      { module: "flotte", href: "/flotte", libelle: "Flotte", icone: Truck, livre: true },
+      { module: "flotte", href: "/disponibilite", libelle: "Disponibilité du jour", icone: ClipboardList, livre: true },
+      { module: "chauffeurs", href: "/chauffeurs", libelle: "Chauffeurs", icone: Users, livre: true },
+      { module: "chauffeurs", href: "/affectations", libelle: "Affectations", icone: CalendarRange, livre: true },
+      { module: "transporteurs", href: "/transporteurs", libelle: "Transporteurs", icone: Handshake, livre: true },
     ],
   },
   {
     titre: "Suivi",
     entrees: [
-      { href: "/conformite", libelle: "Conformité", icone: ShieldCheck, livre: true },
-      { href: "/maintenance", libelle: "Maintenance", icone: Wrench, livre: true },
-      { href: "/incidents", libelle: "Incidents & sinistres", icone: TriangleAlert, livre: true },
-      { href: "/carburant", libelle: "Carburant", icone: Fuel, livre: true },
-      { href: "/caisse", libelle: "Caisse & achats", icone: Wallet, livre: true },
-      { href: "/prestataires", libelle: "Prestataires", icone: Store, livre: true },
+      { module: "documents", href: "/conformite", libelle: "Conformité", icone: ShieldCheck, livre: true },
+      { module: "maintenance", href: "/maintenance", libelle: "Maintenance", icone: Wrench, livre: true },
+      { module: "incidents", href: "/incidents", libelle: "Incidents & sinistres", icone: TriangleAlert, livre: true },
+      { module: "releves", href: "/carburant", libelle: "Carburant", icone: Fuel, livre: true },
+      { module: "couts", href: "/caisse", libelle: "Caisse & achats", icone: Wallet, livre: true },
+      { module: "transporteurs", href: "/prestataires", libelle: "Prestataires", icone: Store, livre: true },
     ],
   },
   {
     titre: "Pilotage",
     entrees: [
-      { href: "/budget", libelle: "Budget", icone: PiggyBank, livre: true },
-      { href: "/rapports", libelle: "Rapports", icone: BarChart3, livre: true },
+      { module: "couts", href: "/budget", libelle: "Budget", icone: PiggyBank, livre: true },
+      { module: "couts", href: "/rapports", libelle: "Rapports", icone: BarChart3, livre: true },
     ],
   },
   {
     titre: "Administration",
-    entrees: [{ href: "/parametres", libelle: "Paramètres", icone: Settings, livre: true }],
+    entrees: [{ module: "parametres", href: "/parametres", libelle: "Paramètres", icone: Settings, livre: true }],
   },
 ];

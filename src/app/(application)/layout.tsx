@@ -25,7 +25,7 @@ export default async function LayoutApplication({ children }: { children: React.
 
   return (
     <Coquille>
-      {session.etat === "connecte" ? <AmorceSession role={session.session.role} nom={session.session.nom} courriel={session.session.courriel} /> : null}
+      {session.etat === "connecte" ? <AmorceSession role={session.session.role} nom={session.session.nom} courriel={session.session.courriel} acces={session.session.acces} /> : null}
       <AmorceParametres parametres={parametres} />
       {children}
     </Coquille>

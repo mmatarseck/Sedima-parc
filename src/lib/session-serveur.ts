@@ -8,6 +8,7 @@
  * nom vient du profil.
  * ==========================================================================*/
 
+import type { AccesCourant } from "@/domaine/acces";
 import type { Role } from "@/domaine/roles";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur, utilisateurCourant } from "@/lib/supabase";
@@ -16,6 +17,8 @@ export interface SessionServeur {
   utilisateurId: string;
   role: Role;
   siteId: string | null;
+  /** La fiche d'accès rendue par `get_me()` ; nulle tant que la migration 0008 n'est pas jouée. */
+  acces: AccesCourant | null;
   nom: string;
   courriel: string | null;
 }

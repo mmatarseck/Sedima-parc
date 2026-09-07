@@ -16,9 +16,8 @@ import { PERIODES, debutPeriode, type FicheChauffeur as Fiche, type PeriodeMois 
 import type { Personne } from "@/domaine/discussion";
 import { APTITUDE, CONTRAT_CHAUFFEUR, MOTIF_INDISPONIBILITE } from "@/domaine/libelles";
 import { evaluer, libelleMoisLong } from "@/domaine/performance";
-import { voitSanctions as roleVoitSanctions } from "@/domaine/roles";
+import { voitSanctionsCourant } from "@/lib/acces-courant";
 import { personnesUtilisateurs } from "@/lib/discussion-demo";
-import { lireRole } from "@/lib/session-demo";
 import { date, montantCourt, nombre } from "@/lib/format";
 import { PastilleStatutChauffeur } from "./PastilleStatutChauffeur";
 import { OngletPerformance, type ClassementDuMois } from "./OngletPerformance";
@@ -117,7 +116,7 @@ export function FicheChauffeur({
      le montage : tant qu'il n'est pas connu, la fiche les tait. */
   const [voitSanctions, setVoitSanctions] = useState(false);
   useEffect(() => {
-    setVoitSanctions(roleVoitSanctions(lireRole()));
+    setVoitSanctions(voitSanctionsCourant());
   }, []);
 
   const l = fiche.ligne;

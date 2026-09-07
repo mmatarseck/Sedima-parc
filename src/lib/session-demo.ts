@@ -34,6 +34,9 @@ export function lireRole(): Role | null {
 export function ouvrirSession(role: Role): void {
   try {
     localStorage.setItem(CLE, role);
+    /* Un rôle de démonstration choisi à la main efface la fiche d'accès posée
+       par le serveur : l'accès redevient celui du rôle. */
+    if (!authentificationReelle()) localStorage.removeItem("sedima.parc.acces-courant");
   } catch {
     /* sans stockage, la session ne vaut que pour la page courante */
   }
@@ -43,6 +46,7 @@ export function fermerSession(): void {
   try {
     localStorage.removeItem(CLE);
     localStorage.removeItem(CLE_IDENTITE);
+    localStorage.removeItem("sedima.parc.acces-courant");
   } catch {
     /* rien à nettoyer */
   }

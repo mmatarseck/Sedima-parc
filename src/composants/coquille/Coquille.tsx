@@ -4,9 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { NAVIGATION } from "./navigation";
+import { NAVIGATION, type GroupeNavigation } from "./navigation";
 import { BarreApplication } from "./BarreApplication";
 import { HAUTEUR_BARRE, LARGEUR_RAIL, LARGEUR_RAIL_RETRACTE } from "./mesures";
+import { lireAccesCourant } from "@/lib/acces-courant";
 
 const CLE_RAIL = "sedima.parc.rail-retracte";
 
@@ -22,6 +23,7 @@ const CLE_RAIL = "sedima.parc.rail-retracte";
 export function Coquille({ children }: { children: React.ReactNode }) {
   const chemin = usePathname();
   const [retracte, setRetracte] = useState(false);
+  const [groupes, setGroupes] = useState<GroupeNavigation[]>(NAVIGATION);
 
   // Lu après le montage : le serveur ne connaît pas la préférence du navigateur.
   useEffect(() => {
@@ -30,7 +32,13 @@ export function Coquille({ children }: { children: React.ReactNode }) {
     } catch {
       /* stockage indisponible : le rail reste déployé */
     }
-  }, []);
+    /* Le rail ne montre que les modules auxquels la personne a accès — sa
+       fiche d'accès, posée par le serveur ; ce n'est pas une autorisation, les
+       politiques décident, mais une entrée qui mènerait à une liste vide
+       promettrait ce que le serveur refuse. */
+    const acces = lireAccesCourant();
+    setGroupes(NAVIGATION.map((g) => ({ ...g, entrees: g.entrees.filter((e) => !e.module || acces.niveaux[e.module] !== "aucun") })).filter((g) => g.entrees.length > 0));
+  }, [chemin]);
 
   function basculer() {
     setRetracte((precedent) => {
@@ -63,7 +71,7 @@ export function Coquille({ children }: { children: React.ReactNode }) {
           style={{ top: HAUTEUR_BARRE, height: `calc(100vh - ${HAUTEUR_BARRE}px)` }}
         >
           <nav className="sans-barre flex min-h-0 flex-col gap-5 overflow-y-auto">
-            {NAVIGATION.map((groupe) => (
+            {groupes.map((groupe) => (
               /* Le groupe de tête n'a pas de titre : il ne porte que l'écran
                  d'entrée, qu'il serait absurde de nommer deux fois. Il ne prend
                  donc ni intitulé, ni séparateur quand le rail est rétracté. */

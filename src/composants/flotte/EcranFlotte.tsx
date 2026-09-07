@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Download, Plus } from "lucide-react";
+import { peutCourant } from "@/lib/acces-courant";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { TableFlotte } from "@/composants/flotte/TableFlotte";
 import { FournisseurEdition, useEdition } from "@/composants/transactions/ContexteEdition";
@@ -26,6 +28,10 @@ function Interieur({ lignes }: { lignes: LigneFlotte[] }) {
   const { creations } = useEdition();
   const creees = creations("vehicule", fabriquerLigneFlotte);
   const toutes = [...creees, ...lignes];
+  /* Créer un véhicule relève de la gestion de la flotte : le bouton ne
+     promet rien à qui n'en a que la saisie ou la lecture. */
+  const [peutCreer, setPeutCreer] = useState(false);
+  useEffect(() => setPeutCreer(peutCourant("flotte", "gestion")), []);
 
   return (
     <div className="flex flex-col gap-5 px-8 py-7 lg:h-full">
@@ -42,10 +48,12 @@ function Interieur({ lignes }: { lignes: LigneFlotte[] }) {
               <Download className="size-4 text-texte-2" strokeWidth={1.7} />
               Exporter
             </Link>
-            <Link href="/flotte/nouveau" className="bouton-principal">
-              <Plus className="size-4" strokeWidth={2.2} />
-              Ajouter un véhicule
-            </Link>
+            {peutCreer ? (
+              <Link href="/flotte/nouveau" className="bouton-principal">
+                <Plus className="size-4" strokeWidth={2.2} />
+                Ajouter un véhicule
+              </Link>
+            ) : null}
           </>
         }
       />

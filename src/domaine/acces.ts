@@ -267,6 +267,30 @@ export function normaliserAcces(brut: unknown): AccesUtilisateur | null {
   };
 }
 
+/**
+ * Ce que le serveur dit de la personne connectée, tel que `get_me()` le rend :
+ * son profil, son périmètre, ses niveaux effectifs — écarts approuvés
+ * compris — et si elle voit les sanctions. C'est ce que les écrans lisent
+ * pour se montrer ou se taire ; la décision, elle, reste dans les politiques.
+ */
+export interface AccesCourant {
+  profil: Profil;
+  perimetre: Perimetre;
+  niveaux: Record<Module, Niveau>;
+  sanctions: boolean;
+}
+
+/** L'accès qu'un rôle historique donne à lui seul : les défauts de son profil. En démonstration, c'est tout ce qu'on a. */
+export function accesDepuisRole(role: Role): AccesCourant {
+  const p = trouverProfil(profilPourRole(role));
+  const niveaux = { ...p.defauts };
+  /* Les nuances des anciens rôles, comme `niveau_par_role` les garde en base. */
+  if (role === "achats") niveaux.transporteurs = "gestion";
+  if (role === "controle-de-gestion") niveaux.couts = "gestion";
+  if (role === "responsable-carburant") niveaux.releves = "gestion";
+  return { profil: p.profil, perimetre: { ...PERIMETRE_ENTIER }, niveaux, sanctions: p.sanctions };
+}
+
 export function nomComplet(a: Pick<AccesUtilisateur, "prenom" | "nom">): string {
   return `${a.prenom} ${a.nom}`.trim();
 }

@@ -7,8 +7,7 @@ import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { Carte, TableauSimple } from "@/composants/interface/Carte";
 import { Echeance, Pastille } from "@/composants/interface/Pastille";
 import { BAREME_PRIME, KM_MINIMAL_PAR_MOIS, PILIERS, libelleMoisLong, type LigneClassement, type Pilier } from "@/domaine/performance";
-import { voitSanctions } from "@/domaine/roles";
-import { lireRole } from "@/lib/session-demo";
+import { voitSanctionsCourant } from "@/lib/acces-courant";
 import { nombre } from "@/lib/format";
 
 /* ============================================================================
@@ -69,7 +68,7 @@ export function Classement({
   const [habilite, setHabilite] = useState(false);
 
   useEffect(() => {
-    setHabilite(voitSanctions(lireRole()));
+    setHabilite(voitSanctionsCourant());
   }, []);
 
   const lignes = classements[moisChoisi] ?? [];

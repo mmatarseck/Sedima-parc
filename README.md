@@ -93,7 +93,7 @@ supabase link --project-ref <ref-du-projet>
 supabase db push
 ```
 
-Sept migrations, dans l'ordre :
+Huit migrations, dans l'ordre :
 
 - `0001_socle.sql` — référentiels, flotte, chauffeurs, transactions, trace des
   modifications, clôture des mois, paramètres — avec les politiques RLS et
@@ -120,6 +120,10 @@ Sept migrations, dans l'ordre :
   périmètre, écarts par module approuvés par l'administrateur ; le rôle
   « détenteur » entre dans l'énumération. `profil.role` reste la clé que
   `get_me()` rend.
+- `0008_acces_applique.sql` — les politiques lisent la fiche : un niveau par
+  module (`mon_niveau`, `peut`) et un périmètre (`dans_mon_perimetre`) ;
+  `get_me()` rend profil, périmètre, niveaux et sanctions. Sans fiche, le
+  rôle historique donne les niveaux de son profil (`niveau_par_role`).
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.

@@ -17,6 +17,7 @@
 
 import { createBrowserClient, createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { MODULES, NIVEAUX, PROFILS, type AccesCourant, type Module, type Niveau, type Perimetre, type Profil } from "@/domaine/acces";
 import type { Role } from "@/domaine/roles";
 
 function configuration(): { url: string; cle: string } {
@@ -74,6 +75,8 @@ export interface UtilisateurCourant {
   utilisateurId: string;
   role: Role;
   siteId: string | null;
+  /** La fiche d'accès telle que `get_me()` la rend (0008) ; absente tant que la migration n'est pas jouée. */
+  acces: AccesCourant | null;
 }
 
 /**
@@ -82,7 +85,19 @@ export interface UtilisateurCourant {
  * le compte n'a pas de profil actif.
  */
 export async function utilisateurCourant(client: SupabaseClient): Promise<UtilisateurCourant | null> {
-  const { data, error } = await client.rpc("get_me").maybeSingle<{ utilisateur_id: string; role: Role; site_id: string | null }>();
+  const { data, error } = await client.rpc("get_me").maybeSingle<{ utilisateur_id: string; role: Role; site_id: string | null; profil?: string; perimetre?: unknown; niveaux?: Record<string, string>; sanctions?: boolean }>();
   if (error || !data) return null;
-  return { utilisateurId: data.utilisateur_id, role: data.role, siteId: data.site_id };
+  const acces = data.niveaux && data.profil ? normaliserAccesCourant(data.profil, data.perimetre, data.niveaux, data.sanctions ?? false) : null;
+  return { utilisateurId: data.utilisateur_id, role: data.role, siteId: data.site_id, acces };
+}
+
+function normaliserAccesCourant(profil: string, perimetre: unknown, niveaux: Record<string, string>, sanctions: boolean): AccesCourant {
+  const p = (perimetre ?? {}) as Partial<Record<keyof Perimetre, unknown>>;
+  const liste = (v: unknown, tout: string) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : tout);
+  return {
+    profil: (PROFILS.some((x) => x.profil === profil) ? profil : "lecteur") as Profil,
+    perimetre: { sites: liste(p.sites, "tous") as Perimetre["sites"], businessUnits: liste(p.businessUnits, "toutes") as Perimetre["businessUnits"], regimes: liste(p.regimes, "tous") as Perimetre["regimes"] },
+    niveaux: Object.fromEntries(MODULES.map((m) => [m.module, (NIVEAUX as string[]).includes(niveaux[m.module] ?? "") ? niveaux[m.module] : "aucun"])) as Record<Module, Niveau>,
+    sanctions,
+  };
 }
