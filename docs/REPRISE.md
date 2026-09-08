@@ -1095,6 +1095,34 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   stockage du navigateur) ; la photo du véhicule lui-même (`PhotoVehicule`)
   suit encore son propre chemin.
 
+### La fiche chauffeur lue depuis la base (8 septembre 2026)
+
+- Migration `0015_lire_fiche_chauffeur.sql` : `slug_chauffeur(prenom, nom)`
+  (« Talla Diène » → « talla-diene », comme les adresses de l'application),
+  `conducteur_du_jour(vehicule, jour)` — la règle du 3 septembre : tout au
+  titulaire, le suppléant les jours où le titulaire est indisponible —, et
+  `lire_fiche_chauffeur(identifiant, uuid)` : identité, site, documents,
+  affectations avec le véhicule (catégorie, BU, site), indisponibilités,
+  sanctions (la politique de la table décide), incidents, et ce que la
+  conduite a produit : pleins, contraventions et frais de route attribués
+  au conducteur du jour, relevés des véhicules tenus avec le drapeau
+  « attribué ».
+- `src/domaine/assembler-fiche-chauffeur.ts` (pur) : documents et échéances
+  (le permis et la visite médicale portés par la fiche quand la table n'en
+  a pas), kilomètres de chaque affectation sur les relevés valides,
+  consommation par mois et par véhicule contre la référence de la
+  catégorie, contraventions avec la retenue déduite des sanctions, frais de
+  route, incidents en déclarations, journal, âge et ancienneté.
+- `src/donnees/fiche-chauffeur.ts` : `ficheChauffeurServeur(id)` — ligne de
+  la liste, fonction en base (UUID déterministe du seed ou nom aplati),
+  assembleur ; démonstration sinon. La page `/chauffeurs/[id]` l'appelle ;
+  base branchée, la moyenne des kilomètres vient des lignes et le
+  classement attend une lecture de toutes les fiches.
+- Vérifié : `scripts/tester-fiche-chauffeur.mts` dans PGlite avec le seed —
+  Moustapha Diaw : 23 pleins, 35 relevés, 12 frais de route attribués,
+  45 472 km sur son affectation, 8 mois de consommation, le conducteur du
+  15 août est bien le titulaire.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

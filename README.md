@@ -156,6 +156,10 @@ Neuf migrations, dans l'ordre :
   (déposer et lire avec un rôle), la colonne `photo` sur `plein` et
   `depense`. Les photos des demandes et des réserves de transfert y vont
   aussi ; chaque ligne garde le chemin (`pieces/demandes/2026/09/….jpg`).
+- `0015_lire_fiche_chauffeur.sql` — `lire_fiche_chauffeur(identifiant, uuid)`
+  rend en un JSON tout ce que la fiche d'un chauffeur lit, avec la règle
+  d'attribution au conducteur du jour (`conducteur_du_jour`) ; le chauffeur
+  se retrouve par son UUID ou par son nom aplati (`slug_chauffeur`).
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.
