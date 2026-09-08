@@ -945,6 +945,39 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   d'accès, fiche rapide et statut, relevé-plein-panne, demandes,
   transfert, atelier. Restent le stockage des photos et le courriel.
 
+### Les écritures branchées (8 septembre 2026, migrations 0001–0012 jouées)
+
+- Constat : la modale de transaction, la fiche rapide et l'atelier
+  n'écrivaient que dans le navigateur ; seuls les accès, les paramètres,
+  les demandes et les transferts avaient une fonction serveur. Base en
+  place, c'était le trou le plus large.
+- `src/lib/transactions-colonnes.ts` (pur, testable) : la table de chaque
+  type et la ligne que ses valeurs forment — `ligneCreation` refuse ce qui
+  manque (plein sans litres, affectation sans chauffeur) en le disant ;
+  `colonnesModification` traduit les champs modifiés en colonnes ;
+  `horodatage` complète une date ou une date-heure.
+- `src/lib/transactions-actions.ts` (« use server ») : `ecrireCreation`
+  résout le véhicule par immatriculation ou UUID, le chauffeur par UUID ou
+  par la transposition déterministe du seed (sha1 de
+  « sedima-parc:chauffeur:… »), le prestataire par raison sociale ; insère
+  avec le numéro du navigateur, ou le suivant de la base s'il est pris ;
+  le **statut** met à jour `vehicule` et écrit sa trace dans
+  `modification` (ce que `situation_journaliere()` lit).
+  `ecrireModification` applique les colonnes et trace chaque champ.
+- `src/lib/clotures-demo.ts` : après l'enregistrement local,
+  `synchroniserCreation` / `synchroniserModification` en mode réel ;
+  renumérotation locale si la base a donné un autre numéro ; refus signalé
+  à la cloche de la personne connectée.
+- Vérifié : `scripts/tester-ecritures.mts` dans PGlite avec le seed — neuf
+  types insérés, une modification appliquée avec trace, un plein sans
+  litres refusé. Pas vérifié contre Supabase (la clé n'est pas sur ce
+  poste) : à essayer en ligne sur un relevé, puis relire la table.
+- Reste : les types sans table (ordre de travail, caisse, cuve, visite,
+  observation, achat, attelage, aptitude) ; les lectures des fiches
+  véhicule et chauffeur encore en démonstration, qui ne montrent donc pas
+  ce que la base reçoit ; les demandes de modification sur mois clos
+  (`cloture_mois`, `modification.statut = 'en-attente'`) encore locales.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

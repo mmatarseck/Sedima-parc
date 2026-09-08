@@ -10,15 +10,19 @@
  *    changé sans réécrire le jeu de données ;
  *  - les demandes en attente d'approbation (`sedima.parc.demandes`).
  *
- * En production, tout ceci est en base, et la surcharge n'existe plus : la
- * transaction elle-même change, et le journal d'audit garde l'avant.
+ * Base branchée (8 septembre 2026) : le navigateur garde sa copie — l'écran
+ * répond tout de suite — et la même écriture part vers la base par
+ * `transactions-actions.ts`. Un numéro déjà pris est renuméroté ; un refus
+ * de la base arrive à la cloche, pour que personne ne croie enregistré ce qui
+ * ne l'est pas. Les types sans table restent dans le navigateur.
  * ==========================================================================*/
 
 import { CHAMP_DATE, ROLES_CLOTURANT, formaterValeur, moisDe, peutCloturer, type ChampEdition, type ClotureMois, type Creation, type DemandeModification, type Modification } from "@/domaine/cloture";
 import { TYPE_TRANSACTION, formerNumero, type TypeTransaction } from "@/domaine/reference";
 import { ROLES, trouverRole } from "@/domaine/roles";
 import { ajouterNotification } from "./notifications-demo";
-import { lireRole } from "./session-demo";
+import { authentificationReelle, lireRole } from "./session-demo";
+import { ecrireCreation, ecrireModification } from "./transactions-actions";
 
 function lireJson<T>(cle: string, defaut: T): T {
   try {
@@ -230,7 +234,49 @@ export function enregistrerModification(e: Enregistrement): ResultatEnregistreme
   }));
   ajouterHistorique(e.numero, modifications);
   appliquerSurcharge(e.numero, Object.fromEntries(diffs.map((d) => [d.champ, d.valeur])));
+  if (authentificationReelle()) void synchroniserModification(e, diffs);
   return { issue: "appliquee", modifications };
+}
+
+/* -- La base, quand elle est branchée --------------------------------------- */
+
+/** Prévient la personne connectée qu'une écriture n'est pas passée en base. */
+function signalerRefus(sujetLibelle: string, motif: string, href: string): void {
+  const role = trouverRole(lireRole());
+  ajouterNotification(role.role, { id: `refus-${Date.now().toString(36)}`, date: new Date().toISOString(), auteur: "SEDIMA Parc", initiales: "SP", sujetLibelle, extrait: motif, href });
+}
+
+/** Le navigateur reprend le numéro que la base a retenu, quand il diffère du sien. */
+function renumeroter(sujet: string, ancien: string, nouveau: string): void {
+  ecrireJson(cleCreations(sujet), lireCreations(sujet).map((c) => (c.numero === ancien ? { ...c, numero: nouveau } : c)));
+  const historique = lireHistorique(ancien).map((m) => ({ ...m, numero: nouveau }));
+  if (historique.length > 0) {
+    ecrireJson(cleHistorique(nouveau), historique);
+    try {
+      localStorage.removeItem(cleHistorique(ancien));
+    } catch {
+      /* rien à retirer */
+    }
+  }
+}
+
+async function synchroniserCreation(creation: Creation): Promise<void> {
+  try {
+    const r = await ecrireCreation(creation);
+    if (r.issue === "refusee") signalerRefus(`${TYPE_TRANSACTION[creation.type].libelle} ${creation.numero}`, r.motif, "#");
+    else if (r.issue === "ecrite" && r.numero !== creation.numero) renumeroter(creation.sujet, creation.numero, r.numero);
+  } catch (e) {
+    signalerRefus(`${TYPE_TRANSACTION[creation.type].libelle} ${creation.numero}`, `Non enregistré en base : ${e instanceof Error ? e.message : "erreur inconnue"}`, "#");
+  }
+}
+
+async function synchroniserModification(e: Enregistrement, diffs: { champ: string; libelleChamp: string; avant: string; apres: string; valeur: unknown }[]): Promise<void> {
+  try {
+    const r = await ecrireModification({ numero: e.numero, type: e.type, motif: e.motif, diffs });
+    if (r.issue === "refusee") signalerRefus(e.titre, r.motif, e.href);
+  } catch (x) {
+    signalerRefus(e.titre, `Non enregistré en base : ${x instanceof Error ? x.message : "erreur inconnue"}`, e.href);
+  }
 }
 
 /* -- Créations ------------------------------------------------------------------ */
@@ -312,6 +358,7 @@ export function enregistrerCreation(e: { sujet: string; type: TypeTransaction; c
       commentaireDecision: null,
     },
   ]);
+  if (authentificationReelle()) void synchroniserCreation(creation);
   return { issue: "creee", creation };
 }
 

@@ -204,6 +204,18 @@ lue des cookies), service (clé qui passe outre les politiques, serveur
 seulement) — et `utilisateurCourant()`, qui appelle `get_me()`. Tant que
 `NEXT_PUBLIC_SUPABASE_URL` n'est pas posée, rien de tout cela n'est appelé.
 
+**Les écritures sont branchées** (8 septembre 2026). Tout ce que la modale
+de transaction, la fiche rapide et l'atelier enregistrent part aussi en base
+par `src/lib/transactions-actions.ts` : relevé, plein, dépense, document,
+incident, affectation, intervention, indisponibilité, sanction dans leur
+table ; le statut d'un véhicule sur sa ligne, avec sa trace dans
+`modification`. Le navigateur garde sa copie pour répondre tout de suite ; un
+numéro déjà pris est renuméroté ; un refus de la base arrive à la cloche.
+Les types sans table (ordre de travail, caisse, cuve, visite, observation,
+achat…) restent dans le navigateur. `scripts/tester-ecritures.mts` rejoue
+les lignes produites dans PGlite (`PGLITE_DIR=<dossier avec
+@electric-sql/pglite> npx tsx scripts/tester-ecritures.mts`).
+
 **L'authentification est branchée.** Dès que les variables sont posées :
 
 - `src/proxy.ts` rafraîchit la session dans les cookies à chaque requête et
