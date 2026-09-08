@@ -3,7 +3,9 @@ import { titrePage } from "@/domaine/marque";
 import type { StatutVehicule } from "@/domaine/types";
 import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
 import { lignesFlotte } from "@/donnees/flotte";
-import { ordresDeTravail, travauxAFaire } from "@/donnees/maintenance-demo";
+import { travauxAFaire } from "@/donnees/maintenance-demo";
+import { ordresServeur } from "@/donnees/ordres";
+import { authentificationReelle } from "@/lib/session-demo";
 import { parametresServeur } from "@/lib/parametres-serveur";
 
 export const metadata = { title: titrePage("Atelier") };
@@ -18,5 +20,6 @@ export default async function PageTelephoneAtelier() {
   const parametres = await parametresServeur();
   const lignes = await lignesFlotte(parametres);
   const statuts: Record<string, StatutVehicule> = Object.fromEntries(lignes.map((l) => [l.vehicule.id, l.statutEffectif ?? l.vehicule.statut]));
-  return <EcranTelephoneAtelier ordres={ordresDeTravail()} travaux={travauxAFaire()} statuts={statuts} aujourdhui={DATE_REFERENCE} />;
+  const reel = authentificationReelle();
+  return <EcranTelephoneAtelier ordres={await ordresServeur()} travaux={reel ? [] : travauxAFaire()} statuts={statuts} aujourdhui={reel ? new Date().toISOString().slice(0, 10) : DATE_REFERENCE} />;
 }

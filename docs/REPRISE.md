@@ -1123,6 +1123,30 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   45 472 km sur son affectation, 8 mois de consommation, le conducteur du
   15 août est bien le titulaire.
 
+### Les ordres de travail en base (8 septembre 2026, migration 0016)
+
+- Migration `0016_ordres_de_travail.sql` : la table `ordre_travail` — véhicule,
+  type, objet, origine (la transaction qui motive l'ordre, ou le plan),
+  prestataire ou garage en clair, date prévue, immobilisation et montant
+  estimés, statut (`planifie`, `en-atelier`, `clos`, `annule`), dates de
+  début et de clôture, intervention de clôture, demandeur. Politiques : lire
+  avec la lecture du module Maintenance dans le périmètre du véhicule,
+  écrire avec sa saisie. `situation_journaliere()` compte les ordres
+  ouverts à la fin du jour et ceux dont le rendez-vous a plus de quinze
+  jours : la pastille « Ordres de travail ouverts » n'est plus grise.
+- `src/donnees/ordres.ts` : `ordresServeur()` — la table avec le véhicule
+  et le prestataire joints, en démonstration les ordres du jeu. La page
+  Maintenance, l'atelier et l'accueil du téléphone la lisent ; base
+  branchée, les « travaux à faire » et les interventions de toute la flotte
+  restent vides en attendant leur lecture.
+- Les écritures : `ordre` a sa table dans `transactions-colonnes.ts`
+  (création avec le garage retrouvé par sa raison sociale, le demandeur
+  posé par le serveur d'après la session ; dix champs modifiables). Le
+  seed porte les six ordres de la démonstration.
+- Vérifié : `tester-ecritures.mts` (un ordre planifié chez Garage SEDIMA,
+  demandé par Service parc) et `tester-situation.mjs` (un ordre ouvert au
+  dernier jour, un ancien, égal à la table).
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

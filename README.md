@@ -160,6 +160,12 @@ Neuf migrations, dans l'ordre :
   rend en un JSON tout ce que la fiche d'un chauffeur lit, avec la règle
   d'attribution au conducteur du jour (`conducteur_du_jour`) ; le chauffeur
   se retrouve par son UUID ou par son nom aplati (`slug_chauffeur`).
+- `0016_ordres_de_travail.sql` — la table `ordre_travail` : l'intervention
+  planifiée sur un véhicule (objet, garage, date prévue, immobilisation et
+  montant estimés, statut planifié → en atelier → clos ou annulé), lue par
+  le module Maintenance, l'atelier et l'accueil du téléphone ;
+  `situation_journaliere()` compte désormais les ordres ouverts et ceux de
+  plus de quinze jours pour la pastille du tableau de bord.
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.

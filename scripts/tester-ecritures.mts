@@ -49,6 +49,7 @@ const essais: { type: Parameters<typeof ligneCreation>[0]; numero: string; valeu
   { type: "intervention", numero: "INT-2026-90001", valeurs: { date: "2026-09-08", type: "curatif", objet: "Plaquettes", garage: "Garage SEDIMA", montant: 85000, immobilisationJours: 1 } },
   { type: "indisponibilite", numero: "IND-2026-90001", valeurs: { motif: "conge", debut: "2026-09-10", fin: "2026-09-20" } },
   { type: "sanction", numero: "SAN-2026-90001", valeurs: { date: "2026-09-08", type: "avertissement", motif: "Retard répété" } },
+  { type: "ordre", numero: "OT-2026-90001", valeurs: { type: "curatif", objet: "Remplacement des plaquettes", garage: "Garage SEDIMA", datePrevue: "2026-09-12", immobilisationPrevueJours: 1, montantEstime: 85000, demandeur: "Service parc" } },
 ];
 for (const e of essais) {
   const table = tableDe(e.type)!;
@@ -74,7 +75,10 @@ const d = (await pg.query(`select montant, justificatif from depense where numer
 attendu(`modification appliquée (montant ${d.montant}, justificatif ${d.justificatif})`, Number(d.montant) === 255000 && d.justificatif === false);
 const refus = ligneCreation("plein", "PLN-2026-90002", { date: "2026-09-08", montant: 1000 }, r);
 attendu(`un plein sans litres est refusé (${"refus" in refus ? refus.refus : "accepté"})`, "refus" in refus);
-attendu(`un ordre n'a pas de table (${tableDe("ordre")})`, tableDe("ordre") === null);
+attendu(`un ordre a sa table (${tableDe("ordre")})`, tableDe("ordre") === "ordre_travail");
+const ot = (await pg.query(`select statut, garage, demandeur_nom from ordre_travail where numero = 'OT-2026-90001'`)).rows[0] as { statut: string; garage: string; demandeur_nom: string };
+attendu(`l'ordre est planifié chez ${ot.garage}, demandé par ${ot.demandeur_nom}`, ot.statut === "planifie" && ot.garage === "Garage SEDIMA" && ot.demandeur_nom === "Service parc");
+attendu(`une caisse n'a pas de table (${tableDe("caisse")})`, tableDe("caisse") === null);
 
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);

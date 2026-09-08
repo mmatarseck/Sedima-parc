@@ -72,6 +72,8 @@ async function rattacher(client: SupabaseClient, c: Creation): Promise<Rattachem
   const vehiculeId = (await vehiculeIdDe(client, v.vehiculeId)) ?? (s.genre === "vehicule" ? await vehiculeIdDe(client, s.cle) : null);
   const chauffeurId = (await chauffeurIdDe(client, v.chauffeurId)) ?? (s.genre === "chauffeur" ? await chauffeurIdDe(client, s.cle) : null);
   const prestataireId = await prestataireIdDe(client, v.garage ?? v.prestataire ?? v.beneficiaire);
+  /* Le demandeur d'un ordre : la personne qui le crée, telle que le navigateur la nomme. */
+  if (c.type === "ordre" && !v.demandeur) v.demandeur = c.auteur;
   return { vehiculeId, chauffeurId, prestataireId };
 }
 

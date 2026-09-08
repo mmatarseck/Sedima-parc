@@ -29,6 +29,7 @@ import { listeIncidents } from "@/donnees/incidents-demo";
 import { PARAMETRES_DEFAUT } from "@/domaine/parametres";
 import { demandesDemo } from "@/donnees/demandes-demo";
 import { transfertsDemo } from "@/donnees/transferts-demo";
+import { ordresDeTravail } from "@/donnees/maintenance-demo";
 import { affretements, grillesTarifaires, misesADisposition, prestations, transporteurs } from "@/donnees/transporteurs-demo";
 import { camionsTiers, chauffeursTiers, profilTransporteur, rattachements } from "@/donnees/flotte-tierce-demo";
 import { relevesTransport } from "@/donnees/releve-demo";
@@ -277,6 +278,14 @@ inserer(
   "transfert",
   ["id", "numero", "vehicule_id", "remettant_genre", "remettant_chauffeur_id", "remettant_attributaire_id", "remettant_nom", "recipiendaire_genre", "recipiendaire_chauffeur_id", "recipiendaire_attributaire_id", "recipiendaire_nom", "date", "motif", "km", "carburant", "documents_a_bord", "equipements", "reserves", "commentaire", "signature_remettant", "signature_recipiendaire", "appliquee_le", "cree_par_nom"],
   transfertsDemo().map((t) => [uuid(`transfert:${t.numero}`), t.numero, vehiculeId(t.vehicule.id), t.remettant.genre, t.remettant.genre === "chauffeur" ? chauffeurId(t.remettant.id) : null, t.remettant.genre === "attributaire" ? attributaireId(t.remettant.id) : null, t.remettant.nom, t.recipiendaire.genre, t.recipiendaire.genre === "chauffeur" ? chauffeurId(t.recipiendaire.id) : null, t.recipiendaire.genre === "attributaire" ? attributaireId(t.recipiendaire.id) : null, t.recipiendaire.nom, t.date, t.motif, t.km, t.carburant, t.documentsABord, JSON.stringify(t.equipements), JSON.stringify(t.reserves), t.commentaire, t.signatureRemettant ? JSON.stringify(t.signatureRemettant) : null, t.signatureRecipiendaire ? JSON.stringify(t.signatureRecipiendaire) : null, t.appliquee ? t.date : null, t.creePar]),
+);
+
+/* -- Ordres de travail (0016) ---------------------------------------------------- */
+
+inserer(
+  "ordre_travail",
+  ["id", "numero", "vehicule_id", "type", "objet", "origine_numero", "origine_libelle", "prestataire_id", "garage", "date_prevue", "immobilisation_prevue_jours", "montant_estime", "statut", "date_debut", "date_cloture", "intervention_numero", "commentaire", "demandeur_nom", "cree_le"],
+  ordresDeTravail().map((o) => [uuid(`ordre:${o.numero}`), o.numero, vehiculeId(o.vehiculeId), o.type, o.objet, o.origineNumero, o.origineLibelle, prestataireId(prestataireParNom.get(o.garage) ?? null), o.garage, o.datePrevue, o.immobilisationPrevueJours, o.montantEstime, o.statut, o.dateDebut, o.dateCloture, o.interventionNumero, o.commentaire, o.demandeur, `${o.dateDebut ?? o.datePrevue}T08:00:00+00`]),
 );
 
 /* -- Paramètres ------------------------------------------------------------------- */

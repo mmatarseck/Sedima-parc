@@ -2,11 +2,11 @@
  * Ce qu'une transaction saisie dans l'application devient en base : la table,
  * et les colonnes que ses valeurs remplissent.
  *
- * Neuf types ont leur table depuis la migration 0001 — relevé, plein,
- * dépense, document, incident, affectation, intervention, indisponibilité,
- * sanction — et le statut d'un véhicule s'écrit sur sa ligne avec sa trace.
- * Les autres (ordre de travail, caisse, cuve, visite, observation, achat…)
- * attendent leur table : ils restent dans le navigateur, et `tableDe` le dit.
+ * Dix types ont leur table — relevé, plein, dépense, document, incident,
+ * affectation, intervention, indisponibilité, sanction (0001) et l'ordre de
+ * travail (0016) — et le statut d'un véhicule s'écrit sur sa ligne avec sa
+ * trace. Les autres (caisse, cuve, visite, observation, achat…) attendent
+ * leur table : ils restent dans le navigateur, et `tableDe` le dit.
  *
  * Ce module est pur — pas de base, pas de navigateur — pour se vérifier seul
  * et servir la fonction serveur comme les tests.
@@ -14,7 +14,7 @@
 
 import type { TypeTransaction } from "@/domaine/reference";
 
-export type TableBranchee = "releve_kilometrique" | "plein" | "depense" | "document" | "incident" | "affectation" | "intervention" | "indisponibilite" | "sanction";
+export type TableBranchee = "releve_kilometrique" | "plein" | "depense" | "document" | "incident" | "affectation" | "intervention" | "indisponibilite" | "sanction" | "ordre_travail";
 
 const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   releve: "releve_kilometrique",
@@ -26,6 +26,7 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   intervention: "intervention",
   indisponibilite: "indisponibilite",
   sanction: "sanction",
+  ordre: "ordre_travail",
 };
 
 /** La table d'un type ; nulle tant qu'il n'en a pas. Le statut est à part : il s'écrit sur le véhicule. */
@@ -115,6 +116,11 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       if (!r.chauffeurId) return { refus: "indisponibilité sans chauffeur" };
       return { ligne: { numero, chauffeur_id: r.chauffeurId, motif: texte(v.motif) ?? "autre", debut: texte(v.debut), fin: texte(v.fin), commentaire: texte(v.commentaire) } };
     }
+    case "ordre": {
+      if (!r.vehiculeId) return { refus: "ordre de travail sans véhicule" };
+      if (!texte(v.objet)) return { refus: "ordre de travail sans objet" };
+      return { ligne: { numero, vehicule_id: r.vehiculeId, type: texte(v.type) ?? "curatif", objet: texte(v.objet), origine_numero: texte(v.origineNumero), origine_libelle: texte(v.origineLibelle), prestataire_id: r.prestataireId, garage: texte(v.garage) ?? "—", date_prevue: texte(v.datePrevue), immobilisation_prevue_jours: nombre(v.immobilisationPrevueJours), montant_estime: nombre(v.montantEstime), statut: texte(v.statut) ?? "planifie", date_debut: texte(v.dateDebut), date_cloture: texte(v.dateCloture), intervention_numero: texte(v.interventionNumero), commentaire: texte(v.commentaire), demandeur_nom: texte(v.demandeur) } };
+    }
     case "sanction": {
       if (!r.chauffeurId) return { refus: "sanction sans chauffeur" };
       if (!texte(v.motif)) return { refus: "sanction sans motif" };
@@ -138,9 +144,10 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   intervention: { date: "date", type: "type", objet: "objet", km: "km", immobilisationJours: "immobilisation_jours", montant: "montant", reference: "reference" },
   indisponibilite: { motif: "motif", debut: "debut", fin: "fin", commentaire: "commentaire" },
   sanction: { date: "date", type: "type", jours: "jours", motif: "motif" },
+  ordre: { datePrevue: "date_prevue", objet: "objet", garage: "garage", immobilisationPrevueJours: "immobilisation_prevue_jours", montantEstime: "montant_estime", statut: "statut", dateDebut: "date_debut", dateCloture: "date_cloture", interventionNumero: "intervention_numero", commentaire: "commentaire" },
 };
 
-const NUMERIQUES = new Set(["km", "litres", "prix_litre", "montant", "kilometrage", "immobilisation_jours", "jours"]);
+const NUMERIQUES = new Set(["km", "litres", "prix_litre", "montant", "kilometrage", "immobilisation_jours", "jours", "immobilisation_prevue_jours", "montant_estime"]);
 const BOOLEENS = new Set(["justificatif"]);
 const HORODATES = new Set(["date_heure"]);
 
