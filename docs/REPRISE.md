@@ -1363,6 +1363,29 @@ d'assemblage, 39 Ko) : sa panne était bien le rendu statique.
   méthode s'applique aux politiques : envelopper `peut()` dans
   `(select peut(…))` pour qu'il ne soit évalué qu'une fois par requête.
 
+### Deuxième diagnostic, les politiques évaluées une fois (8 septembre 2026, migration 0019)
+
+Après 0018 : `situation_journaliere()` 8 229 → 1 358 ms ; `lire_parc()`
+844 ms et `lire_chauffeurs()` 561 ms inchangés. Ce qui reste est le coût
+des politiques elles-mêmes : les tables de faits disaient `exists (select 1
+from vehicule v where v.id = vehicule_id)` — pour chaque plein, relevé,
+dépense, une relecture du véhicule, donc de sa politique, donc du rôle, du
+niveau et du périmètre, trois lectures de profil par ligne.
+
+- Migration `0019_politiques_rapides.sql` : `vehicule_id in (select id from
+  vehicule)` (sous-plan haché, calculé une fois par requête — le plan le
+  confirme) sur affectation, document, dépense, plein, relevé, intervention,
+  incident, indisponibilité ; demandes, transferts et ordres de même.
+  `mon_perimetre()` (fiche d'accès en JSON, ou « tout », ou le site du
+  correspondant) lu une fois par requête ; `dans_perimetre()` pure, comparée
+  ligne par ligne ; `dans_mon_perimetre()` redevient une fonction SQL simple
+  que Postgres intègre à la requête ; `peut()` lit rôle et niveau en plans
+  initiaux. Les règles sont les mêmes : `tester-perimetre.mjs` (scratch
+  PGlite) rejoue douze cas de la règle d'avant, dont le véhicule sans site
+  (visible pour une fiche bornée à un site, pas pour un correspondant).
+- Le classement des chauffeurs attend en `0020_lire_fiches_chauffeurs.sql`
+  (écrite, pas encore branchée).
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

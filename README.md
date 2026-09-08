@@ -177,6 +177,12 @@ Neuf migrations, dans l'ordre :
   ensembles : chaque table lue une fois, matérialisée, au lieu de milliers de
   sous-requêtes corrélées repassant par les politiques (8,2 s mesurées en
   production le 8 septembre 2026). Même JSON, vérifié jour par jour.
+- `0019_politiques_rapides.sql` — les politiques de lecture des tables de
+  faits disent `vehicule_id in (select id from vehicule)` au lieu d'un
+  `exists` corrélé (un sous-plan calculé une fois par requête) ;
+  `mon_perimetre()` lit la fiche d'accès une fois, `dans_perimetre()` la
+  compare ligne par ligne, `dans_mon_perimetre()` et `peut()` gardent leur
+  signature. Qui voit quoi ne change pas.
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.
