@@ -1,7 +1,7 @@
 /* Les lectures de production, chronométrées avec les politiques ACTIVES :
    un rôle non privilégié, un compte administrateur dans profil, auth.uid()
    qui le rend. Mesure l'état jusqu'à la migration donnée, puis après la
-   suivante. Lancer : node tester-rls.mjs 0019 0021 */
+   suivante. Lancer : PGLITE_DIR=<dossier PGlite> node scripts/tester-rls.mjs 0020 0021 */
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { createRequire } from "node:module";
