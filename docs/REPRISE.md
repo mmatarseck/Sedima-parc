@@ -1545,6 +1545,35 @@ lectures avant et après une migration. Il reproduit la régression (fiche
   manquants, licences, contre-visite avec ses observations, rendez-vous,
   entretien, chauffeurs ; clés uniques, tri par gravité.
 
+### Les courbes du tableau de bord base branchée (8 septembre 2026, migration 0024)
+
+- Migration `0024_lire_tableau.sql` : `lire_tableau(depuis)` rend les faits
+  bruts de la fenêtre, chaque table lue une fois — véhicules, relevés,
+  pleins, dépenses, interventions, incidents, documents, trace des statuts,
+  chauffeurs et indisponibilités, affrètements, mises à disposition,
+  prestations, relevé de transport. Pas de calcul en SQL : les règles restent
+  au domaine.
+- `src/donnees/tableau-bord.ts` : `donneesDepuisLaBase()` (pur) agrège à la
+  maille véhicule × mois sur deux ans, sur la semaine glissante et au jour,
+  avec les mêmes règles que la démonstration — kilomètres entre compteurs
+  (relevés et pleins), périodes de statut (trace, réparations qui
+  immobilisent, situation du jour à défaut), immobilisation administrative à
+  la fin de chaque mois, groupe des postes, coût d'un affrètement facturé
+  retenue comprise, mise à disposition au prorata du mois en cours, tonnes au
+  relevé de transport. Le solde de caisse, les prêts à charger et
+  l'immobilisation prolongée viennent des situations journalières, les
+  engagements et le cycle d'achat des demandes d'achat. `donneesTableauServeur()`
+  l'appelle ; sans la fonction, un tableau sans courbes, les pastilles tiennent.
+- Limites connues, héritées de la démonstration : le retard d'entretien se
+  lit sur l'échéance courante et vaut pour tous les mois ; l'état passé d'un
+  document ne se juge que sur les échéances dépassées.
+- Vérifié : `scripts/tester-tableau.mts` dans PGlite — 21 véhicules × 24
+  mois, 990 000 km et 228 000 l sur deux ans, 3 accidents, 40 curatives,
+  août 2026 à 25,8 M F de transport tiers et 2 001 t tiers contre 1 619 t
+  parc, la mise à disposition de septembre au prorata de deux jours, la
+  caisse à 1 499 692 F, 12 alertes critiques d'abord ; 137 ms de lecture,
+  47 ms d'assemblage.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

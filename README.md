@@ -196,6 +196,11 @@ Neuf migrations, dans l'ordre :
   `observation_visite` (défaut relevé, catégorie, gravité, suivi jusqu'à
   l'intervention qui le corrige) ; `lire_fiche()` les rend, le travail à
   faire de la Maintenance les lit.
+- `0024_lire_tableau.sql` — `lire_tableau(depuis)` rend en un JSON les faits
+  bruts du tableau de bord sur deux ans (relevés, pleins, dépenses,
+  interventions, incidents, documents, trace des statuts, chauffeurs et
+  indisponibilités, transport tiers, relevé de transport) ; l'application
+  les agrège avec les règles du domaine, les mêmes qu'en démonstration.
 - `0021_politiques_integrees.sql` — **à jouer sans attendre** : la 0019
   avait ralenti (une fonction SQL avec des sous-requêtes n'est plus
   intégrée aux requêtes). `peut()` et `dans_mon_perimetre()` redeviennent
