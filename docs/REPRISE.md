@@ -1066,6 +1066,42 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   parc remonté, enregistré et relu) ; Parcourir, Notifications, Rechercher
   (« diaw »), Réglages ; accueil détenteur réduit.
 
+### Les raccourcis du téléphone : tous les gestes de la journée (8 septembre 2026, soir)
+
+- Demande du métier : « l'utilisateur doit avoir comme raccourci sur le
+  tableau de bord toutes les actions qu'il est censé faire durant sa
+  journée ». Le widget « Raccourcis » n'en portait que six, les mêmes pour
+  tout le monde, et les offrait à qui n'avait qu'un droit de lecture
+  (« Relevé » proposé au contrôle de gestion, qui ne peut pas saisir).
+- **Un catalogue de quinze gestes** dans `accueil-widgets.ts` (`RACCOURCIS`,
+  `raccourcisPour()`), chacun borné au **niveau de l'action** — saisie pour
+  relevé, plein, panne, document, demander, transfert ; gestion pour
+  affecter ; les statuts du profil pour « Statut » ; le droit de clôture pour
+  « Valider » — et au profil (détenteur : Scanner, Répondre, Signer, avec le
+  nombre en pastille). Par profil : administrateur et direction 12 gestes,
+  responsable 11, maintenance 9, agent terrain 9, lecteur 4, détenteur 3.
+  Grille de quatre par ligne au-delà de trois.
+- **Trois gestes nouveaux** : « Statut » et « Document » suivent jusqu'à la
+  fiche rapide (`?geste=statut` ouvre le panneau de statut, `?geste=document`
+  la modale du document renouvelé, qui a aussi son bouton sur la fiche) ;
+  « Demander » et « Affecter » ouvrent directement le panneau du bureau
+  (`/demandes?nouvelle`, `/affectations?nouvelle` — lu sur l'adresse au
+  montage, pas par `useSearchParams`, qui exigerait une frontière Suspense).
+  Le plein saisi depuis la fiche rapide reçoit le prix du litre du barème du
+  jour, comme sur le bureau.
+- **« À faire aujourd'hui »** dit aussi l'atelier (à clôturer, à faire
+  entrer) à qui y agit, et les modifications sur mois clos à approuver à qui
+  peut clôturer.
+- Vérifié en démonstration, viewport 375 px, les six profils : raccourcis
+  conformes ; statut posé depuis le raccourci (AA 032 EA → hors service,
+  motif panne) ; modale du document ouverte ; panneaux Nouvelle demande et
+  Nouvelle affectation ouverts par l'adresse ; clôture d'un ordre depuis
+  l'atelier ; réponse du détenteur bloquée sans photo. Types et charte tenus.
+- **Piège** : le volet navigateur de la session étant masqué, React 19.2 ne
+  révèle pas les frontières Suspense (la fiche rapide reste vide) — la
+  frontière a été basculée à la main pour l'essai ; sur un téléphone, rien de
+  tel.
+
 ### Les photos des pièces justificatives (8 septembre 2026)
 
 - La décision du 7 septembre — photo obligatoire pour un plein, une
@@ -1399,6 +1435,50 @@ niveau et du périmètre, trois lectures de profil par ligne.
   la page Chauffeur du mois classe sur six mois révolus jusqu'à aujourd'hui.
 - Vérifié : `tester-fiche-chauffeur.mts` — 21 fiches assemblées en une
   requête, classement d'août sans trou, moyenne de la cohorte plausible.
+
+### La 0019 a fait pire ; la 0021 corrige, mesurée sous politiques (8 septembre 2026, soir)
+
+Troisième diagnostic, après 0019 : `lire_parc()` 844 → 1 865 ms,
+`lire_fiche()` 242 → 1 897 ms, `lire_chauffeurs()` 561 → 1 601 ms,
+`situation_journaliere()` 1 358 → 2 676 ms. **Deux erreurs de ma part** :
+
+1. Une fonction SQL n'est intégrée à la requête qui l'appelle que si son
+   corps est une expression simple **sans sous-requête**. En écrivant
+   `(select mon_role())` dans `peut()`, je l'ai rendue opaque : appelée ligne
+   par ligne, ses lectures de profil avec elle. Les sous-requêtes qui hissent
+   un calcul « une fois par lecture » doivent être écrites **dans la
+   politique**, pas dans la fonction.
+2. Le sous-plan `vehicule_id in (select id from vehicule)` lit les 129
+   véhicules à chaque sous-requête d'une fonction : bon marché si la
+   politique de `vehicule` l'est, ruineux sinon — et `conducteur_du_jour()`,
+   appelé pour chaque plein, relevé et dépense, le payait à chaque appel :
+   `lire_fiches_chauffeurs()` 74 s dans PGlite sous politiques (le
+   classement branché en ecad14c aurait été inutilisable en production).
+
+La 0019 avait été vérifiée sans politiques (PGlite en propriétaire) : le
+banc `tester-rls.mjs` (scratch PGlite) crée un rôle non privilégié, un
+profil administrateur, `auth.uid()` qui le rend, et chronomètre les
+lectures avant et après une migration. Il reproduit la régression (fiche
+14 → 101 ms) et mesure la 0021 :
+
+| Lecture | 0020 (état de la production) | 0021 |
+|---|---|---|
+| `lire_parc()` | 350 ms | 42 ms |
+| `lire_fiche()` | 286 ms | 22 ms |
+| `lire_chauffeurs()` | 213 ms | 24 ms |
+| `situation_journaliere()` 28 jours | 1 322 ms | 323 ms |
+| `lire_fiches_chauffeurs()` | 74 511 ms | 335 ms |
+
+- Migration `0021_politiques_integrees.sql` : `peut()` et
+  `dans_mon_perimetre()` expressions simples ; politiques de `vehicule` et
+  `chauffeur` en `(select peut(…)) and dans_perimetre((select
+  mon_perimetre()), …)` ; politiques sans colonne en `(select …)` ;
+  `conducteur_du_jour()` en security definer (même texte) ;
+  `lire_fiche_chauffeur()` borne les dépenses attribuées aux véhicules du
+  chauffeur (même résultat : on n'est conducteur du jour que d'un véhicule
+  où l'on est affecté).
+- Règle apprise, dans la mémoire : **toute migration qui touche une
+  politique se mesure avec `tester-rls.mjs` avant d'être donnée.**
 
 **À faire, dans l'ordre.**
 

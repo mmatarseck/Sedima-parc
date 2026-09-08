@@ -186,6 +186,16 @@ Neuf migrations, dans l'ordre :
 - `0020_lire_fiches_chauffeurs.sql` — `lire_fiches_chauffeurs()` rend d'un
   coup toutes les fiches chauffeurs du périmètre, pour le classement du mois
   et la moyenne des kilomètres de la cohorte.
+- `0021_politiques_integrees.sql` — **à jouer sans attendre** : la 0019
+  avait ralenti (une fonction SQL avec des sous-requêtes n'est plus
+  intégrée aux requêtes). `peut()` et `dans_mon_perimetre()` redeviennent
+  des expressions simples ; les sous-requêtes qui hissent rôle, niveau et
+  périmètre « une fois par lecture » sont dans les politiques de `vehicule`
+  et `chauffeur` ; `conducteur_du_jour()` lit sans politiques ;
+  `lire_fiche_chauffeur()` borne les dépenses aux véhicules du chauffeur.
+  Mesuré avec les politiques actives dans PGlite : `lire_parc()` 350 → 42 ms,
+  `lire_fiche()` 286 → 22 ms, `situation_journaliere()` 1 322 → 323 ms,
+  `lire_fiches_chauffeurs()` 74 s → 0,3 s.
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.
