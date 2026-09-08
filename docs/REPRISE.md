@@ -1307,6 +1307,34 @@ montraient encore le jeu de démonstration en production.
   un seuil saisi à 2 M F fait dire « sous le seuil : la pastille serait au
   rouge ».
 
+### L'erreur de la fiche véhicule, trouvée : DYNAMIC_SERVER_USAGE (8 septembre 2026)
+
+Le journal Vercel, enfin lu : `Failed to handle /flotte/AA128JC … digest:
+'DYNAMIC_SERVER_USAGE'`. La cause n'était ni dans la base ni dans
+l'assemblage : **la page déclarait `generateStaticParams`** (vide, base
+branchée). Next traite alors le segment comme prégénérable et, pour un
+chemin absent à la construction, **tente un rendu statique à la première
+visite** ; or la mise en page lit la session dans les cookies, ce qu'un
+rendu statique interdit — l'erreur remonte hors de tout `error.tsx`, d'où
+la page anglaise de Next. En démonstration, la lecture du cookie des
+paramètres est enveloppée dans un `try`, l'erreur était avalée et le rendu
+statique passait : le défaut ne se voyait qu'en production.
+
+- Les six pages à segment dynamique (`flotte/[immat]`, `chauffeurs/[id]`,
+  `budget/[poste]`, `prestataires/[numero]`, `rapports/[id]`,
+  `transporteurs/[numero]`) n'ont plus de `generateStaticParams` et
+  déclarent `export const dynamic = "force-dynamic"`. Prestataires et
+  transporteurs auraient cassé de la même façon sur un numéro absent de la
+  démonstration. La prégénération des fiches de démonstration à la
+  construction est perdue : elle ne servait qu'à la démonstration.
+- Le titre de la fiche (`generateMetadata`) est enveloppé : une erreur y
+  échappe aussi à l'écran d'erreur.
+- Paramètres › Diagnostic (`/parametres/diagnostic`, administrateur et
+  direction) chronomètre chaque lecture de la base dans l'ordre des pages
+  et montre l'erreur d'une fiche à nu ; c'est l'outil pour la lenteur
+  signalée sur Flotte et le tableau de bord — les durées de `lire_parc()` et
+  `situation_journaliere()` en production disent où agir.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

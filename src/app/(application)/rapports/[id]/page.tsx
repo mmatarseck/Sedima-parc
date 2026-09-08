@@ -2,7 +2,7 @@ import Link from "next/link";
 import { EcranRapport } from "@/composants/rapports/EcranRapport";
 import { titrePage } from "@/domaine/marque";
 import { periodeDeLAdresse } from "@/domaine/periodes";
-import { RAPPORTS, rapportParId } from "@/domaine/rapports";
+import { rapportParId } from "@/domaine/rapports";
 import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
 import { construireRapport } from "@/donnees/rapports-demo";
 import { parametresServeur } from "@/lib/parametres-serveur";
@@ -15,9 +15,11 @@ export async function generateMetadata({ params }: Props) {
   return { title: titrePage(rapport ? rapport.libelle : "Rapport introuvable") };
 }
 
-export function generateStaticParams() {
-  return RAPPORTS.map((r) => ({ id: r.id }));
-}
+/* Rendu à la demande, toujours : ces pages lisent la session dans les cookies,
+   ce qu'un rendu statique interdit — avec generateStaticParams, Next tentait de
+   rendre statiquement chaque chemin à sa première visite et tombait sur
+   DYNAMIC_SERVER_USAGE en production (8 septembre 2026). */
+export const dynamic = "force-dynamic";
 
 /**
  * Un rapport, construit sur le serveur avec la période lue dans l'adresse : le

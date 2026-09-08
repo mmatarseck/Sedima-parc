@@ -9,7 +9,6 @@ import { ficheServeur } from "@/donnees/fiche";
 import { fichePourImmatriculation } from "@/donnees/fiche-demo";
 import { attributairePour, forfaitsCarburant, vehiculesLegers } from "@/donnees/parc-leger-demo";
 import { parametresServeur } from "@/lib/parametres-serveur";
-import { FLOTTE } from "@/donnees/parc-demo";
 import { authentificationReelle } from "@/lib/session-demo";
 
 type Props = { params: Promise<{ immat: string }>; searchParams: Promise<{ onglet?: string; discussion?: string; ref?: string }> };
@@ -33,10 +32,11 @@ export async function generateMetadata({ params }: Props) {
   }
 }
 
-/* En démonstration, les fiches se rendent à la construction ; base branchée, à la demande — le périmètre dépend de la session. */
-export function generateStaticParams() {
-  return authentificationReelle() ? [] : FLOTTE.map((l) => ({ immat: l.vehicule.immatriculation }));
-}
+/* Rendu à la demande, toujours : ces pages lisent la session dans les cookies,
+   ce qu'un rendu statique interdit — avec generateStaticParams, Next tentait de
+   rendre statiquement chaque chemin à sa première visite et tombait sur
+   DYNAMIC_SERVER_USAGE en production (8 septembre 2026). */
+export const dynamic = "force-dynamic";
 
 /**
  * Fiche véhicule 360°, adressée par immatriculation canonique : /flotte/AA032EA.

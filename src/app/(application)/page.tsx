@@ -3,6 +3,7 @@ import { titrePage } from "@/domaine/marque";
 import { situationsServeur } from "@/donnees/situations";
 import { DATE_REFERENCE, donneesTableau } from "@/donnees/tableau-bord-demo";
 import { parametresServeur } from "@/lib/parametres-serveur";
+import { authentificationReelle } from "@/lib/session-demo";
 
 export const metadata = { title: titrePage("Tableau de bord") };
 
@@ -21,6 +22,8 @@ export default async function PageTableauBord() {
      viennent de `situation_journaliere()` (0010) ; les courbes et la
      troisième rangée restent au jeu de démonstration en attendant leur
      propre lecture. */
-  const [parametres, situations] = await Promise.all([parametresServeur(), situationsServeur(DATE_REFERENCE)]);
-  return <EcranTableauBord mois={d.mois} vehicules={d.vehicules} faits={d.faits} flotte={d.flotte} semaine={d.semaine} flotteSemaine={d.flotteSemaine} jour={d.jour} alertes={d.alertes} aujourdhui={DATE_REFERENCE} situations={situations} seuils={parametres.pastilles.seuils} />;
+  /* Base branchée, les situations vont jusqu'à aujourd'hui — pas jusqu'à la date de référence de la démonstration. */
+  const aujourdhui = authentificationReelle() ? new Date().toISOString().slice(0, 10) : DATE_REFERENCE;
+  const [parametres, situations] = await Promise.all([parametresServeur(), situationsServeur(aujourdhui)]);
+  return <EcranTableauBord mois={d.mois} vehicules={d.vehicules} faits={d.faits} flotte={d.flotte} semaine={d.semaine} flotteSemaine={d.flotteSemaine} jour={d.jour} alertes={d.alertes} aujourdhui={aujourdhui} situations={situations} seuils={parametres.pastilles.seuils} />;
 }

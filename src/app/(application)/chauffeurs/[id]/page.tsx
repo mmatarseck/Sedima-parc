@@ -4,7 +4,7 @@ import { FournisseurEdition } from "@/composants/transactions/ContexteEdition";
 import { debutPeriode, type PeriodeMois } from "@/domaine/chauffeur";
 import { titrePage } from "@/domaine/marque";
 import { classer, kmMoyen } from "@/domaine/performance";
-import { DATE_REFERENCE, fichesChauffeurs, listeChauffeurs } from "@/donnees/chauffeurs-demo";
+import { DATE_REFERENCE, fichesChauffeurs } from "@/donnees/chauffeurs-demo";
 import { lignesChauffeurs } from "@/donnees/chauffeurs";
 import { ficheChauffeurServeur } from "@/donnees/fiche-chauffeur";
 import { authentificationReelle } from "@/lib/session-demo";
@@ -17,10 +17,11 @@ export async function generateMetadata({ params }: Props) {
   return { title: titrePage(fiche ? fiche.ligne.nomComplet : "Chauffeur introuvable") };
 }
 
-/* En démonstration, les fiches se rendent à la construction ; base branchée, à la demande. */
-export function generateStaticParams() {
-  return authentificationReelle() ? [] : listeChauffeurs().map((l) => ({ id: l.id }));
-}
+/* Rendu à la demande, toujours : ces pages lisent la session dans les cookies,
+   ce qu'un rendu statique interdit — avec generateStaticParams, Next tentait de
+   rendre statiquement chaque chemin à sa première visite et tombait sur
+   DYNAMIC_SERVER_USAGE en production (8 septembre 2026). */
+export const dynamic = "force-dynamic";
 
 /**
  * Fiche chauffeur, adressée par son identifiant lisible : /chauffeurs/babacar-ndiaye.

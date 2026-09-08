@@ -3,7 +3,6 @@ import { FicheTransporteur } from "@/composants/transporteurs/FicheTransporteur"
 import { FournisseurEdition } from "@/composants/transactions/ContexteEdition";
 import { titrePage } from "@/domaine/marque";
 import { ficheTransporteur } from "@/donnees/fiche-transporteur-demo";
-import { listePrestataires } from "@/donnees/prestataires-demo";
 
 type Props = { params: Promise<{ numero: string }>; searchParams: Promise<{ onglet?: string }> };
 
@@ -13,11 +12,11 @@ export async function generateMetadata({ params }: Props) {
   return { title: titrePage(fiche ? fiche.prestataire.raisonSociale : "Transporteur introuvable") };
 }
 
-export function generateStaticParams() {
-  return listePrestataires()
-    .filter((p) => p.type === "transporteur")
-    .map((p) => ({ numero: p.numero }));
-}
+/* Rendu à la demande, toujours : ces pages lisent la session dans les cookies,
+   ce qu'un rendu statique interdit — avec generateStaticParams, Next tentait de
+   rendre statiquement chaque chemin à sa première visite et tombait sur
+   DYNAMIC_SERVER_USAGE en production (8 septembre 2026). */
+export const dynamic = "force-dynamic";
 
 /**
  * Fiche transporteur, adressée par le numéro du prestataire :

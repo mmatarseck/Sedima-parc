@@ -4,7 +4,6 @@ import { FournisseurEdition } from "@/composants/transactions/ContexteEdition";
 import { titrePage } from "@/domaine/marque";
 import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
 import { fichePrestataire } from "@/donnees/fiche-prestataire-demo";
-import { listePrestataires } from "@/donnees/prestataires-demo";
 import { prestataires } from "@/donnees/referentiels";
 
 type Props = { params: Promise<{ numero: string }>; searchParams: Promise<{ onglet?: string; ref?: string }> };
@@ -15,11 +14,11 @@ export async function generateMetadata({ params }: Props) {
   return { title: titrePage(fiche ? fiche.prestataire.raisonSociale : "Prestataire introuvable") };
 }
 
-/* À la construction, sans session, seule la démonstration se connaît ; les
-   autres numéros se rendent à la demande. */
-export function generateStaticParams() {
-  return listePrestataires().map((p) => ({ numero: p.numero }));
-}
+/* Rendu à la demande, toujours : ces pages lisent la session dans les cookies,
+   ce qu'un rendu statique interdit — avec generateStaticParams, Next tentait de
+   rendre statiquement chaque chemin à sa première visite et tombait sur
+   DYNAMIC_SERVER_USAGE en production (8 septembre 2026). */
+export const dynamic = "force-dynamic";
 
 /**
  * Fiche prestataire, adressée par son numéro : /prestataires/PRE-2026-00003.

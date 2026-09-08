@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { FichePoste } from "@/composants/budget/FichePoste";
 import { titrePage } from "@/domaine/marque";
 import { POSTE_DEPENSE } from "@/domaine/libelles";
-import { fichePoste, postesBudgetaires } from "@/donnees/budget-demo";
+import { fichePoste } from "@/donnees/budget-demo";
 
 type Props = { params: Promise<{ poste: string }> };
 
@@ -12,9 +12,11 @@ export async function generateMetadata({ params }: Props) {
   return { title: titrePage(fiche ? POSTE_DEPENSE[fiche.poste] : "Poste budgétaire introuvable") };
 }
 
-export function generateStaticParams() {
-  return postesBudgetaires().map((poste) => ({ poste }));
-}
+/* Rendu à la demande, toujours : ces pages lisent la session dans les cookies,
+   ce qu'un rendu statique interdit — avec generateStaticParams, Next tentait de
+   rendre statiquement chaque chemin à sa première visite et tombait sur
+   DYNAMIC_SERVER_USAGE en production (8 septembre 2026). */
+export const dynamic = "force-dynamic";
 
 /**
  * La page d'un poste budgétaire : /budget/carburant.
