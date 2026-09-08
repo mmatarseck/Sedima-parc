@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BellRing, House, Inbox, PanelLeftClose, PanelLeftOpen, Truck, UserRound } from "lucide-react";
+import { BellRing, House, LayoutGrid, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Module } from "@/domaine/acces";
 import { NAVIGATION, type GroupeNavigation } from "./navigation";
@@ -188,11 +188,13 @@ export function Coquille({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* Les onglets suivent l'accès : un détenteur n'a que l'accueil, ses demandes et lui-même. */
+/* Refonte du 8 septembre 2026, sur le modèle de Fleetio Go : quatre onglets
+   pour tout le monde — l'accueil à widgets, la grille des modules, les
+   notifications, la recherche. Le profil se tient derrière l'avatar de
+   l'accueil ; ce que chacun voit dépend de son accès, pas des onglets. */
 const ONGLETS_TELEPHONE: { href: string; libelle: string; icone: LucideIcon; module?: Module }[] = [
   { href: "/telephone", libelle: "Accueil", icone: House },
-  { href: "/telephone/vehicules", libelle: "Véhicules", icone: Truck, module: "flotte" },
-  { href: "/telephone/demandes", libelle: "Demandes", icone: Inbox, module: "demandes" },
-  { href: "/conformite", libelle: "Alertes", icone: BellRing, module: "documents" },
-  { href: "/profil", libelle: "Moi", icone: UserRound },
+  { href: "/telephone/parcourir", libelle: "Parcourir", icone: LayoutGrid },
+  { href: "/telephone/notifications", libelle: "Notifications", icone: BellRing },
+  { href: "/telephone/rechercher", libelle: "Rechercher", icone: Search },
 ];

@@ -14,6 +14,7 @@ import { lireAccesCourant } from "@/lib/acces-courant";
 import { enregistrerCreation } from "@/lib/clotures-demo";
 import { date as formaterDate, montant, nombre } from "@/lib/format";
 import { BoutonQr } from "@/composants/vehicule/PanneauQr";
+import { noterRecent } from "./accueil-widgets";
 import { Bloc, Chiffre, EnTeteTelephone, Ligne, PastilleStatutTelephone } from "./Telephone";
 
 /* ============================================================================
@@ -48,7 +49,10 @@ function Interieur({ ligne, faits, aujourdhui }: { ligne: LigneFlotte; faits: De
   const [acces, setAcces] = useState<AccesCourant | null>(null);
   const [panneau, setPanneau] = useState(false);
   const [gesteOuvert, setGesteOuvert] = useState(false);
-  useEffect(() => setAcces(lireAccesCourant()), []);
+  useEffect(() => {
+    setAcces(lireAccesCourant());
+    noterRecent({ id: v.id, immatriculation: v.immatriculationAffichee, libelle: `${v.marque} ${v.appellation}` });
+  }, [v.id, v.immatriculationAffichee, v.marque, v.appellation]);
 
   /* Le statut courant : le dernier posé dans l'application, sinon celui de la liste. */
   const statutsCrees = creations("statut", fabriquerPeriodeStatut).sort((a, b) => b.debut.localeCompare(a.debut));

@@ -1033,6 +1033,39 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   `/v/aa-032-ea` → fiche rapide, panneau QR de la fiche, plaque tapée sur
   le scanner (le navigateur de la session n'a pas BarcodeDetector).
 
+### La refonte du téléphone, sur le modèle de Fleetio Go (8 septembre 2026)
+
+- Demande du métier, seize captures de Fleetio Go à l'appui : s'en inspirer
+  pour refondre l'application mobile. Ce qui a été repris : **quatre onglets**
+  en bas (Accueil, Parcourir, Notifications, Rechercher), un **accueil fait de
+  widgets** que chacun choisit et ordonne, la **grille des modules**, les
+  **notifications en plein écran** filtrées par nature, la **recherche** en
+  plein écran, un écran **Réglages** avec la personne en tête et la
+  déconnexion en rouge. Ce qui n'a pas été repris : le thème sombre — la
+  charte SEDIMA reste claire, la vérification de charte en fait foi.
+- `src/composants/telephone/accueil-widgets.ts` : neuf widgets
+  (raccourcis, mon véhicule, à faire, le parc en chiffres, véhicules
+  récents, demandes, transferts, atelier, alertes), chacun borné à un
+  module et au profil ; réglage par rôle dans le navigateur
+  (`sedima.parc.telephone.accueil.<rôle>`) ; véhicules récents notés par
+  la fiche rapide.
+- Écrans : `EcranTelephoneAccueil` (réécrit : avatar → réglages, roue →
+  personnaliser), `EcranPersonnaliserAccueil` (cocher, monter, descendre,
+  ordre livré), `EcranTelephoneParcourir` (terrain, parc, réglages, selon
+  l'accès), `EcranTelephoneNotifications` (Toutes, Demandes, Transferts,
+  Discussions, Refus ; aujourd'hui / plus tôt), `EcranTelephoneRechercher`
+  (l'index de la recherche globale, par catégorie),
+  `EcranTelephoneReglages` (Utilisateur, Application, Sécurité,
+  déconnexion, version), `EcranTelephoneInstaller` (bouton
+  `beforeinstallprompt` sur Android, marche à suivre sur iPhone). Routes
+  sous `/telephone/…`. L'onglet « Moi » et l'onglet « Alertes » disparaissent
+  de la barre : le profil est derrière l'avatar, la conformité dans
+  Parcourir et le widget Alertes.
+- Vérifié en démonstration, viewport 375 px : accueil administrateur avec
+  ses widgets et les quatre onglets ; personnalisation (Alertes masqué, Le
+  parc remonté, enregistré et relu) ; Parcourir, Notifications, Rechercher
+  (« diaw »), Réglages ; accueil détenteur réduit.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.
