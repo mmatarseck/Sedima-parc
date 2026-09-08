@@ -15,7 +15,7 @@ import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 import { ordresDeTravail } from "./maintenance-demo";
 
-interface LigneOrdreBase {
+export interface LigneOrdreBase {
   numero: string;
   vehicule_id: string;
   type: "preventif" | "curatif";
@@ -36,7 +36,7 @@ interface LigneOrdreBase {
   prestataire: { raison_sociale: string } | null;
 }
 
-function ordreDepuisLigne(l: LigneOrdreBase): LigneOrdre {
+export function ordreDepuisLigne(l: LigneOrdreBase): LigneOrdre {
   const v = l.vehicule;
   return {
     numero: l.numero,

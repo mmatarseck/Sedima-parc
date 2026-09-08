@@ -20,7 +20,7 @@
 
 import { cache } from "react";
 import { exigeDocument, immobilisationAdministrative } from "@/domaine/documents";
-import { echeancesDuPlan, type CompteursVehicule } from "@/domaine/entretien";
+import { echeancesDuPlan, type CompteursVehicule, type EcheanceEntretien } from "@/domaine/entretien";
 import type { EtatDocument } from "@/domaine/fiche";
 import { afficher } from "@/domaine/immatriculation";
 import { idChauffeur } from "@/domaine/chauffeur";
@@ -504,7 +504,8 @@ function kmParJour(uuid: string, parc: ParcBrut): number {
   return Math.max(1, Math.round((dernier.km - premier.km) / jours));
 }
 
-function prochaineEcheanceEntretien(v: Vehicule, uuid: string, compteur: { km: number; date: string } | null, parc: ParcBrut): LigneFlotte["prochaineEcheanceEntretien"] {
+/** Toutes les échéances du plan d'entretien d'un véhicule, confrontées à ses interventions en base ; la liste en garde la première, la Maintenance celles qui appellent une action. */
+export function echeancesEntretienDeLaBase(v: Vehicule, uuid: string, compteur: { km: number; date: string } | null, parc: ParcBrut): EcheanceEntretien[] {
   const programme = programmeParDefaut(v.categorie);
   const interventions = parc.interventions.filter((i) => i.vehicule_id === uuid).map((i) => ({ numero: i.numero, date: i.date, objet: i.objet, km: i.km }));
   const compteurs: CompteursVehicule = {
@@ -514,7 +515,11 @@ function prochaineEcheanceEntretien(v: Vehicule, uuid: string, compteur: { km: n
     heuresParJour: 0.5,
     miseEnService: v.premiereMiseEnCirculation,
   };
-  const echeances = echeancesDuPlan(programme, { vehiculeId: v.id, programmeCode: programme.code, ajustements: [] }, passagesReleves(programme, interventions, 0, null, parc.aujourdhui), compteurs, parc.aujourdhui);
+  return echeancesDuPlan(programme, { vehiculeId: v.id, programmeCode: programme.code, ajustements: [] }, passagesReleves(programme, interventions, 0, null, parc.aujourdhui), compteurs, parc.aujourdhui);
+}
+
+function prochaineEcheanceEntretien(v: Vehicule, uuid: string, compteur: { km: number; date: string } | null, parc: ParcBrut): LigneFlotte["prochaineEcheanceEntretien"] {
+  const echeances = echeancesEntretienDeLaBase(v, uuid, compteur, parc);
   const premiere = echeances.find((e) => e.kmRestants !== null || e.joursRestants !== null) ?? null;
   return premiere ? { libelle: premiere.libelle, kmRestants: premiere.kmRestants, joursRestants: premiere.joursRestants } : null;
 }
@@ -567,6 +572,9 @@ export function ligneDepuisLaBase(brut: LigneVehicule, parc: ParcBrut, parametre
 
 /* -- Ce que la page appelle -------------------------------------------------- */
 
+/** Le parc brut, lu une fois par requête : la liste Flotte et la Maintenance (travaux à faire) le partagent. */
+export const parcServeur = cache(async (): Promise<ParcBrut> => lireParc(await clientServeur(), new Date().toISOString().slice(0, 10)));
+
 /** Les lignes de la liste Flotte, statut effectif et immobilisation compris. */
 async function lignesFlotteBrut(parametres: Parametres): Promise<LigneFlotte[]> {
   if (!authentificationReelle()) {
@@ -584,7 +592,7 @@ async function lignesFlotteBrut(parametres: Parametres): Promise<LigneFlotte[]> 
     const immats = new Set(transport.map((l) => l.vehicule.immatriculation));
     return [...transport, ...lignesLegeresDemo().filter((l) => !immats.has(l.vehicule.immatriculation))];
   }
-  const parc = await lireParc(await clientServeur(), new Date().toISOString().slice(0, 10));
+  const parc = await parcServeur();
   /* Les véhicules à recevoir ferment la liste : sous leur numéro de lot, sans
      compteur ni coût, avec le bénéficiaire prévu. */
   const aRecevoir = parc.aRecevoir.map((r) => {

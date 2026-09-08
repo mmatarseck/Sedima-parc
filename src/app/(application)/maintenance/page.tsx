@@ -2,9 +2,10 @@ import { EcranMaintenance, type VueMaintenance } from "@/composants/maintenance/
 import { titrePage } from "@/domaine/marque";
 import { typeDuNumero } from "@/domaine/reference";
 import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
-import { interventionsFlotte, travauxAFaire } from "@/donnees/maintenance-demo";
+import { interventionsServeur, travauxServeur } from "@/donnees/maintenance";
 import { ordresServeur } from "@/donnees/ordres";
 import { authentificationReelle } from "@/lib/session-demo";
+import { parametresServeur } from "@/lib/parametres-serveur";
 
 export const metadata = { title: titrePage("Maintenance") };
 
@@ -19,8 +20,9 @@ export default async function PageMaintenance({ searchParams }: { searchParams: 
   const typeCible = ref ? typeDuNumero(ref) : null;
   const vueRetenue: VueMaintenance = vue === "ordres" || typeCible === "ordre" ? "ordres" : vue === "interventions" || typeCible === "intervention" ? "interventions" : "afaire";
 
-  /* Base branchée : les ordres viennent de la table ; les travaux à faire et les
-     interventions de toute la flotte attendent leur lecture d'un coup. */
+  /* Base branchée : les ordres viennent de leur table, les interventions de la
+     leur, et le travail à faire se déduit du parc lu pour la liste Flotte. */
   const reel = authentificationReelle();
-  return <EcranMaintenance travaux={reel ? [] : travauxAFaire()} ordres={await ordresServeur()} interventions={reel ? [] : interventionsFlotte()} aujourdhui={reel ? new Date().toISOString().slice(0, 10) : DATE_REFERENCE} vueInitiale={vueRetenue} cible={ref} />;
+  const [travaux, ordres, interventions] = await Promise.all([travauxServeur(await parametresServeur()), ordresServeur(), interventionsServeur()]);
+  return <EcranMaintenance travaux={travaux} ordres={ordres} interventions={interventions} aujourdhui={reel ? new Date().toISOString().slice(0, 10) : DATE_REFERENCE} vueInitiale={vueRetenue} cible={ref} />;
 }

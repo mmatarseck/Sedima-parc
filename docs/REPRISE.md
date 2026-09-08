@@ -1219,6 +1219,30 @@ nouveau profil ; étiquettes de casier en QR ; migration 0017 en cinq étapes.
 **Sept décisions en attente**, listées en fin de document. Rien n'est construit
 tant qu'elles ne sont pas prises.
 
+### La Maintenance lue depuis la base (8 septembre 2026, sans migration)
+
+- `src/donnees/maintenance.ts` : `interventionsServeur()` lit la table
+  `intervention` avec le véhicule et le garage ; `travauxServeur(parametres)`
+  **déduit** le travail à faire comme la démonstration — les échéances du
+  plan d'entretien qui appellent une action (`echeancesEntretienDeLaBase`,
+  sortie de `flotte.ts`, confrontée aux interventions du parc), les
+  véhicules en réparation ou en restauration sans incident, les incidents
+  en cours non roulants — et rattache chaque ligne à l'ordre ouvert qui la
+  prend déjà. Aucune table nouvelle : le parc lu pour la liste Flotte
+  (`parcServeur()`, une lecture par requête partagée avec la liste), une
+  lecture des incidents en cours, une des interventions.
+- « Non roulant » n'a pas de colonne : l'application l'écrit dans la
+  description de l'incident (« Véhicule non roulant. »), le seed fait de
+  même désormais, et un incident qui immobilise compte aussi.
+- Les observations de visite technique n'ont pas de table : elles ne
+  produisent du travail qu'en démonstration. La date d'entrée en réparation
+  vient de l'ordre ouvert, la liste ne lisant pas la trace des statuts.
+- Pages Maintenance, atelier et accueil du téléphone : plus de `reel ? []`.
+- Vérifié : `scripts/tester-maintenance.mts` dans PGlite — 27 travaux
+  (22 échéances, 4 immobilisations, 1 incident), 9 en retard classés en
+  tête, 8 en cours citant un ordre ouvert, 95 interventions égales à la
+  table ; et les trois pages rendues en démonstration.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

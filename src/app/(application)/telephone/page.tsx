@@ -4,7 +4,7 @@ import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
 import { demandesServeur } from "@/donnees/demandes";
 import { lignesFlotte } from "@/donnees/flotte";
 import { transfertsServeur } from "@/donnees/transferts";
-import { travauxAFaire } from "@/donnees/maintenance-demo";
+import { travauxServeur } from "@/donnees/maintenance";
 import { ordresServeur } from "@/donnees/ordres";
 import { estOuvert } from "@/domaine/maintenance";
 import { parametresServeur } from "@/lib/parametres-serveur";
@@ -25,7 +25,7 @@ export default async function PageTelephone() {
   const atelier: CompteursAtelier = {
     enAtelier: ordres.filter((o) => o.statut === "en-atelier").length,
     planifies: ordres.filter((o) => o.statut === "planifie").length,
-    aPlanifier: (authentificationReelle() ? [] : travauxAFaire()).filter((t) => (t.urgence === "en-retard" || t.urgence === "a-planifier") && !ordres.some((o) => estOuvert(o.statut) && o.vehiculeId === t.vehiculeId)).length,
+    aPlanifier: (await travauxServeur(parametres)).filter((t) => (t.urgence === "en-retard" || t.urgence === "a-planifier") && !ordres.some((o) => estOuvert(o.statut) && o.vehiculeId === t.vehiculeId)).length,
   };
   return <EcranTelephoneAccueil lignes={await lignesFlotte(parametres)} aujourdhui={DATE_REFERENCE} demandes={demandes} transferts={transferts} atelier={atelier} maintenant={maintenant} />;
 }

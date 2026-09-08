@@ -240,7 +240,7 @@ inserer("intervention", ["id", "numero", "vehicule_id", "prestataire_id", "date"
 inserer(
   "incident",
   ["id", "numero", "vehicule_id", "chauffeur_id", "date_heure", "nature", "type", "lieu", "mission", "responsabilite", "statut", "blesses", "sinistre_ouvert", "immobilisation_jours", "kilometrage", "declarant", "description"],
-  listeIncidents().map((i) => [uuid(`incident:${i.numero}`), i.numero, vehiculeId(i.vehiculeId), chauffeurId(i.chauffeurId), horodatage(i.dateHeure), i.nature, i.type, i.lieu, i.mission, i.responsabilite, i.statut, i.blesses, i.sinistreOuvert, i.immobilisationJours, i.kilometrage, i.declarant, i.description]),
+  listeIncidents().map((i) => [uuid(`incident:${i.numero}`), i.numero, vehiculeId(i.vehiculeId), chauffeurId(i.chauffeurId), horodatage(i.dateHeure), i.nature, i.type, i.lieu, i.mission, i.responsabilite, i.statut, i.blesses, i.sinistreOuvert, i.immobilisationJours, i.kilometrage, i.declarant, [i.description, i.roulant === "non" ? "Véhicule non roulant." : i.roulant === "reserve" ? "Véhicule roulant avec réserve." : null].filter(Boolean).join(" ") || null]),
 );
 
 /* Une sanction cite l'incident par son identifiant interne (« acc-amadou-balde-… »),
