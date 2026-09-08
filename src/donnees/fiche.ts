@@ -53,10 +53,18 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
   const client = await clientServeur();
   const lecture = await client.rpc("lire_fiche", { immat: canonique }).maybeSingle<FicheJson | null>();
   /* Fonction pas encore jouée : la fiche se dresse sur la ligne seule, sans historique — pas d'erreur. */
-  const faits = !lecture.error && lecture.data ? faitsDepuisJson(lecture.data) : FAITS_VIDES;
+  if (lecture.error) console.warn(`Fiche ${canonique} : lire_fiche() indisponible (${lecture.error.message}), fiche dressée sans historique.`);
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const v = ligne.vehicule;
-  return assemblerFiche(ligne, faits, parametres, aujourdhui, { programme: programmeParDefaut(v.categorie), plan: planDuVehicule(v.id, v.categorie), passages: passagesReleves });
+  const plan = { programme: programmeParDefaut(v.categorie), plan: planDuVehicule(v.id, v.categorie), passages: passagesReleves };
+  /* Une donnée fautive dans l'historique ne doit pas fermer la fiche : elle
+     s'ouvre alors sans historique, et le journal du serveur dit pourquoi. */
+  try {
+    return assemblerFiche(ligne, !lecture.error && lecture.data ? faitsDepuisJson(lecture.data) : FAITS_VIDES, parametres, aujourdhui, plan);
+  } catch (e) {
+    console.error(`Fiche ${canonique} : assemblage impossible sur l'historique lu — ${e instanceof Error ? e.stack ?? e.message : String(e)}`);
+    return assemblerFiche(ligne, FAITS_VIDES, parametres, aujourdhui, plan);
+  }
 }
 
 export const ficheServeur = cache(ficheServeurBrut);

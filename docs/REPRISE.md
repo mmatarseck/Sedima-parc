@@ -1147,6 +1147,35 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   demandé par Service parc) et `tester-situation.mjs` (un ordre ouvert au
   dernier jour, un ancien, égal à la table).
 
+### La fiche véhicule en production : erreur signalée, fiche blindée (8 septembre 2026)
+
+Le gestionnaire a vu, en production, « A server error occurred » en ouvrant un
+véhicule depuis la liste — après les migrations 0013 à 0015 et le déploiement
+de la fiche lue depuis la base. **Non reproduit hors ligne** :
+`scripts/tester-fiche-rendu.mts` rejoue la chaîne de production dans PGlite
+(`lire_parc()` → `ligneDepuisLaBase` → `lire_fiche()` → `assemblerFiche` →
+rendu HTML du composant `FicheVehicule`, `next/navigation` remplacé par des
+crochets inertes, voir `scripts/rendu/`) : les 21 fiches d'exploitation du
+seed se rendent, avec ou sans historique. La cause est donc dans une donnée
+propre à la base de production (une ligne saisie depuis l'application, ou un
+seed plus ancien), ou dans l'hébergeur.
+
+Ce qui a été fait en attendant le journal :
+
+- `src/donnees/fiche.ts` : l'assemblage sur l'historique lu est enveloppé ;
+  s'il lève, la fiche se dresse **sans historique** et le journal du serveur
+  porte l'immatriculation et la pile. Un échec de `lire_fiche()` est
+  journalisé aussi (il ne l'était pas : la fiche se dressait vide en silence).
+- `src/app/(application)/error.tsx` : l'écran d'erreur de l'application,
+  en français, avec le **repère** (`digest`) qui retrouve la ligne dans le
+  journal de Vercel, « Réessayer » et « Retour à la flotte ». En
+  développement, le message s'affiche.
+
+**Pour retrouver la cause** : Vercel › le projet › *Logs* (ou *Deployments* ›
+le déploiement › *Functions*), filtrer sur `/flotte/`, ouvrir la ligne en
+erreur : le message et la pile y sont, avec le même repère que l'écran.
+Coller ce message ici suffit pour corriger.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.
