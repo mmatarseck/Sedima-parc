@@ -12,7 +12,7 @@ import { assemblerFiche, FAITS_VIDES, type FaitsFiche } from "@/domaine/assemble
 import type { FicheVehicule } from "@/domaine/fiche";
 import { normaliser } from "@/domaine/immatriculation";
 import type { Parametres } from "@/domaine/parametres";
-import type { PosteDepense, TypeDocument } from "@/domaine/types";
+import type { CategorieObservation, PosteDepense, TypeDocument } from "@/domaine/types";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 import { passagesReleves, planDuVehicule, programmeParDefaut } from "./entretien-demo";
@@ -28,6 +28,8 @@ export interface FicheJson {
   depenses: { numero: string; date: string; poste: PosteDepense; libelle: string; montant: number; beneficiaire: string | null; reference: string | null; origine: "caisse" | "bon-de-commande" | "facture"; justificatif: boolean; km: number | null; km_motif_rejet: string | null }[];
   interventions: { numero: string; date: string; type: "preventif" | "curatif"; objet: string; garage: string | null; montant: number; immobilisation_jours: number; km: number | null; reference: string | null }[];
   statuts: { le: string; avant: string | null; apres: string | null; motif: string }[];
+  visites?: { numero: string; type: "visite" | "contre-visite"; centre: string; date_rendez_vous: string; heure: string | null; date_passage: string | null; statut: "rendez-vous" | "acceptee" | "refusee" | "annulee"; numero_pv: string | null; date_limite_contre_visite: string | null; commentaire: string | null }[];
+  observations?: { numero: string; visite_numero: string; libelle: string; categorie: CategorieObservation; gravite: "majeure" | "mineure"; statut: "a-traiter" | "en-cours" | "corrigee"; intervention_numero: string | null; corrigee_le: string | null; commentaire: string | null }[];
 }
 
 export function faitsDepuisJson(j: FicheJson): FaitsFiche {
@@ -40,6 +42,8 @@ export function faitsDepuisJson(j: FicheJson): FaitsFiche {
     depenses: j.depenses.map((d) => ({ numero: d.numero, date: d.date, poste: d.poste, libelle: d.libelle, montant: d.montant, beneficiaire: d.beneficiaire, reference: d.reference, origine: d.origine, justificatif: d.justificatif, km: d.km, kmMotifRejet: d.km_motif_rejet })),
     interventions: j.interventions.map((i) => ({ numero: i.numero, date: i.date, type: i.type, objet: i.objet, garage: i.garage, montant: i.montant, immobilisationJours: i.immobilisation_jours, km: i.km, reference: i.reference })),
     statuts: j.statuts,
+    visites: (j.visites ?? []).map((x) => ({ numero: x.numero, type: x.type, centre: x.centre, dateRendezVous: x.date_rendez_vous, heure: x.heure, datePassage: x.date_passage, statut: x.statut, numeroPv: x.numero_pv, dateLimiteContreVisite: x.date_limite_contre_visite, commentaire: x.commentaire })),
+    observations: (j.observations ?? []).map((o) => ({ numero: o.numero, visiteNumero: o.visite_numero, libelle: o.libelle, categorie: o.categorie, gravite: o.gravite, statut: o.statut, interventionNumero: o.intervention_numero, corrigeeLe: o.corrigee_le, commentaire: o.commentaire })),
   };
 }
 

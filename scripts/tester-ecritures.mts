@@ -53,6 +53,8 @@ const essais: { type: Parameters<typeof ligneCreation>[0]; numero: string; valeu
   { type: "caisse", numero: "CAI-2026-90002", valeurs: { date: "2026-09-08", libelle: "Deux pneus avant", montant: 240000, depenseNumero: "DEP-2026-90001", justificatif: "oui" } },
   { type: "cuve", numero: "CUV-2026-90001", valeurs: { date: "2026-09-08", libelle: "Livraison citerne", litres: 5000, prixLitre: 655, fournisseur: "TotalEnergies Sénégal", piece: "BL-1" } },
   { type: "cuve", numero: "CUV-2026-90002", valeurs: { date: "2026-09-08", litres: 7420.5 } },
+  { type: "visite", numero: "VTE-2026-90001", valeurs: { type: "visite", centre: "CCVA Rufisque", dateRendezVous: "2026-09-15", heure: "08:30" } },
+  { type: "observation", numero: "OBS-2026-90001", valeurs: { visiteId: "VTE-2026-90001", libelle: "Feu stop droit hors service", categorie: "eclairage", gravite: "mineure", statut: "a-traiter" } },
   { type: "achat", numero: "DAC-2026-90001", valeurs: { date: "2026-09-08", objet: "Deux pneus avant", poste: "pneumatiques", montantEstime: "240 000", urgence: "urgente", origineNumero: "INT-2026-90001", demandeur: "Service parc", demandeurRole: "gestionnaire-parc" } },
   { type: "ordre", numero: "OT-2026-90001", valeurs: { type: "curatif", objet: "Remplacement des plaquettes", garage: "Garage SEDIMA", datePrevue: "2026-09-12", immobilisationPrevueJours: 1, montantEstime: 85000, demandeur: "Service parc" } },
 ];
@@ -94,7 +96,11 @@ const dac = (await pg.query(`select etape, visa_par, montant_engage, origine_num
 attendu(`la demande d'achat est visée par ${dac.visa_par}, ${dac.montant_engage} F engagés, origine ${dac.origine_numero}, rôle ${dac.demandeur_role}`, dac.etape === "visee" && Number(dac.montant_engage) === 250000 && dac.origine_numero === "INT-2026-90001" && dac.demandeur_role === "gestionnaire-parc");
 const sansOrigine = ligneCreation("achat", "DAC-2026-90002", { date: "2026-09-08", objet: "Filtres", montantEstime: 30000 }, r);
 attendu(`une demande sans transaction d'origine est refusée (${"refus" in sansOrigine ? sansOrigine.refus : "acceptée"})`, "refus" in sansOrigine);
-attendu(`une visite n'a pas de table (${tableDe("visite")})`, tableDe("visite") === null);
+const obs = (await pg.query(`select o.visite_numero, o.statut, t.centre, t.statut as visite from observation_visite o join visite_technique t on t.numero = o.visite_numero where o.numero = 'OBS-2026-90001'`)).rows[0] as { visite_numero: string; statut: string; centre: string; visite: string };
+attendu(`l'observation cite sa visite (${obs?.visite_numero}, ${obs?.centre}, ${obs?.visite}) et attend (${obs?.statut})`, obs?.visite_numero === "VTE-2026-90001" && obs?.visite === "rendez-vous" && obs?.statut === "a-traiter");
+const sansVisite = ligneCreation("observation", "OBS-2026-90002", { libelle: "Pneu usé" }, r);
+attendu(`une observation sans visite est refusée (${"refus" in sansVisite ? sansVisite.refus : "acceptée"})`, "refus" in sansVisite);
+attendu(`un type sans table le dit (${tableDe("prestataire")})`, tableDe("prestataire") === null);
 
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);

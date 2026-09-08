@@ -2,12 +2,12 @@
  * Ce qu'une transaction saisie dans l'application devient en base : la table,
  * et les colonnes que ses valeurs remplissent.
  *
- * Treize types ont leur table — relevé, plein, dépense, document, incident,
+ * Quinze types ont leur table — relevé, plein, dépense, document, incident,
  * affectation, intervention, indisponibilité, sanction (0001), l'ordre de
  * travail (0016), le mouvement de caisse et celui de la cuve (0017), la
- * demande d'achat (0022) — et le statut d'un véhicule s'écrit sur sa ligne
- * avec sa trace. Les autres (visite, observation…) attendent leur table : ils
- * restent dans le navigateur, et `tableDe` le dit.
+ * demande d'achat (0022), la visite technique et son observation (0023) — et
+ * le statut d'un véhicule s'écrit sur sa ligne avec sa trace. Ce qui n'a pas
+ * de table reste dans le navigateur, et `tableDe` le dit.
  *
  * Ce module est pur — pas de base, pas de navigateur — pour se vérifier seul
  * et servir la fonction serveur comme les tests.
@@ -15,7 +15,7 @@
 
 import type { TypeTransaction } from "@/domaine/reference";
 
-export type TableBranchee = "releve_kilometrique" | "plein" | "depense" | "document" | "incident" | "affectation" | "intervention" | "indisponibilite" | "sanction" | "ordre_travail" | "mouvement_caisse" | "mouvement_cuve" | "demande_achat";
+export type TableBranchee = "releve_kilometrique" | "plein" | "depense" | "document" | "incident" | "affectation" | "intervention" | "indisponibilite" | "sanction" | "ordre_travail" | "mouvement_caisse" | "mouvement_cuve" | "demande_achat" | "visite_technique" | "observation_visite";
 
 const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   releve: "releve_kilometrique",
@@ -31,6 +31,8 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   caisse: "mouvement_caisse",
   cuve: "mouvement_cuve",
   achat: "demande_achat",
+  visite: "visite_technique",
+  observation: "observation_visite",
 };
 
 /** La table d'un type ; nulle tant qu'il n'en a pas. Le statut est à part : il s'écrit sur le véhicule. */
@@ -150,6 +152,20 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       if (!texte(v.origineNumero)) return { refus: "demande d'achat sans transaction d'origine" };
       return { ligne: { numero, date: texte(v.date), objet: texte(v.objet), poste: texte(v.poste) ?? "divers", montant_estime: Math.round(montantEstime), prestataire_id: r.prestataireId, fournisseur: texte(v.fournisseur), urgence: texte(v.urgence) ?? "normale", origine_numero: texte(v.origineNumero), origine_libelle: texte(v.origineLibelle), vehicule_id: r.vehiculeId, demandeur_nom: texte(v.demandeur), demandeur_role: texte(v.demandeurRole), etape: texte(v.etape) ?? "soumise", commentaire_decision: texte(v.commentaireDecision) } };
     }
+    case "visite": {
+      if (!r.vehiculeId) return { refus: "visite technique sans véhicule" };
+      if (!texte(v.centre)) return { refus: "visite technique sans centre" };
+      const rendezVous = texte(v.dateRendezVous) ?? texte(v.date);
+      if (!rendezVous) return { refus: "visite technique sans date de rendez-vous" };
+      return { ligne: { numero, vehicule_id: r.vehiculeId, type: texte(v.type) ?? "visite", centre: texte(v.centre), date_rendez_vous: rendezVous, heure: texte(v.heure), date_passage: texte(v.datePassage), statut: texte(v.statut) ?? "rendez-vous", numero_pv: texte(v.numeroPv), date_limite_contre_visite: texte(v.dateLimiteContreVisite), commentaire: texte(v.commentaire) } };
+    }
+    case "observation": {
+      /* L'observation cite la visite qui l'a produite, par son numéro. */
+      if (!r.vehiculeId) return { refus: "observation sans véhicule" };
+      if (!texte(v.visiteId)) return { refus: "observation sans visite technique" };
+      if (!texte(v.libelle)) return { refus: "observation sans libellé" };
+      return { ligne: { numero, visite_numero: texte(v.visiteId), vehicule_id: r.vehiculeId, libelle: texte(v.libelle), categorie: texte(v.categorie) ?? "autre", gravite: texte(v.gravite) ?? "mineure", statut: texte(v.statut) ?? "a-traiter", intervention_numero: texte(v.interventionNumero), corrigee_le: texte(v.corrigeeLe), commentaire: texte(v.commentaire) } };
+    }
     case "sanction": {
       if (!r.chauffeurId) return { refus: "sanction sans chauffeur" };
       if (!texte(v.motif)) return { refus: "sanction sans motif" };
@@ -176,6 +192,8 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   caisse: { date: "date", libelle: "libelle", montant: "montant", beneficiaire: "beneficiaire", piece: "piece", justificatif: "justificatif" },
   cuve: { date: "date", libelle: "libelle", litres: "litres", prixLitre: "prix_litre", montant: "montant", fournisseur: "fournisseur", piece: "piece", commentaire: "commentaire" },
   achat: { date: "date", objet: "objet", poste: "poste", montantEstime: "montant_estime", fournisseur: "fournisseur", urgence: "urgence", etape: "etape", visaPar: "visa_par", visaLe: "visa_le", validePar: "valide_par", valideeLe: "validee_le", numeroDemandeX3: "numero_demande_x3", numeroBonCommande: "numero_bon_commande", montantEngage: "montant_engage", dateLivraison: "date_livraison", dateFacture: "date_facture", montantReel: "montant_reel", dateReglement: "date_reglement", depenseNumero: "depense_numero", commentaireDecision: "commentaire_decision" },
+  visite: { type: "type", centre: "centre", dateRendezVous: "date_rendez_vous", heure: "heure", datePassage: "date_passage", statut: "statut", numeroPv: "numero_pv", dateLimiteContreVisite: "date_limite_contre_visite", commentaire: "commentaire" },
+  observation: { libelle: "libelle", categorie: "categorie", gravite: "gravite", statut: "statut", interventionNumero: "intervention_numero", corrigeeLe: "corrigee_le", commentaire: "commentaire" },
   ordre: { datePrevue: "date_prevue", objet: "objet", garage: "garage", immobilisationPrevueJours: "immobilisation_prevue_jours", montantEstime: "montant_estime", statut: "statut", dateDebut: "date_debut", dateCloture: "date_cloture", interventionNumero: "intervention_numero", commentaire: "commentaire" },
 };
 

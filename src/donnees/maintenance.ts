@@ -10,8 +10,9 @@
  * liste Flotte (`lire_parc()`) suffit, complété d'une lecture des incidents en
  * cours et d'une des interventions.
  *
- * Les observations de visite technique n'ont pas encore de table : elles
- * n'entrent dans le travail à faire qu'en démonstration.
+ * Les observations de visite technique (0023) entrent dans le travail à faire
+ * tant qu'elles ne sont pas corrigées, avec le délai de contre-visite de la
+ * visite qui les a produites.
  * ==========================================================================*/
 
 import { cache } from "react";
@@ -96,6 +97,16 @@ export interface IncidentEnCours {
   description: string | null;
 }
 
+/** Une observation non corrigée, avec le délai de contre-visite de sa visite. */
+export interface ObservationOuverte {
+  numero: string;
+  vehicule_id: string;
+  libelle: string;
+  statut: string;
+  intervention_numero: string | null;
+  visite_technique: { date_limite_contre_visite: string | null } | null;
+}
+
 function joursEntre(debut: string, fin: string): number {
   return Math.max(0, Math.round((Date.parse(`${fin}T00:00:00Z`) - Date.parse(`${debut}T00:00:00Z`)) / 86_400_000));
 }
@@ -120,7 +131,7 @@ export function laisseNonRoulant(i: IncidentEnCours): boolean {
  * Le travail à faire, déduit des lignes de la liste, du parc brut, des ordres
  * et des incidents en cours — pur, pour le banc d'essai.
  */
-export function travauxDepuisLaBase(lignes: LigneFlotte[], parc: ParcBrut, ordres: LigneOrdre[], incidents: IncidentEnCours[], aujourdhui: string): LigneTravail[] {
+export function travauxDepuisLaBase(lignes: LigneFlotte[], parc: ParcBrut, ordres: LigneOrdre[], incidents: IncidentEnCours[], aujourdhui: string, observations: ObservationOuverte[] = []): LigneTravail[] {
   const ouverts = ordres.filter((o) => estOuvert(o.statut));
   const ordrePour = (vehiculeId: string, origineNumero: string | null, type: "preventif" | "curatif") =>
     ouverts.find((o) => o.vehiculeId === vehiculeId && (origineNumero ? o.origineNumero === origineNumero : o.origineNumero === null && o.type === type))?.numero ?? null;
@@ -152,6 +163,13 @@ export function travauxDepuisLaBase(lignes: LigneFlotte[], parc: ParcBrut, ordre
       travaux.push({ cle: `immobilisation:${l.vehicule.id}`, nature: "immobilisation", urgence: ordreNumero ? "en-cours" : "a-planifier", type: "curatif", ...p, objet: `${STATUT_VEHICULE[statut].libelle} — ${MOTIF_IMMOBILISATION.panne.toLowerCase()}`, origineNumero: null, echeance: depuis ? `depuis le ${formaterDate(depuis)} · ${joursEntre(depuis, aujourdhui)} j` : "à remettre en état", kmRestants: null, joursRestants: null, ordreNumero });
     }
   }
+  for (const o of observations) {
+    const l = ligneParUuid.get(o.vehicule_id);
+    if (!l) continue;
+    const ordreNumero = ordrePour(l.vehicule.id, o.numero, "curatif");
+    const limite = o.visite_technique?.date_limite_contre_visite ?? null;
+    travaux.push({ cle: `observation:${o.numero}`, nature: "observation", urgence: ordreNumero || o.intervention_numero ? "en-cours" : "a-planifier", type: "curatif", ...porteur(l), objet: o.libelle, origineNumero: o.numero, echeance: limite ? `contre-visite avant le ${formaterDate(limite)}` : "avant la contre-visite", kmRestants: null, joursRestants: limite ? joursEntre(aujourdhui, limite) : null, ordreNumero });
+  }
   for (const i of nonRoulants) {
     const l = ligneParUuid.get(i.vehicule_id);
     if (!l) continue;
@@ -167,14 +185,17 @@ export function travauxDepuisLaBase(lignes: LigneFlotte[], parc: ParcBrut, ordre
 async function travauxServeurBrut(parametres: Parametres): Promise<LigneTravail[]> {
   if (!authentificationReelle()) return travauxAFaire();
   const client = await clientServeur();
-  const [lignes, parc, ordres, incidents] = await Promise.all([
+  const [lignes, parc, ordres, incidents, observations] = await Promise.all([
     lignesFlotte(parametres),
     parcServeur(),
     ordresServeur(),
     client.from("incident").select("numero, vehicule_id, date_heure, type, immobilisation_jours, description").neq("statut", "clos").limit(2000).returns<IncidentEnCours[]>(),
+    client.from("observation_visite").select("numero, vehicule_id, libelle, statut, intervention_numero, visite_technique (date_limite_contre_visite)").neq("statut", "corrigee").limit(2000).returns<ObservationOuverte[]>(),
   ]);
   if (incidents.error) console.warn(`Incidents en cours : lecture impossible (${incidents.error.message}).`);
-  return travauxDepuisLaBase(lignes, parc, ordres, incidents.data ?? [], parc.aujourdhui);
+  /* Table pas encore jouée : pas d'observation, pas d'erreur. */
+  if (observations.error) console.warn(`Observations de visite : lecture impossible (${observations.error.message}).`);
+  return travauxDepuisLaBase(lignes, parc, ordres, incidents.data ?? [], parc.aujourdhui, observations.data ?? []);
 }
 
 export const travauxServeur = cache(travauxServeurBrut);

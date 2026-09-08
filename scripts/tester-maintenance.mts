@@ -6,7 +6,7 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import { PARAMETRES_DEFAUT } from "../src/domaine/parametres";
 import { ligneDepuisLaBase, type ParcBrut } from "../src/donnees/flotte";
-import { interventionDepuisLigne, laisseNonRoulant, travauxDepuisLaBase, type IncidentEnCours, type LigneInterventionBase } from "../src/donnees/maintenance";
+import { interventionDepuisLigne, laisseNonRoulant, travauxDepuisLaBase, type IncidentEnCours, type LigneInterventionBase, type ObservationOuverte } from "../src/donnees/maintenance";
 import { ordreDepuisLigne, type LigneOrdreBase } from "../src/donnees/ordres";
 
 const bac = process.env.PGLITE_DIR ?? "";
@@ -46,7 +46,10 @@ const ordresBruts = (await pg.query(`
 const ordres = ordresBruts.map(ordreDepuisLigne);
 const incidents = (await pg.query(`select numero, vehicule_id, date_heure, type, immobilisation_jours, description from incident where statut <> 'clos'`)).rows as IncidentEnCours[];
 
-const travaux = travauxDepuisLaBase(lignes, parc, ordres, incidents, aujourdhui);
+const observations = (await pg.query(`select o.numero, o.vehicule_id, o.libelle, o.statut, o.intervention_numero, jsonb_build_object('date_limite_contre_visite', t.date_limite_contre_visite) as visite_technique from observation_visite o join visite_technique t on t.numero = o.visite_numero where o.statut <> 'corrigee'`)).rows as ObservationOuverte[];
+const travaux = travauxDepuisLaBase(lignes, parc, ordres, incidents, aujourdhui, observations);
+const nVisites = (await pg.query(`select count(*)::int as n from visite_technique`)).rows[0] as { n: number };
+attendu(`${observations.length} observations ouvertes (${nVisites.n} visites en table), toutes dans les travaux avec leur délai`, observations.length > 0 && observations.every((o) => travaux.some((t) => t.origineNumero === o.numero && t.nature === "observation" && t.joursRestants !== null)));
 const parNature = (n: string) => travaux.filter((t) => t.nature === n).length;
 attendu(`${travaux.length} travaux déduits : ${parNature("echeance")} échéances, ${parNature("immobilisation")} immobilisations, ${parNature("incident")} incidents`, travaux.length > 0 && parNature("echeance") > 0);
 attendu(`chaque travail porte un véhicule de la liste`, travaux.every((t) => lignes.some((l) => l.vehicule.id === t.vehiculeId)));
@@ -54,7 +57,7 @@ attendu(`les clés sont uniques`, new Set(travaux.map((t) => t.cle)).size === tr
 const nonRoulants = incidents.filter(laisseNonRoulant);
 attendu(`${nonRoulants.length} incident(s) en cours non roulant(s) sur ${incidents.length} en cours, tous dans les travaux`, nonRoulants.every((i) => travaux.some((t) => t.origineNumero === i.numero)));
 const enCours = travaux.filter((t) => t.urgence === "en-cours");
-attendu(`${enCours.length} travaux « en cours » citent un ordre ouvert`, enCours.every((t) => t.ordreNumero && ordres.some((o) => o.numero === t.ordreNumero)));
+attendu(`${enCours.length} travaux « en cours » citent un ordre ouvert, ou une intervention pour une observation`, enCours.every((t) => (t.ordreNumero && ordres.some((o) => o.numero === t.ordreNumero)) || (t.nature === "observation" && observations.some((o) => o.numero === t.origineNumero && o.intervention_numero))));
 const retards = travaux.filter((t) => t.urgence === "en-retard");
 attendu(`${retards.length} échéances en retard, classées en tête`, travaux.findIndex((t) => t.urgence !== "en-retard") >= retards.length);
 attendu(`aucune ligne d'un véhicule léger`, travaux.every((t) => lignes.find((l) => l.vehicule.id === t.vehiculeId)?.vehicule.regime === "exploitation"));

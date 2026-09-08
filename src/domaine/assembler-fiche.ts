@@ -22,7 +22,7 @@ import { BUSINESS_UNIT, POSTE_DEPENSE, STATUT_VEHICULE, TYPE_DOCUMENT, USAGE_VEH
 import { prixEnergie, type Parametres } from "./parametres";
 import { formerNumero } from "./reference";
 import { controlerReleves } from "./releves";
-import type { LigneFlotte, MotifImmobilisation, PosteDepense, StatutVehicule, TypeDocument } from "./types";
+import type { LigneFlotte, MotifImmobilisation, PosteDepense, StatutVehicule, TypeDocument, CategorieObservation, GraviteObservation, StatutObservation, StatutVisite, TypeVisite } from "./types";
 
 /** Référence de consommation par catégorie, en L/100 km. */
 export const REFERENCE_L100: Record<string, number> = {
@@ -47,9 +47,13 @@ export interface FaitsFiche {
   interventions: { numero: string; date: string; type: "preventif" | "curatif"; objet: string; garage: string | null; montant: number; immobilisationJours: number; km: number | null; reference: string | null }[];
   /** La trace des statuts, du plus ancien au plus récent. */
   statuts: { le: string; avant: string | null; apres: string | null; motif: string }[];
+  /** Les visites techniques (0023), de la plus récente à la plus ancienne. */
+  visites: { numero: string; type: TypeVisite; centre: string; dateRendezVous: string; heure: string | null; datePassage: string | null; statut: StatutVisite; numeroPv: string | null; dateLimiteContreVisite: string | null; commentaire: string | null }[];
+  /** Les observations des centres, citant leur visite par son numéro. */
+  observations: { numero: string; visiteNumero: string; libelle: string; categorie: CategorieObservation; gravite: GraviteObservation; statut: StatutObservation; interventionNumero: string | null; corrigeeLe: string | null; commentaire: string | null }[];
 }
 
-export const FAITS_VIDES: FaitsFiche = { documents: [], licences: [], affectations: [], releves: [], pleins: [], depenses: [], interventions: [], statuts: [] };
+export const FAITS_VIDES: FaitsFiche = { documents: [], licences: [], affectations: [], releves: [], pleins: [], depenses: [], interventions: [], statuts: [], visites: [], observations: [] };
 
 /** Ce que le plan d'entretien demande à l'appelant : le gabarit de la catégorie et le plan du véhicule. */
 export interface PlanFourni {
@@ -311,8 +315,9 @@ export function assemblerFiche(l: LigneFlotte, faits: FaitsFiche, parametres: Pa
     documents: documents.sort((a, b) => (a.echeance ?? "9999").localeCompare(b.echeance ?? "9999")),
     affectations,
     attelages: [],
-    visitesTechniques: [],
-    observationsVisite: [],
+    /* Les visites et observations valent par leur numéro, comme les autres transactions ; un lecteur d'avant 0023 n'en rend pas. */
+    visitesTechniques: (faits.visites ?? []).map((x) => ({ id: x.numero, numero: x.numero, vehiculeId: v.id, type: x.type, centre: x.centre, dateRendezVous: x.dateRendezVous, heure: x.heure, datePassage: x.datePassage, statut: x.statut, numeroPv: x.numeroPv, dateLimiteContreVisite: x.dateLimiteContreVisite, commentaire: x.commentaire })).sort((a, b) => b.dateRendezVous.localeCompare(a.dateRendezVous)),
+    observationsVisite: (faits.observations ?? []).map((o) => ({ id: o.numero, numero: o.numero, visiteId: o.visiteNumero, vehiculeId: v.id, libelle: o.libelle, categorie: o.categorie, gravite: o.gravite, statut: o.statut, interventionNumero: o.interventionNumero, corrigeeLe: o.corrigeeLe, commentaire: o.commentaire })),
     immobilisationAdministrative: immobilisation,
     planEntretien: { programmeCode: programme.code, programmeLibelle: programme.libelle, programmePrecision: programme.precision, base: programme.base, aujourdhui, compteurs, echeances: echeancesEntretien },
     prochaineIntervention,

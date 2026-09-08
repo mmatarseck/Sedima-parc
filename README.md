@@ -191,6 +191,11 @@ Neuf migrations, dans l'ordre :
   ce que Sage X3 en sait (DA, bon de commande et montant engagé, livraison,
   facture et montant réel, règlement) ; chaque décision est une modification
   tracée. Lecture avec la caisse (module « couts »), écriture avec sa saisie.
+- `0023_visites_techniques.sql` — les tables `visite_technique` (rendez-vous
+  au centre, passage, résultat, délai de contre-visite) et
+  `observation_visite` (défaut relevé, catégorie, gravité, suivi jusqu'à
+  l'intervention qui le corrige) ; `lire_fiche()` les rend, le travail à
+  faire de la Maintenance les lit.
 - `0021_politiques_integrees.sql` — **à jouer sans attendre** : la 0019
   avait ralenti (une fonction SQL avec des sous-requêtes n'est plus
   intégrée aux requêtes). `peut()` et `dans_mon_perimetre()` redeviennent

@@ -1504,6 +1504,31 @@ lectures avant et après une migration. Il reproduit la régression (fiche
   refus sans origine) et `tester-caisse-cuve.mts` (lecture égale à la
   table, réglées complètes, liens d'origine).
 
+### Les visites techniques et leurs observations en table (8 septembre 2026, migration 0023)
+
+- Migration `0023_visites_techniques.sql` : `visite_technique` (type,
+  centre, rendez-vous, passage, résultat, procès-verbal, délai de
+  contre-visite) et `observation_visite` (la visite citée par son numéro,
+  libellé, catégorie, gravité, suivi, intervention correctrice, date de
+  correction). Lecture si l'on voit le véhicule ; écriture avec la saisie
+  des documents, l'observation aussi avec celle de la maintenance.
+  `lire_fiche()` rend les deux listes.
+- `assembler-fiche.ts` : les faits portent `visites` et `observations` ; la
+  fiche véhicule base branchée montre son processus de visite (onglet
+  Conformité) et ses observations (Entretien). Un lecteur d'avant 0023 n'en
+  rend pas : l'assembleur le tolère.
+- `maintenance.ts` : les observations non corrigées entrent dans le travail
+  à faire, avec le délai de contre-visite de leur visite ; « en cours » si un
+  ordre ou une intervention les prend.
+- Les écritures : `visite` et `observation` ont leur table (refus sans
+  centre, sans rendez-vous, sans visite citée, sans libellé). Le seed porte
+  23 visites et 5 observations.
+- La page Conformité lit encore les fiches de démonstration pour le
+  processus de visite : à brancher avec son module.
+- Vérifié : écritures (visite puis observation qui la cite, refus sans
+  visite), Maintenance (4 observations ouvertes dans les travaux avec leur
+  délai), fiche rendue pour les 21 véhicules.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

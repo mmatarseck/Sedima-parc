@@ -2,7 +2,7 @@
 -- SEDIMA Parc — jeu de démonstration, versé dans la base.
 --
 -- GÉNÉRÉ par scripts/generer-seed.mts : ne pas modifier à la main, relancer.
--- 7290 lignes. Rejouable : chaque insertion est `on conflict do nothing`.
+-- 7318 lignes. Rejouable : chaque insertion est `on conflict do nothing`.
 --
 -- Prérequis : les migrations 0001 à 0005. Les comptes (profil) ne sont pas
 -- dans ce fichier — ils citent auth.users, qui n'existe qu'une fois les
@@ -4015,6 +4015,42 @@ insert into mouvement_cuve (id, numero, date, sens, libelle, litres, prix_litre,
   ('9ec84933-648d-45fa-ab48-5ecb27d3f81b', 'CUV-2026-00022', '2026-08-02', 'livraison', 'Livraison citerne — 1re quinzaine 2026-08', 19500, 590, 11505000, 'TotalEnergies Sénégal', '766856d9-9fad-4e24-aa21-2949561208c5', 'BL-202608-835', 'Responsable carburant', '2026-08-02T09:00:00+00'),
   ('01a93fe2-7bcf-4f5d-af4a-47813702f507', 'CUV-2026-00023', '2026-08-16', 'livraison', 'Livraison citerne — 2e quinzaine 2026-08', 9000, 590, 5310000, 'TotalEnergies Sénégal', '766856d9-9fad-4e24-aa21-2949561208c5', 'BL-202608-491', 'Responsable carburant', '2026-08-16T09:00:00+00'),
   ('d8f6b7d9-fbc3-4653-a5f4-34fc2a4687bd', 'CUV-2026-00024', '2026-08-31', 'jauge', 'Relevé de jauge — fin 2026-08', 12270, null, null, null, null, null, 'Responsable carburant', '2026-08-31T09:00:00+00')
+on conflict do nothing;
+
+-- visite_technique (23)
+insert into visite_technique (id, numero, vehicule_id, type, centre, date_rendez_vous, heure, date_passage, statut, numero_pv, date_limite_contre_visite, commentaire, cree_le) values
+  ('1c8db538-2b91-4270-a585-7a648afe799d', 'VTE-2026-01001', '032686e4-556b-46b2-a154-9de2392aa75d', 'visite', 'CCVA Rufisque', '2026-03-13', '08:30', '2026-03-13', 'acceptee', 'PV-26-9330', null, null, '2026-03-13T08:00:00+00'),
+  ('a7792aad-8f65-4404-a5f0-2471788cc53b', 'VTE-2026-02001', 'a033ff63-c9bc-4584-a444-124e4c5b2c33', 'visite', 'CCVA Rufisque', '2026-06-07', '08:30', '2026-06-07', 'acceptee', 'PV-26-9984', null, null, '2026-06-07T08:00:00+00'),
+  ('a3fb665b-6f14-4bc9-afd8-36055230f99e', 'VTE-2026-03002', '1a94e449-ce99-428e-ad75-d318338e6985', 'visite', 'CCVA Rufisque', '2026-09-08', '09:30', null, 'rendez-vous', null, null, 'Renouvellement — échéance le 10/09', '2026-09-08T08:00:00+00'),
+  ('0b837f6b-6612-42c6-a06a-15cdcd4c75e5', 'VTE-2026-03001', '1a94e449-ce99-428e-ad75-d318338e6985', 'visite', 'CCVA Rufisque', '2026-03-11', '08:30', '2026-03-11', 'acceptee', 'PV-26-3980', null, null, '2026-03-11T08:00:00+00'),
+  ('aea52a65-0ce3-4c6a-ad11-3f689c651088', 'VTE-2026-04001', '8d2764b4-7eca-4cbe-a4fd-3b4de3fbd6cd', 'visite', 'CCVA Rufisque', '2026-05-05', '08:30', '2026-05-05', 'acceptee', 'PV-26-6094', null, null, '2026-05-05T08:00:00+00'),
+  ('087fc025-6569-4bf2-a9c9-ccfd4b460572', 'VTE-2026-05001', '134523a1-cd0f-4a18-a6ce-adadaa1bc0f6', 'visite', 'CCVA Rufisque', '2026-02-25', '08:30', '2026-02-25', 'acceptee', 'PV-26-7907', null, null, '2026-02-25T08:00:00+00'),
+  ('593ae484-1487-4f46-a7ea-a5b1da806353', 'VTE-2026-06001', 'af1abf6c-3a24-42a6-ad9b-1f0fa24c7866', 'visite', 'CCVA Rufisque', '2026-04-24', '08:30', '2026-04-24', 'acceptee', 'PV-26-3333', null, null, '2026-04-24T08:00:00+00'),
+  ('1ebbfcaf-be0a-4612-abf3-174aa17e2314', 'VTE-2026-07001', '5ea29a70-699c-4686-ada1-f5efd0b6abd6', 'visite', 'CCVA Rufisque', '2026-06-26', '08:30', '2026-06-26', 'acceptee', 'PV-26-9864', null, null, '2026-06-26T08:00:00+00'),
+  ('26efb522-1a82-4ea2-a357-46cbf91c88e7', 'VTE-2026-08001', '8f83955b-4584-4b2b-aed9-f92c14d0471c', 'visite', 'CCVA Rufisque', '2026-04-06', '08:30', '2026-04-06', 'acceptee', 'PV-26-8758', null, null, '2026-04-06T08:00:00+00'),
+  ('324af799-4ba7-42a3-a6c5-ebf7c548ea3e', 'VTE-2026-09002', '9b9a5647-a91e-4b56-a8ac-50845ea15975', 'visite', 'CCVA Rufisque', '2026-08-21', '11:00', '2026-08-21', 'refusee', 'PV-26-4511', '2026-10-21', 'Contre-visite à programmer après la restauration', '2026-08-21T08:00:00+00'),
+  ('bda4fe96-8e9d-4443-afb1-4eeff390d9a7', 'VTE-2026-09001', '9b9a5647-a91e-4b56-a8ac-50845ea15975', 'visite', 'CCVA Rufisque', '2026-02-19', '08:30', '2026-02-19', 'acceptee', 'PV-26-5457', null, null, '2026-02-19T08:00:00+00'),
+  ('689db635-8815-4b4f-a26c-969b30786bb5', 'VTE-2026-10003', '3d2bf011-bb27-40a1-a27c-337d763348cb', 'contre-visite', 'CCVA Rufisque', '2026-09-10', '08:00', null, 'rendez-vous', null, null, 'Après correction du freinage et des pneus', '2026-09-10T08:00:00+00'),
+  ('8b04a1f2-6480-4a15-a2be-c332fb402f05', 'VTE-2026-10002', '3d2bf011-bb27-40a1-a27c-337d763348cb', 'visite', 'CCVA Rufisque', '2026-08-12', '10:00', '2026-08-12', 'refusee', 'PV-26-4402', '2026-10-12', 'Trois observations, dont deux majeures', '2026-08-12T08:00:00+00'),
+  ('495dca76-48a8-4fb1-a07a-daff25da3f7d', 'VTE-2026-10001', '3d2bf011-bb27-40a1-a27c-337d763348cb', 'visite', 'CCVA Rufisque', '2026-02-10', '08:30', '2026-02-10', 'acceptee', 'PV-26-6080', null, null, '2026-02-10T08:00:00+00'),
+  ('295bc7e9-5bdd-4829-a437-4aad0d995d06', 'VTE-2026-11001', 'b4c38d2c-52e2-4639-a4b3-9d67bf4bad02', 'visite', 'CCVA Rufisque', '2026-04-12', '08:30', '2026-04-12', 'acceptee', 'PV-26-6829', null, null, '2026-04-12T08:00:00+00'),
+  ('b85934bf-7b9a-40ce-abc9-ae75815338bf', 'VTE-2026-12001', 'f9bae306-c4d0-4114-a82e-2647b75f1123', 'visite', 'CCVA Rufisque', '2026-02-27', '08:30', '2026-02-27', 'acceptee', 'PV-26-5472', null, null, '2026-02-27T08:00:00+00'),
+  ('1ef73cbb-be74-4e7d-a855-6d060c6b6dff', 'VTE-2026-13001', '90a7ae35-ce03-4775-a753-cdd1534c24c9', 'visite', 'CCVA Rufisque', '2026-05-28', '08:30', '2026-05-28', 'acceptee', 'PV-26-4528', null, null, '2026-05-28T08:00:00+00'),
+  ('4fcb2827-11c9-4677-aa05-169a010308b4', 'VTE-2026-14001', '3e21780a-a0da-4ad4-acf2-ef601b8f3afa', 'visite', 'CCVA Rufisque', '2026-04-13', '08:30', '2026-04-13', 'acceptee', 'PV-26-9915', null, null, '2026-04-13T08:00:00+00'),
+  ('dfdcdad6-3098-4da6-a2ee-8665e1fc95de', 'VTE-2026-15001', '494b1755-733e-4c01-aa0a-fde07dd3bede', 'visite', 'CCVA Thiès', '2026-03-29', '08:30', '2026-03-29', 'acceptee', 'PV-26-8209', null, null, '2026-03-29T08:00:00+00'),
+  ('a83e8e09-6854-41c3-a30d-93fe0a680d65', 'VTE-2026-16001', 'ecb5ce34-5df7-484e-a818-ae25d94aecd7', 'visite', 'CCVA Rufisque', '2026-07-17', '08:30', '2026-07-17', 'acceptee', 'PV-26-9263', null, null, '2026-07-17T08:00:00+00'),
+  ('76af15c3-b532-4808-ae40-56cbf9ce2741', 'VTE-2026-17001', 'e9bacc5a-785d-48fe-a16a-b5899927cf39', 'visite', 'CCVA Thiès', '2026-07-27', '08:30', '2026-07-27', 'acceptee', 'PV-26-1496', null, null, '2026-07-27T08:00:00+00'),
+  ('78877c7c-c604-4bf4-a08b-0f0e886c23a2', 'VTE-2026-18001', '9683cd38-4fa3-41f8-a9ce-59aee44e3a60', 'visite', 'CCVA Rufisque', '2026-02-24', '08:30', '2026-02-24', 'acceptee', 'PV-26-9774', null, null, '2026-02-24T08:00:00+00'),
+  ('1dbd3cf5-001f-48f3-a802-17d284b631ed', 'VTE-2026-19001', 'c1b10e19-b618-4632-a533-ec418c95bd8b', 'visite', 'CCVA Thiès', '2026-02-26', '08:30', '2026-02-26', 'acceptee', 'PV-26-7780', null, null, '2026-02-26T08:00:00+00')
+on conflict do nothing;
+
+-- observation_visite (5)
+insert into observation_visite (id, numero, visite_numero, vehicule_id, libelle, categorie, gravite, statut, intervention_numero, corrigee_le, commentaire, cree_le) values
+  ('77d1a4c0-1d52-4718-aac8-1c774d0ee447', 'OBS-2026-09001', 'VTE-2026-09002', '9b9a5647-a91e-4b56-a8ac-50845ea15975', 'Dispositif d''attelage — jeu excessif à la sellette', 'attelage', 'majeure', 'a-traiter', null, null, null, '2026-08-21T10:00:00+00'),
+  ('14d57ff4-4c21-42e8-a65f-3ed70a03f438', 'OBS-2026-09002', 'VTE-2026-09002', '9b9a5647-a91e-4b56-a8ac-50845ea15975', 'Feux de gabarit arrière hors service', 'eclairage', 'mineure', 'a-traiter', null, null, null, '2026-08-21T10:00:00+00'),
+  ('e6d67973-652e-4266-aaf1-2e7dce26ff4f', 'OBS-2026-10001', 'VTE-2026-10002', '3d2bf011-bb27-40a1-a27c-337d763348cb', 'Freinage — efficacité insuffisante sur l''essieu arrière', 'freinage', 'majeure', 'en-cours', 'INT-2026-10004', null, null, '2026-08-12T10:00:00+00'),
+  ('87232c37-779d-4ab6-a6b4-eaebca5eba45', 'OBS-2026-10002', 'VTE-2026-10002', '3d2bf011-bb27-40a1-a27c-337d763348cb', 'Feu stop droit hors service', 'eclairage', 'mineure', 'corrigee', null, '2026-08-14', null, '2026-08-12T10:00:00+00'),
+  ('1761699c-86db-44d7-a7eb-43708486070c', 'OBS-2026-10003', 'VTE-2026-10002', '3d2bf011-bb27-40a1-a27c-337d763348cb', 'Pneumatiques avant usés au-delà du témoin', 'pneumatiques', 'majeure', 'a-traiter', null, null, null, '2026-08-12T10:00:00+00')
 on conflict do nothing;
 
 -- demande_achat (12)

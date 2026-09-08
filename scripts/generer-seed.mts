@@ -304,6 +304,20 @@ inserer(
   livraisonsEtJauges().map((m) => [uuid(`cuve:${m.numero}`), m.numero, m.date, m.sens, m.libelle, m.litres, m.prixLitre, m.montant, m.fournisseur, prestataireId(m.fournisseur ? (prestataireParNom.get(m.fournisseur) ?? null) : null), m.piece, m.enregistrePar, `${m.date}T09:00:00+00`]),
 );
 
+/* -- Visites techniques et observations (0023) ------------------------------------- */
+
+const fichesVisites = FLOTTE.map((l) => fichePourImmatriculation(l.vehicule.immatriculation)).filter((f): f is NonNullable<typeof f> => f !== null);
+inserer(
+  "visite_technique",
+  ["id", "numero", "vehicule_id", "type", "centre", "date_rendez_vous", "heure", "date_passage", "statut", "numero_pv", "date_limite_contre_visite", "commentaire", "cree_le"],
+  fichesVisites.flatMap((f) => f.visitesTechniques.map((x) => [uuid(`visite:${x.numero}`), x.numero, vehiculeId(x.vehiculeId), x.type, x.centre, x.dateRendezVous, x.heure, x.datePassage, x.statut, x.numeroPv, x.dateLimiteContreVisite, x.commentaire, `${x.dateRendezVous}T08:00:00+00`])),
+);
+inserer(
+  "observation_visite",
+  ["id", "numero", "visite_numero", "vehicule_id", "libelle", "categorie", "gravite", "statut", "intervention_numero", "corrigee_le", "commentaire", "cree_le"],
+  fichesVisites.flatMap((f) => f.observationsVisite.flatMap((o) => { const visite = f.visitesTechniques.find((x) => x.id === o.visiteId); return visite ? [[uuid(`observation:${o.numero}`), o.numero, visite.numero, vehiculeId(o.vehiculeId), o.libelle, o.categorie, o.gravite, o.statut, o.interventionNumero, o.corrigeeLe, o.commentaire, `${visite.datePassage ?? visite.dateRendezVous}T10:00:00+00`]] : []; })),
+);
+
 /* -- Demandes d'achat (0022) ------------------------------------------------------- */
 
 inserer(
