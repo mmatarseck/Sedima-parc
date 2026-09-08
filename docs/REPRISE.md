@@ -1335,6 +1335,34 @@ statique passait : le défaut ne se voyait qu'en production.
   signalée sur Flotte et le tableau de bord — les durées de `lire_parc()` et
   `situation_journaliere()` en production disent où agir.
 
+### Le diagnostic lu, la situation journalière réécrite (8 septembre 2026, migration 0018)
+
+Le premier diagnostic en production (administrateur, région cdg1, base
+Supabase) : tout sous 100 ms, sauf `lire_parc()` 843 ms, `lire_chauffeurs()`
+629 ms et **`situation_journaliere()` 8 229 ms** — le tableau de bord tout
+entier. La fiche véhicule passe de bout en bout (230 ms de fonction, 32 ms
+d'assemblage, 39 Ko) : sa panne était bien le rendu statique.
+
+- Migration `0018_situations_rapides.sql` : la fonction faisait, pour chacun
+  des 28 jours × 129 véhicules, une douzaine de sous-requêtes corrélées sur
+  les tables, chacune repassant par les politiques d'accès. Réécrite en
+  **expressions de table communes matérialisées** — chaque table lue une
+  fois, bornée à la fenêtre, les politiques appliquées une fois —, avec
+  `solde_caisse()` et `stock_cuve()` reprises en ligne. Le JSON est
+  identique : `comparer-situation.mjs` (scratch PGlite) compare 0017 et 0018
+  sur 36 jours, zéro écart ; dans PGlite, sans politiques, les deux formes
+  se valent (≈ 280 ms) — le gain attendu est celui des politiques, à lire
+  sur le diagnostic après la migration.
+- Les lecteurs des ordres, demandes et transferts journalisent maintenant
+  une lecture refusée (ils rendaient une liste vide en silence) ; le
+  diagnostic fait aussi un `select` brut des ordres avec leurs jointures —
+  le premier diagnostic montrait 0 ordre alors que la situation en compte 3
+  ouverts, et 0 demande, 0 transfert : soit le seed n'est pas rejoué, soit
+  une jointure refuse ; la ligne brute le dira.
+- Si `lire_parc()` et `lire_chauffeurs()` restent lents après cela, la même
+  méthode s'applique aux politiques : envelopper `peut()` dans
+  `(select peut(…))` pour qu'il ne soit évalué qu'une fois par requête.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

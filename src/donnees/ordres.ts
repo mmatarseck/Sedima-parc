@@ -75,7 +75,10 @@ async function ordresServeurBrut(): Promise<LigneOrdre[]> {
     .limit(2000)
     .returns<LigneOrdreBase[]>();
   /* Table pas encore jouée : aucun ordre, pas d'erreur. */
-  if (lecture.error) return [];
+  if (lecture.error) {
+    console.warn(`Ordres de travail : lecture impossible (${lecture.error.message}).`);
+    return [];
+  }
   return lecture.data.map(ordreDepuisLigne);
 }
 

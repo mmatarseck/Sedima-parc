@@ -66,7 +66,10 @@ async function demandesServeurBrut(): Promise<Demande[]> {
     .limit(2000)
     .returns<LigneDemande[]>();
   /* Table pas encore jouée : rien à montrer, pas d'erreur — l'écran dit « aucune demande ». */
-  if (lecture.error) return [];
+  if (lecture.error) {
+    console.warn(`Demandes : lecture impossible (${lecture.error.message}).`);
+    return [];
+  }
   return lecture.data.map(demandeDepuisLigne);
 }
 

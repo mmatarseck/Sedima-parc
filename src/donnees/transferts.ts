@@ -81,7 +81,10 @@ async function transfertsServeurBrut(): Promise<Transfert[]> {
     .limit(1000)
     .returns<LigneTransfert[]>();
   /* Table pas encore jouée : rien à montrer, pas d'erreur. */
-  if (lecture.error) return [];
+  if (lecture.error) {
+    console.warn(`Transferts : lecture impossible (${lecture.error.message}).`);
+    return [];
+  }
   return lecture.data.map(transfertDepuisLigne);
 }
 

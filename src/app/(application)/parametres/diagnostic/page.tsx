@@ -101,6 +101,12 @@ export default async function PageDiagnostic({ searchParams }: { searchParams: P
   }
 
   await mesurer("Chauffeurs — lire_chauffeurs()", () => lignesChauffeurs(), (l) => `${l.length} chauffeurs`);
+  /* Les lecteurs rendent une liste vide quand la table ou la jointure refuse : ici, la lecture brute dit pourquoi. */
+  await mesurer("Ordres — select brut avec véhicule et prestataire", async () => {
+    const lecture = await client.from("ordre_travail").select("numero, vehicule (immatriculation, site (libelle)), prestataire (raison_sociale)").limit(3);
+    if (lecture.error) throw new Error(`${lecture.error.code ?? ""} ${lecture.error.message} ${lecture.error.details ?? ""} ${lecture.error.hint ?? ""}`.trim());
+    return lecture.data;
+  }, (l) => `${l.length} ligne(s) lues (3 au plus)`);
   await mesurer("Ordres de travail", () => ordresServeur(), (l) => `${l.length} ordres`);
   await mesurer("Demandes", () => demandesServeur(), (l) => `${l.length} demandes`);
   await mesurer("Transferts", () => transfertsServeur(), (l) => `${l.length} transferts`);

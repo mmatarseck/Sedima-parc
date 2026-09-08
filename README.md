@@ -173,6 +173,10 @@ Neuf migrations, dans l'ordre :
   et « cuve » (stock de départ), les fonctions `solde_caisse(jour)` et
   `stock_cuve(jour)` ; `situation_journaliere()` rend le solde, le seuil, le
   stock et l'autonomie de la cuve pour les deux dernières pastilles.
+- `0018_situations_rapides.sql` — `situation_journaliere()` réécrite en
+  ensembles : chaque table lue une fois, matérialisée, au lieu de milliers de
+  sous-requêtes corrélées repassant par les politiques (8,2 s mesurées en
+  production le 8 septembre 2026). Même JSON, vérifié jour par jour.
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.
