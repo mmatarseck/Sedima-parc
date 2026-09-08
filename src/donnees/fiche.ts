@@ -19,7 +19,7 @@ import { passagesReleves, planDuVehicule, programmeParDefaut } from "./entretien
 import { fichePourImmatriculation } from "./fiche-demo";
 import { lignesFlotte } from "./flotte";
 
-interface FicheJson {
+export interface FicheJson {
   documents: { numero: string; type_document_id: string; date_effet: string | null; echeance: string | null; emetteur: string | null; numero_piece: string | null; montant: number | null; justificatif: boolean }[];
   licences: { numero: string; libelle: string; numero_piece: string; emetteur: string; perimetre: "flotte" | "partie"; date_effet: string; echeance: string; vehicules: number }[];
   affectations: { numero: string; chauffeur_id: string | null; chauffeur: string; role: "titulaire" | "suppleant"; debut: string; fin: string | null; motif: string }[];
@@ -30,7 +30,7 @@ interface FicheJson {
   statuts: { le: string; avant: string | null; apres: string | null; motif: string }[];
 }
 
-function faitsDepuisJson(j: FicheJson): FaitsFiche {
+export function faitsDepuisJson(j: FicheJson): FaitsFiche {
   return {
     documents: j.documents.map((d) => ({ numero: d.numero, type: d.type_document_id as TypeDocument, dateEffet: d.date_effet, echeance: d.echeance, emetteur: d.emetteur, numeroPiece: d.numero_piece, montant: d.montant, justificatif: d.justificatif })),
     licences: j.licences.map((l) => ({ numero: l.numero, libelle: l.libelle, numeroPiece: l.numero_piece, emetteur: l.emetteur, perimetre: l.perimetre, dateEffet: l.date_effet, echeance: l.echeance, vehicules: Number(l.vehicules) })),

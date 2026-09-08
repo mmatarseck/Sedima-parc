@@ -16,14 +16,21 @@ type Props = { params: Promise<{ immat: string }>; searchParams: Promise<{ ongle
 
 export async function generateMetadata({ params }: Props) {
   const { immat } = await params;
-  const fiche = authentificationReelle() ? null : fichePourImmatriculation(immat);
-  /* Sans fiche au serveur, le véhicule peut fort bien exister dans le
-     navigateur : on titre l'immatriculation demandée plutôt que de déclarer
-     introuvable ce que la page va peut-être trouver. Un véhicule léger, ou un
-     véhicule à recevoir sous son numéro de lot, se titre par le dossier. */
-  const brut = decodeURIComponent(immat);
-  const leger = fiche ? null : vehiculesLegers().find((v) => v.immatriculation === normaliser(brut) || v.id === brut.toLowerCase());
-  return { title: titrePage(fiche ? fiche.ligne.vehicule.immatriculationAffichee : (leger?.immatriculationAffichee ?? afficher(normaliser(brut)))) };
+  /* Un titre ne doit jamais faire tomber la page : une erreur ici échappe à
+     l'écran d'erreur de l'application, Next ne montre alors que sa page. */
+  try {
+    const fiche = authentificationReelle() ? null : fichePourImmatriculation(immat);
+    /* Sans fiche au serveur, le véhicule peut fort bien exister dans le
+       navigateur : on titre l'immatriculation demandée plutôt que de déclarer
+       introuvable ce que la page va peut-être trouver. Un véhicule léger, ou un
+       véhicule à recevoir sous son numéro de lot, se titre par le dossier. */
+    const brut = decodeURIComponent(immat);
+    const leger = fiche ? null : vehiculesLegers().find((v) => v.immatriculation === normaliser(brut) || v.id === brut.toLowerCase());
+    return { title: titrePage(fiche ? fiche.ligne.vehicule.immatriculationAffichee : (leger?.immatriculationAffichee ?? afficher(normaliser(brut)))) };
+  } catch (e) {
+    console.error(`Titre de la fiche ${immat} : ${e instanceof Error ? e.message : String(e)}`);
+    return { title: titrePage("Véhicule") };
+  }
 }
 
 /* En démonstration, les fiches se rendent à la construction ; base branchée, à la demande — le périmètre dépend de la session. */
