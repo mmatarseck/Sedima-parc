@@ -49,6 +49,10 @@ const essais: { type: Parameters<typeof ligneCreation>[0]; numero: string; valeu
   { type: "intervention", numero: "INT-2026-90001", valeurs: { date: "2026-09-08", type: "curatif", objet: "Plaquettes", garage: "Garage SEDIMA", montant: 85000, immobilisationJours: 1 } },
   { type: "indisponibilite", numero: "IND-2026-90001", valeurs: { motif: "conge", debut: "2026-09-10", fin: "2026-09-20" } },
   { type: "sanction", numero: "SAN-2026-90001", valeurs: { date: "2026-09-08", type: "avertissement", motif: "Retard répété" } },
+  { type: "caisse", numero: "CAI-2026-90001", valeurs: { date: "2026-09-08", libelle: "Approvisionnement de la caisse parc", montant: "750 000", beneficiaire: "Trésorerie SEDIMA", piece: "BQ-1", justificatif: "oui" } },
+  { type: "caisse", numero: "CAI-2026-90002", valeurs: { date: "2026-09-08", libelle: "Deux pneus avant", montant: 240000, depenseNumero: "DEP-2026-90001", justificatif: "oui" } },
+  { type: "cuve", numero: "CUV-2026-90001", valeurs: { date: "2026-09-08", libelle: "Livraison citerne", litres: 5000, prixLitre: 655, fournisseur: "TotalEnergies Sénégal", piece: "BL-1" } },
+  { type: "cuve", numero: "CUV-2026-90002", valeurs: { date: "2026-09-08", litres: 7420.5 } },
   { type: "ordre", numero: "OT-2026-90001", valeurs: { type: "curatif", objet: "Remplacement des plaquettes", garage: "Garage SEDIMA", datePrevue: "2026-09-12", immobilisationPrevueJours: 1, montantEstime: 85000, demandeur: "Service parc" } },
 ];
 for (const e of essais) {
@@ -78,7 +82,11 @@ attendu(`un plein sans litres est refusé (${"refus" in refus ? refus.refus : "a
 attendu(`un ordre a sa table (${tableDe("ordre")})`, tableDe("ordre") === "ordre_travail");
 const ot = (await pg.query(`select statut, garage, demandeur_nom from ordre_travail where numero = 'OT-2026-90001'`)).rows[0] as { statut: string; garage: string; demandeur_nom: string };
 attendu(`l'ordre est planifié chez ${ot.garage}, demandé par ${ot.demandeur_nom}`, ot.statut === "planifie" && ot.garage === "Garage SEDIMA" && ot.demandeur_nom === "Service parc");
-attendu(`une caisse n'a pas de table (${tableDe("caisse")})`, tableDe("caisse") === null);
+const cai = (await pg.query(`select sens, depense_numero, enregistre_par from mouvement_caisse where numero = 'CAI-2026-90002'`)).rows[0] as { sens: string; depense_numero: string; enregistre_par: string | null };
+attendu(`la sortie de caisse cite sa dépense (${cai.sens}, ${cai.depense_numero})`, cai.sens === "sortie" && cai.depense_numero === "DEP-2026-90001");
+const cuv = (await pg.query(`select sens, litres, montant, fournisseur from mouvement_cuve where numero in ('CUV-2026-90001', 'CUV-2026-90002') order by numero`)).rows as { sens: string; litres: string; montant: string | null; fournisseur: string | null }[];
+attendu(`la livraison vaut ${cuv[0]?.montant} F chez ${cuv[0]?.fournisseur}, la jauge lit ${cuv[1]?.litres} l`, cuv[0]?.sens === "livraison" && Number(cuv[0]?.montant) === 3275000 && cuv[0]?.fournisseur === "TotalEnergies Sénégal" && cuv[1]?.sens === "jauge" && Number(cuv[1]?.litres) === 7420.5);
+attendu(`une visite n'a pas de table (${tableDe("visite")})`, tableDe("visite") === null);
 
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);

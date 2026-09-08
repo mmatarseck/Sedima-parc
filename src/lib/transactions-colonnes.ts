@@ -2,11 +2,12 @@
  * Ce qu'une transaction saisie dans l'application devient en base : la table,
  * et les colonnes que ses valeurs remplissent.
  *
- * Dix types ont leur table — relevé, plein, dépense, document, incident,
- * affectation, intervention, indisponibilité, sanction (0001) et l'ordre de
- * travail (0016) — et le statut d'un véhicule s'écrit sur sa ligne avec sa
- * trace. Les autres (caisse, cuve, visite, observation, achat…) attendent
- * leur table : ils restent dans le navigateur, et `tableDe` le dit.
+ * Douze types ont leur table — relevé, plein, dépense, document, incident,
+ * affectation, intervention, indisponibilité, sanction (0001), l'ordre de
+ * travail (0016), le mouvement de caisse et celui de la cuve (0017) — et le
+ * statut d'un véhicule s'écrit sur sa ligne avec sa trace. Les autres (visite,
+ * observation, achat…) attendent leur table : ils restent dans le navigateur,
+ * et `tableDe` le dit.
  *
  * Ce module est pur — pas de base, pas de navigateur — pour se vérifier seul
  * et servir la fonction serveur comme les tests.
@@ -14,7 +15,7 @@
 
 import type { TypeTransaction } from "@/domaine/reference";
 
-export type TableBranchee = "releve_kilometrique" | "plein" | "depense" | "document" | "incident" | "affectation" | "intervention" | "indisponibilite" | "sanction" | "ordre_travail";
+export type TableBranchee = "releve_kilometrique" | "plein" | "depense" | "document" | "incident" | "affectation" | "intervention" | "indisponibilite" | "sanction" | "ordre_travail" | "mouvement_caisse" | "mouvement_cuve";
 
 const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   releve: "releve_kilometrique",
@@ -27,6 +28,8 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   indisponibilite: "indisponibilite",
   sanction: "sanction",
   ordre: "ordre_travail",
+  caisse: "mouvement_caisse",
+  cuve: "mouvement_cuve",
 };
 
 /** La table d'un type ; nulle tant qu'il n'en a pas. Le statut est à part : il s'écrit sur le véhicule. */
@@ -121,6 +124,23 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       if (!texte(v.objet)) return { refus: "ordre de travail sans objet" };
       return { ligne: { numero, vehicule_id: r.vehiculeId, type: texte(v.type) ?? "curatif", objet: texte(v.objet), origine_numero: texte(v.origineNumero), origine_libelle: texte(v.origineLibelle), prestataire_id: r.prestataireId, garage: texte(v.garage) ?? "—", date_prevue: texte(v.datePrevue), immobilisation_prevue_jours: nombre(v.immobilisationPrevueJours), montant_estime: nombre(v.montantEstime), statut: texte(v.statut) ?? "planifie", date_debut: texte(v.dateDebut), date_cloture: texte(v.dateCloture), intervention_numero: texte(v.interventionNumero), commentaire: texte(v.commentaire), demandeur_nom: texte(v.demandeur) } };
     }
+    case "caisse": {
+      /* Une sortie cite la dépense qu'elle règle ; sans dépense, c'est un approvisionnement. */
+      const montant = nombre(v.montant);
+      const depenseNumero = texte(v.depenseNumero);
+      if (!montant || montant <= 0) return { refus: "mouvement de caisse sans montant" };
+      if (!texte(v.libelle)) return { refus: "mouvement de caisse sans libellé" };
+      return { ligne: { numero, date: texte(v.date), sens: depenseNumero ? "sortie" : (texte(v.sens) ?? "entree"), libelle: texte(v.libelle), montant: Math.round(montant), beneficiaire: texte(v.beneficiaire), piece: texte(v.piece), justificatif: booleen(v.justificatif), depense_numero: depenseNumero, enregistre_par: texte(v.enregistrePar) } };
+    }
+    case "cuve": {
+      /* Une livraison porte un libellé ; un relevé de jauge n'en a pas, il dit ce que la cuve contient. */
+      const litres = nombre(v.litres);
+      const prixLitre = nombre(v.prixLitre);
+      if (litres === null || litres < 0) return { refus: "mouvement de cuve sans litres" };
+      const livraison = Boolean(texte(v.libelle));
+      const montant = nombre(v.montant) ?? (prixLitre !== null ? Math.round(litres * prixLitre) : null);
+      return { ligne: { numero, date: texte(v.date), sens: livraison ? "livraison" : "jauge", libelle: texte(v.libelle) ?? "Relevé de jauge", litres: Math.round(litres * 10) / 10, prix_litre: livraison && prixLitre !== null ? Math.round(prixLitre) : null, montant: livraison && montant !== null ? Math.round(montant) : null, fournisseur: livraison ? texte(v.fournisseur) : null, prestataire_id: livraison ? r.prestataireId : null, piece: texte(v.piece), commentaire: texte(v.commentaire), enregistre_par: texte(v.enregistrePar) } };
+    }
     case "sanction": {
       if (!r.chauffeurId) return { refus: "sanction sans chauffeur" };
       if (!texte(v.motif)) return { refus: "sanction sans motif" };
@@ -144,6 +164,8 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   intervention: { date: "date", type: "type", objet: "objet", km: "km", immobilisationJours: "immobilisation_jours", montant: "montant", reference: "reference" },
   indisponibilite: { motif: "motif", debut: "debut", fin: "fin", commentaire: "commentaire" },
   sanction: { date: "date", type: "type", jours: "jours", motif: "motif" },
+  caisse: { date: "date", libelle: "libelle", montant: "montant", beneficiaire: "beneficiaire", piece: "piece", justificatif: "justificatif" },
+  cuve: { date: "date", libelle: "libelle", litres: "litres", prixLitre: "prix_litre", montant: "montant", fournisseur: "fournisseur", piece: "piece", commentaire: "commentaire" },
   ordre: { datePrevue: "date_prevue", objet: "objet", garage: "garage", immobilisationPrevueJours: "immobilisation_prevue_jours", montantEstime: "montant_estime", statut: "statut", dateDebut: "date_debut", dateCloture: "date_cloture", interventionNumero: "intervention_numero", commentaire: "commentaire" },
 };
 

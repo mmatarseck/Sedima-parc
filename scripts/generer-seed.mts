@@ -30,6 +30,8 @@ import { PARAMETRES_DEFAUT } from "@/domaine/parametres";
 import { demandesDemo } from "@/donnees/demandes-demo";
 import { transfertsDemo } from "@/donnees/transferts-demo";
 import { ordresDeTravail } from "@/donnees/maintenance-demo";
+import { journalCaisse } from "@/donnees/caisse-demo";
+import { livraisonsEtJauges } from "@/donnees/carburant-demo";
 import { affretements, grillesTarifaires, misesADisposition, prestations, transporteurs } from "@/donnees/transporteurs-demo";
 import { camionsTiers, chauffeursTiers, profilTransporteur, rattachements } from "@/donnees/flotte-tierce-demo";
 import { relevesTransport } from "@/donnees/releve-demo";
@@ -288,6 +290,20 @@ inserer(
   ordresDeTravail().map((o) => [uuid(`ordre:${o.numero}`), o.numero, vehiculeId(o.vehiculeId), o.type, o.objet, o.origineNumero, o.origineLibelle, prestataireId(prestataireParNom.get(o.garage) ?? null), o.garage, o.datePrevue, o.immobilisationPrevueJours, o.montantEstime, o.statut, o.dateDebut, o.dateCloture, o.interventionNumero, o.commentaire, o.demandeur, `${o.dateDebut ?? o.datePrevue}T08:00:00+00`]),
 );
 
+/* -- Caisse et cuve (0017) --------------------------------------------------------- */
+
+inserer(
+  "mouvement_caisse",
+  ["id", "numero", "date", "sens", "libelle", "montant", "beneficiaire", "piece", "justificatif", "depense_numero", "enregistre_par", "cree_le"],
+  journalCaisse().map((m) => [uuid(`caisse:${m.numero}`), m.numero, m.date, m.sens, m.libelle, m.montant, m.beneficiaire, m.piece, m.justificatif, m.depenseNumero, m.enregistrePar, `${m.date}T09:00:00+00`]),
+);
+
+inserer(
+  "mouvement_cuve",
+  ["id", "numero", "date", "sens", "libelle", "litres", "prix_litre", "montant", "fournisseur", "prestataire_id", "piece", "enregistre_par", "cree_le"],
+  livraisonsEtJauges().map((m) => [uuid(`cuve:${m.numero}`), m.numero, m.date, m.sens, m.libelle, m.litres, m.prixLitre, m.montant, m.fournisseur, prestataireId(m.fournisseur ? (prestataireParNom.get(m.fournisseur) ?? null) : null), m.piece, m.enregistrePar, `${m.date}T09:00:00+00`]),
+);
+
 /* -- Paramètres ------------------------------------------------------------------- */
 
 inserer(
@@ -298,6 +314,8 @@ inserer(
     ["alertes", JSON.stringify(PARAMETRES_DEFAUT.alertes)],
     ["vehicules", JSON.stringify(PARAMETRES_DEFAUT.vehicules)],
     ["pastilles", JSON.stringify(PARAMETRES_DEFAUT.pastilles)],
+    ["caisse", JSON.stringify({ solde_initial: 1_500_000, seuil: 200_000 })],
+    ["cuve", JSON.stringify({ stock_initial: 9_000 })],
   ],
   "(cle) do update set valeur = excluded.valeur",
 );

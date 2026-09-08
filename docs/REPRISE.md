@@ -1243,6 +1243,45 @@ tant qu'elles ne sont pas prises.
   tête, 8 en cours citant un ordre ouvert, 95 interventions égales à la
   table ; et les trois pages rendues en démonstration.
 
+### La caisse et la cuve en base (8 septembre 2026, migration 0017)
+
+Les deux dernières pastilles grises du tableau de bord, et deux pages qui
+montraient encore le jeu de démonstration en production.
+
+- Migration `0017_caisse_et_cuve.sql` : `mouvement_caisse` (entrée ou
+  sortie, la sortie citant la dépense réglée par son numéro) et
+  `mouvement_cuve` (livraison ou relevé de jauge — **les sorties ne sont pas
+  une table**, ce sont les pleins à la cuve, source « cuve ») ; politiques
+  sur les modules « couts » (caisse) et « releves » (cuve) ; paramètres
+  « caisse » (`solde_initial`, `seuil`) et « cuve » (`stock_initial`) posés
+  à leurs défauts ; `solde_caisse(jour)` ; `stock_cuve(jour)`, qui repart du
+  dernier relevé de jauge et ajoute ce qui a suivi ; `situation_journaliere()`
+  rend solde, seuil, stock et autonomie (stock rapporté aux sorties moyennes
+  des sept derniers jours).
+- `src/donnees/caisse.ts` : `caisseServeur()` — journal avec solde déduit,
+  véhicule retrouvé par la dépense citée ; dépenses à régler = dépenses
+  payées par la caisse qu'aucune sortie ne cite. Les demandes d'achat n'ont
+  pas de table : base branchée, l'écran n'en montre aucune.
+- `src/donnees/carburant.ts` : `carburantServeur(parametres)` — pleins de la
+  table avec véhicule et station, cuve de la table, stock de départ du
+  paramètre, **consommation par véhicule et par mois calculée** sur les
+  pleins et les relevés du parc (`parcServeur()`), kilomètres entre le
+  premier et le dernier compteur connu du mois.
+- Les écritures : `caisse` → `mouvement_caisse` (sortie si une dépense est
+  citée), `cuve` → `mouvement_cuve` (livraison si un libellé est donné,
+  jauge sinon, comme le navigateur le fait) ; le serveur nomme qui enregistre
+  et retrouve le fournisseur d'une livraison par sa raison sociale.
+- Le seed porte 931 mouvements de caisse et 24 de cuve, plus les deux
+  paramètres. Les paramètres n'ont pas encore d'écran : ils se posent dans la
+  table `parametre` (SQL Editor) en attendant Paramètres › Caisse et cuve.
+- Vérifié : `scripts/tester-caisse-cuve.mts` (solde du journal = fonction,
+  919 sorties rattachées, 8 dépenses à régler, stock à l'écran = fonction,
+  152 mois de consommation sur 19 véhicules, médiane 26,9 L/100 km),
+  `tester-ecritures.mts` (entrée, sortie citant sa dépense, livraison
+  valorisée, jauge), `tester-situation.mjs` (solde et stock égaux aux
+  fonctions, stock reparti de la jauge du 31 août) ; pages Caisse et
+  Carburant rendues en démonstration.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

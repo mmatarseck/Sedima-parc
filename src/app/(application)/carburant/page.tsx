@@ -1,8 +1,10 @@
 import { EcranCarburant, type VueCarburant } from "@/composants/carburant/EcranCarburant";
 import { titrePage } from "@/domaine/marque";
 import { typeDuNumero } from "@/domaine/reference";
-import { STOCK_INITIAL, consommationsMensuelles, livraisonsEtJauges, pleinsFlotte } from "@/donnees/carburant-demo";
+import { carburantServeur } from "@/donnees/carburant";
 import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { parametresServeur } from "@/lib/parametres-serveur";
+import { authentificationReelle } from "@/lib/session-demo";
 
 export const metadata = { title: titrePage("Carburant") };
 
@@ -17,5 +19,7 @@ export default async function PageCarburant({ searchParams }: { searchParams: Pr
   const typeCible = ref ? typeDuNumero(ref) : null;
   const vueRetenue: VueCarburant = vue === "cuve" || typeCible === "cuve" ? "cuve" : vue === "consommation" ? "consommation" : "pleins";
 
-  return <EcranCarburant pleins={pleinsFlotte()} cuve={livraisonsEtJauges()} stockInitial={STOCK_INITIAL} consommations={consommationsMensuelles()} aujourdhui={DATE_REFERENCE} vueInitiale={vueRetenue} cible={ref} />;
+  /* Base branchée : pleins et cuve viennent des tables, la consommation se calcule sur le parc. */
+  const c = await carburantServeur(await parametresServeur());
+  return <EcranCarburant pleins={c.pleins} cuve={c.cuve} stockInitial={c.stockInitial} consommations={c.consommations} aujourdhui={authentificationReelle() ? new Date().toISOString().slice(0, 10) : DATE_REFERENCE} vueInitiale={vueRetenue} cible={ref} />;
 }

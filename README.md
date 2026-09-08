@@ -166,6 +166,13 @@ Neuf migrations, dans l'ordre :
   le module Maintenance, l'atelier et l'accueil du téléphone ;
   `situation_journaliere()` compte désormais les ordres ouverts et ceux de
   plus de quinze jours pour la pastille du tableau de bord.
+- `0017_caisse_et_cuve.sql` — les tables `mouvement_caisse` (approvisionnements
+  et sorties, chaque sortie citant la dépense qu'elle règle) et
+  `mouvement_cuve` (livraisons et relevés de jauge ; les sorties sont les
+  pleins pris à la cuve), les paramètres « caisse » (solde de départ, seuil)
+  et « cuve » (stock de départ), les fonctions `solde_caisse(jour)` et
+  `stock_cuve(jour)` ; `situation_journaliere()` rend le solde, le seuil, le
+  stock et l'autonomie de la cuve pour les deux dernières pastilles.
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.
