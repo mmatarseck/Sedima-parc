@@ -1007,6 +1007,32 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
 - Le jeu de démonstration (`fiche-demo.ts`) garde son propre assemblage,
   mêlé à sa génération ; les deux appliquent les mêmes règles du domaine.
 
+### Le QR code des véhicules (8 septembre 2026)
+
+- Demande du métier : un QR code d'identification collé sur chaque véhicule,
+  l'immatriculation inscrite dessous, en PDF pour un ou plusieurs véhicules,
+  qui ouvre le véhicule pour y prendre une action.
+- `src/lib/qr.ts` (pur, `qrcode`) : le code porte l'adresse courte
+  `/v/<immatriculation>` (`urlVehicule`), que `src/app/v/[immat]/route.ts`
+  redirige vers la fiche rapide du téléphone ; `matriceQr`, `cheminSvgQr`.
+  `QrCode` (composant SVG) pour l'aperçu.
+- `/flotte/etiquettes/qr.pdf?immat=…` ou `?tous=1` (`pdf-lib`) : huit
+  étiquettes par page A4, cadre de découpe, code, plaque en gros, marque et
+  modèle, pied « SEDIMA Parc · scanner pour ouvrir le véhicule ». Les plaques
+  hors du périmètre sont ignorées. `NEXT_PUBLIC_URL_APPLICATION` fixe
+  l'adresse imprimée (sinon celle de la requête).
+- Écrans : Flotte › « Étiquettes QR » (`/flotte/etiquettes`, cases par site
+  ou un à un, aperçu, PDF des choisis ou de tout le parc) ; bouton « QR
+  code » sur la fiche véhicule et sur la fiche rapide (`BoutonQr`) ;
+  `/telephone/scanner` (BarcodeDetector + caméra arrière, sinon la plaque
+  tapée ; l'application photo du téléphone ouvre la même adresse), geste
+  « Scanner » sur l'accueil.
+- Le proxy garde la page demandée (`?suite=`) : un code scanné sans session
+  passe par la connexion puis revient au véhicule.
+- Vérifié en démonstration : PDF de deux et de tout le parc (129), redirection
+  `/v/aa-032-ea` → fiche rapide, panneau QR de la fiche, plaque tapée sur
+  le scanner (le navigateur de la session n'a pas BarcodeDetector).
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

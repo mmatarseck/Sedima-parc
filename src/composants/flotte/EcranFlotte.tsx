@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Download, Plus } from "lucide-react";
+import { Download, Plus, QrCode } from "lucide-react";
 import { peutCourant } from "@/lib/acces-courant";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { TableFlotte } from "@/composants/flotte/TableFlotte";
@@ -44,6 +44,10 @@ function Interieur({ lignes }: { lignes: LigneFlotte[] }) {
                 classeur y part avec ses en-têtes, ses totaux et le cartouche qui
                 dit à quelles conditions il a été tiré. Réécrire ici un export
                 approximatif donnerait deux vérités pour le même tableau. */}
+            <Link href="/flotte/etiquettes" className="bouton-secondaire" title="Les QR codes à coller sur les véhicules, en PDF à imprimer">
+              <QrCode className="size-4 text-texte-2" strokeWidth={1.7} />
+              Étiquettes QR
+            </Link>
             <Link href="/rapports/flotte-details" className="bouton-secondaire" title="Ouvre le rapport « Détail des véhicules », d'où le classeur se tire avec ses colonnes et ses filtres">
               <Download className="size-4 text-texte-2" strokeWidth={1.7} />
               Exporter

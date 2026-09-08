@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Fuel, Gauge, Inbox, PenLine, Search, TriangleAlert, Wrench } from "lucide-react";
+import { Fuel, Gauge, Inbox, PenLine, ScanLine, Search, TriangleAlert, Wrench } from "lucide-react";
 import { statutTransfert, type Transfert } from "@/domaine/transferts";
 import { lireTransferts } from "@/lib/transferts-demo";
 import { mesTransferts } from "./EcranTelephoneTransferts";
@@ -125,6 +125,7 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, transferts
             <Geste href="/telephone/vehicules?geste=panne" icone={<TriangleAlert className="size-4" strokeWidth={2} />} libelle="Panne" />
           </>
         ) : null}
+        <Geste href="/telephone/scanner" icone={<ScanLine className="size-4" strokeWidth={2} />} libelle="Scanner" />
         <Geste href="/telephone/vehicules" icone={<Search className="size-4" strokeWidth={2} />} libelle="Chercher" />
         {atelier ? <Geste href="/telephone/atelier" icone={<Wrench className="size-4" strokeWidth={2} />} libelle="Atelier" /> : null}
       </div>

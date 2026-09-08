@@ -13,6 +13,7 @@ import type { LigneFlotte, MotifImmobilisation, StatutVehicule } from "@/domaine
 import { lireAccesCourant } from "@/lib/acces-courant";
 import { enregistrerCreation } from "@/lib/clotures-demo";
 import { date as formaterDate, montant, nombre } from "@/lib/format";
+import { BoutonQr } from "@/composants/vehicule/PanneauQr";
 import { Bloc, Chiffre, EnTeteTelephone, Ligne, PastilleStatutTelephone } from "./Telephone";
 
 /* ============================================================================
@@ -80,7 +81,16 @@ function Interieur({ ligne, faits, aujourdhui }: { ligne: LigneFlotte; faits: De
 
   return (
     <div className="mx-auto flex w-full max-w-[520px] flex-col gap-3 px-3 pb-28 pt-1">
-      <EnTeteTelephone titre={<span className="code">{v.immatriculationAffichee}</span>} retour="/telephone/vehicules" droite={<PastilleStatutTelephone statut={statut} />} />
+      <EnTeteTelephone
+        titre={<span className="code">{v.immatriculationAffichee}</span>}
+        retour="/telephone/vehicules"
+        droite={
+          <span className="flex items-center gap-1">
+            <PastilleStatutTelephone statut={statut} />
+            <BoutonQr immatriculation={v.immatriculation} immatriculationAffichee={v.immatriculationAffichee} libelle={`${v.marque} ${v.appellation}`} compact />
+          </span>
+        }
+      />
 
       <Bloc>
         <Ligne icone={v.marque.slice(0, 1).toUpperCase()} titre={`${v.marque} ${v.appellation} · ${libelleCategorie(v).toLowerCase()}`} precision={[ligne.site?.libelle, v.businessUnit, ligne.chauffeurTitulaire?.nom ?? ligne.attributaire?.nom].filter(Boolean).join(" · ") || "Sans rattachement"} />

@@ -26,6 +26,7 @@ import { controlerReleves } from "@/domaine/releves";
 import { alertesDeLaFiche, alertesParOnglet } from "./alertes-fiche";
 import { MenuAjout, type CibleAjout } from "./MenuAjout";
 import { PhotoVehicule } from "./PhotoVehicule";
+import { BoutonQr } from "./PanneauQr";
 import { enregistrerModification } from "@/lib/clotures-demo";
 import {
   OngletAffectations,
@@ -317,6 +318,7 @@ export function FicheVehicule({ fiche, ongletInitial, discussionInitiale = false
               Modifier
             </button>
             <BoutonDiscussion nombre={nombreMessages} ouvert={discussionOuverte} onClick={() => setDiscussionOuverte((o) => !o)} />
+            <BoutonQr immatriculation={v.immatriculation} immatriculationAffichee={v.immatriculationAffichee} libelle={`${v.marque} ${v.appellation}`} />
             <MenuAjout onChoix={ajouter} />
             {declaration ? (
               <FormulaireDeclaration

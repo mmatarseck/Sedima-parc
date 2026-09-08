@@ -71,8 +71,10 @@ export function FormulaireConnexion() {
       );
       return;
     }
-    /* La session est dans les cookies : le serveur la lira au prochain rendu. */
-    router.push("/flotte");
+    /* La session est dans les cookies : le serveur la lira au prochain rendu.
+       Une page demandée avant la connexion — un QR code scanné — reprend. */
+    const suite = parametres.get("suite");
+    router.push(suite && suite.startsWith("/") && !suite.startsWith("//") ? suite : "/flotte");
     router.refresh();
   }
 
@@ -90,7 +92,8 @@ export function FormulaireConnexion() {
 
   function entrer(role: (typeof ROLES)[number]) {
     ouvrirSession(role.role);
-    router.push("/flotte");
+    const suite = parametres.get("suite");
+    router.push(suite && suite.startsWith("/") && !suite.startsWith("//") ? suite : "/flotte");
   }
 
   const champ =

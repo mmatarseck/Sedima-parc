@@ -50,13 +50,17 @@ export async function proxy(requete: NextRequest) {
   if (!user && !surLaGarde) {
     const destination = requete.nextUrl.clone();
     destination.pathname = PAGE_DE_GARDE;
-    destination.search = "";
+    /* La page demandée est gardée : un QR code scanné sans session mène à
+       la connexion, puis au véhicule — pas à la flotte. */
+    destination.search = chemin !== "/" && chemin !== PREMIERE_PAGE ? `?suite=${encodeURIComponent(chemin + requete.nextUrl.search)}` : "";
     return NextResponse.redirect(destination);
   }
   if (user && surLaGarde && !requete.nextUrl.searchParams.has("motif")) {
     const destination = requete.nextUrl.clone();
+    const suite = requete.nextUrl.searchParams.get("suite");
     destination.pathname = PREMIERE_PAGE;
     destination.search = "";
+    if (suite && suite.startsWith("/") && !suite.startsWith("//")) return NextResponse.redirect(new URL(suite, requete.nextUrl.origin));
     return NextResponse.redirect(destination);
   }
   return reponse;
