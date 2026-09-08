@@ -67,6 +67,8 @@ export async function proxy(requete: NextRequest) {
 }
 
 export const config = {
-  /* Tout sauf les fichiers servis tels quels : ressources de Next, images, icônes. */
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico|txt|xml)$).*)"],
+  /* Tout sauf les fichiers servis tels quels : ressources de Next, images,
+     icônes — et le manifeste, que le navigateur lit sans cookies pour
+     proposer l'installation : gardé, il recevrait la page de connexion. */
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icon$|apple-icon$|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico|txt|xml|webmanifest)$).*)"],
 };

@@ -1176,6 +1176,35 @@ le déploiement › *Functions*), filtrer sur `/flotte/`, ouvrir la ligne en
 erreur : le message et la pile y sont, avec le même repère que l'écran.
 Coller ce message ici suffit pour corriger.
 
+### L'installation sur le téléphone, activée (8 septembre 2026)
+
+Demande du gestionnaire : « activer l'installation de l'application sur
+mobile ». L'écran `/telephone/installer` existait, mais le navigateur ne
+proposait rien, pour deux raisons trouvées en relisant les critères de Chrome :
+
+- **Le manifeste était gardé par le proxy.** Le navigateur lit
+  `/manifest.webmanifest` **sans cookies** ; sans session, le proxy le
+  renvoyait vers la page de connexion, et le manifeste reçu était du HTML.
+  Le proxy laisse maintenant passer le manifeste, `/icon` et `/apple-icon`
+  (`src/proxy.ts`).
+- **Pas d'icône PNG.** Chrome sur Android veut des icônes PNG de 192 et 512
+  pixels ; le manifeste n'avait que le SVG. `public/icone-192.png`,
+  `icone-512.png` et `icone-masquable-512.png` (fond plein, dessin dans la
+  zone sûre) sont tirées de `src/app/icon.svg` ; le manifeste les déclare,
+  avec `id`, `scope`, `orientation` et `categories`.
+- Sur iPhone, `layout.tsx` pose les balises `apple-mobile-web-app-*`
+  (plein écran, nom court « SEDIMA Parc ») ; l'installation reste manuelle
+  (Partager › Sur l'écran d'accueil), comme l'écran l'explique.
+
+Vérifié dans le navigateur, base branchée : le manifeste répond en JSON sans
+cookies, les trois icônes en `image/png`, et l'en-tête porte le lien du
+manifeste et les balises iPhone. **Reste à faire sur un vrai téléphone**
+après déploiement : ouvrir l'adresse dans Chrome, aller dans Réglages ›
+Installer sur le téléphone — le bouton « Installer SEDIMA Parc » doit
+apparaître (sinon le menu ⋮ › Installer l'application). Pas de service
+worker : Chrome ne l'exige plus pour installer, et l'application n'a pas de
+mode hors ligne.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

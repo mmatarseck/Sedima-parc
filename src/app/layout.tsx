@@ -4,8 +4,13 @@ import { NOM_APPLICATION } from "@/domaine/marque";
 
 export const metadata: Metadata = {
   title: NOM_APPLICATION,
+  applicationName: "SEDIMA Parc",
   description:
     "Gestion de la flotte automobile SEDIMA — véhicules, chauffeurs, affectations, conformité, maintenance, carburant, transporteurs et coûts.",
+  /* Sur iPhone, l'installation passe par Safari (« Sur l'écran d'accueil ») :
+     ces balises font ouvrir l'application en plein écran, sous son nom court. */
+  appleWebApp: { capable: true, title: "SEDIMA Parc", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
