@@ -53,6 +53,7 @@ const essais: { type: Parameters<typeof ligneCreation>[0]; numero: string; valeu
   { type: "caisse", numero: "CAI-2026-90002", valeurs: { date: "2026-09-08", libelle: "Deux pneus avant", montant: 240000, depenseNumero: "DEP-2026-90001", justificatif: "oui" } },
   { type: "cuve", numero: "CUV-2026-90001", valeurs: { date: "2026-09-08", libelle: "Livraison citerne", litres: 5000, prixLitre: 655, fournisseur: "TotalEnergies Sénégal", piece: "BL-1" } },
   { type: "cuve", numero: "CUV-2026-90002", valeurs: { date: "2026-09-08", litres: 7420.5 } },
+  { type: "achat", numero: "DAC-2026-90001", valeurs: { date: "2026-09-08", objet: "Deux pneus avant", poste: "pneumatiques", montantEstime: "240 000", urgence: "urgente", origineNumero: "INT-2026-90001", demandeur: "Service parc", demandeurRole: "gestionnaire-parc" } },
   { type: "ordre", numero: "OT-2026-90001", valeurs: { type: "curatif", objet: "Remplacement des plaquettes", garage: "Garage SEDIMA", datePrevue: "2026-09-12", immobilisationPrevueJours: 1, montantEstime: 85000, demandeur: "Service parc" } },
 ];
 for (const e of essais) {
@@ -86,6 +87,13 @@ const cai = (await pg.query(`select sens, depense_numero, enregistre_par from mo
 attendu(`la sortie de caisse cite sa dépense (${cai.sens}, ${cai.depense_numero})`, cai.sens === "sortie" && cai.depense_numero === "DEP-2026-90001");
 const cuv = (await pg.query(`select sens, litres, montant, fournisseur from mouvement_cuve where numero in ('CUV-2026-90001', 'CUV-2026-90002') order by numero`)).rows as { sens: string; litres: string; montant: string | null; fournisseur: string | null }[];
 attendu(`la livraison vaut ${cuv[0]?.montant} F chez ${cuv[0]?.fournisseur}, la jauge lit ${cuv[1]?.litres} l`, cuv[0]?.sens === "livraison" && Number(cuv[0]?.montant) === 3275000 && cuv[0]?.fournisseur === "TotalEnergies Sénégal" && cuv[1]?.sens === "jauge" && Number(cuv[1]?.litres) === 7420.5);
+/* Une décision sur la demande : le visa du parc, avec le montant engagé du bon — une modification, colonne par colonne. */
+const decision = colonnesModification("achat", [{ champ: "etape", valeur: "visee" }, { champ: "visaPar", valeur: "M. Seck" }, { champ: "visaLe", valeur: "2026-09-08" }, { champ: "montantEngage", valeur: "250 000" }]);
+await pg.query(`update demande_achat set etape = $1, visa_par = $2, visa_le = $3, montant_engage = $4 where numero = 'DAC-2026-90001'`, [decision.etape, decision.visa_par, decision.visa_le, decision.montant_engage]);
+const dac = (await pg.query(`select etape, visa_par, montant_engage, origine_numero, demandeur_role from demande_achat where numero = 'DAC-2026-90001'`)).rows[0] as { etape: string; visa_par: string; montant_engage: string; origine_numero: string; demandeur_role: string };
+attendu(`la demande d'achat est visée par ${dac.visa_par}, ${dac.montant_engage} F engagés, origine ${dac.origine_numero}, rôle ${dac.demandeur_role}`, dac.etape === "visee" && Number(dac.montant_engage) === 250000 && dac.origine_numero === "INT-2026-90001" && dac.demandeur_role === "gestionnaire-parc");
+const sansOrigine = ligneCreation("achat", "DAC-2026-90002", { date: "2026-09-08", objet: "Filtres", montantEstime: 30000 }, r);
+attendu(`une demande sans transaction d'origine est refusée (${"refus" in sansOrigine ? sansOrigine.refus : "acceptée"})`, "refus" in sansOrigine);
 attendu(`une visite n'a pas de table (${tableDe("visite")})`, tableDe("visite") === null);
 
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");

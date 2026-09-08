@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import { avecStock, estCuve } from "../src/domaine/carburant";
 import { fusionnerParametres } from "../src/domaine/parametres";
+import { achatDepuisLigne, type LigneAchatBase } from "../src/donnees/achats";
 import { aReglerDepuisLaBase, depenseCaisseDepuisLigne, journalDepuisLaBase, type LigneCaisseBase, type LigneDepenseCaisseBase } from "../src/donnees/caisse";
 import { consommationsDepuisLaBase, cuveDepuisLigne, pleinDepuisLigne, type LigneCuveBase, type LignePleinBase } from "../src/donnees/carburant";
 import { sortieDePlein } from "../src/donnees/carburant-demo";
@@ -71,6 +72,20 @@ const stockEcran = journalCuve[0]!.stockApres;
 const stockFonction = await n(`select stock_cuve(current_date)::float as n`);
 attendu(`le stock à l'écran (${stockEcran} l) est celui de la fonction (${Math.round(stockFonction * 10) / 10} l)`, Math.abs(stockEcran - stockFonction) < 0.11);
 attendu(`les relevés de jauge portent un écart calculé`, journalCuve.filter((m) => m.sens === "jauge").every((m) => m.ecart !== null));
+
+/* ---- Demandes d'achat (0022) ---- */
+const achatsBruts = (await pg.query(`
+  select a.numero, a.date, a.objet, a.poste, a.montant_estime, a.fournisseur, a.urgence, a.origine_numero, a.origine_libelle, a.demandeur_nom, a.demandeur_role, a.etape, a.visa_par, a.visa_le, a.valide_par, a.validee_le, a.numero_demande_x3, a.numero_bon_commande, a.montant_engage, a.date_livraison, a.date_facture, a.montant_reel, a.date_reglement, a.depense_numero, a.commentaire_decision,
+    (select jsonb_build_object('immatriculation', v.immatriculation, 'business_unit', v.business_unit, 'site', (select jsonb_build_object('libelle', s.libelle) from site s where s.id = v.site_id)) from vehicule v where v.id = a.vehicule_id) as vehicule,
+    (select jsonb_build_object('numero', p.numero, 'raison_sociale', p.raison_sociale) from prestataire p where p.id = a.prestataire_id) as prestataire
+  from demande_achat a order by a.date desc`)).rows.map((r: any) => ({ ...r, date: iso(r.date), visa_le: r.visa_le ? iso(r.visa_le) : null, validee_le: r.validee_le ? iso(r.validee_le) : null, date_livraison: r.date_livraison ? iso(r.date_livraison) : null, date_facture: r.date_facture ? iso(r.date_facture) : null, date_reglement: r.date_reglement ? iso(r.date_reglement) : null })) as LigneAchatBase[];
+const achats = achatsBruts.map(achatDepuisLigne);
+const nAchats = await n(`select count(*)::int as n from demande_achat`);
+attendu(`${achats.length} demandes d'achat lues = table (${nAchats})`, achats.length === nAchats && achats.length > 10);
+attendu(`chaque demande cite son origine et son fournisseur par numéro PRE`, achats.every((a) => a.origineNumero && (a.prestataireNumero?.startsWith("PRE-") || a.fournisseur)));
+const reglees = achats.filter((a) => a.etape === "reglee");
+attendu(`${reglees.length} réglées portent bon, facture, montant réel et règlement`, reglees.length > 0 && reglees.every((a) => a.numeroBonCommande && a.dateFacture && a.montantReel !== null && a.dateReglement));
+attendu(`les liens d'origine se forment (${achats.filter((a) => a.origineHref).length} sur ${achats.length})`, achats.filter((a) => a.origineHref).length > achats.length / 2);
 
 /* ---- Consommation ---- */
 const aujourdhui = "2026-09-08";

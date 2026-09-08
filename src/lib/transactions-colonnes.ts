@@ -2,12 +2,12 @@
  * Ce qu'une transaction saisie dans l'application devient en base : la table,
  * et les colonnes que ses valeurs remplissent.
  *
- * Douze types ont leur table — relevé, plein, dépense, document, incident,
+ * Treize types ont leur table — relevé, plein, dépense, document, incident,
  * affectation, intervention, indisponibilité, sanction (0001), l'ordre de
- * travail (0016), le mouvement de caisse et celui de la cuve (0017) — et le
- * statut d'un véhicule s'écrit sur sa ligne avec sa trace. Les autres (visite,
- * observation, achat…) attendent leur table : ils restent dans le navigateur,
- * et `tableDe` le dit.
+ * travail (0016), le mouvement de caisse et celui de la cuve (0017), la
+ * demande d'achat (0022) — et le statut d'un véhicule s'écrit sur sa ligne
+ * avec sa trace. Les autres (visite, observation…) attendent leur table : ils
+ * restent dans le navigateur, et `tableDe` le dit.
  *
  * Ce module est pur — pas de base, pas de navigateur — pour se vérifier seul
  * et servir la fonction serveur comme les tests.
@@ -15,7 +15,7 @@
 
 import type { TypeTransaction } from "@/domaine/reference";
 
-export type TableBranchee = "releve_kilometrique" | "plein" | "depense" | "document" | "incident" | "affectation" | "intervention" | "indisponibilite" | "sanction" | "ordre_travail" | "mouvement_caisse" | "mouvement_cuve";
+export type TableBranchee = "releve_kilometrique" | "plein" | "depense" | "document" | "incident" | "affectation" | "intervention" | "indisponibilite" | "sanction" | "ordre_travail" | "mouvement_caisse" | "mouvement_cuve" | "demande_achat";
 
 const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   releve: "releve_kilometrique",
@@ -30,6 +30,7 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   ordre: "ordre_travail",
   caisse: "mouvement_caisse",
   cuve: "mouvement_cuve",
+  achat: "demande_achat",
 };
 
 /** La table d'un type ; nulle tant qu'il n'en a pas. Le statut est à part : il s'écrit sur le véhicule. */
@@ -141,6 +142,14 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       const montant = nombre(v.montant) ?? (prixLitre !== null ? Math.round(litres * prixLitre) : null);
       return { ligne: { numero, date: texte(v.date), sens: livraison ? "livraison" : "jauge", libelle: texte(v.libelle) ?? "Relevé de jauge", litres: Math.round(litres * 10) / 10, prix_litre: livraison && prixLitre !== null ? Math.round(prixLitre) : null, montant: livraison && montant !== null ? Math.round(montant) : null, fournisseur: livraison ? texte(v.fournisseur) : null, prestataire_id: livraison ? r.prestataireId : null, piece: texte(v.piece), commentaire: texte(v.commentaire), enregistre_par: texte(v.enregistrePar) } };
     }
+    case "achat": {
+      /* Une demande cite toujours ce qui la motive : c'est la règle du métier, pas une convention. */
+      const montantEstime = nombre(v.montantEstime);
+      if (!texte(v.objet)) return { refus: "demande d'achat sans objet" };
+      if (montantEstime === null || montantEstime < 0) return { refus: "demande d'achat sans montant estimé" };
+      if (!texte(v.origineNumero)) return { refus: "demande d'achat sans transaction d'origine" };
+      return { ligne: { numero, date: texte(v.date), objet: texte(v.objet), poste: texte(v.poste) ?? "divers", montant_estime: Math.round(montantEstime), prestataire_id: r.prestataireId, fournisseur: texte(v.fournisseur), urgence: texte(v.urgence) ?? "normale", origine_numero: texte(v.origineNumero), origine_libelle: texte(v.origineLibelle), vehicule_id: r.vehiculeId, demandeur_nom: texte(v.demandeur), demandeur_role: texte(v.demandeurRole), etape: texte(v.etape) ?? "soumise", commentaire_decision: texte(v.commentaireDecision) } };
+    }
     case "sanction": {
       if (!r.chauffeurId) return { refus: "sanction sans chauffeur" };
       if (!texte(v.motif)) return { refus: "sanction sans motif" };
@@ -166,10 +175,11 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   sanction: { date: "date", type: "type", jours: "jours", motif: "motif" },
   caisse: { date: "date", libelle: "libelle", montant: "montant", beneficiaire: "beneficiaire", piece: "piece", justificatif: "justificatif" },
   cuve: { date: "date", libelle: "libelle", litres: "litres", prixLitre: "prix_litre", montant: "montant", fournisseur: "fournisseur", piece: "piece", commentaire: "commentaire" },
+  achat: { date: "date", objet: "objet", poste: "poste", montantEstime: "montant_estime", fournisseur: "fournisseur", urgence: "urgence", etape: "etape", visaPar: "visa_par", visaLe: "visa_le", validePar: "valide_par", valideeLe: "validee_le", numeroDemandeX3: "numero_demande_x3", numeroBonCommande: "numero_bon_commande", montantEngage: "montant_engage", dateLivraison: "date_livraison", dateFacture: "date_facture", montantReel: "montant_reel", dateReglement: "date_reglement", depenseNumero: "depense_numero", commentaireDecision: "commentaire_decision" },
   ordre: { datePrevue: "date_prevue", objet: "objet", garage: "garage", immobilisationPrevueJours: "immobilisation_prevue_jours", montantEstime: "montant_estime", statut: "statut", dateDebut: "date_debut", dateCloture: "date_cloture", interventionNumero: "intervention_numero", commentaire: "commentaire" },
 };
 
-const NUMERIQUES = new Set(["km", "litres", "prix_litre", "montant", "kilometrage", "immobilisation_jours", "jours", "immobilisation_prevue_jours", "montant_estime"]);
+const NUMERIQUES = new Set(["km", "litres", "prix_litre", "montant", "kilometrage", "immobilisation_jours", "jours", "immobilisation_prevue_jours", "montant_estime", "montant_engage", "montant_reel"]);
 const BOOLEENS = new Set(["justificatif"]);
 const HORODATES = new Set(["date_heure"]);
 

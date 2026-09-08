@@ -186,6 +186,11 @@ Neuf migrations, dans l'ordre :
 - `0020_lire_fiches_chauffeurs.sql` — `lire_fiches_chauffeurs()` rend d'un
   coup toutes les fiches chauffeurs du périmètre, pour le classement du mois
   et la moyenne des kilomètres de la cohorte.
+- `0022_demandes_achat.sql` — la table `demande_achat` : ce qui motive la
+  demande (la transaction citée), son circuit (soumise, visée, validée) et
+  ce que Sage X3 en sait (DA, bon de commande et montant engagé, livraison,
+  facture et montant réel, règlement) ; chaque décision est une modification
+  tracée. Lecture avec la caisse (module « couts »), écriture avec sa saisie.
 - `0021_politiques_integrees.sql` — **à jouer sans attendre** : la 0019
   avait ralenti (une fonction SQL avec des sous-requêtes n'est plus
   intégrée aux requêtes). `peut()` et `dans_mon_perimetre()` redeviennent

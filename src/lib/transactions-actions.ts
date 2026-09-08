@@ -66,12 +66,21 @@ async function prestataireIdDe(client: SupabaseClient, nom: unknown): Promise<st
   return r.data?.id ?? null;
 }
 
+/** Un prestataire par son numéro (« PRE-2026-00012 ») — la demande d'achat le cite ainsi. */
+async function prestataireIdParNumero(client: SupabaseClient, numero: unknown): Promise<string | null> {
+  if (typeof numero !== "string" || !numero.trim()) return null;
+  const r = await client.from("prestataire").select("id").eq("numero", numero.trim()).limit(1).maybeSingle<{ id: string }>();
+  return r.data?.id ?? null;
+}
+
 async function rattacher(client: SupabaseClient, c: Creation): Promise<Rattachement> {
   const s = decomposerSujet(c.sujet);
   const v = c.valeurs;
   const vehiculeId = (await vehiculeIdDe(client, v.vehiculeId)) ?? (s.genre === "vehicule" ? await vehiculeIdDe(client, s.cle) : null);
   const chauffeurId = (await chauffeurIdDe(client, v.chauffeurId)) ?? (s.genre === "chauffeur" ? await chauffeurIdDe(client, s.cle) : null);
-  const prestataireId = await prestataireIdDe(client, v.garage ?? v.prestataire ?? v.fournisseur ?? v.beneficiaire);
+  const prestataireId = (await prestataireIdParNumero(client, v.prestataireNumero)) ?? (await prestataireIdDe(client, v.garage ?? v.prestataire ?? v.fournisseur ?? v.beneficiaire));
+  /* La demande d'achat nomme qui demande : la personne de la session (son rôle est posé par l'écriture, qui la connaît). */
+  if (c.type === "achat" && !v.demandeur) v.demandeur = c.auteur;
   /* Le journal de caisse et celui de la cuve nomment qui enregistre : la personne de la session. */
   if ((c.type === "caisse" || c.type === "cuve") && !v.enregistrePar) v.enregistrePar = c.auteur;
   /* Le demandeur d'un ordre : la personne qui le crée, telle que le navigateur la nomme. */
@@ -99,6 +108,7 @@ export async function ecrireCreation(c: Creation): Promise<ResultatEcriture> {
   if (!table) return { issue: "hors-base" };
 
   const r = await rattacher(client, c);
+  if (c.type === "achat" && !c.valeurs.demandeurRole) c.valeurs.demandeurRole = moi.role;
   const prep = ligneCreation(c.type, c.numero, c.valeurs, r);
   if ("refus" in prep) return { issue: "refusee", motif: `Non enregistré en base : ${prep.refus}.` };
   const ligne = { ...prep.ligne, cree_par: moi.utilisateurId };

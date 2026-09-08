@@ -2,8 +2,8 @@ import { EcranCaisse, type VueCaisse } from "@/composants/caisse/EcranCaisse";
 import { titrePage } from "@/domaine/marque";
 import { typeDuNumero } from "@/domaine/reference";
 import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { achatsServeur } from "@/donnees/achats";
 import { caisseServeur } from "@/donnees/caisse";
-import { demandesAchat } from "@/donnees/caisse-demo";
 import { parametresServeur } from "@/lib/parametres-serveur";
 import { authentificationReelle } from "@/lib/session-demo";
 import { prestataires } from "@/donnees/referentiels";
@@ -20,9 +20,8 @@ export const metadata = { title: titrePage("Caisse & achats") };
  * tout seul.
  */
 export default async function PageCaisse({ searchParams }: { searchParams: Promise<{ vue?: string; ref?: string }> }) {
-  const [{ vue, ref }, liste, caisse] = await Promise.all([searchParams, prestataires(), parametresServeur().then(caisseServeur)]);
-  /* Base branchée : le journal et les dépenses à régler viennent des tables ; les
-     demandes d'achat n'ont pas encore la leur, l'écran n'en montre aucune. */
+  const [{ vue, ref }, liste, caisse, achats] = await Promise.all([searchParams, prestataires(), parametresServeur().then(caisseServeur), achatsServeur()]);
+  /* Base branchée : le journal, les dépenses à régler et les demandes d'achat viennent des tables. */
   const reel = authentificationReelle();
   const typeCible = ref ? typeDuNumero(ref) : null;
   const vueRetenue: VueCaisse = vue === "achats" || typeCible === "achat" ? "achats" : "journal";
@@ -31,7 +30,7 @@ export default async function PageCaisse({ searchParams }: { searchParams: Promi
     <EcranCaisse
       mouvements={caisse.mouvements}
       depensesARegler={caisse.depensesARegler}
-      achats={reel ? [] : demandesAchat()}
+      achats={achats}
       prestataires={liste}
       soldeInitial={caisse.soldeInitial}
       aujourdhui={reel ? new Date().toISOString().slice(0, 10) : DATE_REFERENCE}

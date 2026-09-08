@@ -30,7 +30,7 @@ import { PARAMETRES_DEFAUT } from "@/domaine/parametres";
 import { demandesDemo } from "@/donnees/demandes-demo";
 import { transfertsDemo } from "@/donnees/transferts-demo";
 import { ordresDeTravail } from "@/donnees/maintenance-demo";
-import { journalCaisse } from "@/donnees/caisse-demo";
+import { demandesAchat, journalCaisse } from "@/donnees/caisse-demo";
 import { livraisonsEtJauges } from "@/donnees/carburant-demo";
 import { affretements, grillesTarifaires, misesADisposition, prestations, transporteurs } from "@/donnees/transporteurs-demo";
 import { camionsTiers, chauffeursTiers, profilTransporteur, rattachements } from "@/donnees/flotte-tierce-demo";
@@ -302,6 +302,14 @@ inserer(
   "mouvement_cuve",
   ["id", "numero", "date", "sens", "libelle", "litres", "prix_litre", "montant", "fournisseur", "prestataire_id", "piece", "enregistre_par", "cree_le"],
   livraisonsEtJauges().map((m) => [uuid(`cuve:${m.numero}`), m.numero, m.date, m.sens, m.libelle, m.litres, m.prixLitre, m.montant, m.fournisseur, prestataireId(m.fournisseur ? (prestataireParNom.get(m.fournisseur) ?? null) : null), m.piece, m.enregistrePar, `${m.date}T09:00:00+00`]),
+);
+
+/* -- Demandes d'achat (0022) ------------------------------------------------------- */
+
+inserer(
+  "demande_achat",
+  ["id", "numero", "date", "objet", "poste", "montant_estime", "prestataire_id", "fournisseur", "urgence", "origine_numero", "origine_libelle", "vehicule_id", "demandeur_nom", "demandeur_role", "etape", "visa_par", "visa_le", "valide_par", "validee_le", "numero_demande_x3", "numero_bon_commande", "montant_engage", "date_livraison", "date_facture", "montant_reel", "date_reglement", "depense_numero", "commentaire_decision", "cree_le"],
+  demandesAchat().map((a) => [uuid(`achat:${a.numero}`), a.numero, a.date, a.objet, a.poste, a.montantEstime, prestataireId(a.prestataireNumero), a.prestataireNumero ? null : a.fournisseur, a.urgence, a.origineNumero, a.origineLibelle, vehiculeId(a.vehiculeId), a.demandeur, a.demandeurRole, a.etape, a.visaPar, a.visaLe, a.validePar, a.valideeLe, a.numeroDemandeX3, a.numeroBonCommande, a.montantEngage, a.dateLivraison, a.dateFacture, a.montantReel, a.dateReglement, a.depenseNumero, a.commentaireDecision, `${a.date}T09:00:00+00`]),
 );
 
 /* -- Paramètres ------------------------------------------------------------------- */

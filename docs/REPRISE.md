@@ -1480,6 +1480,30 @@ lectures avant et après une migration. Il reproduit la régression (fiche
 - Règle apprise, dans la mémoire : **toute migration qui touche une
   politique se mesure avec `tester-rls.mjs` avant d'être donnée.**
 
+### Les demandes d'achat en table (8 septembre 2026, migration 0022)
+
+- Migration `0022_demandes_achat.sql` : la table `demande_achat` — objet,
+  poste, montant estimé, prestataire (par sa clé) ou fournisseur en clair,
+  urgence, **transaction d'origine obligatoire**, véhicule, demandeur et son
+  rôle, étape, visa et validation, et ce que Sage X3 en sait (DA, bon de
+  commande et montant engagé, livraison, facture et montant réel, règlement,
+  dépense DEP portée). Politiques sur le module « couts », le véhicule
+  visible.
+- `src/donnees/achats.ts` : `achatsServeur()` — la table avec véhicule et
+  prestataire joints, le lien d'origine reformé ; la page Caisse la lit.
+- Les écritures : `achat` a sa table (création refusée sans objet, montant
+  ou origine ; le fournisseur se retrouve par son numéro PRE, le demandeur
+  et son rôle viennent de la session) ; les **décisions** de la modale sont
+  des modifications colonne par colonne (étape, visa, validation, DA, bon,
+  montant engagé, livraison, facture, montant réel, règlement, dépense,
+  commentaire).
+- Le seed porte les demandes de la démonstration. Le budget, le compte des
+  prestataires, les rapports et le tableau de bord lisent encore les
+  demandes de démonstration : à brancher avec leur module.
+- Vérifié : `tester-ecritures.mts` (création, visa avec montant engagé,
+  refus sans origine) et `tester-caisse-cuve.mts` (lecture égale à la
+  table, réglées complètes, liens d'origine).
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.
