@@ -314,8 +314,8 @@ inserer(
     ["alertes", JSON.stringify(PARAMETRES_DEFAUT.alertes)],
     ["vehicules", JSON.stringify(PARAMETRES_DEFAUT.vehicules)],
     ["pastilles", JSON.stringify(PARAMETRES_DEFAUT.pastilles)],
-    ["caisse", JSON.stringify({ solde_initial: 1_500_000, seuil: 200_000 })],
-    ["cuve", JSON.stringify({ stock_initial: 9_000 })],
+    ["caisse", JSON.stringify(PARAMETRES_DEFAUT.caisse)],
+    ["cuve", JSON.stringify(PARAMETRES_DEFAUT.cuve)],
   ],
   "(cle) do update set valeur = excluded.valeur",
 );

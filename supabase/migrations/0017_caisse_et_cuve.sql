@@ -12,8 +12,9 @@
 --     plein, source « cuve »), une transaction, un numéro.
 --
 -- Le solde de départ et le seuil de la caisse, le stock de départ de la cuve
--- sont des paramètres (clés « caisse » et « cuve »), posés ici à leurs
--- défauts s'ils manquent. La situation journalière (0010) rend le solde, le
+-- sont des paramètres (clés « caisse » et « cuve », sous les noms du domaine,
+-- réglables dans Paramètres › Caisse et cuve), posés ici à leurs défauts.
+-- La situation journalière (0010) rend le solde, le
 -- seuil, le stock et l'autonomie de la cuve pour les deux pastilles.
 --
 -- Qui fait quoi : la caisse se lit et s'écrit avec le module « couts », la
@@ -75,8 +76,8 @@ create policy ecriture_cuve   on mouvement_cuve for all using (peut('releves', '
 
 -- Les paramètres des deux journaux, à leurs défauts s'ils manquent.
 insert into parametre (cle, valeur) values
-  ('caisse', '{"solde_initial": 1500000, "seuil": 200000}'::jsonb),
-  ('cuve', '{"stock_initial": 9000}'::jsonb)
+  ('caisse', '{"soldeInitial": 1500000, "seuil": 200000}'::jsonb),
+  ('cuve', '{"stockInitial": 9000}'::jsonb)
 on conflict (cle) do nothing;
 
 -- ---------------------------------------------------------------------------
@@ -88,7 +89,7 @@ returns bigint
 language sql stable
 set search_path = public
 as $$
-  select coalesce((select (valeur->>'solde_initial')::bigint from parametre where cle = 'caisse'), 1500000)
+  select coalesce((select (valeur->>'soldeInitial')::bigint from parametre where cle = 'caisse'), 1500000)
        + coalesce((select sum(case when sens = 'entree' then montant else -montant end) from mouvement_caisse where date <= jour), 0)
 $$;
 
@@ -102,7 +103,7 @@ as $$
     select date, litres from mouvement_cuve where sens = 'jauge' and date <= jour order by date desc, numero desc limit 1
   ),
   depart as (
-    select coalesce((select litres from jauge), coalesce((select (valeur->>'stock_initial')::numeric from parametre where cle = 'cuve'), 9000)) as litres,
+    select coalesce((select litres from jauge), coalesce((select (valeur->>'stockInitial')::numeric from parametre where cle = 'cuve'), 9000)) as litres,
            (select date from jauge) as depuis
   )
   select greatest(0, d.litres

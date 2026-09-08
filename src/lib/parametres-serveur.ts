@@ -52,6 +52,8 @@ async function depuisLaBase(): Promise<Parametres> {
     parcLeger: parCle.get("parc-leger"),
     vehicules: parCle.get("vehicules"),
     pastilles: parCle.get("pastilles"),
+    caisse: parCle.get("caisse"),
+    cuve: parCle.get("cuve"),
     documents: types.data.length > 0 ? { types: types.data.map((t) => ({ id: t.id, libelle: t.libelle, porteur: t.porteur, applicabilite: t.applicabilite, validiteMois: t.validite_mois, critique: t.critique, standard: t.standard })) } : undefined,
   });
 }

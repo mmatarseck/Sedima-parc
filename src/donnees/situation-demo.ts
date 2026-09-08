@@ -17,7 +17,9 @@ import { estOuvert } from "@/domaine/maintenance";
 import type { FaitsFlotteJour, FaitsVehiculeJour, SituationJournaliere } from "@/domaine/pastilles";
 import type { StatutVehicule } from "@/domaine/types";
 import { SOLDE_INITIAL, journalCaisse } from "./caisse-demo";
-import { STOCK_INITIAL, livraisonsEtJauges } from "./carburant-demo";
+import { avecStock, estCuve } from "@/domaine/carburant";
+import { CAISSE_DEFAUT } from "@/domaine/parametres";
+import { STOCK_INITIAL, livraisonsEtJauges, pleinsFlotte, sortieDePlein } from "./carburant-demo";
 import { DATE_REFERENCE, fichesChauffeurs } from "./chauffeurs-demo";
 import { demandesDemo } from "./demandes-demo";
 import { fichePourImmatriculation } from "./fiche-demo";
@@ -26,7 +28,8 @@ import { ordresDeTravail } from "./maintenance-demo";
 import { FLOTTE } from "./parc-demo";
 
 const OPERATIONNELS = new Set<StatutVehicule>(["en-service", "en-backup"]);
-const SEUIL_CAISSE = 300_000;
+/* Le seuil de la démonstration est celui des paramètres par défaut : une seule valeur, partout. */
+const SEUIL_CAISSE = CAISSE_DEFAUT.seuil;
 
 function plusJours(jour: string, n: number): string {
   return new Date(Date.parse(`${jour}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
@@ -48,7 +51,10 @@ export function situationsJournalieres(aujourdhui: string = DATE_REFERENCE, prof
   const chauffeurs = fichesChauffeurs();
   const ordres = ordresDeTravail();
   const caisse = journalCaisse();
-  const cuve = livraisonsEtJauges();
+  /* Le journal complet de la cuve, sorties comprises (les pleins à la cuve) et
+     stock recalé par les jauges — le même que l'écran Carburant. Sans les
+     sorties, le stock ne faisait que monter et l'autonomie restait vide. */
+  const cuve = avecStock([...livraisonsEtJauges(), ...pleinsFlotte().filter((p) => estCuve(p.source)).map(sortieDePlein)], STOCK_INITIAL);
   const demandes = demandesDemo();
 
   /* Les chauffeurs indisponibles un jour donné, par identifiant. */
@@ -105,7 +111,8 @@ export function situationsJournalieres(aujourdhui: string = DATE_REFERENCE, prof
 
     const ouverts = ordres.filter((o) => o.datePrevue <= jour && (o.dateCloture === null || o.dateCloture > jour) && (estOuvert(o.statut) || (o.dateCloture !== null && o.dateCloture > jour)));
     const soldeCaisse = caisse.filter((m) => m.date <= jour).reduce((s, m) => s + (m.sens === "entree" ? m.montant : -m.montant), SOLDE_INITIAL);
-    const cuveLitres = cuve.filter((m) => m.date <= jour).reduce((s, m) => s + (m.sens === "livraison" ? m.litres : m.sens === "sortie" ? -m.litres : 0), STOCK_INITIAL);
+    /* Le journal est rendu du plus récent au plus ancien : le premier mouvement du jour ou d'avant porte le stock. */
+    const cuveLitres = cuve.find((m) => m.date <= jour)?.stockApres ?? STOCK_INITIAL;
     const sorties7 = cuve.filter((m) => m.sens === "sortie" && m.date > plusJours(jour, -7) && m.date <= jour).reduce((s, m) => s + m.litres, 0);
     const dernierAccident = dernierAccidentAvant(jour);
     const flotte: FaitsFlotteJour = {

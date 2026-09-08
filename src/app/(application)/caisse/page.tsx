@@ -4,6 +4,7 @@ import { typeDuNumero } from "@/domaine/reference";
 import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
 import { caisseServeur } from "@/donnees/caisse";
 import { demandesAchat } from "@/donnees/caisse-demo";
+import { parametresServeur } from "@/lib/parametres-serveur";
 import { authentificationReelle } from "@/lib/session-demo";
 import { prestataires } from "@/donnees/referentiels";
 
@@ -19,7 +20,7 @@ export const metadata = { title: titrePage("Caisse & achats") };
  * tout seul.
  */
 export default async function PageCaisse({ searchParams }: { searchParams: Promise<{ vue?: string; ref?: string }> }) {
-  const [{ vue, ref }, liste, caisse] = await Promise.all([searchParams, prestataires(), caisseServeur()]);
+  const [{ vue, ref }, liste, caisse] = await Promise.all([searchParams, prestataires(), parametresServeur().then(caisseServeur)]);
   /* Base branchée : le journal et les dépenses à régler viennent des tables ; les
      demandes d'achat n'ont pas encore la leur, l'écran n'en montre aucune. */
   const reel = authentificationReelle();

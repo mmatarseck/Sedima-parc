@@ -3,8 +3,9 @@
  *
  * Base branchée : le journal vient de `mouvement_caisse` (0017), les dépenses
  * à régler sont celles de la table `depense` payées par la caisse qu'aucune
- * sortie ne cite encore, le solde de départ et le seuil sont le paramètre
- * « caisse ». Le solde de chaque ligne se déduit, comme en démonstration.
+ * sortie ne cite encore, le solde de départ et le seuil viennent des
+ * paramètres (Paramètres › Caisse et cuve). Le solde de chaque ligne se
+ * déduit, comme en démonstration.
  * Les demandes d'achat n'ont pas encore de table : base branchée, l'écran
  * n'en montre aucune.
  * ==========================================================================*/
@@ -12,25 +13,11 @@
 import { cache } from "react";
 import { avecSolde, type LigneMouvement, type SensCaisse } from "@/domaine/caisse";
 import { afficher } from "@/domaine/immatriculation";
+import type { Parametres } from "@/domaine/parametres";
 import type { BusinessUnit, PosteDepense } from "@/domaine/types";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
-import { SOLDE_INITIAL, depensesAReglier, journalCaisse, type DepenseCaisse } from "./caisse-demo";
-
-/** Le seuil sous lequel la caisse appelle un réapprovisionnement, faute de paramètre. */
-export const SEUIL_CAISSE_DEFAUT = 200_000;
-
-export interface ParametresCaisse {
-  soldeInitial: number;
-  seuil: number;
-}
-
-/** La valeur du paramètre « caisse », remise d'aplomb champ par champ. */
-export function parametresCaisseDepuis(valeur: unknown): ParametresCaisse {
-  const v = (valeur && typeof valeur === "object" ? valeur : {}) as Record<string, unknown>;
-  const n = (x: unknown, defaut: number) => (typeof x === "number" && Number.isFinite(x) ? x : typeof x === "string" && x.trim() && Number.isFinite(Number(x)) ? Number(x) : defaut);
-  return { soldeInitial: n(v.solde_initial, SOLDE_INITIAL), seuil: n(v.seuil, SEUIL_CAISSE_DEFAUT) };
-}
+import { depensesAReglier, journalCaisse, type DepenseCaisse } from "./caisse-demo";
 
 export interface LigneCaisseBase {
   numero: string;
@@ -119,18 +106,17 @@ export interface CaisseServeur {
   seuil: number;
 }
 
-async function caisseServeurBrut(): Promise<CaisseServeur> {
-  if (!authentificationReelle()) return { mouvements: journalCaisse(), depensesARegler: depensesAReglier(), soldeInitial: SOLDE_INITIAL, seuil: SEUIL_CAISSE_DEFAUT };
+async function caisseServeurBrut(parametres: Parametres): Promise<CaisseServeur> {
+  const p = parametres.caisse;
+  if (!authentificationReelle()) return { mouvements: journalCaisse(), depensesARegler: depensesAReglier(), soldeInitial: p.soldeInitial, seuil: p.seuil };
   const client = await clientServeur();
-  const [mouvements, depenses, parametre] = await Promise.all([
+  const [mouvements, depenses] = await Promise.all([
     client.from("mouvement_caisse").select("numero, date, sens, libelle, montant, beneficiaire, piece, justificatif, depense_numero, enregistre_par").order("date", { ascending: false }).limit(5000).returns<LigneCaisseBase[]>(),
     client.from("depense").select("numero, date, libelle, montant, poste, beneficiaire, reference, justificatif, vehicule (immatriculation, business_unit, site (libelle))").eq("origine", "caisse").order("date", { ascending: false }).limit(5000).returns<LigneDepenseCaisseBase[]>(),
-    client.from("parametre").select("valeur").eq("cle", "caisse").maybeSingle<{ valeur: unknown }>(),
   ]);
   /* Table pas encore jouée : un journal vide, pas d'erreur. */
   if (mouvements.error) console.warn(`Caisse : lecture impossible (${mouvements.error.message}).`);
   if (depenses.error) console.warn(`Dépenses de caisse : lecture impossible (${depenses.error.message}).`);
-  const p = parametresCaisseDepuis(parametre.data?.valeur);
   const lignesCaisse = mouvements.data ?? [];
   const lignesDepenses = (depenses.data ?? []).map(depenseCaisseDepuisLigne);
   return { mouvements: journalDepuisLaBase(lignesCaisse, lignesDepenses, p.soldeInitial), depensesARegler: aReglerDepuisLaBase(lignesDepenses, lignesCaisse), soldeInitial: p.soldeInitial, seuil: p.seuil };

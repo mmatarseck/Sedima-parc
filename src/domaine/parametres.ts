@@ -172,6 +172,41 @@ function normaliserPastilles(brut: unknown): ParametresPastilles {
   return { seuils };
 }
 
+/* ---- Caisse parc et cuve interne (8 septembre 2026) ---------------------
+ * Deux journaux dont le solde et le stock se déduisent des mouvements : il
+ * leur faut un point de départ — le report à l'ouverture du journal — et,
+ * pour la caisse, le seuil sous lequel la pastille passe au rouge. */
+
+export interface ParametresCaisse {
+  /** Le solde reporté à l'ouverture du journal, en francs. */
+  soldeInitial: number;
+  /** Sous ce solde, la caisse appelle un réapprovisionnement. */
+  seuil: number;
+}
+
+export interface ParametresCuve {
+  /** Le stock reporté à l'ouverture du journal, en litres. */
+  stockInitial: number;
+}
+
+export const CAISSE_DEFAUT: ParametresCaisse = { soldeInitial: 1_500_000, seuil: 200_000 };
+export const CUVE_DEFAUT: ParametresCuve = { stockInitial: 9_000 };
+
+const entierPositif = (v: unknown, defaut: number): number => {
+  const n = typeof v === "number" ? v : typeof v === "string" && v.trim() ? Number(v.replace(/\s/g, "")) : NaN;
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : defaut;
+};
+
+function normaliserCaisse(brut: unknown): ParametresCaisse {
+  const b = (brut ?? {}) as Partial<Record<keyof ParametresCaisse, unknown>>;
+  return { soldeInitial: entierPositif(b.soldeInitial, CAISSE_DEFAUT.soldeInitial), seuil: entierPositif(b.seuil, CAISSE_DEFAUT.seuil) };
+}
+
+function normaliserCuve(brut: unknown): ParametresCuve {
+  const b = (brut ?? {}) as Partial<Record<keyof ParametresCuve, unknown>>;
+  return { stockInitial: entierPositif(b.stockInitial, CUVE_DEFAUT.stockInitial) };
+}
+
 /* ---- Référentiel des véhicules -----------------------------------------
  * Demande du métier du 7 septembre 2026 : « maintenir les paramètres des
  * véhicules en paramètres, qui pourront être rajoutés au fur et à mesure
@@ -361,6 +396,8 @@ export interface Parametres {
   parcLeger: ParametresParcLeger;
   vehicules: ParametresVehicules;
   pastilles: ParametresPastilles;
+  caisse: ParametresCaisse;
+  cuve: ParametresCuve;
 }
 
 const standard = (d: Omit<DefinitionDocument, "standard">): DefinitionDocument => ({ ...d, standard: true });
@@ -431,6 +468,8 @@ export const PARAMETRES_DEFAUT: Parametres = {
   parcLeger: PARC_LEGER_DEFAUT,
   vehicules: VEHICULES_DEFAUT,
   pastilles: PASTILLES_PARAM_DEFAUT,
+  caisse: CAISSE_DEFAUT,
+  cuve: CUVE_DEFAUT,
   documents: {
     types: [
       standard({ id: "carte-grise", libelle: "Carte grise", porteur: "vehicule", applicabilite: "tous", validiteMois: null, critique: true }),
@@ -485,6 +524,8 @@ export function fusionnerParametres(partiel: unknown): Parametres {
     parcLeger: normaliserParcLeger((p as { parcLeger?: unknown }).parcLeger),
     vehicules: normaliserVehicules((p as { vehicules?: unknown }).vehicules),
     pastilles: normaliserPastilles((p as { pastilles?: unknown }).pastilles),
+    caisse: normaliserCaisse((p as { caisse?: unknown }).caisse),
+    cuve: normaliserCuve((p as { cuve?: unknown }).cuve),
   };
 }
 
@@ -599,7 +640,7 @@ export const COOKIE_PARAMETRES = "sedima.parc.parametres";
  */
 export const PREFIXE_COOKIE_PARAMETRES = "sedima.parc.parametres.";
 
-export const CLES_PARAMETRES: (keyof Parametres)[] = ["documents", "energie", "alertes", "parcLeger", "vehicules", "pastilles"];
+export const CLES_PARAMETRES: (keyof Parametres)[] = ["documents", "energie", "alertes", "parcLeger", "vehicules", "pastilles", "caisse", "cuve"];
 
 /** Un cookie ne porte pas plus de 4 Ko, nom compris : au-delà, le navigateur le refuse sans rien dire. */
 export const TAILLE_MAX_COOKIE = 3_900;

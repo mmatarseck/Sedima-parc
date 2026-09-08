@@ -1282,6 +1282,31 @@ montraient encore le jeu de démonstration en production.
   fonctions, stock reparti de la jauge du 31 août) ; pages Caisse et
   Carburant rendues en démonstration.
 
+### Paramètres › Caisse et cuve (8 septembre 2026)
+
+- La caisse et la cuve entrent dans les **paramètres du domaine**
+  (`Parametres.caisse` : `soldeInitial`, `seuil` ; `Parametres.cuve` :
+  `stockInitial`), avec leurs normaliseurs et défauts (`CAISSE_DEFAUT`,
+  `CUVE_DEFAUT`), dans les cookies de la démonstration et dans la table
+  `parametre` (clés « caisse » et « cuve », **sous les noms du domaine** —
+  la migration 0017 et ses fonctions SQL les lisent ainsi ; elle n'était pas
+  encore jouée, elle a été corrigée plutôt que suivie d'une 0018).
+- Écran `/parametres/caisse` (`EcranCaisseCuve`) : les trois valeurs,
+  réglables par la direction et l'administrateur, avec **le solde et le
+  stock du jour recalculés** à la valeur saisie — la caisse dit si la
+  pastille serait au rouge. Les lecteurs `caisseServeur(parametres)` et
+  `carburantServeur(parametres)` prennent les paramètres reçus, plus de
+  lecture à part.
+- Au passage, la démonstration comptait la cuve sans ses sorties (le stock
+  ne faisait que monter, 240 000 l, et l'autonomie restait vide) :
+  `situation-demo.ts` déroule maintenant le journal complet, recalé par les
+  jauges, comme l'écran Carburant ; son seuil de caisse est celui des
+  paramètres par défaut (200 kF, et non 300).
+- Vérifié : bancs caisse-cuve et situation rejoués (clés du domaine), écran
+  rendu en démonstration — 1 499 692 F au-dessus du seuil, 12 270 l en cuve ;
+  un seuil saisi à 2 M F fait dire « sous le seuil : la pastille serait au
+  rouge ».
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

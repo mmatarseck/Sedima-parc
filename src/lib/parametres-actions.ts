@@ -10,7 +10,8 @@
  * joint par une simple requête POST, pas seulement depuis l'écran.
  *
  * Deux sortes d'écritures : les barèmes d'énergie, les règles d'alerte, le
- * parc léger, le référentiel des véhicules et les seuils des pastilles dans
+ * parc léger, le référentiel des véhicules, les seuils des pastilles, la
+ * caisse et la cuve dans
  * `parametre` (une ligne par clé, en JSON), les types de document dans leur table. Un type retiré de la liste est supprimé — sauf s'il porte encore des
  * documents, et la base le dit.
  * ==========================================================================*/
@@ -37,6 +38,8 @@ export async function enregistrerParametres(brut: Parametres): Promise<string | 
     { cle: "parc-leger", valeur: p.parcLeger, modifie_le: maintenant, modifie_par: moi.utilisateurId },
     { cle: "vehicules", valeur: p.vehicules, modifie_le: maintenant, modifie_par: moi.utilisateurId },
     { cle: "pastilles", valeur: p.pastilles, modifie_le: maintenant, modifie_par: moi.utilisateurId },
+    { cle: "caisse", valeur: p.caisse, modifie_le: maintenant, modifie_par: moi.utilisateurId },
+    { cle: "cuve", valeur: p.cuve, modifie_le: maintenant, modifie_par: moi.utilisateurId },
   ];
   const ecriture = await client.from("parametre").upsert(lignes, { onConflict: "cle" });
   if (ecriture.error) return `Enregistrement refusé : ${ecriture.error.message}`;

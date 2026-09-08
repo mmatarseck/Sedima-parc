@@ -5,7 +5,8 @@
  * avec le véhicule et la station ; le journal de la cuve de `mouvement_cuve`
  * (0017) — livraisons et relevés de jauge —, ses sorties étant les pleins pris
  * à la cuve, que l'écran reconstruit comme en démonstration ; le stock de
- * départ est le paramètre « cuve ». La consommation par véhicule et par mois
+ * départ vient des paramètres (Paramètres › Caisse et cuve). La consommation
+ * par véhicule et par mois
  * se calcule sur les pleins et les relevés du parc lu pour la liste Flotte.
  * ==========================================================================*/
 
@@ -18,7 +19,7 @@ import type { Parametres } from "@/domaine/parametres";
 import type { BusinessUnit, CategorieVehicule } from "@/domaine/types";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
-import { STOCK_INITIAL, consommationsMensuelles, livraisonsEtJauges, pleinsFlotte } from "./carburant-demo";
+import { consommationsMensuelles, livraisonsEtJauges, pleinsFlotte } from "./carburant-demo";
 import { parcServeur, type ParcBrut } from "./flotte";
 
 /* -- Pleins -------------------------------------------------------------------- */
@@ -100,13 +101,6 @@ export function cuveDepuisLigne(l: LigneCuveBase): LigneCuve {
     enregistrePar: l.enregistre_par ?? "—",
     creee: false,
   };
-}
-
-/** La valeur du paramètre « cuve » : le stock à l'ouverture du journal. */
-export function stockInitialDepuis(valeur: unknown): number {
-  const v = (valeur && typeof valeur === "object" ? valeur : {}) as Record<string, unknown>;
-  const x = v.stock_initial;
-  return typeof x === "number" && Number.isFinite(x) ? x : typeof x === "string" && Number.isFinite(Number(x)) ? Number(x) : STOCK_INITIAL;
 }
 
 /* -- Consommation par véhicule et par mois --------------------------------------- */
@@ -200,13 +194,13 @@ export interface CarburantServeur {
   consommations: ConsommationMensuelleFlotte[];
 }
 
-async function carburantServeurBrut(_parametres: Parametres): Promise<CarburantServeur> {
-  if (!authentificationReelle()) return { pleins: pleinsFlotte(), cuve: livraisonsEtJauges(), stockInitial: STOCK_INITIAL, consommations: consommationsMensuelles() };
+async function carburantServeurBrut(parametres: Parametres): Promise<CarburantServeur> {
+  const stockInitial = parametres.cuve.stockInitial;
+  if (!authentificationReelle()) return { pleins: pleinsFlotte(), cuve: livraisonsEtJauges(), stockInitial, consommations: consommationsMensuelles() };
   const client = await clientServeur();
-  const [pleins, cuve, parametre, parc] = await Promise.all([
+  const [pleins, cuve, parc] = await Promise.all([
     client.from("plein").select("numero, vehicule_id, date, litres, prix_litre, montant, km, source, reference, vehicule (immatriculation, marque, appellation, business_unit, site (libelle)), prestataire (raison_sociale)").order("date", { ascending: false }).limit(5000).returns<LignePleinBase[]>(),
     client.from("mouvement_cuve").select("numero, date, sens, libelle, litres, prix_litre, montant, fournisseur, piece, commentaire, enregistre_par, prestataire (raison_sociale)").order("date", { ascending: false }).limit(5000).returns<LigneCuveBase[]>(),
-    client.from("parametre").select("valeur").eq("cle", "cuve").maybeSingle<{ valeur: unknown }>(),
     parcServeur(),
   ]);
   if (pleins.error) console.warn(`Pleins : lecture impossible (${pleins.error.message}).`);
@@ -216,7 +210,7 @@ async function carburantServeurBrut(_parametres: Parametres): Promise<CarburantS
   return {
     pleins: lignesPleins,
     cuve: (cuve.data ?? []).map(cuveDepuisLigne),
-    stockInitial: stockInitialDepuis(parametre.data?.valeur),
+    stockInitial,
     consommations: consommationsDepuisLaBase(lignesPleins, parc, parc.aujourdhui),
   };
 }

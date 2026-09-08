@@ -6,8 +6,9 @@ import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { avecStock, estCuve } from "../src/domaine/carburant";
-import { aReglerDepuisLaBase, depenseCaisseDepuisLigne, journalDepuisLaBase, parametresCaisseDepuis, type LigneCaisseBase, type LigneDepenseCaisseBase } from "../src/donnees/caisse";
-import { consommationsDepuisLaBase, cuveDepuisLigne, pleinDepuisLigne, stockInitialDepuis, type LigneCuveBase, type LignePleinBase } from "../src/donnees/carburant";
+import { fusionnerParametres } from "../src/domaine/parametres";
+import { aReglerDepuisLaBase, depenseCaisseDepuisLigne, journalDepuisLaBase, type LigneCaisseBase, type LigneDepenseCaisseBase } from "../src/donnees/caisse";
+import { consommationsDepuisLaBase, cuveDepuisLigne, pleinDepuisLigne, type LigneCuveBase, type LignePleinBase } from "../src/donnees/carburant";
 import { sortieDePlein } from "../src/donnees/carburant-demo";
 import type { ParcBrut } from "../src/donnees/flotte";
 
@@ -32,7 +33,7 @@ const iso = (d: unknown) => (d instanceof Date ? d.toISOString().slice(0, 10) : 
 
 /* ---- Caisse ---- */
 const parametreCaisse = (await pg.query(`select valeur from parametre where cle = 'caisse'`)).rows[0]?.valeur;
-const pc = parametresCaisseDepuis(parametreCaisse);
+const pc = fusionnerParametres({ caisse: parametreCaisse }).caisse;
 attendu(`paramètre caisse : solde de départ ${pc.soldeInitial} F, seuil ${pc.seuil} F`, pc.soldeInitial === 1_500_000 && pc.seuil === 200_000);
 const mouvements = (await pg.query(`select numero, date, sens, libelle, montant, beneficiaire, piece, justificatif, depense_numero, enregistre_par from mouvement_caisse order by date desc`)).rows.map((r: any) => ({ ...r, date: iso(r.date) })) as LigneCaisseBase[];
 const depenses = (await pg.query(`
@@ -52,7 +53,7 @@ attendu(`${aRegler.length} dépenses de caisse à régler, aucune déjà citée 
 attendu(`le journal est trié du plus récent au plus ancien`, journal.every((m, i) => i === 0 || m.date <= journal[i - 1]!.date));
 
 /* ---- Carburant ---- */
-const stockInitial = stockInitialDepuis((await pg.query(`select valeur from parametre where cle = 'cuve'`)).rows[0]?.valeur);
+const stockInitial = fusionnerParametres({ cuve: (await pg.query(`select valeur from parametre where cle = 'cuve'`)).rows[0]?.valeur }).cuve.stockInitial;
 attendu(`paramètre cuve : stock de départ ${stockInitial} l`, stockInitial === 9000);
 const pleinsBruts = (await pg.query(`
   select p.numero, p.vehicule_id, p.date, p.litres, p.prix_litre, p.montant, p.km, p.source, p.reference,

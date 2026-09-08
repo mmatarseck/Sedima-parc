@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BellRing, Car, ChevronRight, FileCheck2, Fuel, Gauge, ListChecks, LockKeyhole, Trophy, Truck, Users, Wrench } from "lucide-react";
+import { BellRing, Car, ChevronRight, FileCheck2, Fuel, Gauge, ListChecks, LockKeyhole, Trophy, Truck, Users, Wallet, Wrench } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { titrePage } from "@/domaine/marque";
 
@@ -29,6 +29,7 @@ const SECTIONS = [
   { href: "/parametres/sqdcm", libelle: "Barème SQDCM des chauffeurs", precision: "Indicateurs, objectifs, tolérances, poids des piliers, tranches de prime — le barème que le chauffeur doit pouvoir lire", icone: Trophy, livre: true },
   { href: "/parametres/parc-leger", libelle: "Parc léger", precision: "Durée du plan car, forfait carburant mensuel des véhicules de fonction — les valeurs par défaut, que chaque dossier peut préciser", icone: Car, livre: true },
   { href: "/parametres/vehicules", libelle: "Véhicules", precision: "Marques, modèles et catégories proposés à la création d'un véhicule — la liste s'enrichit de ce qui se saisit", icone: Truck, livre: true },
+  { href: "/parametres/caisse", libelle: "Caisse et cuve", precision: "Le solde reporté et le seuil de réapprovisionnement de la caisse parc, le stock reporté de la cuve interne", icone: Wallet, livre: true },
   { href: "/parametres/pastilles", libelle: "Pastilles du tableau de bord", precision: "Les seuils en nombre au-delà desquels une pastille passe au rouge — hors service, prêts à charger, pannes, autonomie de la cuve", icone: Gauge, livre: true },
 ];
 
