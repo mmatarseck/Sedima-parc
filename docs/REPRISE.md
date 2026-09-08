@@ -1529,6 +1529,22 @@ lectures avant et après une migration. Il reproduit la régression (fiche
   visite), Maintenance (4 observations ouvertes dans les travaux avec leur
   délai), fiche rendue pour les 21 véhicules.
 
+### La Conformité base branchée (8 septembre 2026, sans migration)
+
+- `src/donnees/conformite.ts` : `conformiteServeur(parametres)` dresse
+  l'échéancier depuis les tables — documents des véhicules (avec un manquant
+  pour chaque type exigé absent, comme la fiche), licences de transport avec
+  leurs véhicules (une ligne par licence), visites en cours (délai de
+  contre-visite si aucune contre-visite n'est prise, rendez-vous), nombre
+  d'observations ouvertes, prochaine échéance d'entretien des lignes de la
+  liste, documents des chauffeurs par `fichesChauffeursServeur()`. Quatre
+  lectures bornées, le parc déjà lu pour les identifiants. En démonstration,
+  le même échéancier depuis les fiches, déplacé de la page dans le module.
+- La page Conformité n'a plus de calcul : une lecture, un écran.
+- Vérifié : `scripts/tester-conformite.mts` dans PGlite — documents,
+  manquants, licences, contre-visite avec ses observations, rendez-vous,
+  entretien, chauffeurs ; clés uniques, tri par gravité.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.
