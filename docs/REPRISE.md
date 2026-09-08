@@ -1205,6 +1205,20 @@ apparaître (sinon le menu ⋮ › Installer l'application). Pas de service
 worker : Chrome ne l'exige plus pour installer, et l'application n'a pas de
 mode hors ligne.
 
+### Les pièces de rechange : proposition, pas de construction (8 septembre 2026)
+
+Demande du gestionnaire : « intégrer le module de gestion des pièces de
+rechange du parc ; faire une proposition de cette gestion avant exécution ».
+`PROPOSITION-PIECES.md` : le stock **déduit des mouvements** (entrée sur
+livraison citant le bon de commande X3, sortie rattachée à l'ordre de travail
+ou au véhicule, retour, transfert, régularisation), valorisé au coût moyen
+pondéré ; **la sortie fait la dépense « pièces » du véhicule**, l'achat non ;
+réapprovisionnement par seuils qui prépare une demande d'achat ; inventaire
+validé ; pneus comme des pièces d'abord ; module d'accès « pieces », pas de
+nouveau profil ; étiquettes de casier en QR ; migration 0017 en cinq étapes.
+**Sept décisions en attente**, listées en fin de document. Rien n'est construit
+tant qu'elles ne sont pas prises.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.
