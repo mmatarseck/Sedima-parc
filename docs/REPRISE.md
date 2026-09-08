@@ -973,10 +973,39 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   litres refusé. Pas vérifié contre Supabase (la clé n'est pas sur ce
   poste) : à essayer en ligne sur un relevé, puis relire la table.
 - Reste : les types sans table (ordre de travail, caisse, cuve, visite,
-  observation, achat, attelage, aptitude) ; les lectures des fiches
-  véhicule et chauffeur encore en démonstration, qui ne montrent donc pas
-  ce que la base reçoit ; les demandes de modification sur mois clos
+  observation, achat, attelage, aptitude) ; la fiche chauffeur encore en
+  démonstration ; les demandes de modification sur mois clos
   (`cloture_mois`, `modification.statut = 'en-attente'`) encore locales.
+
+### La fiche véhicule lue depuis la base (8 septembre 2026)
+
+- Migration `0013_lire_fiche.sql` : `lire_fiche(immat)` — le véhicule, son
+  site, ses documents, les licences qui le couvrent, ses affectations avec
+  le nom du chauffeur, ses relevés, pleins, dépenses, interventions (avec
+  le garage), incidents, et la trace de ses statuts — en un JSON, sous
+  n'importe quelle écriture de la plaque ; null hors périmètre.
+- `src/domaine/assembler-fiche.ts` (pur) : `assemblerFiche(ligne, faits,
+  parametres, aujourdhui, plan)` — état et échéance des documents, la
+  licence qui couvre, les documents exigés manquants, l'immobilisation
+  administrative sur le dernier document de chaque type ; relevés passés
+  au contrôle de cohérence, compteur courant, rythme mensuel sur douze
+  mois ; carburant par mois depuis les pleins contre les kilomètres du
+  mois ; coûts sur douze mois (`agregerCouts`) ; périodes de statut depuis
+  la trace des modifications, les curatifs et la mise en service ;
+  disponibilité sur douze mois ; plan d'entretien confronté à
+  l'historique ; affectations avec les kilomètres de chaque période ;
+  échéances de l'aperçu et journal. `REFERENCE_L100` y vit désormais.
+  Sans table encore : attelages, visites et observations, vides.
+- `src/donnees/fiche.ts` : `ficheServeur(immat, parametres)` — ligne de la
+  liste Flotte, `lire_fiche()`, assembleur ; démonstration sinon. Les
+  pages `/flotte/[immat]` et `/telephone/vehicules/[immat]` l'appellent ;
+  `generateStaticParams` ne pré-rend plus rien quand la base est là.
+- Vérifié : `scripts/tester-fiche.mts` dans PGlite avec le seed — AA 032 EA
+  : 35 relevés, 25 pleins, 56 dépenses, 4 interventions, deux traces de
+  statut → 343 307 km, 5 865 km/mois, 12,5 L/100, 5,4 M F sur douze mois,
+  98 % de disponibilité, période en réparation du 20 au 23 août rendue.
+- Le jeu de démonstration (`fiche-demo.ts`) garde son propre assemblage,
+  mêlé à sa génération ; les deux appliquent les mêmes règles du domaine.
 
 **À faire, dans l'ordre.**
 

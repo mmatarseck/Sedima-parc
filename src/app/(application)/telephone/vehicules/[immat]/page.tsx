@@ -4,7 +4,7 @@ import { FicheRapide, type DerniersFaits } from "@/composants/telephone/FicheRap
 import { afficher, normaliser } from "@/domaine/immatriculation";
 import { titrePage } from "@/domaine/marque";
 import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
-import { fichePourImmatriculation } from "@/donnees/fiche-demo";
+import { ficheServeur } from "@/donnees/fiche";
 import { lignesFlotte } from "@/donnees/flotte";
 import { parametresServeur } from "@/lib/parametres-serveur";
 
@@ -36,7 +36,7 @@ export default async function PageFicheRapide({ params }: Props) {
       </div>
     );
   }
-  const fiche = ligne.vehicule.regime && ligne.vehicule.regime !== "exploitation" ? null : fichePourImmatriculation(canonique, parametres);
+  const fiche = ligne.vehicule.regime && ligne.vehicule.regime !== "exploitation" ? null : await ficheServeur(canonique, parametres);
   const dernier = <T extends { date: string }>(liste: T[] | undefined) => (liste && liste.length ? [...liste].sort((a, b) => b.date.localeCompare(a.date))[0]! : null);
   const plein = dernier(fiche?.pleins);
   const intervention = dernier(fiche?.interventions);

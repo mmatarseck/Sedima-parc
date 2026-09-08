@@ -5,16 +5,18 @@ import { afficher, normaliser } from "@/domaine/immatriculation";
 import { titrePage } from "@/domaine/marque";
 import { FicheVehiculeLeger } from "@/composants/parc-leger/FicheVehiculeLeger";
 import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { ficheServeur } from "@/donnees/fiche";
 import { fichePourImmatriculation } from "@/donnees/fiche-demo";
 import { attributairePour, forfaitsCarburant, vehiculesLegers } from "@/donnees/parc-leger-demo";
 import { parametresServeur } from "@/lib/parametres-serveur";
 import { FLOTTE } from "@/donnees/parc-demo";
+import { authentificationReelle } from "@/lib/session-demo";
 
 type Props = { params: Promise<{ immat: string }>; searchParams: Promise<{ onglet?: string; discussion?: string; ref?: string }> };
 
 export async function generateMetadata({ params }: Props) {
   const { immat } = await params;
-  const fiche = fichePourImmatriculation(immat);
+  const fiche = authentificationReelle() ? null : fichePourImmatriculation(immat);
   /* Sans fiche au serveur, le véhicule peut fort bien exister dans le
      navigateur : on titre l'immatriculation demandée plutôt que de déclarer
      introuvable ce que la page va peut-être trouver. Un véhicule léger, ou un
@@ -24,8 +26,9 @@ export async function generateMetadata({ params }: Props) {
   return { title: titrePage(fiche ? fiche.ligne.vehicule.immatriculationAffichee : (leger?.immatriculationAffichee ?? afficher(normaliser(brut)))) };
 }
 
+/* En démonstration, les fiches se rendent à la construction ; base branchée, à la demande — le périmètre dépend de la session. */
 export function generateStaticParams() {
-  return FLOTTE.map((l) => ({ immat: l.vehicule.immatriculation }));
+  return authentificationReelle() ? [] : FLOTTE.map((l) => ({ immat: l.vehicule.immatriculation }));
 }
 
 /**
@@ -36,7 +39,7 @@ export function generateStaticParams() {
  */
 export default async function PageVehicule({ params, searchParams }: Props) {
   const [{ immat }, { onglet, discussion, ref }, parametres] = await Promise.all([params, searchParams, parametresServeur()]);
-  const fiche = fichePourImmatriculation(decodeURIComponent(immat), parametres);
+  const fiche = await ficheServeur(decodeURIComponent(immat), parametres);
   /* Un véhicule saisi depuis la liste Flotte n'existe que dans le navigateur :
      le serveur ne peut pas le connaître, mais sa fiche doit s'ouvrir comme
      celle des autres. On confie donc la recherche au client, qui rendra la

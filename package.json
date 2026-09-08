@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "verifier-charte": "node --experimental-strip-types scripts/verifier-charte.mts",
     "generer-seed": "tsx scripts/generer-seed.mts",
-    "tester-ecritures": "tsx scripts/tester-ecritures.mts"
+    "tester-ecritures": "tsx scripts/tester-ecritures.mts",
+    "tester-fiche": "tsx scripts/tester-fiche.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",

@@ -148,6 +148,10 @@ Neuf migrations, dans l'ordre :
   `appliquer_transfert()`, en SECURITY DEFINER, ferme l'affectation
   titulaire en cours et ouvre celle du récipiendaire quand les deux
   signatures sont là.
+- `0013_lire_fiche.sql` — `lire_fiche(immat)` rend en un JSON tout ce que
+  la fiche 360° d'un véhicule lit ; `src/domaine/assembler-fiche.ts` en
+  fait la fiche par les calculs du domaine. Sans la fonction, la fiche se
+  dresse sur la ligne de la liste, sans historique.
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.

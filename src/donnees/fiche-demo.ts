@@ -116,17 +116,7 @@ const OBJETS_CURATIFS = [
   "Embrayage",
 ];
 
-/** Référence de consommation par catégorie, en L/100 km. */
-const REFERENCE_L100: Record<string, number> = {
-  camion: 28,
-  tracteur: 34,
-  "semi-remorque": 34,
-  camionnette: 10.5,
-  "vehicule-leger": 8,
-  bus: 22,
-  moto: 3.5,
-  engin: 18,
-};
+import { REFERENCE_L100 } from "@/domaine/assembler-fiche";
 
 const MOIS_COURTS = ["JAN", "FÉV", "MAR", "AVR", "MAI", "JUIN", "JUIL", "AOÛT", "SEP", "OCT", "NOV", "DÉC"];
 
