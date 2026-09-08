@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Camera, Check, X } from "lucide-react";
+import { Check, X } from "lucide-react";
+import { ChampPhoto } from "@/composants/interface/ChampPhoto";
 import type { AccesCourant } from "@/domaine/acces";
 import { TYPE_DEMANDE, libelleReponse, statutDemande, type Demande, type ReponseDemande } from "@/domaine/demandes";
 import { lireAccesCourant } from "@/lib/acces-courant";
@@ -195,14 +196,7 @@ function PanneauReponse({ demande, maintenant, onFermer, onEnvoyer }: { demande:
             </div>
           ) : null}
 
-          <label className={`flex items-center gap-3 rounded-[12px] border px-3.5 py-3 ${photo ? "border-accent-bordure bg-accent-fond" : "border-dashed border-bordure-champ bg-surface-2"}`}>
-            <Camera className={`size-5 shrink-0 ${photo ? "text-accent-tres-fonce" : "text-attenue"}`} strokeWidth={1.8} />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[13px] font-semibold text-texte">{photo ? "Photo jointe" : "Prendre la photo"}</span>
-              <span className="meta block truncate">{photo ?? "Obligatoire : le compteur, la jauge, le lieu ou le point contrôlé"}</span>
-            </span>
-            <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => setPhoto(e.target.files?.[0]?.name ?? null)} />
-          </label>
+          <ChampPhoto valeur={photo} onChange={setPhoto} dossier="demandes" precision="Obligatoire : le compteur, la jauge, le lieu ou le point contrôlé" />
 
           <label className="block">
             <span className="label-champ mb-1.5 block">Un mot (facultatif)</span>

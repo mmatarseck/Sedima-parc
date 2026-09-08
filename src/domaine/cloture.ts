@@ -47,7 +47,7 @@ export function moisDe(dateIso: string): string {
  * « être sûr du rattachement »).
  */
 /** « suggestion » : un texte libre, avec une liste proposée — la marque, le modèle. */
-export type TypeChamp = "texte" | "texte-long" | "nombre" | "date" | "choix" | "oui-non" | "reference" | "suggestion";
+export type TypeChamp = "texte" | "texte-long" | "nombre" | "date" | "choix" | "oui-non" | "reference" | "suggestion" | "photo";
 
 export interface ChampEdition {
   cle: string;
@@ -166,6 +166,7 @@ export interface Creation {
 export function formaterValeur(champ: ChampEdition, valeur: unknown): string {
   if (valeur === null || valeur === undefined || valeur === "") return "—";
   if (champ.type === "oui-non") return valeur ? "oui" : "non";
+  if (champ.type === "photo") return "photo jointe";
   if (champ.type === "choix") return champ.options?.find((o) => o.valeur === String(valeur))?.libelle ?? String(valeur);
   if (champ.type === "date") {
     const s = String(valeur);

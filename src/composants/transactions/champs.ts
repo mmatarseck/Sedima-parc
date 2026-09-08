@@ -448,6 +448,7 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
         { cle: "poste", libelle: "Poste", type: "choix", options: options(POSTE_DEPENSE).filter((o) => !["carburant", "amortissement", "salaire"].includes(o.valeur)), obligatoire: true },
         { cle: "origine", libelle: "Origine du décaissement", type: "choix", options: [{ valeur: "caisse", libelle: "Caisse parc" }, { valeur: "bon-de-commande", libelle: "Bon de commande" }, { valeur: "facture", libelle: "Facture" }], obligatoire: true },
         ...base,
+        { cle: "photo", libelle: "Photo de la pièce", type: "photo", obligatoire: true },
       ];
     case "plein":
       return [
@@ -455,6 +456,7 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
         ...(contexte.pour === "carburant" ? [{ cle: "vehiculeId", libelle: "Véhicule", type: "choix" as const, options: optionsVehicules(), obligatoire: true }] : []),
         { cle: "source", libelle: "Source", type: "choix", options: [{ valeur: "Cuve interne SEDIMA", libelle: "Cuve interne SEDIMA" }, { valeur: "Station Total", libelle: "Station Total" }, { valeur: "Station Shell", libelle: "Station Shell" }], obligatoire: true },
         ...base,
+        { cle: "photo", libelle: "Photo du ticket ou du bon", type: "photo", obligatoire: true },
       ];
     case "document":
       return [

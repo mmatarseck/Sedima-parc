@@ -42,8 +42,8 @@ async function inserer(table: string, ligne: Record<string, unknown>) {
 
 const essais: { type: Parameters<typeof ligneCreation>[0]; numero: string; valeurs: Record<string, unknown> }[] = [
   { type: "releve", numero: "REL-2026-90001", valeurs: { date: "2026-09-08", valeur: "344 120", source: "Téléphone" } },
-  { type: "plein", numero: "PLN-2026-90001", valeurs: { date: "2026-09-08", litres: 62.5, montant: 39375, source: "Station Total", km: 344120 } },
-  { type: "depense", numero: "DEP-2026-90001", valeurs: { date: "2026-09-08", poste: "pneumatiques", origine: "caisse", libelle: "Deux pneus avant", montant: 240000, justificatif: "oui" } },
+  { type: "plein", numero: "PLN-2026-90001", valeurs: { date: "2026-09-08", litres: 62.5, montant: 39375, source: "Station Total", km: 344120, photo: "pieces/pieces/2026/09/ticket.jpg" } },
+  { type: "depense", numero: "DEP-2026-90001", valeurs: { date: "2026-09-08", poste: "pneumatiques", origine: "caisse", libelle: "Deux pneus avant", montant: 240000, photo: "pieces/pieces/2026/09/facture.jpg" } },
   { type: "document", numero: "DOC-2026-90001", valeurs: { type: "assurance", dateEffet: "2026-09-01", echeance: "2027-08-31", emetteur: "AXA", numeroPiece: "POL-1" } },
   { type: "incident", numero: "INC-2026-90001", valeurs: { dateHeure: "2026-09-08T08:00", nature: "incident", type: "panne", lieu: "Thiès", roulant: "non", statut: "declare" } },
   { type: "intervention", numero: "INT-2026-90001", valeurs: { date: "2026-09-08", type: "curatif", objet: "Plaquettes", garage: "Garage SEDIMA", montant: 85000, immobilisationJours: 1 } },

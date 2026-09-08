@@ -1,6 +1,7 @@
 "use client";
 
 import { ChampCombo } from "@/composants/interface/ChampCombo";
+import { ChampPhoto } from "@/composants/interface/ChampPhoto";
 import type { ChampEdition } from "@/domaine/cloture";
 import { ChampReference } from "./ChampReference";
 
@@ -55,6 +56,9 @@ export function ChampSaisie({
   }
   if (champ.type === "suggestion") {
     return <ChampCombo valeur={String(v ?? "")} onChange={onChange} options={champ.suggestionsDe ? champ.suggestionsDe(saisie) : (champ.options ?? [])} creation invalide={invalide} placeholder="Choisir, ou écrire pour créer" />;
+  }
+  if (champ.type === "photo") {
+    return <ChampPhoto valeur={typeof v === "string" && v ? v : null} onChange={(ref) => onChange(ref ?? "")} dossier="pieces" libelle="Photo de la pièce" precision={champ.obligatoire ? "Obligatoire : le ticket, le bon, la facture" : "Facultative"} compact />;
   }
   if (champ.type === "texte-long") {
     return <textarea value={String(v ?? "")} onChange={(e) => onChange(e.target.value)} rows={3} className={`${commun} h-auto resize-none py-2 leading-relaxed`} />;

@@ -1066,6 +1066,35 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   parc remonté, enregistré et relu) ; Parcourir, Notifications, Rechercher
   (« diaw »), Réglages ; accueil détenteur réduit.
 
+### Les photos des pièces justificatives (8 septembre 2026)
+
+- La décision du 7 septembre — photo obligatoire pour un plein, une
+  dépense, la réponse à une demande, une réserve de transfert — n'était
+  tenue que par un nom de fichier. Elle est tenue par l'image.
+- `src/lib/photos.ts` : `reduireImage` (1 280 px, JPEG 0,75 avant l'envoi ;
+  640 px, 0,6 pour la vignette de démonstration), `televerserPhoto(fichier,
+  dossier)` — base branchée, dépôt dans le seau privé `pieces` sous
+  `<dossier>/<année>/<mois>/…jpg`, référence `pieces/…` ; démonstration,
+  vignette en data URL dans le navigateur, référence `local:…` —,
+  `urlPhoto` (adresse signée d'une heure, ou la vignette locale),
+  `photoAffichable`. Un simple nom d'avant ce module reste un nom.
+- Composants : `ChampPhoto` (prendre ou choisir, envoi immédiat, vignette,
+  retirer ; compact dans la modale) et `PhotoJointe` (vignette, image
+  entière au toucher). Le type de champ `photo` entre dans `ChampEdition`
+  et `ChampSaisie` ; `champsCreation` ajoute une photo **obligatoire** au
+  plein et à la dépense ; `transactions-colonnes` la porte en base
+  (colonne `photo`, migration 0014, qui passe outre le stockage en rejeu
+  local). La réponse d'une demande et la réserve d'un transfert passent
+  par le même champ ; la liste des demandes et la lecture d'une fiche
+  montrent la vignette.
+- Vérifié en démonstration : réponse à une demande avec une image générée
+  (vignette de 7,7 Ko dans le navigateur), vignette dans la liste du
+  bureau ; PGlite : 0014 rejouée, plein et dépense insérés avec leur photo.
+- Reste : la migration à jouer, et l'essai en ligne du dépôt dans le seau ;
+  le nettoyage des photos locales de démonstration (elles pèsent dans le
+  stockage du navigateur) ; la photo du véhicule lui-même (`PhotoVehicule`)
+  suit encore son propre chemin.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

@@ -152,6 +152,10 @@ Neuf migrations, dans l'ordre :
   la fiche 360° d'un véhicule lit ; `src/domaine/assembler-fiche.ts` en
   fait la fiche par les calculs du domaine. Sans la fonction, la fiche se
   dresse sur la ligne de la liste, sans historique.
+- `0014_photos.sql` — le seau privé `pieces` du stockage et ses politiques
+  (déposer et lire avec un rôle), la colonne `photo` sur `plein` et
+  `depense`. Les photos des demandes et des réserves de transfert y vont
+  aussi ; chaque ligne garde le chemin (`pieces/demandes/2026/09/….jpg`).
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.

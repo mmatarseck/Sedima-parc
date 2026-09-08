@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Camera, Check, ChevronLeft, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronLeft, Plus, Trash2 } from "lucide-react";
+import { ChampPhoto } from "@/composants/interface/ChampPhoto";
+import { PhotoJointe } from "@/composants/interface/PhotoJointe";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { Carte } from "@/composants/interface/Carte";
 import { Pastille } from "@/composants/interface/Pastille";
@@ -281,11 +283,9 @@ function Nouvelle({ liste, cibles, personnes, documents, maintenant, auteur, onC
             {reserves.map((r, i) => (
               <div key={i} className="mb-2 flex flex-col gap-2 rounded-[10px] border border-bordure p-3 sm:flex-row sm:items-center">
                 <input type="text" value={r.texte} onChange={(e) => setReserves((l) => l.map((x, k) => (k === i ? { ...x, texte: e.target.value } : x)))} placeholder="Rayure sur l'aile arrière gauche" className={`${CHAMP} h-9 flex-1`} />
-                <label className={`inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-[10px] border px-3 text-[12.5px] font-medium ${r.photo ? "border-accent-bordure bg-accent-fond text-accent-tres-fonce" : "border-dashed border-bordure-champ text-texte-2"}`}>
-                  <Camera className="size-4" strokeWidth={1.8} />
-                  {r.photo ? "Photo jointe" : "Photo"}
-                  <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => { const nom = e.target.files?.[0]?.name ?? null; setReserves((l) => l.map((x, k) => (k === i ? { ...x, photo: nom } : x))); }} />
-                </label>
+                <div className="w-[220px] shrink-0">
+                  <ChampPhoto valeur={r.photo} onChange={(ref) => setReserves((l) => l.map((x, k) => (k === i ? { ...x, photo: ref } : x)))} dossier="transferts" compact />
+                </div>
                 <button type="button" onClick={() => setReserves((l) => l.filter((_, k) => k !== i))} aria-label="Retirer la réserve" className="grid size-9 shrink-0 place-items-center rounded-full text-attenue hover:bg-surface-3 hover:text-defavorable">
                   <Trash2 className="size-4" strokeWidth={1.8} />
                 </button>
@@ -442,9 +442,9 @@ function Lecture({ t, liste, acces, auteur, detenteurIds, maintenant, onChange }
             <dd className="text-texte">
               {t.reserves.length === 0 ? "aucune" : null}
               {t.reserves.map((r, i) => (
-                <span key={i} className="block">
+                <span key={i} className="flex items-center gap-2 py-0.5">
+                  <PhotoJointe reference={r.photo} taille={32} libelle={r.texte} />
                   {r.texte}
-                  {r.photo ? <span className="meta"> · photo {r.photo}</span> : null}
                 </span>
               ))}
             </dd>

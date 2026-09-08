@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Camera, Check, Plus, Send, X } from "lucide-react";
+import { Check, Plus, Send, X } from "lucide-react";
+import { PhotoJointe } from "@/composants/interface/PhotoJointe";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { Carte, TableauSimple } from "@/composants/interface/Carte";
 import { Pastille } from "@/composants/interface/Pastille";
@@ -173,15 +174,7 @@ export function EcranDemandes({ initial, cibles, sites, maintenant }: { initial:
                 {
                   cle: "photo",
                   libelle: "Photo",
-                  rendu: (d) =>
-                    d.reponse?.photo ? (
-                      <span className="inline-flex items-center gap-1.5 text-[12px] text-texte-2" title={d.reponse.photo}>
-                        <Camera className="size-3.5" strokeWidth={1.8} />
-                        jointe
-                      </span>
-                    ) : (
-                      <span className="text-attenue-2">—</span>
-                    ),
+                  rendu: (d) => <PhotoJointe reference={d.reponse?.photo} libelle={`Photo · ${d.vehicule.immatriculation}`} />,
                 },
                 ...(gere
                   ? [
