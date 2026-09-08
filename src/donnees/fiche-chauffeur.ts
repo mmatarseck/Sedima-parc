@@ -16,7 +16,7 @@ import type { BusinessUnit, CategorieVehicule, DeclarationIncident, Indisponibil
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 import { lignesChauffeurs } from "./chauffeurs";
-import { fichePourChauffeur } from "./chauffeurs-demo";
+import { fichePourChauffeur, fichesChauffeurs } from "./chauffeurs-demo";
 
 interface FicheChauffeurJson {
   chauffeur: { adresse: string | null; contact_urgence: string | null; permis_delivrance: string | null };
@@ -67,3 +67,34 @@ async function ficheChauffeurServeurBrut(id: string): Promise<FicheChauffeur | n
 }
 
 export const ficheChauffeurServeur = cache(ficheChauffeurServeurBrut);
+
+interface FicheChauffeurEnListe {
+  id: string;
+  identifiant: string;
+  fiche: FicheChauffeurJson | null;
+}
+
+const FAITS_VIDES: FaitsFicheChauffeur = { adresse: null, contactUrgence: null, permisDelivrance: null, documents: [], affectations: [], indisponibilites: [], sanctions: [], incidents: [], pleins: [], depenses: [], releves: [] };
+
+/**
+ * Toutes les fiches du périmètre, pour ce qui compare les chauffeurs entre
+ * eux — le classement du mois, la moyenne des kilomètres de la cohorte.
+ * Base branchée : `lire_fiches_chauffeurs()` (0020) rend d'un coup ce que
+ * `lire_fiche_chauffeur()` rend pour un seul ; chaque fiche s'assemble sur
+ * la ligne de la liste qui porte le même identifiant.
+ */
+async function fichesChauffeursServeurBrut(): Promise<FicheChauffeur[]> {
+  if (!authentificationReelle()) return fichesChauffeurs();
+  const lignes = await lignesChauffeurs();
+  const client = await clientServeur();
+  const lecture = await client.rpc("lire_fiches_chauffeurs").maybeSingle<FicheChauffeurEnListe[] | null>();
+  if (lecture.error) console.warn(`Fiches chauffeurs : lire_fiches_chauffeurs() indisponible (${lecture.error.message}), classement sans historique.`);
+  const parIdentifiant = new Map((Array.isArray(lecture.data) ? lecture.data : []).map((f) => [f.identifiant, f.fiche]));
+  const aujourdhui = new Date().toISOString().slice(0, 10);
+  return lignes.map((ligne) => {
+    const j = parIdentifiant.get(ligne.id) ?? null;
+    return assemblerFicheChauffeur(ligne, j ? faitsChauffeurDepuisJson(j, ligne.id) : FAITS_VIDES, aujourdhui);
+  });
+}
+
+export const fichesChauffeursServeur = cache(fichesChauffeursServeurBrut);

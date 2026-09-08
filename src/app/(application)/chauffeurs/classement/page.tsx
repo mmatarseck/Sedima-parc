@@ -1,5 +1,7 @@
 import { Classement, type IdentiteClassement } from "@/composants/chauffeurs/Classement";
-import { DATE_REFERENCE, fichesChauffeurs } from "@/donnees/chauffeurs-demo";
+import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { fichesChauffeursServeur } from "@/donnees/fiche-chauffeur";
+import { authentificationReelle } from "@/lib/session-demo";
 import { titrePage } from "@/domaine/marque";
 import { classer, type LigneClassement } from "@/domaine/performance";
 
@@ -13,11 +15,12 @@ function moisRevolus(reference: string, nombre: number): string[] {
 
 /**
  * Classement SQDCM des chauffeurs, mois par mois. Calculé ici, côté serveur,
- * parce qu'il compare tous les chauffeurs entre eux : demain, une vue Supabase.
+ * parce qu'il compare tous les chauffeurs entre eux — base branchée, toutes
+ * les fiches du périmètre viennent de lire_fiches_chauffeurs() (0020).
  */
-export default function PageClassement() {
-  const fiches = fichesChauffeurs();
-  const mois = moisRevolus(DATE_REFERENCE, 6);
+export default async function PageClassement() {
+  const fiches = await fichesChauffeursServeur();
+  const mois = moisRevolus(authentificationReelle() ? new Date().toISOString().slice(0, 10) : DATE_REFERENCE, 6);
   const classements: Record<string, LigneClassement[]> = {};
   for (const m of mois) classements[m] = classer(fiches, m);
 

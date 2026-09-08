@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import { assemblerFicheChauffeur } from "../src/domaine/assembler-fiche-chauffeur";
 import { listeChauffeurs } from "../src/donnees/chauffeurs-demo";
+import { classer, kmMoyen } from "../src/domaine/performance";
 import { faitsChauffeurDepuisJson } from "../src/donnees/fiche-chauffeur";
 
 const bac = process.env.PGLITE_DIR ?? "";
@@ -54,5 +55,18 @@ attendu(`${fiche.consommation.length} mois de consommation, ${fiche.consommation
 attendu(`${fiche.contraventions.length} contraventions, ${fiche.fraisDeRoute.length} frais de route, ${fiche.releves.length} relevés attribués`, fiche.releves.length > 0);
 attendu(`journal ${fiche.journal.length} lignes, âge ${fiche.identite.age}, ancienneté ${fiche.identite.ancienneteAnnees} ans`, fiche.journal.length > 0 && fiche.identite.age !== null);
 
+/* Toutes les fiches en une requête (0020), pour le classement et la cohorte. */
+const t1 = performance.now();
+const toutes = (await pg.query(`select lire_fiches_chauffeurs() as j`)).rows[0].j as { id: string; identifiant: string; fiche: any }[];
+console.log(`lire_fiches_chauffeurs en ${Math.round(performance.now() - t1)} ms, ${toutes.length} chauffeurs`);
+const lignes = listeChauffeurs();
+const fiches = toutes.flatMap((f) => { const l = lignes.find((x) => x.id === f.identifiant); return l && f.fiche ? [assemblerFicheChauffeur(l, faitsChauffeurDepuisJson(f.fiche, l.id), "2026-09-02")] : []; });
+attendu(`${fiches.length} fiches assemblées sur ${toutes.length} (identifiants retrouvés dans la liste)`, fiches.length === toutes.length && fiches.length > 15);
+const classement = classer(fiches, "2026-08");
+const classes = classement.filter((l) => l.rang !== null);
+attendu(`classement d'août : ${classes.length} classés sur ${classement.length}, premier ${classes[0]?.evaluation.chauffeurId} (score ${classes[0]?.evaluation.score})`, classes.length > 5 && classes[0]?.rang === 1);
+attendu(`les rangs sont 1..n sans trou`, classes.every((l, i) => l.rang === i + 1));
+const moyenne = kmMoyen(fiches, "2025-09-01", "2026-09-02");
+attendu(`kilomètres moyens de la cohorte sur douze mois : ${Math.round(moyenne ?? 0)} km`, (moyenne ?? 0) > 10000);
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);

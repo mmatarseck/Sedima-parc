@@ -1386,6 +1386,20 @@ niveau et du périmètre, trois lectures de profil par ligne.
 - Le classement des chauffeurs attend en `0020_lire_fiches_chauffeurs.sql`
   (écrite, pas encore branchée).
 
+### Le classement des chauffeurs base branchée (8 septembre 2026, migration 0020)
+
+- `lire_fiches_chauffeurs()` : toutes les fiches du périmètre en un JSON
+  (`id`, `identifiant`, `fiche` de `lire_fiche_chauffeur()`), avec les
+  droits de l'appelant — le classement se fait parmi les chauffeurs qu'on
+  voit.
+- `fichesChauffeursServeur()` (`src/donnees/fiche-chauffeur.ts`) assemble
+  chaque fiche sur la ligne de la liste qui porte le même identifiant ; la
+  page d'un chauffeur n'a plus deux branches : rang du mois révolu et
+  kilomètres moyens de la cohorte se calculent comme en démonstration, et
+  la page Chauffeur du mois classe sur six mois révolus jusqu'à aujourd'hui.
+- Vérifié : `tester-fiche-chauffeur.mts` — 21 fiches assemblées en une
+  requête, classement d'août sans trou, moyenne de la cohorte plausible.
+
 **À faire, dans l'ordre.**
 
 1. ~~Le seed~~ — fait.

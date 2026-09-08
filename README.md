@@ -183,6 +183,9 @@ Neuf migrations, dans l'ordre :
   `mon_perimetre()` lit la fiche d'accès une fois, `dans_perimetre()` la
   compare ligne par ligne, `dans_mon_perimetre()` et `peut()` gardent leur
   signature. Qui voit quoi ne change pas.
+- `0020_lire_fiches_chauffeurs.sql` — `lire_fiches_chauffeurs()` rend d'un
+  coup toutes les fiches chauffeurs du périmètre, pour le classement du mois
+  et la moyenne des kilomètres de la cohorte.
 
 Si `supabase link` refuse le projet, le SQL Editor du tableau de bord donne le
 même résultat : coller chaque migration, dans l'ordre.

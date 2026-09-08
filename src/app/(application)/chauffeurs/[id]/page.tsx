@@ -4,9 +4,8 @@ import { FournisseurEdition } from "@/composants/transactions/ContexteEdition";
 import { debutPeriode, type PeriodeMois } from "@/domaine/chauffeur";
 import { titrePage } from "@/domaine/marque";
 import { classer, kmMoyen } from "@/domaine/performance";
-import { DATE_REFERENCE, fichesChauffeurs } from "@/donnees/chauffeurs-demo";
-import { lignesChauffeurs } from "@/donnees/chauffeurs";
-import { ficheChauffeurServeur } from "@/donnees/fiche-chauffeur";
+import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { ficheChauffeurServeur, fichesChauffeursServeur } from "@/donnees/fiche-chauffeur";
 import { authentificationReelle } from "@/lib/session-demo";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string; discussion?: string; ref?: string }> };
@@ -36,32 +35,21 @@ export default async function PageChauffeur({ params, searchParams }: Props) {
   const aujourdhui = reel ? new Date().toISOString().slice(0, 10) : DATE_REFERENCE;
   const reference = new Date(`${aujourdhui}T00:00:00Z`);
   const moisRevolu = new Date(Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
-  let contexte: ContexteFiche;
-  if (reel) {
-    /* Base branchée : la moyenne des kilomètres de l'année vient des lignes de
-       la liste ; le classement attend que les fiches se lisent toutes d'un coup. */
-    const lignes = await lignesChauffeurs();
-    const kms = lignes.map((l) => l.kmDouzeMois).filter((k): k is number => k !== null && k > 0);
-    const moyenne12 = kms.length ? kms.reduce((s, k) => s + k, 0) / kms.length : null;
-    contexte = {
-      kmMoyenParPeriode: { 3: moyenne12 === null ? null : moyenne12 / 4, 6: moyenne12 === null ? null : moyenne12 / 2, 12: moyenne12 },
-      classement: { mois: moisRevolu, rang: null, classes: 0, total: lignes.length },
-    };
-  } else {
-    /* Ce qui compare le chauffeur aux autres se calcule ici, une fois pour tous. */
-    const fiches = fichesChauffeurs();
-    const kmMoyenParPeriode = Object.fromEntries(([3, 6, 12] as PeriodeMois[]).map((p) => [p, kmMoyen(fiches, debutPeriode(p, reference), DATE_REFERENCE)])) as Record<PeriodeMois, number | null>;
-    const classement = classer(fiches, moisRevolu);
-    contexte = {
-      kmMoyenParPeriode,
-      classement: {
-        mois: moisRevolu,
-        rang: classement.find((l) => l.evaluation.chauffeurId === fiche.ligne.id)?.rang ?? null,
-        classes: classement.filter((l) => l.rang !== null).length,
-        total: classement.length,
-      },
-    };
-  }
+  /* Ce qui compare le chauffeur aux autres se calcule ici, une fois pour tous :
+     toutes les fiches du périmètre — celles de la base par lire_fiches_chauffeurs()
+     (0020), celles de la démonstration sinon. */
+  const fiches = await fichesChauffeursServeur();
+  const kmMoyenParPeriode = Object.fromEntries(([3, 6, 12] as PeriodeMois[]).map((p) => [p, kmMoyen(fiches, debutPeriode(p, reference), aujourdhui)])) as Record<PeriodeMois, number | null>;
+  const classement = classer(fiches, moisRevolu);
+  const contexte: ContexteFiche = {
+    kmMoyenParPeriode,
+    classement: {
+      mois: moisRevolu,
+      rang: classement.find((l) => l.evaluation.chauffeurId === fiche.ligne.id)?.rang ?? null,
+      classes: classement.filter((l) => l.rang !== null).length,
+      total: classement.length,
+    },
+  };
 
   return (
     <FournisseurEdition sujet={`chauffeur:${fiche.ligne.id}`} href={`/chauffeurs/${fiche.ligne.id}`}>
