@@ -6,7 +6,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { stockDe } from "../src/domaine/pieces";
+import { commandesAPreparer, objetCommande, rapprocherInventaire, stockDe } from "../src/domaine/pieces";
 import { mouvementDepuisLigne, pieceDepuisLigne, pneuDepuisLigne, type LigneMouvementBase, type LignePieceBase, type LignePneuBase } from "../src/donnees/pieces";
 import { ligneCreation, tableDe } from "../src/lib/transactions-colonnes";
 
@@ -126,6 +126,36 @@ const regul = lMouvements.find((m) => m.numero === "MVT-2026-90005")!;
 attendu(`la régularisation relue porte l'écart signé (${regul.ecart}) et une quantité positive (${regul.quantite})`, regul.ecart === -2 && regul.quantite === 2);
 const p = lPneus.find((x) => x.numero === "PNE-2026-90001")!;
 attendu(`le pneu relu est monté sur ${p.immatriculationAffichee} en ${p.position}, posé à ${p.kmPose} km, dimension ${p.pieceNumero}`, p.etat === "monte" && p.position === "AVG" && p.kmPose === 184200 && p.pieceNumero === "PCE-2026-90002");
+
+
+/* ---- 5. Le réapprovisionnement et l'inventaire, sur le stock relu ---- */
+const commandes = commandesAPreparer(stock);
+const chezSansFournisseur = commandes.find((c) => c.lignes.some((l) => l.piece.numero === "PCE-2026-90002"));
+attendu(`la référence de pneu épuisée est à commander (${chezSansFournisseur?.lignes.map((l) => `${l.piece.reference} ×${l.quantite}`).join(", ")}), chez « ${chezSansFournisseur?.fournisseur} »`, chezSansFournisseur?.lignes.some((l) => l.piece.numero === "PCE-2026-90002" && l.quantite === 6) === true && chezSansFournisseur.fournisseurNumero === null);
+attendu(`le filtre à jour n'est dans aucune commande`, !commandes.some((c) => c.lignes.some((l) => l.piece.numero === "PCE-2026-90001")));
+const daPrep = chezSansFournisseur!;
+const da = ligneCreation("achat", "DAC-2026-90001", { date: "2026-09-09", poste: "pieces", objet: objetCommande(daPrep), montantEstime: daPrep.montantEstime, urgence: "normale", origineNumero: daPrep.lignes[0]!.piece.numero, origineLibelle: "1 référence sous le seuil", commentaireDecision: "essai" }, sansRattachement);
+if ("refus" in da) attendu(`la demande d'achat de réapprovisionnement est refusée : ${da.refus}`, false);
+else {
+  try {
+    await inserer(tableDe("achat")!, da.ligne);
+    const lue = (await pg.query(`select objet, origine_numero, poste from demande_achat where numero = 'DAC-2026-90001'`)).rows[0] as { objet: string; origine_numero: string; poste: string };
+    attendu(`la demande d'achat s'écrit en citant la pièce (${lue.origine_numero}, poste ${lue.poste}) : « ${lue.objet} »`, lue.origine_numero === "PCE-2026-90002" && lue.poste === "pieces" && lue.objet.startsWith("Réapprovisionnement magasin"));
+  } catch (x) {
+    attendu(`la demande d'achat de réapprovisionnement : ${(x as Error).message}`, false);
+  }
+}
+const inventaire = rapprocherInventaire(stock, { "PCE-2026-90001": 3 });
+const lFiltre = inventaire.find((l) => l.piece.numero === "PCE-2026-90001")!;
+const lPneu = inventaire.find((l) => l.piece.numero === "PCE-2026-90002")!;
+attendu(`l'inventaire rapproche 3 comptés de ${lFiltre.deduit} déduits : écart ${lFiltre.ecart} ; la ligne non comptée n'a pas d'écart (${lPneu.ecart})`, lFiltre.ecart === -1 && lPneu.compte === null && lPneu.ecart === 0);
+const regulInventaire = ligneCreation("mouvement", "MVT-2026-90030", { date: "2026-09-09", nature: "regularisation", ecart: lFiltre.ecart, motif: "Inventaire du 9 septembre 2026 : 3 comptés, 4 déduits", auteur: "Gestionnaire de parc" }, surFiltre);
+if ("refus" in regulInventaire) attendu(`la régularisation d'inventaire est refusée : ${regulInventaire.refus}`, false);
+else {
+  await inserer(tableDe("mouvement")!, regulInventaire.ligne);
+  const apres = (await pg.query(`select sum(case nature when 'entree' then quantite when 'retour' then quantite when 'sortie' then -quantite else coalesce(ecart, 0) end)::int as q from mouvement_stock where piece_id = $1`, [ids["PCE-2026-90001"]])).rows[0] as { q: number };
+  attendu(`après la régularisation, la base déduit ${apres.q} (attendu 3)`, apres.q === 3);
+}
 
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);

@@ -71,10 +71,11 @@ mouvements, charge à l'achat, sorties rattachées, pneus un par un, droits du
 module Maintenance, pas de QR.
 
 **Prochaines étapes proposées** : jouer la 0029 et poser les variables du
-courriel ; vérifier en ligne ; puis la suite des pièces (sortir et recevoir
-depuis le téléphone, le réapprovisionnement qui prépare une demande d'achat,
-l'inventaire) ; la maintenance des légers et les dates de début des plans
-car restent à saisir dans le dossier.
+courriel ; vérifier en ligne ; puis sortir et recevoir des pièces depuis le
+téléphone (quand l'autre session aura rendu `src/composants/telephone/`) ;
+la maintenance des légers et les dates de début des plans car restent à
+saisir dans le dossier. Le réapprovisionnement (demande d'achat par
+fournisseur) et l'inventaire (régularisations d'un coup) sont faits.
 
 ---
 
@@ -2038,10 +2039,30 @@ de QR de casier** pour l'instant.
   contraintes, référence en doublon, pneu en stock avec véhicule), relecture
   par les mêmes lectures que le serveur : stock déduit 4, dernier prix de
   l'entrée, sorties sur douze mois, fournisseur du référentiel, pneu relu.
+- **Le réapprovisionnement** (même soir) : `commandesAPreparer()` groupe
+  ce qui est sous le seuil par fournisseur habituel — une demande d'achat
+  par fournisseur, jamais deux comptes mélangés. La vue Stock montre un
+  bandeau « À réapprovisionner » avec un bouton par fournisseur ; il ouvre
+  la demande d'achat pré-remplie (poste pièces, objet, montant estimé au
+  dernier prix, fournisseur pressenti, urgence si une pièce est à zéro,
+  détail ligne à ligne en commentaire) et la range sur Caisse & achats,
+  où elle suit son circuit. La demande cite la pièce (PCE-…) comme origine,
+  en texte : l'index des références ne connaît pas les pièces.
+- **L'inventaire** (même soir) : vue Inventaire, une ligne par pièce
+  active — déduit, compté (saisie), écart calculé, motif facultatif. Un
+  inventaire peut être partiel. « Enregistrer l'inventaire » écrit **une
+  régularisation par écart** par `enregistrerCreation` (hors modale, donc
+  synchronisée en base comme les autres), motif par défaut « Inventaire du
+  JJ/MM/AAAA : n comptés, m déduits », puis bascule sur le journal avec le
+  bilan. Le bouton exige le niveau **gestion** du module Maintenance (ce que
+  la politique de la 0029 exige aussi) ; entrer, sortir, créer demandent la
+  **saisie** — les boutons se cachent sinon. Attention : le profil
+  *responsable* (gestionnaire-parc, direction) n'a que la *lecture* sur
+  Maintenance par défaut ; en production le gestionnaire est administrateur.
 - **Limites, à faire ensuite** : les kilomètres parcourus d'un pneu monté
   demandent le compteur du véhicule (non lu ici : « en cours ») ; pas de
-  sortie depuis le téléphone ; « à commander » ne prépare pas encore de
-  demande d'achat ; pas d'inventaire groupé.
+  sortie ni de réception depuis le téléphone (l'autre session travaille
+  sur `src/composants/telephone/`).
 
 **À faire, dans l'ordre** (mis à jour le 9 septembre 2026).
 
@@ -2062,9 +2083,10 @@ de QR de casier** pour l'instant.
 8. ~~**Parc léger lu en base**~~ et ~~**discussions en base (0028)**~~ — faits le 9 septembre 2026 au soir.
 9. ~~**Pièces de rechange**~~ — fait le 9 septembre 2026 au soir (0029, à
    jouer) : référentiel, stock déduit, mouvements, pneus, fiche, écritures.
-10. **La suite des pièces** : sortir et recevoir depuis le téléphone (atelier),
-    le réapprovisionnement qui prépare une demande d'achat depuis « à
-    commander », l'inventaire qui produit ses régularisations d'un coup.
+10. ~~Le réapprovisionnement qui prépare une demande d'achat~~ et
+    ~~l'inventaire qui produit ses régularisations d'un coup~~ — faits le
+    9 septembre 2026 au soir. Reste **sortir et recevoir depuis le
+    téléphone** (atelier), quand `src/composants/telephone/` sera libre.
 
 ---
 

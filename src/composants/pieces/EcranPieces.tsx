@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownToLine, ArrowUpFromLine, CircleDot, Pencil, Plus, Scale } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, CircleDot, ClipboardCheck, Pencil, Plus, Scale, ShoppingCart } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { BandeauKpi, type Kpi } from "@/composants/interface/BandeauKpi";
+import { Carte, TableauSimple } from "@/composants/interface/Carte";
 import { Numero } from "@/composants/interface/Numero";
 import { Pastille } from "@/composants/interface/Pastille";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
-import { CHAMPS } from "@/composants/transactions/champs";
+import { CHAMPS, champsCreation } from "@/composants/transactions/champs";
 import { FournisseurEdition, useEdition } from "@/composants/transactions/ContexteEdition";
+import type { AccesCourant } from "@/domaine/acces";
 import type { ChampEdition } from "@/domaine/cloture";
 import { afficher } from "@/domaine/immatriculation";
 import { COULEUR_TON } from "@/domaine/libelles";
@@ -18,12 +20,18 @@ import {
   ETAT_STOCK,
   NATURE_MOUVEMENT,
   UNITE_PIECE,
+  commandesAPreparer,
+  detailCommande,
   fabriquerMouvement,
   fabriquerPiece,
   fabriquerPneu,
   kmParcourus,
+  objetCommande,
+  rapprocherInventaire,
   stockDe,
   variation,
+  type CommandeAPreparer,
+  type LigneInventaire,
   type MouvementStock,
   type NatureMouvement,
   type Piece,
@@ -31,8 +39,9 @@ import {
   type StockPiece,
 } from "@/domaine/pieces";
 import type { SourcePieces } from "@/donnees/pieces";
-import { dateCourte, montant, montantCourt, nombre } from "@/lib/format";
-import { lireCreations } from "@/lib/clotures-demo";
+import { lireAccesCourant } from "@/lib/acces-courant";
+import { date as formaterDate, dateCourte, montant, montantCourt, nombre } from "@/lib/format";
+import { enregistrerCreation, lireCreations } from "@/lib/clotures-demo";
 
 /* ============================================================================
  * Suivi › Pièces de rechange — le magasin de l'atelier central.
@@ -44,7 +53,7 @@ import { lireCreations } from "@/lib/clotures-demo";
  * régularise — et la quantité s'ensuit. Décisions du 9 septembre 2026.
  * ==========================================================================*/
 
-export type VuePieces = "stock" | "mouvements" | "pneus";
+export type VuePieces = "stock" | "mouvements" | "pneus" | "inventaire";
 
 interface Props {
   source: SourcePieces;
@@ -166,10 +175,128 @@ export function hrefMouvement(m: MouvementStock): string {
 }
 
 function Interieur({ source, vueInitiale, cible }: Props) {
-  const { demander, creer } = useEdition();
-  const [vue, setVue] = useState<VuePieces>(vueInitiale === "mouvements" || vueInitiale === "pneus" ? vueInitiale : "stock");
+  const { demander, creer, actualiser } = useEdition();
+  const [vue, setVue] = useState<VuePieces>(vueInitiale === "mouvements" || vueInitiale === "pneus" || vueInitiale === "inventaire" ? vueInitiale : "stock");
   const { pieces, mouvements, pneus, stock } = usePieces(source);
   const pieceParNumero = useMemo(() => new Map(pieces.map((p) => [p.numero, p])), [pieces]);
+  /* Régulariser demande le niveau gestion du module : la vue Inventaire se
+     montre à tous (compter n'est pas régulariser), l'enregistrement, non. */
+  const [acces, setAcces] = useState<AccesCourant | null>(null);
+  useEffect(() => setAcces(lireAccesCourant()), []);
+  const gere = acces?.niveaux.maintenance === "gestion";
+  /* Entrer, sortir, créer une pièce ou un pneu : la saisie. Tant que l'accès
+     n'est pas lu (premier rendu), on ne promet rien. */
+  const saisit = gere || acces?.niveaux.maintenance === "saisie";
+
+  /* ---- Le réapprovisionnement : une demande d'achat par fournisseur ---- */
+  const commandes = useMemo(() => commandesAPreparer(stock), [stock]);
+  function preparerCommande(c: CommandeAPreparer) {
+    /* La demande d'achat cite d'ordinaire une transaction (observation,
+       intervention…) ; ici, c'est la pièce sous le seuil qui la motive : le
+       champ garde le numéro PCE, sans passer par l'index des transactions. */
+    const champs = champsCreation("achat", { pour: "caisse" }).map((ch) => (ch.cle === "origineNumero" ? { ...ch, type: "texte" as const, libelle: "Pièce qui motive la demande" } : ch));
+    creer({
+      type: "achat",
+      titre: `Demande d'achat — ${c.fournisseur}`,
+      champs,
+      valeurs: {
+        date: source.aujourdhui,
+        poste: "pieces",
+        urgence: c.lignes.some((l) => l.piece.stockMinimum > 0 && l.quantite >= (l.piece.stockMaximum ?? l.piece.stockMinimum)) ? "urgente" : "normale",
+        objet: objetCommande(c),
+        montantEstime: c.montantEstime,
+        prestataireNumero: c.fournisseurNumero ?? "",
+        origineNumero: c.lignes[0]!.piece.numero,
+        origineLibelle: `${c.lignes.length} référence${c.lignes.length > 1 ? "s" : ""} sous le seuil`,
+        commentaireDecision: detailCommande(c),
+      },
+      /* La demande vit sur l'écran Caisse & achats, pas sur le magasin. */
+      sujetDe: () => "caisse",
+    });
+  }
+
+  /* ---- L'inventaire : compter, rapprocher, régulariser d'un coup ---- */
+  const [comptes, setComptes] = useState<Record<string, string>>({});
+  const [motifs, setMotifs] = useState<Record<string, string>>({});
+  const [bilanInventaire, setBilanInventaire] = useState<string | null>(null);
+  const inventaire = useMemo(() => rapprocherInventaire(stock, Object.fromEntries(Object.entries(comptes).map(([k, v]) => [k, v.trim() === "" ? null : Number(v.replace(/\s/g, "").replace(",", "."))]))), [stock, comptes]);
+  const ecarts = inventaire.filter((l) => l.ecart !== 0);
+  const comptees = inventaire.filter((l) => l.compte !== null).length;
+  function enregistrerInventaire() {
+    if (!gere || ecarts.length === 0) return;
+    const champs = champsMouvement("regularisation", pieces);
+    const jour = formaterDate(source.aujourdhui);
+    let faites = 0;
+    let refus: string | null = null;
+    for (const l of ecarts) {
+      const r = enregistrerCreation({
+        sujet: "pieces",
+        type: "mouvement",
+        champs,
+        valeurs: { date: source.aujourdhui, nature: "regularisation", pieceNumero: l.piece.numero, ecart: l.ecart, motif: motifs[l.piece.numero]?.trim() || `Inventaire du ${jour} : ${l.compte} compté${l.compte! > 1 ? "s" : ""}, ${l.deduit} déduit${l.deduit > 1 ? "s" : ""}` },
+        motif: `Inventaire du ${jour}`,
+      });
+      if (r.issue === "creee") faites += 1;
+      else refus = r.issue === "mois-clos" ? `le mois ${r.mois} est clos` : "saisie invalide";
+    }
+    setComptes({});
+    setMotifs({});
+    actualiser();
+    setBilanInventaire(`${faites} régularisation${faites > 1 ? "s" : ""} enregistrée${faites > 1 ? "s" : ""} pour l'inventaire du ${jour}${refus ? ` — ${ecarts.length - faites} refusée${ecarts.length - faites > 1 ? "s" : ""} : ${refus}` : ""}.`);
+    setVue("mouvements");
+  }
+  const colonnesInventaire = useMemo(
+    () => [
+      { cle: "reference", libelle: "Réf.", largeur: "140px", rendu: (l: LigneInventaire) => <span className="code text-[12.5px]">{l.piece.reference}</span> },
+      { cle: "designation", libelle: "Désignation", rendu: (l: LigneInventaire) => <span className="block truncate">{l.piece.designation}</span> },
+      { cle: "deduit", libelle: "Déduit", alignee: "droite" as const, largeur: "110px", rendu: (l: LigneInventaire) => <span className="code">{nombre(l.deduit)} {UNITE_PIECE[l.piece.unite].court}</span> },
+      {
+        cle: "compte",
+        libelle: "Compté",
+        alignee: "droite" as const,
+        largeur: "130px",
+        rendu: (l: LigneInventaire) => (
+          <input
+            type="text"
+            inputMode="numeric"
+            value={comptes[l.piece.numero] ?? ""}
+            onChange={(e) => setComptes((c) => ({ ...c, [l.piece.numero]: e.target.value }))}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Quantité comptée — ${l.piece.reference}`}
+            placeholder="—"
+            className="code h-8 w-24 rounded-[10px] border border-bordure-champ bg-surface px-2.5 text-right text-[13px] text-texte outline-none focus:border-accent"
+          />
+        ),
+      },
+      {
+        cle: "ecart",
+        libelle: "Écart",
+        alignee: "droite" as const,
+        largeur: "100px",
+        rendu: (l: LigneInventaire) => (l.compte === null ? <span className="text-attenue-2">—</span> : l.ecart === 0 ? <span className="text-favorable">juste</span> : <span className={`code font-semibold ${l.ecart < 0 ? "text-defavorable" : "text-vigilance"}`}>{l.ecart > 0 ? "+" : ""}{nombre(l.ecart)}</span>),
+      },
+      {
+        cle: "motif",
+        libelle: "Motif de l'écart",
+        largeur: "260px",
+        rendu: (l: LigneInventaire) =>
+          l.ecart === 0 ? (
+            <span className="text-attenue-2">—</span>
+          ) : (
+            <input
+              type="text"
+              value={motifs[l.piece.numero] ?? ""}
+              onChange={(e) => setMotifs((m) => ({ ...m, [l.piece.numero]: e.target.value }))}
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`Motif de l'écart — ${l.piece.reference}`}
+              placeholder="Facultatif — casier vide, casse, sortie non tracée…"
+              className="h-8 w-full rounded-[10px] border border-bordure-champ bg-surface px-2.5 text-[13px] text-texte outline-none focus:border-accent"
+            />
+          ),
+      },
+    ],
+    [comptes, motifs],
+  );
 
   /* ---- Les chiffres qui décident ---- */
   const actives = stock.filter((s) => s.piece.actif);
@@ -369,7 +496,9 @@ function Interieur({ source, vueInitiale, cible }: Props) {
       ? `${actives.length} référence${actives.length > 1 ? "s" : ""} · ${aCommander.length} à réapprovisionner · ${montantCourt(valeur)} de valeur indicative — le stock se déduit des mouvements, il ne se saisit pas`
       : vue === "mouvements"
         ? `${mouvements.length} mouvement${mouvements.length > 1 ? "s" : ""} · ${sortiesAnnee} sortie${sortiesAnnee > 1 ? "s" : ""} sur douze mois — toute sortie cite l'ordre, l'intervention ou le véhicule qu'elle sert`
-        : `${pneus.length} pneu${pneus.length > 1 ? "s" : ""} · ${montes} monté${montes > 1 ? "s" : ""} · ${pneusEnStock} en stock — chaque pneu se suit un par un, de la pose à la dépose`;
+        : vue === "pneus"
+          ? `${pneus.length} pneu${pneus.length > 1 ? "s" : ""} · ${montes} monté${montes > 1 ? "s" : ""} · ${pneusEnStock} en stock — chaque pneu se suit un par un, de la pose à la dépose`
+          : `${comptees} référence${comptees > 1 ? "s" : ""} comptée${comptees > 1 ? "s" : ""} sur ${inventaire.length} · ${ecarts.length} écart${ecarts.length > 1 ? "s" : ""} — un inventaire ne corrige pas le stock à la main : chaque écart devient une régularisation, avec son motif`;
 
   return (
     <div className="flex flex-col gap-5 px-8 py-7 lg:h-full">
@@ -384,11 +513,28 @@ function Interieur({ source, vueInitiale, cible }: Props) {
                 { cle: "stock" as VuePieces, libelle: "Stock" },
                 { cle: "mouvements" as VuePieces, libelle: "Mouvements" },
                 { cle: "pneus" as VuePieces, libelle: "Pneus" },
+                { cle: "inventaire" as VuePieces, libelle: "Inventaire" },
               ]}
               onChange={setVue}
               etiquette="Vue"
             />
-            {vue === "pneus" ? (
+            {vue === "inventaire" ? (
+              <>
+                <button type="button" onClick={() => { setComptes({}); setMotifs({}); }} className="bouton-secondaire disabled:cursor-not-allowed disabled:text-attenue-2" disabled={comptees === 0}>
+                  Vider le comptage
+                </button>
+                <button
+                  type="button"
+                  onClick={enregistrerInventaire}
+                  className="bouton-principal disabled:cursor-not-allowed disabled:bg-surface-3 disabled:text-attenue-2"
+                  disabled={!gere || ecarts.length === 0}
+                  title={!gere ? "Régulariser demande le niveau gestion du module Maintenance" : ecarts.length === 0 ? "Aucun écart à régulariser" : undefined}
+                >
+                  <ClipboardCheck className="size-4" strokeWidth={2.2} />
+                  Enregistrer l'inventaire{ecarts.length > 0 ? ` (${ecarts.length} écart${ecarts.length > 1 ? "s" : ""})` : ""}
+                </button>
+              </>
+            ) : !saisit ? null : vue === "pneus" ? (
               <button type="button" onClick={nouveauPneu} className="bouton-principal">
                 <Plus className="size-4" strokeWidth={2.2} />
                 Nouveau pneu
@@ -427,6 +573,50 @@ function Interieur({ source, vueInitiale, cible }: Props) {
       />
       <BandeauKpi kpis={kpis} />
 
+      {vue === "stock" && saisit && commandes.length > 0 ? (
+        /* Le réapprovisionnement : ce qui est sous le seuil, groupé par
+           fournisseur habituel — une demande d'achat par fournisseur, jamais
+           une demande qui mélange deux comptes. La demande s'ouvre pré-remplie
+           (objet, montant estimé au dernier prix, détail ligne à ligne) et se
+           range sur Caisse & achats, où elle suit son circuit habituel. */
+        <div className="carte flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3">
+          <div className="min-w-0">
+            <p className="text-[13.5px] font-semibold text-texte">À réapprovisionner</p>
+            <p className="meta">{commandes.reduce((t, c) => t + c.lignes.length, 0)} référence{commandes.reduce((t, c) => t + c.lignes.length, 0) > 1 ? "s" : ""} sous le seuil · une demande d'achat par fournisseur, au dernier prix connu</p>
+          </div>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {commandes.map((c) => (
+              <button key={c.fournisseurNumero ?? c.fournisseur} type="button" onClick={() => preparerCommande(c)} className="bouton-secondaire h-9" title={detailCommande(c)}>
+                <ShoppingCart className="size-4 text-texte-2" strokeWidth={1.7} />
+                {c.fournisseur}
+                <span className="text-attenue">
+                  · {c.lignes.length} réf.{c.montantEstime > 0 ? ` · ${montantCourt(c.montantEstime)}` : ""}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {vue === "mouvements" && bilanInventaire ? (
+        <p className="carte shrink-0 px-5 py-3 text-[13px] text-texte">
+          <ClipboardCheck className="mr-1.5 inline size-4 text-accent-fonce" strokeWidth={2} />
+          {bilanInventaire}
+        </p>
+      ) : null}
+
+      {vue === "inventaire" ? (
+        <Carte titre={`Inventaire du ${formaterDate(source.aujourdhui)}`} precision="Comptez ce que vous voyez au casier ; l'écart se calcule, la régularisation s'écrit à l'enregistrement. Un inventaire peut être partiel : les lignes non comptées restent telles quelles." sansMarge className="min-h-0 flex-1 overflow-y-auto">
+          <TableauSimple<LigneInventaire>
+            colonnes={colonnesInventaire}
+            lignes={inventaire}
+            cle={(l) => l.piece.numero}
+            filtrable
+            vide="Aucune pièce active au référentiel."
+          />
+        </Carte>
+      ) : null}
+
       {vue === "stock" ? (
         <TableListe<StockPiece>
           ecran="pieces"
@@ -463,7 +653,7 @@ function Interieur({ source, vueInitiale, cible }: Props) {
           libelleUnite="mouvements"
           vide="Aucun mouvement ne correspond."
         />
-      ) : (
+      ) : vue === "pneus" ? (
         <TableListe<Pneu>
           ecran="pieces-pneus"
           lignes={lignesPneus}
@@ -481,7 +671,7 @@ function Interieur({ source, vueInitiale, cible }: Props) {
           libelleUnite="pneus"
           vide="Aucun pneu ne correspond."
         />
-      )}
+      ) : null}
     </div>
   );
 }

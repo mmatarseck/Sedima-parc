@@ -301,3 +301,70 @@ export function fabriquerPneu(c: Creation, immatriculationAffichee: (vehiculeId:
     creee: true,
   };
 }
+
+/* -- Le réapprovisionnement ---------------------------------------------------------- */
+
+/** Ce qu'une demande d'achat devrait commander chez un fournisseur : les pièces sous le seuil qu'il fournit d'habitude. */
+export interface CommandeAPreparer {
+  /** Le numéro PRE du fournisseur habituel ; nul quand les pièces n'en ont pas. */
+  fournisseurNumero: string | null;
+  fournisseur: string;
+  lignes: { piece: Piece; quantite: number; prixUnitaire: number | null }[];
+  /** Somme des lignes dont le prix est connu. */
+  montantEstime: number;
+}
+
+/**
+ * Regroupe ce qui est à commander par fournisseur habituel : une demande
+ * d'achat par fournisseur, jamais une demande qui mélange deux comptes. Les
+ * pièces sans fournisseur font un groupe à part, à attribuer à la saisie.
+ */
+export function commandesAPreparer(stock: StockPiece[]): CommandeAPreparer[] {
+  const groupes = new Map<string, CommandeAPreparer>();
+  for (const s of stock) {
+    if (!s.piece.actif || s.aCommander <= 0) continue;
+    const cle = s.piece.fournisseurNumero ?? s.piece.fournisseur ?? "";
+    const g = groupes.get(cle) ?? { fournisseurNumero: s.piece.fournisseurNumero, fournisseur: s.piece.fournisseur ?? "Fournisseur à choisir", lignes: [], montantEstime: 0 };
+    g.lignes.push({ piece: s.piece, quantite: s.aCommander, prixUnitaire: s.dernierPrix });
+    g.montantEstime += s.dernierPrix === null ? 0 : s.aCommander * s.dernierPrix;
+    groupes.set(cle, g);
+  }
+  return [...groupes.values()].sort((a, b) => b.montantEstime - a.montantEstime || a.fournisseur.localeCompare(b.fournisseur, "fr"));
+}
+
+/** L'objet d'une demande d'achat de réapprovisionnement : court, lisible dans une liste. */
+export function objetCommande(c: CommandeAPreparer): string {
+  const lignes = c.lignes.map((l) => `${l.piece.reference} ×${l.quantite}`);
+  const tete = lignes.slice(0, 3).join(", ");
+  return `Réapprovisionnement magasin — ${tete}${lignes.length > 3 ? ` et ${lignes.length - 3} autre${lignes.length > 4 ? "s" : ""}` : ""}`;
+}
+
+/** Le détail ligne à ligne, pour le commentaire de la demande. */
+export function detailCommande(c: CommandeAPreparer): string {
+  return c.lignes.map((l) => `${l.piece.reference} · ${l.piece.designation} : ${l.quantite} ${UNITE_PIECE[l.piece.unite].court}${l.prixUnitaire === null ? "" : ` à ${l.prixUnitaire} F`}`).join("\n");
+}
+
+/* -- L'inventaire ----------------------------------------------------------------- */
+
+/** Une ligne d'inventaire : ce que le magasin déduit, ce que l'on a compté, l'écart qui en découle. */
+export interface LigneInventaire {
+  piece: Piece;
+  deduit: number;
+  compte: number | null;
+  ecart: number;
+}
+
+/**
+ * Rapproche un comptage du stock déduit. Une pièce non comptée n'a pas
+ * d'écart : l'inventaire peut être partiel (un rayon, une catégorie). Seules
+ * les lignes dont l'écart n'est pas nul produiront une régularisation.
+ */
+export function rapprocherInventaire(stock: StockPiece[], comptes: Record<string, number | null | undefined>): LigneInventaire[] {
+  return stock
+    .filter((s) => s.piece.actif)
+    .map((s) => {
+      const compte = comptes[s.piece.numero];
+      const c = compte === null || compte === undefined || !Number.isFinite(compte) ? null : Math.max(0, Math.round(compte));
+      return { piece: s.piece, deduit: s.quantite, compte: c, ecart: c === null ? 0 : c - s.quantite };
+    });
+}
