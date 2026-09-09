@@ -2,20 +2,43 @@
  * Ce qu'une transaction saisie dans l'application devient en base : la table,
  * et les colonnes que ses valeurs remplissent.
  *
- * Quinze types ont leur table — relevé, plein, dépense, document, incident,
+ * Vingt types ont leur table — relevé, plein, dépense, document, incident,
  * affectation, intervention, indisponibilité, sanction (0001), l'ordre de
  * travail (0016), le mouvement de caisse et celui de la cuve (0017), la
- * demande d'achat (0022), la visite technique et son observation (0023) — et
- * le statut d'un véhicule s'écrit sur sa ligne avec sa trace. Ce qui n'a pas
- * de table reste dans le navigateur, et `tableDe` le dit.
+ * demande d'achat (0022), la visite technique et son observation (0023), et
+ * le transport confié à des tiers (0002) : la ligne de relevé de transport,
+ * la ligne de grille, l'affrètement, la mise à disposition, la prestation —
+ * et le statut d'un véhicule s'écrit sur sa ligne avec sa trace. Ce qui n'a
+ * pas de table reste dans le navigateur, et `tableDe` le dit.
  *
  * Ce module est pur — pas de base, pas de navigateur — pour se vérifier seul
  * et servir la fonction serveur comme les tests.
  * ==========================================================================*/
 
 import type { TypeTransaction } from "@/domaine/reference";
+import { PRODUIT_TRANSPORTE, type ProduitTransporte } from "@/domaine/releve-transport";
 
-export type TableBranchee = "releve_kilometrique" | "plein" | "depense" | "document" | "incident" | "affectation" | "intervention" | "indisponibilite" | "sanction" | "ordre_travail" | "mouvement_caisse" | "mouvement_cuve" | "demande_achat" | "visite_technique" | "observation_visite";
+export type TableBranchee =
+  | "releve_kilometrique"
+  | "plein"
+  | "depense"
+  | "document"
+  | "incident"
+  | "affectation"
+  | "intervention"
+  | "indisponibilite"
+  | "sanction"
+  | "ordre_travail"
+  | "mouvement_caisse"
+  | "mouvement_cuve"
+  | "demande_achat"
+  | "visite_technique"
+  | "observation_visite"
+  | "releve_transport"
+  | "ligne_tarif"
+  | "affretement"
+  | "mise_a_disposition"
+  | "prestation";
 
 const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   releve: "releve_kilometrique",
@@ -33,6 +56,11 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   achat: "demande_achat",
   visite: "visite_technique",
   observation: "observation_visite",
+  transport: "releve_transport",
+  tarif: "ligne_tarif",
+  affretement: "affretement",
+  "mise-a-disposition": "mise_a_disposition",
+  prestation: "prestation",
 };
 
 /** La table d'un type ; nulle tant qu'il n'en a pas. Le statut est à part : il s'écrit sur le véhicule. */
@@ -45,6 +73,33 @@ export interface Rattachement {
   vehiculeId: string | null;
   chauffeurId: string | null;
   prestataireId: string | null;
+  /** Le camion du référentiel tiers, par sa plaque canonique — nul quand la plaque n'y est pas : elle reste alors libre. */
+  camionTiers?: string | null;
+  /** L'affrètement que cite une ligne de relevé, résolu par son numéro. */
+  affretementId?: string | null;
+}
+
+/**
+ * Le produit transporté, tel que la base le nomme. L'écran laisse le champ
+ * libre et pré-remplit « Aliment volaille » : on reconnaît le libellé comme la
+ * clé, sans accent ni casse, et l'aliment reste le produit par défaut — c'est
+ * lui que le parc porte neuf fois sur dix.
+ */
+export function produitDepuis(brut: unknown): ProduitTransporte {
+  const t = texte(brut);
+  if (!t) return "aliment";
+  const simple = (x: string) =>
+    x
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  const cherche = simple(t);
+  for (const [cle, d] of Object.entries(PRODUIT_TRANSPORTE)) {
+    if (simple(cle) === cherche || simple(d.libelle) === cherche) return cle as ProduitTransporte;
+  }
+  return "aliment";
 }
 
 const texte = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
@@ -166,6 +221,187 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       if (!texte(v.libelle)) return { refus: "observation sans libellé" };
       return { ligne: { numero, visite_numero: texte(v.visiteId), vehicule_id: r.vehiculeId, libelle: texte(v.libelle), categorie: texte(v.categorie) ?? "autre", gravite: texte(v.gravite) ?? "mineure", statut: texte(v.statut) ?? "a-traiter", intervention_numero: texte(v.interventionNumero), corrigee_le: texte(v.corrigeeLe), commentaire: texte(v.commentaire) } };
     }
+    case "transport": {
+      /* Une ligne du relevé : un chargement parti un jour donné. Le mode dit
+         qui a transporté — le transporteur du référentiel quand la fiche le
+         porte, le parc quand un véhicule est cité, un ponctuel sinon. */
+      const tonnage = nombre(v.tonnage);
+      const date = texte(v.date);
+      if (!date) return { refus: "livraison sans date" };
+      if (!texte(v.destination)) return { refus: "livraison sans destination" };
+      if (tonnage === null || tonnage < 0) return { refus: "livraison sans tonnage" };
+      const camionTiers = r.camionTiers ?? null;
+      const mode = texte(v.mode) ?? (r.prestataireId ? "transporteur" : r.vehiculeId ? "parc" : "prestataire-ponctuel");
+      if (mode === "transporteur" && !r.prestataireId) return { refus: "livraison sans transporteur" };
+      if (mode === "parc" && !r.vehiculeId) return { refus: "livraison du parc sans véhicule" };
+      const plaqueLibre = texte(v.immatriculationLibre) ?? texte(v.camion) ?? texte(v.immatriculation);
+      return {
+        ligne: {
+          numero,
+          date,
+          mode,
+          prestataire_id: r.prestataireId,
+          vehicule_id: mode === "parc" ? r.vehiculeId : null,
+          camion_tiers_immatriculation: camionTiers,
+          immatriculation_libre: camionTiers ? null : plaqueLibre,
+          chauffeur: texte(v.chauffeur) ?? texte(v.chauffeurLibre),
+          origine: texte(v.origine) ?? "UAB",
+          destination: texte(v.destination),
+          produit: produitDepuis(v.produit),
+          tonnage: Math.round(tonnage * 100) / 100,
+          tonnage_pese: nombre(v.tonnagePese) === null ? null : Math.round(nombre(v.tonnagePese)! * 100) / 100,
+          bon_livraison: texte(v.bonLivraison),
+          affretement_id: r.affretementId ?? null,
+        },
+      };
+    }
+    case "tarif": {
+      /* Une ligne de grille — le plus souvent une exception promue en règle.
+         Le prix est net ; il vaut pour toute catégorie de porteur. */
+      const prix = nombre(v.prix);
+      if (!r.prestataireId) return { refus: "ligne de tarif sans transporteur" };
+      if (!texte(v.origine) || !texte(v.destination)) return { refus: "ligne de tarif sans trajet" };
+      if (prix === null || prix < 0) return { refus: "ligne de tarif sans prix" };
+      const minimum = nombre(v.minimum);
+      return {
+        ligne: {
+          numero,
+          prestataire_id: r.prestataireId,
+          origine: texte(v.origine),
+          destination: texte(v.destination),
+          categorie: texte(v.categorie),
+          unite: texte(v.unite) ?? "tonne",
+          prix: Math.round(prix),
+          minimum: minimum === null ? null : Math.round(minimum),
+          debut: texte(v.debut) ?? texte(v.date),
+          fin: texte(v.fin),
+          source: texte(v.source) ?? "accord-verbal",
+          commentaire: texte(v.commentaire),
+        },
+      };
+    }
+    case "affretement": {
+      /* La mission confiée à un tiers. L'exception tarifaire porte son motif,
+         ou elle n'existe pas : c'est la règle de la base, on la dit avant elle. */
+      const tonnagePrevu = nombre(v.tonnagePrevu) ?? nombre(v.tonnage);
+      if (!r.prestataireId) return { refus: "affrètement sans transporteur" };
+      if (!texte(v.date)) return { refus: "affrètement sans date" };
+      if (!texte(v.origine) || !texte(v.destination)) return { refus: "affrètement sans trajet" };
+      if (tonnagePrevu === null || tonnagePrevu < 0) return { refus: "affrètement sans tonnage prévu" };
+      if (!texte(v.motif)) return { refus: "affrètement sans motif" };
+      if (!texte(v.demandeur)) return { refus: "affrètement sans demandeur" };
+      const prixExceptionnel = nombre(v.prixExceptionnel);
+      const complement = nombre(v.complementTarif);
+      if ((prixExceptionnel !== null || complement !== null) && !texte(v.motifTarif)) return { refus: "exception tarifaire sans motif" };
+      const tonnageLivre = nombre(v.tonnageLivre);
+      const montantFacture = nombre(v.montantFacture);
+      return {
+        ligne: {
+          numero,
+          date: texte(v.date),
+          prestataire_id: r.prestataireId,
+          origine: texte(v.origine),
+          destination: texte(v.destination),
+          business_unit: texte(v.businessUnit),
+          categorie_demandee: texte(v.categorieDemandee) ?? "camion",
+          immatriculation_externe: r.camionTiers ?? null,
+          chauffeur_externe: texte(v.chauffeurExterne) ?? texte(v.chauffeur),
+          tonnage_prevu: Math.round(tonnagePrevu * 100) / 100,
+          tonnage_livre: tonnageLivre === null ? null : Math.round(tonnageLivre * 100) / 100,
+          distance_km: Math.round(nombre(v.distanceKm) ?? 0),
+          motif: texte(v.motif),
+          vehicule_remplace_id: r.vehiculeId,
+          statut: texte(v.statut) ?? "demande",
+          montant_convenu: Math.round(nombre(v.montantConvenu) ?? 0),
+          montant_facture: montantFacture === null ? null : Math.round(montantFacture),
+          prix_exceptionnel: prixExceptionnel === null ? null : Math.round(prixExceptionnel),
+          complement_tarif: complement === null ? null : Math.round(complement),
+          motif_tarif: texte(v.motifTarif),
+          date_livraison: texte(v.dateLivraison),
+          date_facture: texte(v.dateFacture),
+          date_reglement: texte(v.dateReglement),
+          reference_facture: texte(v.referenceFacture),
+          numero_demande_x3: texte(v.numeroDemandeX3),
+          numero_bon_commande: texte(v.numeroBonCommande),
+          demandeur: texte(v.demandeur),
+          commentaire: texte(v.commentaire),
+        },
+      };
+    }
+    case "mise-a-disposition": {
+      /* Un mois de camion tiers. Le camion est celui du référentiel, ou ce
+         n'est pas une mise à disposition : on ne loue pas une plaque inconnue. */
+      const prixJour = nombre(v.prixJour);
+      const joursCalendaires = nombre(v.joursCalendaires);
+      const mois = texte(v.mois) ?? texte(v.date)?.slice(0, 7) ?? null;
+      if (!r.prestataireId) return { refus: "mise à disposition sans transporteur" };
+      if (!mois || !/^\d{4}-\d{2}$/.test(mois)) return { refus: "mise à disposition sans mois" };
+      if (!r.camionTiers) return { refus: "mise à disposition sans camion du référentiel" };
+      if (!texte(v.famille)) return { refus: "mise à disposition sans famille de produit" };
+      if (joursCalendaires === null || joursCalendaires < 1 || joursCalendaires > 31) return { refus: "mise à disposition sans jours calendaires" };
+      if (prixJour === null || prixJour < 0) return { refus: "mise à disposition sans prix journalier" };
+      const roules = nombre(v.joursRoules);
+      const km = nombre(v.kmParcourus);
+      const tonnes = nombre(v.tonnesTransportees);
+      const montantFacture = nombre(v.montantFacture);
+      return {
+        ligne: {
+          numero,
+          mois,
+          prestataire_id: r.prestataireId,
+          immatriculation: r.camionTiers,
+          famille: texte(v.famille),
+          jours_calendaires: Math.round(joursCalendaires),
+          jours_panne: Math.max(0, Math.round(nombre(v.joursPanne) ?? 0)),
+          jours_roules: roules === null ? null : Math.max(0, Math.round(roules)),
+          prix_jour: Math.round(prixJour),
+          convention: texte(v.convention) ?? "inconnue",
+          carburant_litres: Math.round((nombre(v.carburantLitres) ?? 0) * 100) / 100,
+          carburant_montant: Math.round(nombre(v.carburantMontant) ?? 0),
+          km_parcourus: km === null ? null : Math.round(km),
+          tonnes_transportees: tonnes === null ? null : Math.round(tonnes * 100) / 100,
+          statut: texte(v.statut) ?? "confirme",
+          montant_facture: montantFacture === null ? null : Math.round(montantFacture),
+          date_facture: texte(v.dateFacture),
+          date_reglement: texte(v.dateReglement),
+          reference_facture: texte(v.referenceFacture),
+          numero_demande_x3: texte(v.numeroDemandeX3),
+          commentaire: texte(v.commentaire),
+        },
+      };
+    }
+    case "prestation": {
+      /* Ce que le parc achète en transport hors grille : une quantité, un prix unitaire, une convention. */
+      const quantite = nombre(v.quantite);
+      const prixUnitaire = nombre(v.prixUnitaire);
+      if (!r.prestataireId) return { refus: "prestation sans transporteur" };
+      if (!texte(v.date)) return { refus: "prestation sans date" };
+      if (!texte(v.libelle)) return { refus: "prestation sans libellé" };
+      if (!texte(v.unite)) return { refus: "prestation sans unité" };
+      if (quantite === null || quantite < 0) return { refus: "prestation sans quantité" };
+      if (prixUnitaire === null || prixUnitaire < 0) return { refus: "prestation sans prix unitaire" };
+      const montantFacture = nombre(v.montantFacture);
+      return {
+        ligne: {
+          numero,
+          date: texte(v.date),
+          prestataire_id: r.prestataireId,
+          libelle: texte(v.libelle),
+          business_unit: texte(v.businessUnit),
+          unite: texte(v.unite),
+          quantite: Math.round(quantite * 100) / 100,
+          prix_unitaire: Math.round(prixUnitaire),
+          convention: texte(v.convention) ?? "inconnue",
+          statut: texte(v.statut) ?? "confirme",
+          montant_facture: montantFacture === null ? null : Math.round(montantFacture),
+          date_facture: texte(v.dateFacture),
+          date_reglement: texte(v.dateReglement),
+          reference_facture: texte(v.referenceFacture),
+          numero_demande_x3: texte(v.numeroDemandeX3),
+          commentaire: texte(v.commentaire),
+        },
+      };
+    }
     case "sanction": {
       if (!r.chauffeurId) return { refus: "sanction sans chauffeur" };
       if (!texte(v.motif)) return { refus: "sanction sans motif" };
@@ -195,11 +431,27 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   visite: { type: "type", centre: "centre", dateRendezVous: "date_rendez_vous", heure: "heure", datePassage: "date_passage", statut: "statut", numeroPv: "numero_pv", dateLimiteContreVisite: "date_limite_contre_visite", commentaire: "commentaire" },
   observation: { libelle: "libelle", categorie: "categorie", gravite: "gravite", statut: "statut", interventionNumero: "intervention_numero", corrigeeLe: "corrigee_le", commentaire: "commentaire" },
   ordre: { datePrevue: "date_prevue", objet: "objet", garage: "garage", immobilisationPrevueJours: "immobilisation_prevue_jours", montantEstime: "montant_estime", statut: "statut", dateDebut: "date_debut", dateCloture: "date_cloture", interventionNumero: "intervention_numero", commentaire: "commentaire" },
+  /* Le relevé : ce que le pont bascule ou le bon de livraison corrigent après
+     coup. Le camion et le transporteur se fixent à la saisie. */
+  transport: { date: "date", destination: "destination", produit: "produit", tonnage: "tonnage", tonnagePese: "tonnage_pese", bonLivraison: "bon_livraison", chauffeur: "chauffeur", origine: "origine" },
+  tarif: { prix: "prix", minimum: "minimum", debut: "debut", fin: "fin", source: "source", commentaire: "commentaire" },
+  /* Un affrètement : ce qui reste modifiable après coup. Le transporteur et le
+     trajet se fixent à la commande — on n'échange pas un transporteur en cours
+     de mission, on annule et on recommande. */
+  affretement: { date: "date", tonnageLivre: "tonnage_livre", statut: "statut", chauffeurExterne: "chauffeur_externe", montantFacture: "montant_facture", prixExceptionnel: "prix_exceptionnel", complementTarif: "complement_tarif", motifTarif: "motif_tarif", dateLivraison: "date_livraison", dateFacture: "date_facture", dateReglement: "date_reglement", referenceFacture: "reference_facture", numeroDemandeX3: "numero_demande_x3", numeroBonCommande: "numero_bon_commande", commentaire: "commentaire" },
+  "mise-a-disposition": { joursPanne: "jours_panne", joursRoules: "jours_roules", carburantLitres: "carburant_litres", carburantMontant: "carburant_montant", kmParcourus: "km_parcourus", tonnesTransportees: "tonnes_transportees", statut: "statut", montantFacture: "montant_facture", dateFacture: "date_facture", dateReglement: "date_reglement", referenceFacture: "reference_facture", numeroDemandeX3: "numero_demande_x3", commentaire: "commentaire" },
+  prestation: { date: "date", libelle: "libelle", quantite: "quantite", prixUnitaire: "prix_unitaire", statut: "statut", montantFacture: "montant_facture", dateFacture: "date_facture", dateReglement: "date_reglement", referenceFacture: "reference_facture", numeroDemandeX3: "numero_demande_x3", commentaire: "commentaire" },
 };
 
-const NUMERIQUES = new Set(["km", "litres", "prix_litre", "montant", "kilometrage", "immobilisation_jours", "jours", "immobilisation_prevue_jours", "montant_estime", "montant_engage", "montant_reel"]);
+const NUMERIQUES = new Set([
+  "km", "litres", "prix_litre", "montant", "kilometrage", "immobilisation_jours", "jours", "immobilisation_prevue_jours", "montant_estime", "montant_engage", "montant_reel",
+  "tonnage", "tonnage_pese", "tonnage_livre", "prix", "minimum", "montant_facture", "prix_exceptionnel", "complement_tarif", "jours_panne", "jours_roules", "carburant_litres", "carburant_montant", "km_parcourus", "tonnes_transportees", "quantite", "prix_unitaire",
+]);
+/* Les colonnes qui gardent leurs décimales : des litres, des tonnes, des quantités. */
+const DECIMALES = new Set(["litres", "tonnage", "tonnage_pese", "tonnage_livre", "carburant_litres", "tonnes_transportees", "quantite"]);
 const BOOLEENS = new Set(["justificatif"]);
 const HORODATES = new Set(["date_heure"]);
+const PRODUITS = new Set(["produit"]);
 
 /** Les colonnes qu'une modification change ; vide quand rien de ce qui a changé n'a de colonne. */
 export function colonnesModification(type: TypeTransaction, diffs: { champ: string; valeur: unknown }[]): Record<string, unknown> {
@@ -211,20 +463,22 @@ export function colonnesModification(type: TypeTransaction, diffs: { champ: stri
     if (!colonne) continue;
     if (NUMERIQUES.has(colonne)) {
       const n = nombre(d.valeur);
-      ligne[colonne] = n === null ? null : colonne === "litres" ? n : Math.round(n);
+      ligne[colonne] = n === null ? null : DECIMALES.has(colonne) ? Math.round(n * 100) / 100 : Math.round(n);
     } else if (BOOLEENS.has(colonne)) ligne[colonne] = booleen(d.valeur);
     else if (HORODATES.has(colonne)) ligne[colonne] = horodatage(d.valeur);
+    else if (PRODUITS.has(colonne)) ligne[colonne] = produitDepuis(d.valeur);
     else ligne[colonne] = texte(d.valeur);
   }
   return ligne;
 }
 
-/** Le sujet d'une création, décomposé : « vehicule:AA032EA » → { genre, cle }. */
-export function decomposerSujet(sujet: string): { genre: "vehicule" | "chauffeur" | "autre"; cle: string } {
+/** Le sujet d'une création, décomposé : « vehicule:AA032EA » → { genre, cle } ; « transporteur:PRE-2026-00021 » est un prestataire. */
+export function decomposerSujet(sujet: string): { genre: "vehicule" | "chauffeur" | "prestataire" | "autre"; cle: string } {
   const [genre, ...reste] = sujet.split(":");
   const cle = reste.join(":");
   if (genre === "vehicule" && cle) return { genre: "vehicule", cle };
   if (genre === "chauffeur" && cle) return { genre: "chauffeur", cle };
+  if ((genre === "transporteur" || genre === "prestataire") && cle) return { genre: "prestataire", cle };
   return { genre: "autre", cle: sujet };
 }
 

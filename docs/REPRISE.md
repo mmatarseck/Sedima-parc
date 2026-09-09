@@ -9,15 +9,16 @@ Elle dit où en est le projet, ce qui a été décidé, et ce qui reste à faire
 
 **Où en est la production.** L'application tourne sur Vercel (région cdg1)
 avec Supabase ; le gestionnaire pousse (`git push`) et joue les migrations
-dans le SQL Editor. **Jouées : 0001 à 0023.** À jouer : **0024**
-(`lire_tableau()`, les courbes du tableau de bord), commit 63caff1, poussé ou
-à pousser selon l'état du dépôt distant (`git log origin/main..HEAD`).
+dans le SQL Editor. **Jouées : 0001 à 0024.** À jouer : **0025**
+(`lire_transporteurs()`, le module Transporteurs — section « Les
+Transporteurs base branchée » plus bas), poussée ou à pousser selon l'état
+du dépôt distant (`git log origin/main..HEAD`).
 
-**Tout le bureau lit la base**, sauf quatre modules encore sur la
-démonstration : Budget, Compte des prestataires, Rapports, Transporteurs
-(leurs tables existent depuis la 0002 ; les pages lisent `*-demo.ts`). Les
-écritures de quinze types de transaction vont en base (`transactions-colonnes.ts`).
-Le téléphone est branché comme le bureau.
+**Tout le bureau lit la base**, sauf trois modules encore sur la
+démonstration : Budget, Compte des prestataires, Rapports (leurs tables
+existent depuis la 0002 ; les pages lisent `*-demo.ts`). Les écritures de
+vingt types de transaction vont en base (`transactions-colonnes.ts`), le
+transport tiers compris. Le téléphone est branché comme le bureau.
 
 **Ce qui a été fait le 8 septembre au soir, dans l'ordre** (chaque étape a sa
 section plus bas, sous « 0 ter ») : ordres de travail (0016), caisse et
@@ -50,13 +51,13 @@ travaille. Ne pas les commettre ni les écraser sans savoir.
 `docs/PROPOSITION-PIECES.md` (pièces de rechange : rien n'est construit) ; le
 journal Vercel n'est plus nécessaire, le diagnostic suffit.
 
-**Prochaines étapes proposées, dans l'ordre :** Transporteurs base branchée
-(lecture des tables 0002, écritures affrètement / mise à disposition /
-prestation / relevé de transport), puis Compte des prestataires (dette déduite
-des achats, interventions, affrètements ; avances en table), Budget
-(enveloppes en table 0002, dépenses lues), Rapports (chaque rapport une
-lecture), courriel au détenteur (notification de la plateforme), pièces de
-rechange après décisions.
+**Prochaines étapes proposées, dans l'ordre :** Compte des prestataires
+(dette déduite des achats, interventions, affrètements ; avances en table —
+`transporteursServeur()` rend déjà affrètements, mises à disposition et
+prestations à la forme du domaine), Budget (enveloppes en table 0002,
+dépenses lues), Rapports (chaque rapport une lecture), courriel au détenteur
+(notification de la plateforme), pièces de rechange après décisions.
+Transporteurs est fait (9 septembre 2026, 0025).
 
 ---
 
@@ -1629,15 +1630,80 @@ lectures avant et après une migration. Il reproduit la régression (fiche
   caisse à 1 499 692 F, 12 alertes critiques d'abord ; 137 ms de lecture,
   47 ms d'assemblage.
 
+### Les Transporteurs base branchée (9 septembre 2026, migration 0025)
+
+- Migration `0025_lire_transporteurs.sql` : `lire_transporteurs(depuis)`
+  rend en une requête les faits bruts du module — prestataires de type
+  transporteur avec leur profil, chauffeurs et camions tiers, lignes de
+  grille, tarifs journaliers, rattachements de localités, affrètements,
+  mises à disposition, prestations depuis la date, lignes du relevé de
+  transport portées par un prestataire, et les jours relevés tous modes
+  confondus (le dénominateur de la régularité). Pas de calcul en SQL, les
+  droits de l'appelant, les politiques de la 0002.
+- `src/domaine/assembler-transporteurs.ts` : le rassemblement de la liste et
+  de la fiche, **pur**, sur une `SourceTransporteurs` — activité (missions,
+  tonnes, coût retenue comprise, restant dû, écart moyen, missions subies,
+  coût à la tonne), notation sur cinq dimensions, médiane du coût à la
+  tonne. Les faits sont regroupés une fois par transporteur ; ce que
+  `fiche-transporteur-demo.ts` calculait en filtrant treize fois la même
+  liste. Le profil manquant reçoit le profil par défaut (particulier, à la
+  tonne, sans écrit).
+- `src/donnees/fiche-transporteur-demo.ts` : `sourceDemonstration()` donne le
+  jeu du navigateur à l'assembleur ; `src/donnees/transporteurs.ts` :
+  `sourceDepuisJson()` (pur) met le JSON à la forme du domaine — plaques
+  reconstruites au format du parc (« AA 312 CT »), destination tarifaire par
+  rattachement, semaine ISO — et `transporteursServeur()` (en cache pour la
+  requête) appelle la fonction sur 364 jours. Sans la fonction : les
+  transporteurs du référentiel, sans activité. Les deux pages Transporteurs
+  sont asynchrones et lisent la même source.
+- Les écritures (`transactions-colonnes.ts`, `transactions-actions.ts`) :
+  cinq tables de plus — `transport` → `releve_transport`, `tarif` →
+  `ligne_tarif`, `affretement`, `mise-a-disposition`, `prestation`. Le sujet
+  `transporteur:PRE-…` de la fiche résout le prestataire par son numéro ; le
+  camion saisi se cherche au référentiel tiers par sa plaque canonique et
+  reste **libre** s'il n'y est pas ; une ligne de relevé cite son affrètement
+  par numéro ; le produit se lit par son libellé (« Aliment volaille » →
+  `aliment`). Refus avant la base : livraison sans tonnage ou sans
+  transporteur, exception tarifaire sans motif, mise à disposition sans camion
+  du référentiel, ligne de grille sans prix. Le demandeur d'un affrètement est
+  la personne de la session. Les modifications colonne par colonne — le pont
+  bascule corrige le tonnage pesé, la facture fait passer l'affrètement à
+  « facturé » avec son montant.
+- Le seed n'a pas changé : il portait déjà ces tables (0002).
+- Vérifié : `scripts/tester-transporteurs.mts` dans PGlite — 13
+  transporteurs, 35 camions, 71 lignes de grille, 84 affrètements, 72 mises à
+  disposition, 60 prestations, 1 630 lignes de relevé tiers, 53 semaines ;
+  **la liste base branchée est égale à la démonstration ligne à ligne**
+  (missions, tonnes, coût au franc près, restant dû, note : ADEX 206,9 M F
+  « bon 81 », Abdou Dieng « fragile 51 »…) ; la fiche ADEX (9 camions, 72
+  mises à disposition, 1 550 livraisons) et la fiche Abdou Kane (21 lignes,
+  23 affrètements, attendus égaux) ; les cinq écritures, une modification, six
+  refus, la relecture qui porte les écritures et l'exception promue qui cite
+  sa mission. 98 ms de lecture, 51 ms d'assemblage ; **sous politiques
+  actives** (rôle non privilégié, banc PGlite du scratchpad) : 62 ms contre
+  36 en superutilisateur, 803 Ko de JSON, et un correspondant de site voit
+  tout le transport comme la 0002 le veut. `tester-ecritures.mts` et la
+  charte passent toujours ; `tsc` propre.
+- Non vérifié à l'écran : le serveur `next dev` du poste (port 3000, lancé
+  par une autre session) rend toutes les pages à segment dynamique en
+  erreur 500 « Jest worker encountered 2 child process exceptions », la
+  fiche véhicule comprise, avant comme après ce changement ; la liste
+  Transporteurs s'affiche (13 partenaires, 280,7 M F). À relancer proprement
+  pour voir la fiche.
+- Restent sur la démonstration, à brancher avec leur module : le compte des
+  prestataires (`compte-prestataire-demo.ts`), les rapports et le tableau de
+  bord de démonstration lisent encore `transporteurs-demo.ts` ; la page
+  Affectations et `champs.ts` lisent les camions et chauffeurs tiers de
+  `flotte-tierce-demo.ts` (Affectations est en cours de modification par une
+  autre session : ne pas y toucher sans savoir).
+
 **À faire, dans l'ordre** (mis à jour le 9 septembre 2026).
 
 1. ~~Le seed~~, ~~le premier administrateur~~, ~~Vercel~~ — faits : la
    production tourne, le gestionnaire s'y connecte en administrateur.
 2. ~~Le branchement écran par écran~~ — fait pour tout le bureau et le
-   téléphone, sauf Transporteurs, Compte des prestataires, Budget, Rapports.
-3. **Transporteurs base branchée** : lecture des tables de la 0002
-   (affretement, mise_a_disposition, prestation, releve_transport, grilles,
-   camions et chauffeurs tiers), écritures des quatre transactions.
+   téléphone, sauf Compte des prestataires, Budget, Rapports.
+3. ~~**Transporteurs base branchée**~~ — fait le 9 septembre 2026 (0025).
 4. **Compte des prestataires** : dette déduite des achats, interventions et
    affrètements en base ; avances et évaluations (tables 0002).
 5. **Budget** : enveloppes (table 0002) et dépenses lues.

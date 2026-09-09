@@ -28,7 +28,7 @@ interface LigneSite {
   type: Site["type"];
 }
 
-interface LignePrestataire {
+export interface LignePrestataire {
   numero: string;
   raison_sociale: string;
   type: TypePrestataire;
@@ -85,7 +85,12 @@ export async function prestataires(): Promise<Prestataire[]> {
       .order("numero")
       .returns<LignePrestataire[]>(),
   );
-  return lignes.map((p) => ({
+  return lignes.map(prestataireDepuisLigne);
+}
+
+/** Une ligne de la table `prestataire`, mise à la forme du référentiel. */
+export function prestataireDepuisLigne(p: LignePrestataire): Prestataire {
+  return {
     numero: p.numero,
     raisonSociale: p.raison_sociale,
     type: p.type,
@@ -100,5 +105,5 @@ export async function prestataires(): Promise<Prestataire[]> {
     note: p.note,
     /* En base, une fiche créée dans l'application est une fiche comme les autres. */
     creee: false,
-  }));
+  };
 }

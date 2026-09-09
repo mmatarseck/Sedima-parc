@@ -7,7 +7,9 @@
  * l'atelier enregistraient vivait dans le navigateur. Base branchée, ces deux
  * fonctions serveur écrivent la même chose dans la table du type — relevé,
  * plein, dépense, document, incident, affectation, intervention,
- * indisponibilité, sanction — et le statut d'un véhicule sur sa ligne, avec
+ * indisponibilité, sanction, et le transport tiers : ligne de relevé, ligne
+ * de grille, affrètement, mise à disposition, prestation — et le statut d'un
+ * véhicule sur sa ligne, avec
  * sa trace dans `modification` (c'est elle que `situation_journaliere()` lit
  * pour rendre le statut d'un jour passé). Les politiques RLS décident, avec la
  * session de l'utilisateur.
@@ -73,19 +75,43 @@ async function prestataireIdParNumero(client: SupabaseClient, numero: unknown): 
   return r.data?.id ?? null;
 }
 
+/** Un camion du référentiel tiers, par sa plaque telle qu'on l'écrit ; nul quand la plaque n'y est pas — elle restera libre. */
+async function camionTiersDe(client: SupabaseClient, plaque: unknown): Promise<string | null> {
+  if (typeof plaque !== "string" || !plaque.trim()) return null;
+  const canonique = immatriculationCanonique(plaque.replace(/^tiers:/, ""));
+  const r = await client.from("camion_tiers").select("immatriculation").eq("immatriculation", canonique).maybeSingle<{ immatriculation: string }>();
+  return r.data?.immatriculation ?? null;
+}
+
+async function affretementIdDe(client: SupabaseClient, numero: unknown): Promise<string | null> {
+  if (typeof numero !== "string" || !numero.trim()) return null;
+  const r = await client.from("affretement").select("id").eq("numero", numero.trim()).maybeSingle<{ id: string }>();
+  return r.data?.id ?? null;
+}
+
 async function rattacher(client: SupabaseClient, c: Creation): Promise<Rattachement> {
   const s = decomposerSujet(c.sujet);
   const v = c.valeurs;
   const vehiculeId = (await vehiculeIdDe(client, v.vehiculeId)) ?? (s.genre === "vehicule" ? await vehiculeIdDe(client, s.cle) : null);
   const chauffeurId = (await chauffeurIdDe(client, v.chauffeurId)) ?? (s.genre === "chauffeur" ? await chauffeurIdDe(client, s.cle) : null);
-  const prestataireId = (await prestataireIdParNumero(client, v.prestataireNumero)) ?? (await prestataireIdDe(client, v.garage ?? v.prestataire ?? v.fournisseur ?? v.beneficiaire));
+  /* Le prestataire : par son numéro quand la fiche le porte — la fiche
+     transporteur porte le sien dans son sujet —, par son nom sinon. */
+  const prestataireId =
+    (await prestataireIdParNumero(client, v.prestataireNumero)) ??
+    (await prestataireIdParNumero(client, v.transporteurNumero)) ??
+    (s.genre === "prestataire" ? await prestataireIdParNumero(client, s.cle) : null) ??
+    (await prestataireIdDe(client, v.garage ?? v.prestataire ?? v.fournisseur ?? v.beneficiaire ?? v.transporteur));
+  /* Le camion du transporteur, s'il est au référentiel ; l'affrètement que cite une ligne de relevé. */
+  const transport = c.type === "transport" || c.type === "affretement" || c.type === "mise-a-disposition";
+  const camionTiers = transport ? await camionTiersDe(client, v.camion ?? v.immatriculationExterne ?? v.immatriculation ?? v.camionTiersImmatriculation) : null;
+  const affretementId = c.type === "transport" ? await affretementIdDe(client, v.affretementNumero) : null;
   /* La demande d'achat nomme qui demande : la personne de la session (son rôle est posé par l'écriture, qui la connaît). */
   if (c.type === "achat" && !v.demandeur) v.demandeur = c.auteur;
   /* Le journal de caisse et celui de la cuve nomment qui enregistre : la personne de la session. */
   if ((c.type === "caisse" || c.type === "cuve") && !v.enregistrePar) v.enregistrePar = c.auteur;
-  /* Le demandeur d'un ordre : la personne qui le crée, telle que le navigateur la nomme. */
-  if (c.type === "ordre" && !v.demandeur) v.demandeur = c.auteur;
-  return { vehiculeId, chauffeurId, prestataireId };
+  /* Le demandeur d'un ordre ou d'un affrètement : la personne qui le crée, telle que le navigateur la nomme. */
+  if ((c.type === "ordre" || c.type === "affretement") && !v.demandeur) v.demandeur = c.auteur;
+  return { vehiculeId, chauffeurId, prestataireId, camionTiers, affretementId };
 }
 
 /** Le numéro suivant du type pour l'année, d'après ce que la table porte déjà. */
