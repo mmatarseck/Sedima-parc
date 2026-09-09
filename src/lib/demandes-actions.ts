@@ -18,6 +18,7 @@
 import { revalidatePath } from "next/cache";
 import { normaliserDemande, type Demande, type ReponseDemande } from "@/domaine/demandes";
 import { authentificationReelle } from "@/lib/session-demo";
+import { notifierDemandes } from "@/lib/notifications-serveur";
 import { clientServeur, utilisateurCourant } from "@/lib/supabase";
 
 function ligneDe(d: Demande, utilisateurId: string) {
@@ -50,6 +51,8 @@ export async function enregistrerDemandes(brutes: Demande[]): Promise<string | n
   if (moi.role === "detenteur") return "Un détenteur répond aux demandes ; il n'en envoie pas.";
   const ecriture = await client.from("demande").insert(demandes.map((d) => ligneDe(d, moi.utilisateurId)));
   if (ecriture.error) return `Envoi refusé : ${ecriture.error.message}`;
+  /* Chaque détenteur du lot est prévenu — cloche, et courriel quand la plateforme l'envoie. */
+  for (const lot of new Set(demandes.map((d) => d.lot))) await notifierDemandes(client, lot);
   revalidatePath("/demandes");
   revalidatePath("/telephone");
   return null;

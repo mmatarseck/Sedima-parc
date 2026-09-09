@@ -4,6 +4,19 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Bell, MessageSquare } from "lucide-react";
 import { depuis, marquerLues, mesNotifications, type Notification } from "@/lib/notifications-demo";
+import { authentificationReelle } from "@/lib/session-demo";
+
+/* Base branchée : la cloche lit la table `notification` par l'API, pour la
+   personne connectée ; en démonstration, le navigateur. */
+async function lireDepuisLeServeur(marquer = false): Promise<Notification[] | null> {
+  try {
+    const r = await fetch("/api/notifications", { method: marquer ? "POST" : "GET", cache: "no-store" });
+    if (!r.ok) return null;
+    return (await r.json()) as Notification[];
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Cloche de la barre d'application.
@@ -18,30 +31,36 @@ export function Cloche() {
   const [ouverte, setOuverte] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [maintenant, setMaintenant] = useState(() => new Date());
+  const reel = authentificationReelle();
 
   useEffect(() => {
-    setNotifications(mesNotifications());
+    let vivant = true;
     // Le stockage change quand on envoie un message depuis un autre onglet,
-    // ou quand on change d'identité de démonstration.
+    // ou quand on change d'identité de démonstration ; en base, on relit le
+    // serveur à chaque retour sur l'onglet.
     function rafraichir() {
-      setNotifications(mesNotifications());
       setMaintenant(new Date());
+      if (reel) void lireDepuisLeServeur().then((l) => { if (vivant && l) setNotifications(l); });
+      else setNotifications(mesNotifications());
     }
+    rafraichir();
     window.addEventListener("storage", rafraichir);
     window.addEventListener("focus", rafraichir);
     return () => {
+      vivant = false;
       window.removeEventListener("storage", rafraichir);
       window.removeEventListener("focus", rafraichir);
     };
-  }, []);
+  }, [reel]);
 
   const nonLues = notifications.filter((n) => !n.lue).length;
 
   function basculer() {
     setOuverte((o) => {
       if (!o) {
-        setNotifications(mesNotifications());
         setMaintenant(new Date());
+        if (reel) void lireDepuisLeServeur().then((l) => { if (l) setNotifications(l); });
+        else setNotifications(mesNotifications());
       }
       return !o;
     });
@@ -49,7 +68,11 @@ export function Cloche() {
 
   function fermer() {
     setOuverte(false);
-    if (nonLues > 0) setNotifications(marquerLues());
+    if (nonLues === 0) return;
+    if (reel) {
+      setNotifications((l) => l.map((n) => ({ ...n, lue: true })));
+      void lireDepuisLeServeur(true).then((l) => { if (l) setNotifications(l); });
+    } else setNotifications(marquerLues());
   }
 
   function ouvrir(n: Notification) {

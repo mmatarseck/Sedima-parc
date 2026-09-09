@@ -14,6 +14,7 @@
 
 import { revalidatePath } from "next/cache";
 import { normaliserTransfert, statutTransfert, type Signature, type Transfert } from "@/domaine/transferts";
+import { notifierTransfert } from "@/lib/notifications-serveur";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur, utilisateurCourant } from "@/lib/supabase";
 
@@ -63,6 +64,8 @@ export async function enregistrerTransfert(brut: Transfert): Promise<string | nu
   if (moi.role === "detenteur") return "Un détenteur signe une fiche ; il n'en crée pas.";
   const ecriture = await client.from("transfert").insert(ligneDe(t, moi.utilisateurId));
   if (ecriture.error) return `Enregistrement refusé : ${ecriture.error.message}`;
+  /* Les parties qui n'ont pas signé sont prévenues — cloche, et courriel quand la plateforme l'envoie. */
+  await notifierTransfert(client, t.id);
   const suite = await appliquerSiComplete(client, t);
   revalidatePath("/transferts");
   revalidatePath("/telephone");

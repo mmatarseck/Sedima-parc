@@ -46,8 +46,12 @@ export async function proxy(requete: NextRequest) {
 
   const chemin = requete.nextUrl.pathname;
   const surLaGarde = chemin === PAGE_DE_GARDE;
+  /* Les routes d'API répondent elles-mêmes à qui n'est pas connecté (liste
+     vide, ou 401) : le passage du matin de Vercel n'a pas de session, et une
+     redirection vers la page de garde lui ferait croire à une page HTML. */
+  const api = chemin.startsWith("/api/");
 
-  if (!user && !surLaGarde) {
+  if (!user && !surLaGarde && !api) {
     const destination = requete.nextUrl.clone();
     destination.pathname = PAGE_DE_GARDE;
     /* La page demandée est gardée : un QR code scanné sans session mène à

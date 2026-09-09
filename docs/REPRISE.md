@@ -9,9 +9,9 @@ Elle dit où en est le projet, ce qui a été décidé, et ce qui reste à faire
 
 **Où en est la production.** L'application tourne sur Vercel (région cdg1)
 avec Supabase ; le gestionnaire pousse (`git push`) et joue les migrations
-dans le SQL Editor. **Jouées : 0001 à 0026** (0025 et 0026 le 9 septembre 2026). Rien à jouer
-(la dernière : `lire_prestataires()`, le Compte des prestataires — section « Le
-Compte des prestataires base branchée » plus bas). Commits poussés ou à pousser selon l'état
+dans le SQL Editor. **Jouées : 0001 à 0026** (0025 et 0026 le 9 septembre 2026). À jouer : **0027**
+(`notification`, le courriel au détenteur — section « Le courriel au
+détenteur » plus bas). Commits poussés ou à pousser selon l'état
 du dépôt distant (`git log origin/main..HEAD`).
 
 **Tout le bureau lit la base**, sauf trois modules encore sur la
@@ -1855,6 +1855,50 @@ lectures avant et après une migration. Il reproduit la régression (fiche
   `lire_parc()` ne rend que les affectations en cours ; le coût d'un
   incident n'est pas rattaché en base (nul).
 
+### Le courriel au détenteur — la notification de la plateforme (9 septembre 2026, migration 0027)
+
+- Décision du 7 septembre : le détenteur est prévenu par notification de
+  l'application ou par courriel, pas de SMS. Jusqu'ici, seule la cloche de
+  démonstration (navigateur) le faisait.
+- **Migration 0027** : table `notification` (une ligne par fait et par
+  destinataire — clé `transfert:<id>`, `demandes:<lot>` —, lue ou non, et
+  l'état du courriel : à envoyer, envoyé, sans courriel, échec). Chacun ne
+  lit et ne marque que les siennes ; personne n'insère à la main. Deux
+  fonctions SECURITY DEFINER la remplissent après avoir vérifié que
+  l'appelant a la saisie du module : `notifier_transfert(id)` (les parties
+  qui n'ont pas signé), `notifier_demandes(lot)` (chaque détenteur visé,
+  une fois par lot). Un chauffeur porté par deux comptes détenteurs est
+  prévenu sur les deux. `plaque_affichee()` met les espaces de la plaque.
+- **Serveur** : `src/lib/notifications-serveur.ts` — `notifierTransfert`,
+  `notifierDemandes` (appelés par `transferts-actions.ts` et
+  `demandes-actions.ts` après l'insertion), `mesNotificationsServeur`,
+  `marquerLuesServeur`, et `envoyerCourrielsEnAttente()` : avec la clé de
+  service, groupe par destinataire ce qui attend, lit l'adresse sur la fiche
+  d'accès, envoie un récapitulatif, marque envoyé (l'échec garde son erreur
+  et reste à envoyer). `src/lib/courriel.ts` : l'envoi par l'API Resend,
+  sans dépendance ; `etatCourriel()` dit ce qui manque.
+- **Cloche** (`Cloche.tsx`) : base branchée, elle lit `/api/notifications`
+  (GET la liste, POST marque lu) au montage, au retour sur l'onglet et à
+  l'ouverture ; démonstration inchangée (navigateur).
+- **Passage du matin** : `/api/courriels` (GET, `Authorization: Bearer
+  <CRON_SECRET>`), planifié dans `vercel.json` à 07:00 UTC ; le proxy laisse
+  passer `/api/*` sans session (la route répond elle-même). Un envoi part
+  aussi tout de suite après la création du fait, si le fournisseur est
+  configuré.
+- **À poser sur Vercel pour que le courriel parte** : `RESEND_API_KEY`
+  (compte Resend, domaine `sedima.sn` vérifié ou le domaine d'essai),
+  `COURRIEL_EXPEDITEUR` (« SEDIMA Parc <parc@sedima.sn> »), `CRON_SECRET`
+  (Vercel le pose lui-même pour ses crons quand il existe), et
+  `NEXT_PUBLIC_APP_URL` si l'adresse publique change. Sans eux, la cloche
+  marche, les lignes restent « à envoyer », rien n'est perdu.
+- **Banc** `scripts/tester-notifications.mts` (PGlite) : transfert et lot
+  du seed, deux comptes détenteurs (avec et sans adresse), une notification
+  par personne et par fait, refus d'un détenteur qui notifie, lecture et
+  marquage bornés aux siennes (rôle non privilégié, `auth.uid()` basculé),
+  récapitulatif composé. Tout passe.
+- **Limite** : les discussions (citations) restent notifiées en
+  démonstration seulement — il n'y a pas de table `message` en base.
+
 **À faire, dans l'ordre** (mis à jour le 9 septembre 2026).
 
 1. ~~Le seed~~, ~~le premier administrateur~~, ~~Vercel~~ — faits : la
@@ -1868,7 +1912,9 @@ lectures avant et après une migration. Il reproduit la régression (fiche
    lues et saisies, dépenses et engagements lus.
 6. ~~**Rapports**~~ — fait le 9 septembre 2026, sans migration : une source
    de faits réunie depuis les lecteurs existants et quatre lecteurs neufs.
-7. **Courriel au détenteur** (notification de la plateforme).
+7. ~~**Courriel au détenteur**~~ — fait le 9 septembre 2026 (0027) : table
+   `notification`, cloche en base, courriel groupé par Resend dès que
+   `RESEND_API_KEY` et `COURRIEL_EXPEDITEUR` sont posés sur Vercel.
 8. **Pièces de rechange**, après les sept décisions de `PROPOSITION-PIECES.md`.
 
 ---
