@@ -19,7 +19,7 @@ groupé par Resend). Au passage : les fiches de transfert ont quitté le rail
 pour la fiche véhicule, et le sélecteur de colonnes des rapports reste dans
 l'écran.
 
-**Migrations : 0001 à 0028 jouées** (0027 et 0028 confirmées le 9 septembre 2026 au soir). **En attente dans le SQL Editor : la 0029** (pièces de rechange : tables `piece`, `mouvement_stock`, `pneu`) — sans elle, l'écran `/pieces` lit un magasin vide en production (avertissement en console, pas d'erreur).
+**Migrations : 0001 à 0029 jouées** (0029, pièces de rechange, confirmée le 9 septembre 2026 dans la nuit). Rien en attente dans le SQL Editor.
 Commits à pousser selon `git log origin/main..HEAD`.
 
 **À poser sur Vercel pour que les courriels partent** : `RESEND_API_KEY`,
@@ -51,7 +51,7 @@ viennent pas de cette session (accueil du téléphone, demandes, affectations,
 fiche rapide, `PROPOSITION-MOBILE.md`) : une autre session y travaille. Ne
 pas les commettre ni les écraser sans savoir.
 
-**En attente du gestionnaire.** Jouer la 0029 ; le compte Resend et ses variables ; l'essai en ligne de ce qui vient d'être
+**En attente du gestionnaire.** Le compte Resend et ses variables ; l'essai en ligne de ce qui vient d'être
 branché (un rapport, la page d'un poste budgétaire, le compte d'un
 prestataire, une fiche de transfert créée depuis la fiche véhicule → la
 cloche du détenteur).
@@ -70,8 +70,9 @@ sept décisions du gestionnaire : un magasin, stock en quantités déduit des
 mouvements, charge à l'achat, sorties rattachées, pneus un par un, droits du
 module Maintenance, pas de QR.
 
-**Prochaines étapes proposées** : jouer la 0029 et poser les variables du
-courriel ; vérifier en ligne ; la maintenance des légers et les dates de
+**Prochaines étapes proposées** : poser les variables du courriel ;
+vérifier en ligne (dont `/pieces`, magasin vide tant que rien n'est saisi —
+le premier inventaire ou les premières entrées le peuplent) ; la maintenance des légers et les dates de
 début des plans car restent à saisir dans le dossier. Les pièces sont
 complètes (magasin, mouvements, pneus, réapprovisionnement → demande
 d'achat, inventaire, téléphone) ; il ne manque qu'un raccourci sur
@@ -2094,8 +2095,8 @@ de QR de casier** pour l'instant.
    `notification`, cloche en base, courriel groupé par Resend dès que
    `RESEND_API_KEY` et `COURRIEL_EXPEDITEUR` sont posés sur Vercel.
 8. ~~**Parc léger lu en base**~~ et ~~**discussions en base (0028)**~~ — faits le 9 septembre 2026 au soir.
-9. ~~**Pièces de rechange**~~ — fait le 9 septembre 2026 au soir (0029, à
-   jouer) : référentiel, stock déduit, mouvements, pneus, fiche, écritures.
+9. ~~**Pièces de rechange**~~ — fait le 9 septembre 2026 au soir (0029,
+   jouée) : référentiel, stock déduit, mouvements, pneus, fiche, écritures.
 10. ~~Le réapprovisionnement qui prépare une demande d'achat~~,
     ~~l'inventaire qui produit ses régularisations d'un coup~~ et ~~sortir
     et recevoir depuis le téléphone~~ — faits le 9 septembre 2026 au soir.
