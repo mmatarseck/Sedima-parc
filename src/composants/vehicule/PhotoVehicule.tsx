@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bus, Camera, Car, Caravan, Loader2, Bike, Tractor, Truck, Wrench, X } from "lucide-react";
 import type { CategorieVehicule } from "@/domaine/types";
+import { televerserPhoto, urlPhoto } from "@/lib/photos";
 
 /* ============================================================================
  * La photo d'un véhicule — pour le reconnaître d'un coup d'œil.
@@ -17,13 +18,18 @@ import type { CategorieVehicule } from "@/domaine/types";
  * il donnerait à croire que la fiche est incomplète alors que la plupart des
  * véhicules n'auront jamais de photo.
  *
- * **Le téléversement redimensionne avant d'enregistrer** : une photo de
- * téléphone pèse trois mégaoctets, et le stockage du navigateur en tient cinq
- * en tout. On ramène donc à 480 pixels de large en JPEG — largement assez pour
- * reconnaître un camion, et deux cents fois plus léger. En production, le
- * fichier ira dans un seau de stockage et la fiche n'en gardera que l'adresse ;
- * c'est pourquoi la valeur enregistrée est toujours **une adresse**, que ce soit
- * une URL ou une image en ligne.
+ * **La photo va au stockage, la fiche n'en garde que la référence** (corrigé
+ * le 9 septembre 2026, nuit). Elle portait jusque-là l'image entière dans sa
+ * valeur, en JPEG de 480 px transcrit en toutes lettres : une quarantaine de
+ * milliers de caractères écrits dans la colonne du véhicule, relus par chaque
+ * liste, et recopiés avant *et* après dans le journal des modifications à
+ * chaque changement. Le fichier part donc dans le seau privé comme toute
+ * pièce justificative (`televerserPhoto`, dossier « vehicules »), et la fiche
+ * garde une référence de soixante caractères, relue par une adresse signée.
+ *
+ * Une valeur d'avant reste lisible : une image portée dans la valeur, comme
+ * une adresse saisie à la main dans le champ « Photo (adresse) », s'affiche
+ * telle quelle.
  * ==========================================================================*/
 
 const SILHOUETTE: Record<CategorieVehicule, typeof Truck> = {
@@ -37,25 +43,6 @@ const SILHOUETTE: Record<CategorieVehicule, typeof Truck> = {
   engin: Wrench,
 };
 
-/** Largeur retenue : au-delà, on stocke du détail que personne ne regarde. */
-const LARGEUR_MAX = 480;
-
-/** Redimensionne et compresse le fichier choisi, et rend une image en ligne. */
-async function versImageEnLigne(fichier: File): Promise<string> {
-  const source = await createImageBitmap(fichier);
-  const echelle = Math.min(1, LARGEUR_MAX / source.width);
-  const largeur = Math.round(source.width * echelle);
-  const hauteur = Math.round(source.height * echelle);
-  const toile = document.createElement("canvas");
-  toile.width = largeur;
-  toile.height = hauteur;
-  const contexte = toile.getContext("2d");
-  if (!contexte) throw new Error("Contexte 2D indisponible");
-  contexte.drawImage(source, 0, 0, largeur, hauteur);
-  source.close();
-  return toile.toDataURL("image/jpeg", 0.72);
-}
-
 export function PhotoVehicule({
   photo,
   categorie,
@@ -63,6 +50,7 @@ export function PhotoVehicule({
   taille = "fiche",
   onChanger,
 }: {
+  /** La référence gardée sur la fiche, pas l'image : elle se relit par `urlPhoto`. */
   photo: string | null;
   categorie: CategorieVehicule;
   immatriculation: string;
@@ -73,31 +61,44 @@ export function PhotoVehicule({
 }) {
   const [charge, setCharge] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+  const [url, setUrl] = useState<string | null>(null);
   const champ = useRef<HTMLInputElement>(null);
   const Silhouette = SILHOUETTE[categorie] ?? Truck;
 
   const dimensions = taille === "fiche" ? "h-[74px] w-[110px]" : "h-9 w-14";
 
+  /* La référence devient une adresse à afficher. Dans une liste, les demandes
+     du même instant sont signées en un seul aller-retour (`urlPhoto`). */
+  useEffect(() => {
+    let vivant = true;
+    void urlPhoto(photo).then((u) => {
+      if (vivant) setUrl(u);
+    });
+    return () => {
+      vivant = false;
+    };
+  }, [photo]);
+
   async function choisir(fichier: File | undefined) {
     if (!fichier || !onChanger) return;
     setErreur(null);
     setCharge(true);
-    try {
-      onChanger(await versImageEnLigne(fichier));
-    } catch {
-      setErreur("Image illisible");
-    } finally {
-      setCharge(false);
+    const r = await televerserPhoto(fichier, "vehicules");
+    setCharge(false);
+    if ("refus" in r) {
+      setErreur(r.refus);
+      return;
     }
+    onChanger(r.ref);
   }
 
   return (
     <div className={`group relative shrink-0 overflow-hidden rounded-[10px] border border-bordure bg-surface-2 ${dimensions}`}>
-      {photo ? (
+      {url ? (
         /* Une image de fiche, pas une illustration décorative : le texte de
            remplacement porte l'immatriculation, seule chose qui identifie. */
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={photo} alt={`Véhicule ${immatriculation}`} className="size-full object-cover" />
+        <img src={url} alt={`Véhicule ${immatriculation}`} className="size-full object-cover" />
       ) : (
         <span className="grid size-full place-items-center text-attenue-2" title={`Aucune photo — ${immatriculation}`}>
           <Silhouette className={taille === "fiche" ? "size-7" : "size-4"} strokeWidth={1.4} />
@@ -131,7 +132,11 @@ export function PhotoVehicule({
         </>
       ) : null}
 
-      {erreur ? <span className="absolute inset-x-0 bottom-0 bg-defavorable px-1 py-0.5 text-center text-[10px] font-medium text-white">{erreur}</span> : null}
+      {erreur ? (
+        <span title={erreur} className="absolute inset-x-0 bottom-0 block truncate bg-defavorable px-1 py-0.5 text-center text-[10px] font-medium text-white">
+          {erreur}
+        </span>
+      ) : null}
     </div>
   );
 }

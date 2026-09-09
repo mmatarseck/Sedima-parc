@@ -9,7 +9,10 @@
  * identifiant local — assez pour montrer le geste, pas pour archiver.
  *
  * Une référence est donc soit « pieces/… » (la base), soit « local:… » (la
- * démonstration), soit un simple nom de fichier venu d'avant ce module.
+ * démonstration), soit une adresse qui s'affiche telle quelle (une image en
+ * ligne, un fichier du site, une image portée dans la valeur — c'est ainsi
+ * que la photo d'un véhicule s'écrivait avant le 9 septembre 2026), soit un
+ * simple nom de fichier venu d'avant ce module.
  * ==========================================================================*/
 
 import { authentificationReelle } from "@/lib/session-demo";
@@ -65,9 +68,67 @@ export async function televerserPhoto(fichier: File, dossier: string): Promise<{
   }
 }
 
+/** Une adresse qui s'affiche telle quelle, sans passer par le stockage. */
+function adresseDirecte(ref: string): boolean {
+  return ref.startsWith("https://") || ref.startsWith("http://") || ref.startsWith("data:") || ref.startsWith("/");
+}
+
+/* -- Les adresses signées, demandées ensemble --------------------------------
+ *
+ * Une liste de véhicules demande sa vignette ligne par ligne. Signer chaque
+ * adresse pour elle-même, c'est autant d'allers-retours — une demi-seconde
+ * chacun depuis Dakar, la mesure de la revue de performance. Les demandes du
+ * même instant partent donc en une fois, et l'adresse obtenue ressert jusqu'à
+ * l'approche de son échéance.
+ * ------------------------------------------------------------------------- */
+
+const DUREE_SIGNATURE = 3600;
+/** On resigne cinq minutes avant l'échéance : une image ouverte à la dernière seconde doit charger. */
+const GARDE = 300;
+
+const signees = new Map<string, { url: string; jusqua: number }>();
+let attente: { chemin: string; rendre: (url: string | null) => void }[] = [];
+let lotProgramme = false;
+
+async function viderLot(): Promise<void> {
+  const lot = attente;
+  attente = [];
+  lotProgramme = false;
+  const chemins = [...new Set(lot.map((d) => d.chemin))];
+  const trouvees = new Map<string, string>();
+  try {
+    const r = await clientNavigateur().storage.from("pieces").createSignedUrls(chemins, DUREE_SIGNATURE);
+    const jusqua = Date.now() + (DUREE_SIGNATURE - GARDE) * 1000;
+    /* La réponse suit l'ordre des chemins demandés et les redit ; le rang sert
+       de repli, pour qu'une réponse muette sur le chemin ne perde pas
+       l'adresse qu'elle porte. */
+    for (const [rang, ligne] of (r.data ?? []).entries()) {
+      const chemin = ligne.path ?? chemins[rang];
+      if (!chemin || !ligne.signedUrl) continue;
+      trouvees.set(chemin, ligne.signedUrl);
+      signees.set(chemin, { url: ligne.signedUrl, jusqua });
+    }
+  } catch {
+    /* Sans réseau, la vignette manque ; la ligne, elle, s'affiche quand même. */
+  }
+  for (const d of lot) d.rendre(trouvees.get(d.chemin) ?? null);
+}
+
+function signer(chemin: string): Promise<string | null> {
+  const connue = signees.get(chemin);
+  if (connue && connue.jusqua > Date.now()) return Promise.resolve(connue.url);
+  return new Promise((rendre) => {
+    attente.push({ chemin, rendre });
+    if (lotProgramme) return;
+    lotProgramme = true;
+    setTimeout(() => void viderLot(), 0);
+  });
+}
+
 /** Une adresse à afficher pour une référence ; nulle si la photo n'est pas accessible (un nom d'avant, un chemin sans session). */
 export async function urlPhoto(ref: ReferencePhoto | null | undefined): Promise<string | null> {
   if (!ref) return null;
+  if (adresseDirecte(ref)) return ref;
   if (ref.startsWith("local:")) {
     try {
       return localStorage.getItem(`sedima.parc.photos.${ref.slice(6)}`);
@@ -75,14 +136,11 @@ export async function urlPhoto(ref: ReferencePhoto | null | undefined): Promise<
       return null;
     }
   }
-  if (ref.startsWith("pieces/") && authentificationReelle()) {
-    const r = await clientNavigateur().storage.from("pieces").createSignedUrl(ref.slice(7), 3600);
-    return r.data?.signedUrl ?? null;
-  }
+  if (ref.startsWith("pieces/") && authentificationReelle()) return signer(ref.slice(7));
   return null;
 }
 
 /** Vrai quand la référence désigne une vraie image, et non un simple nom d'avant ce module. */
 export function photoAffichable(ref: string | null | undefined): boolean {
-  return Boolean(ref && (ref.startsWith("local:") || ref.startsWith("pieces/")));
+  return Boolean(ref && (ref.startsWith("local:") || ref.startsWith("pieces/") || adresseDirecte(ref)));
 }

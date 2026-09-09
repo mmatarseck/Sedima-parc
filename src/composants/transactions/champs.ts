@@ -432,8 +432,8 @@ export const CHAMPS_FRAIS: ChampEdition[] = [
 /** Ce qui se modifie sur une fiche véhicule après sa création. */
 export function champsVehicule(): ChampEdition[] {
   return [
-    /* L'adresse de la photo se saisit ici ; le cadre de l'en-tête sait aussi
-       téléverser un fichier, qu'il redimensionne avant d'enregistrer. */
+    /* Une adresse d'image se colle ici ; le cadre de l'en-tête, lui, téléverse
+       un fichier dans le seau et n'en garde que la référence. */
     { cle: "photo", libelle: "Photo (adresse)", type: "texte" },
     ...champsIdentiteVehicule(),
     { cle: "categorieFlotte", libelle: "Catégorie de flotte", type: "choix", options: options(CATEGORIE_FLOTTE), obligatoire: true },

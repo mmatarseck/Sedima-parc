@@ -46,6 +46,12 @@ Un module de démonstration importé par un composant client (l'assistant lit
 démonstration ont leurs fichiers (`flotte-demo.ts`, `conformite-demo.ts`,
 `visites-demo.ts`).
 
+**La photo du véhicule ne s'écrit plus dans la base** (9 septembre, nuit) :
+elle rejoint le seau privé comme les pièces justificatives, la fiche n'en
+garde qu'une référence, et les vignettes d'une liste se signent en un seul
+aller-retour. Section « La photo du véhicule rejoint le seau » plus bas.
+Le dépôt réel reste à voir en ligne, avec `/pieces`.
+
 **Les raccourcis de la journée sont commis.** La session qui tenait
 l'accueil du téléphone (raccourcis par profil, demandes, affectations,
 fiche rapide) a terminé et vérifié son travail ; il est commis le
@@ -1202,10 +1208,41 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
 - Vérifié en démonstration : réponse à une demande avec une image générée
   (vignette de 7,7 Ko dans le navigateur), vignette dans la liste du
   bureau ; PGlite : 0014 rejouée, plein et dépense insérés avec leur photo.
-- Reste : la migration à jouer, et l'essai en ligne du dépôt dans le seau ;
-  le nettoyage des photos locales de démonstration (elles pèsent dans le
-  stockage du navigateur) ; la photo du véhicule lui-même (`PhotoVehicule`)
-  suit encore son propre chemin.
+- Reste : l'essai en ligne du dépôt dans le seau ; le nettoyage des photos
+  locales de démonstration (elles pèsent dans le stockage du navigateur).
+
+### La photo du véhicule rejoint le seau (9 septembre 2026, nuit)
+
+- **Le défaut.** `PhotoVehicule` gardait son propre chemin : l'image réduite
+  à 480 px était transcrite en toutes lettres et *cette transcription* était
+  la valeur enregistrée. Une quarantaine de milliers de caractères écrits
+  dans la colonne du véhicule, relus par chaque liste — `lire_parc()` rend
+  tout le parc en un JSON — et recopiés avant *et* après dans le journal des
+  modifications à chaque changement, sans jamais s'effacer.
+- **La correction** : le fichier part par `televerserPhoto(fichier,
+  "vehicules")`, comme toute pièce justificative, et la fiche ne garde que
+  la référence. Mesuré en démonstration sur AA 985 MR : la valeur du
+  véhicule passe d'une image entière à 33 caractères, et l'entrée du
+  journal tient en 387 caractères, image comprise ailleurs.
+- **Les valeurs d'avant restent lisibles** : `urlPhoto` rend telle quelle
+  une adresse qui s'affiche seule — une image portée dans la valeur, une
+  adresse saisie dans le champ « Photo (adresse) », un fichier du site — et
+  `photoAffichable` les reconnaît.
+- **Les adresses signées partent ensemble.** Une liste de vignettes signait
+  une adresse par ligne : cent trente-quatre véhicules, autant d'allers-
+  retours d'une demi-seconde depuis Dakar. Les demandes du même instant
+  tiennent maintenant dans un seul `createSignedUrls`, et l'adresse ressert
+  jusqu'à cinq minutes de son échéance. Aucun appelant n'a changé : c'est
+  `urlPhoto` qui regroupe.
+- **Vérifié en démonstration** (le serveur du poste tourne sans clé
+  Supabase) : le geste complet sur la fiche de AA 985 MR — image choisie,
+  référence `local:…` écrite, vignette rendue, retrait offert — et la
+  colonne Photo de la liste. **Non vérifié ici** : le dépôt réel et
+  l'adresse signée, faute d'une clé valable sur ce poste ; à regarder en
+  ligne en même temps que `/pieces`.
+- Limite connue, d'avant : en démonstration, le journal des modifications
+  n'alimente que la fiche, pas la liste — une photo posée en démonstration
+  ne se voit donc pas dans la colonne Photo. En base, la liste la lit.
 
 ### La fiche chauffeur lue depuis la base (8 septembre 2026)
 
