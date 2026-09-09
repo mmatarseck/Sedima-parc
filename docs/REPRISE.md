@@ -19,7 +19,7 @@ groupé par Resend). Au passage : les fiches de transfert ont quitté le rail
 pour la fiche véhicule, et le sélecteur de colonnes des rapports reste dans
 l'écran.
 
-**Migrations : 0001 à 0026 jouées ; 0027 et 0028 à jouer** dans le SQL Editor, dans l'ordre.
+**Migrations : 0001 à 0028 jouées** (0027 et 0028 confirmées le 9 septembre 2026 au soir). Rien en attente dans le SQL Editor.
 Commits à pousser selon `git log origin/main..HEAD`.
 
 **À poser sur Vercel pour que les courriels partent** : `RESEND_API_KEY`,
