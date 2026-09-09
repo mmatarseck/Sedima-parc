@@ -1717,6 +1717,62 @@ lectures avant et après une migration. Il reproduit la régression (fiche
   (signalé le 9 septembre). Elle s'ouvre alignée à gauche, au-dessus de tout
   (`ColonnesRapport.tsx`).
 
+### Le Compte des prestataires base branchée (9 septembre 2026, migration 0026)
+
+- Migration `0026_lire_prestataires.sql` : `lire_prestataires(depuis)` rend
+  en une requête le référentiel et ce que les transactions disent de chaque
+  prestataire — interventions (par la clé), pleins et dépenses de caisse
+  depuis la date (par la clé ou le nom), documents émis et visites
+  techniques (par le nom : émetteur, centre), avances et évaluations (tables
+  0002). Les demandes d'achat (`achatsServeur`) et le transport tiers
+  (`transporteursServeur`) ne sont pas recopiés : déjà lus, déjà à la forme
+  du domaine. Droits de l'appelant.
+- `src/domaine/assembler-prestataires.ts` : le rassemblement, **pur**, sur
+  une `SourcePrestataires` où chaque fait porte son numéro PRE — la fiche
+  (`fichePrestataireDe`), le compte (`comptePrestataireDe` : dettes
+  déduites des achats livrés ou facturés, des affrètements, mises à
+  disposition et prestations livrés ou facturés ; avances ; évaluations ;
+  faits de la note ; activité de transport), la note (`notationDe`), et le
+  résumé de chacun pour la liste (`resumesDe`, les trente colonnes que
+  l'écran calculait dans le navigateur). Les faits sont regroupés une fois.
+  `repriseDe` et `ancienneteMois(dates, aujourdhui)` y vivent désormais.
+- `compte-prestataire-demo.ts` garde les avances et évaluations de
+  démonstration et donne `sourcePrestatairesDemo()` ; ses anciennes
+  fonctions restent pour `rapports-demo.ts`. `src/donnees/prestataires.ts` :
+  `sourceDepuisJson()` (pur) rapporte chaque fait à son prestataire — par la
+  clé, sinon par le nom avec le même `prestatairePour` que la démonstration
+  — et `prestatairesServeur()` (en cache) appelle la fonction, les achats et
+  les transporteurs en parallèle. Sans la fonction : le référentiel, sans
+  activité.
+- Les pages : la liste reçoit `resumes` du serveur (l'écran ne calcule
+  plus rien, il n'importe plus la démonstration) ; la fiche reçoit `compte`
+  et recalcule la note avec les avances et évaluations saisies depuis.
+- **Les avances et les évaluations se saisissent** : « Nouvelle avance »
+  (onglet Compte, prestataire actif) et « Évaluer un service » (onglet
+  Évaluation, la pièce choisie parmi les interventions et demandes du
+  prestataire) — les champs `CHAMPS.avance` et `CHAMPS.evaluation`
+  existaient sans écran. Écritures : `avance` → `avance_prestataire`,
+  `evaluation` → `evaluation_prestataire` ; l'auteur de l'évaluation est la
+  personne de la session, le libellé de la pièce se lit sur sa table (INT,
+  DAC, AFF, MAD, PRS). Refus : avance sans montant, motif ou autorisation ;
+  évaluation sans pièce, sans les trois notes de 1 à 5. L'imputation d'une
+  avance est une modification colonne par colonne.
+- Vérifié : `scripts/tester-prestataires.mts` dans PGlite — 33
+  prestataires, 95 interventions, 67 documents, 23 visites, 4 avances, 8
+  évaluations ; **la liste base branchée est égale à la démonstration ligne
+  à ligne** (prestations, montant 12 mois, dû, avances, évaluations, note,
+  documents, visites, pleins, demandes, ancienneté : Sénégalaise « bon 78 »,
+  First Garage « fragile 47 », ADEX 206,9 M F et 18 pièces dues) ; la fiche
+  et le compte ; un centre agréé retrouve ses 20 visites par son nom ; une
+  avance et une évaluation écrites, trois refus, l'imputation, la relecture
+  et la note recalculée. 34 ms de lecture, 82 ms d'assemblage ; 55 ms sous
+  politiques actives, 410 Ko. `tester-ecritures`, la charte et `tsc` passent.
+- Limite connue, héritée de la démonstration : aucun plein ni aucune
+  sortie de caisse du jeu ne cite un prestataire du référentiel (les pleins
+  vont à la cuve) — les colonnes « Pleins 12 mois » et « Caisse » resteront
+  vides tant que les saisies réelles ne les nommeront pas. Les rapports
+  lisent encore `compte-prestataire-demo.ts` : à brancher avec leur module.
+
 **À faire, dans l'ordre** (mis à jour le 9 septembre 2026).
 
 1. ~~Le seed~~, ~~le premier administrateur~~, ~~Vercel~~ — faits : la
@@ -1724,8 +1780,8 @@ lectures avant et après une migration. Il reproduit la régression (fiche
 2. ~~Le branchement écran par écran~~ — fait pour tout le bureau et le
    téléphone, sauf Compte des prestataires, Budget, Rapports.
 3. ~~**Transporteurs base branchée**~~ — fait le 9 septembre 2026 (0025).
-4. **Compte des prestataires** : dette déduite des achats, interventions et
-   affrètements en base ; avances et évaluations (tables 0002).
+4. ~~**Compte des prestataires**~~ — fait le 9 septembre 2026 (0026) :
+   dette déduite, avances et évaluations lues et saisies.
 5. **Budget** : enveloppes (table 0002) et dépenses lues.
 6. **Rapports** : une lecture par rapport, sur les fonctions existantes.
 7. **Courriel au détenteur** (notification de la plateforme).

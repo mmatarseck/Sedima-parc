@@ -17,8 +17,30 @@ import { POSTE_DEPENSE } from "@/domaine/libelles";
 import { initialesPrestataire, TON_TYPE_PRESTATAIRE, TYPE_PRESTATAIRE, type FichePrestataire as Fiche } from "@/domaine/prestataires";
 import { date, dateCourte, montant, montantCourt, nombre } from "@/lib/format";
 import { ComptePrestataire, EvaluationPrestataire } from "./ComptePrestataire";
-import { noterPrestataire } from "@/domaine/compte-prestataire";
-import { activiteTransport, ancienneteMois, avancesDe, dettesDe, evaluationsDe, repriseDe } from "@/donnees/compte-prestataire-demo";
+import { notationDe, type ComptePrestataire as Compte } from "@/domaine/assembler-prestataires";
+import type { Avance, Evaluation } from "@/domaine/compte-prestataire";
+import type { ChampEdition, Creation } from "@/domaine/cloture";
+
+/** Une avance saisie depuis la fiche, à la forme du compte. */
+function fabriquerAvance(prestataireNumero: string) {
+  return (c: Creation): Avance | null => {
+    const v = c.valeurs as Record<string, string | undefined>;
+    const montant = Number(String(v.montant ?? "").replace(/\s/g, ""));
+    if (!v.date || !Number.isFinite(montant) || montant <= 0) return null;
+    return { numero: c.numero, prestataireNumero, date: v.date, montant, motif: v.motif ?? "", imputeeSur: v.imputeeSur || null, dateImputation: v.dateImputation || null, autorisePar: v.autorisePar || c.auteur };
+  };
+}
+
+/** Une évaluation saisie depuis la fiche : trois notes de 1 à 5, la pièce évaluée. */
+function fabriquerEvaluation(prestataireNumero: string, libelleDe: (numero: string) => string | null) {
+  return (c: Creation): Evaluation | null => {
+    const v = c.valeurs as Record<string, string | undefined>;
+    const note = (x: string | undefined) => Math.min(5, Math.max(1, Math.round(Number(x ?? 0)) || 1));
+    if (!v.date) return null;
+    const pieceNumero = v.pieceNumero ?? "";
+    return { numero: c.numero, prestataireNumero, date: v.date, pieceNumero, pieceLibelle: v.pieceLibelle || libelleDe(pieceNumero) || pieceNumero, notes: { qualite: note(v.qualite), delai: note(v.delai), prix: note(v.prix) }, commentaire: v.commentaire || null, auteur: c.auteur };
+  };
+}
 
 /* ============================================================================
  * Fiche prestataire — même structure que les fiches véhicule et chauffeur :
@@ -69,35 +91,43 @@ function Vehicule({ immatriculation, affichee }: { immatriculation: string; affi
   );
 }
 
-export function FichePrestataire({ fiche, ongletInitial, aujourdhui, cible }: { fiche: Fiche; ongletInitial?: string; aujourdhui: string; cible?: string }) {
+export function FichePrestataire({ fiche, compte: compteServeur, ongletInitial, aujourdhui, cible }: { fiche: Fiche; compte: Compte; ongletInitial?: string; aujourdhui: string; cible?: string }) {
   const [onglet, setOnglet] = useState<Onglet>(estOnglet(ongletInitial) ? ongletInitial : "apercu");
   useCible(cible, onglet);
   const [periode, setPeriode] = useState<PeriodeMois>(12);
-  const { surcharger, demander, creer } = useEdition();
+  const { surcharger, demander, creer, creations } = useEdition();
 
   const p = surcharger(fiche.prestataire);
   const debut = debutPeriode(periode, new Date(`${aujourdhui}T00:00:00Z`));
 
   /*
-   * Le compte et la note se calculent sur **toute** la relation, jamais sur la
-   * période choisie : une dette de l'an dernier reste une dette, et une note
-   * fondée sur trois mois ne vaudrait rien.
+   * Le compte et la note viennent du serveur, calculés sur **toute** la
+   * relation, jamais sur la période choisie : une dette de l'an dernier reste
+   * une dette, et une note fondée sur trois mois ne vaudrait rien. Les avances
+   * et les évaluations saisies depuis la fiche s'y ajoutent, et la note se
+   * recalcule avec elles.
    */
-  const dettes = useMemo(() => dettesDe(fiche.prestataire.numero), [fiche.prestataire.numero]);
-  const avancesFiche = useMemo(() => avancesDe(fiche.prestataire.numero), [fiche.prestataire.numero]);
-  const evaluationsFiche = useMemo(() => evaluationsDe(fiche.prestataire.numero), [fiche.prestataire.numero]);
-  const notation = useMemo(
-    () =>
-      noterPrestataire({
-        evaluations: evaluationsFiche,
-        interventions: fiche.interventions.length,
-        reprises: repriseDe(fiche.interventions.map((i) => ({ date: i.date, objet: i.objet, vehiculeId: i.vehiculeId }))),
-        /* Transport compris : la note doit dire la même chose ici, sur le
-           référentiel et dans le rapport. */
-        ancienneteMois: ancienneteMois([...fiche.interventions.map((i) => i.date), ...fiche.demandes.map((d) => d.date), ...fiche.pleins.map((x) => x.date), ...activiteTransport(fiche.prestataire.raisonSociale, "0000-01-01").dates]),
-      }),
-    [evaluationsFiche, fiche.interventions, fiche.demandes, fiche.pleins],
-  );
+  const dettes = compteServeur.dettes;
+  const libellePiece = (numero: string): string | null => {
+    const i = fiche.interventions.find((x) => x.numero === numero);
+    if (i) return `${i.objet} — ${i.immatriculationAffichee}`;
+    const d = fiche.demandes.find((x) => x.numero === numero);
+    return d ? d.objet : null;
+  };
+  const avancesFiche = [...creations("avance", fabriquerAvance(fiche.prestataire.numero)), ...compteServeur.avances.map(surcharger)];
+  const evaluationsFiche = [...creations("evaluation", fabriquerEvaluation(fiche.prestataire.numero, libellePiece)), ...compteServeur.evaluations.map(surcharger)];
+  const notation = useMemo(() => notationDe(compteServeur, evaluationsFiche), [compteServeur, evaluationsFiche]);
+
+  /* La pièce qu'on évalue : une intervention ou une demande d'achat de ce
+     prestataire, la plus récente d'abord. Sans pièce connue, le champ reste libre. */
+  const pieces = [...fiche.interventions.map((i) => ({ valeur: i.numero, libelle: `${i.numero} · ${i.objet} — ${i.immatriculationAffichee}` })), ...fiche.demandes.map((d) => ({ valeur: d.numero, libelle: `${d.numero} · ${d.objet}` }))];
+  function nouvelleAvance() {
+    creer({ type: "avance", titre: `Avance à ${p.raisonSociale}`, champs: CHAMPS.avance, valeurs: { date: aujourdhui, prestataireNumero: p.numero } });
+  }
+  function evaluerService() {
+    const piece: ChampEdition = pieces.length > 0 ? { cle: "pieceNumero", libelle: "Service évalué", type: "choix", options: pieces, obligatoire: true } : { cle: "pieceNumero", libelle: "Service évalué (numéro de la pièce)", type: "texte", obligatoire: true };
+    creer({ type: "evaluation", titre: `Évaluer un service de ${p.raisonSociale}`, champs: [piece, ...CHAMPS.evaluation], valeurs: { date: aujourdhui, prestataireNumero: p.numero, pieceNumero: pieces[0]?.valeur ?? "", qualite: 4, delai: 4, prix: 4 } });
+  }
 
   /* ---- Ce que la période retient ---- */
   const sel = useMemo(() => {
@@ -313,8 +343,8 @@ export function FichePrestataire({ fiche, ongletInitial, aujourdhui, cible }: { 
 
       {/* ---- Contenu de l'onglet : la seule zone qui défile ---- */}
       <div role="tabpanel" className="defilement-discret min-h-0 flex-1 px-8 py-6 lg:overflow-y-auto">
-        {onglet === "compte" ? <ComptePrestataire dettes={dettes} avances={avancesFiche} aujourdhui={aujourdhui} /> : null}
-      {onglet === "evaluation" ? <EvaluationPrestataire evaluations={evaluationsFiche} notation={notation} /> : null}
+        {onglet === "compte" ? <ComptePrestataire dettes={dettes} avances={avancesFiche} aujourdhui={aujourdhui} onNouvelleAvance={p.actif ? nouvelleAvance : undefined} /> : null}
+        {onglet === "evaluation" ? <EvaluationPrestataire evaluations={evaluationsFiche} notation={notation} onEvaluer={evaluerService} /> : null}
 
       {onglet === "apercu" ? (
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">

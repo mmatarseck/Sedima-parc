@@ -11,12 +11,8 @@ import { FournisseurEdition, useEdition } from "@/composants/transactions/Contex
 import type { StatistiquesPrestataire } from "@/domaine/caisse";
 import { COULEUR_ACTIF, TON_TYPE_PRESTATAIRE, TYPE_PRESTATAIRE, type Prestataire } from "@/domaine/prestataires";
 import { dateCourte, montant, nombre } from "@/lib/format";
-import { NIVEAU_PRESTATAIRE, ageDette, avanceOuverte, noterPrestataire } from "@/domaine/compte-prestataire";
-import { activiteTransport, ancienneteMois, avancesDe, dettesDe, evaluationsDe, repriseDe } from "@/donnees/compte-prestataire-demo";
-import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
-import { POSTE_DEPENSE } from "@/domaine/libelles";
-import { coutDe } from "@/domaine/caisse";
-import { fichePrestataire } from "@/donnees/fiche-prestataire-demo";
+import type { ResumePrestataire } from "@/domaine/assembler-prestataires";
+import { NIVEAU_PRESTATAIRE } from "@/domaine/compte-prestataire";
 import { fabriquerPrestataire } from "@/donnees/prestataires-demo";
 import { lireCreations } from "@/lib/clotures-demo";
 
@@ -41,15 +37,24 @@ const FILTRES: FiltreListe<Prestataire>[] = [
   { cle: "tous", libelle: "Tous", retient: () => true },
 ];
 
-export function EcranPrestataires({ prestataires, stats, cible }: { prestataires: Prestataire[]; stats: Record<string, StatistiquesPrestataire>; cible?: string }) {
+interface Props {
+  prestataires: Prestataire[];
+  /** Ce que chacun a vendu sur douze mois, lu sur les demandes d'achat. */
+  stats: Record<string, StatistiquesPrestataire>;
+  /** Le résumé de chacun — activité, compte, notation —, assemblé par le serveur sur la même source que la fiche. */
+  resumes: Record<string, ResumePrestataire>;
+  cible?: string;
+}
+
+export function EcranPrestataires({ prestataires, stats, resumes, cible }: Props) {
   return (
     <FournisseurEdition sujet="prestataires" href="/prestataires">
-      <Interieur prestataires={prestataires} stats={stats} cible={cible} />
+      <Interieur prestataires={prestataires} stats={stats} resumes={resumes} cible={cible} />
     </FournisseurEdition>
   );
 }
 
-function Interieur({ prestataires, stats, cible }: { prestataires: Prestataire[]; stats: Record<string, StatistiquesPrestataire>; cible?: string }) {
+function Interieur({ prestataires, stats, resumes, cible }: Props) {
   const { demander, creer, surcharger, version } = useEdition();
   const [monte, setMonte] = useState(false);
   useEffect(() => setMonte(true), []);
@@ -72,90 +77,12 @@ function Interieur({ prestataires, stats, cible }: { prestataires: Prestataire[]
     demander({ type: "prestataire", numero: p.numero, titre: `Prestataire ${p.numero} · ${p.raisonSociale}`, valeurs: p as unknown as Record<string, unknown>, champs: CHAMPS.prestataire });
   }
   /*
-   * Le résumé de chaque prestataire, calculé une fois pour toute la liste :
-   * activité, compte, notation. Le refaire par ligne coûterait plusieurs fois
-   * le rendu de l'écran — la fiche, les dettes et les évaluations sont trois
-   * agrégats à part entière.
+   * Le résumé de chaque prestataire — activité, compte, notation — vient du
+   * serveur, assemblé une fois pour toute la liste sur la même source que la
+   * fiche (`resumesDe`). Un prestataire créé dans le navigateur n'en a pas
+   * encore : il n'a rien fait.
    */
-  const resume = useMemo(() => {
-    const debut = new Date(Date.parse(DATE_REFERENCE) - 365 * 86_400_000).toISOString().slice(0, 10);
-    const recent = <T extends { date: string }>(l: T[]) => l.filter((x) => x.date >= debut);
-    return new Map(
-      prestataires.map((x) => {
-        const fiche = fichePrestataire(x.numero);
-        const interventions = fiche?.interventions ?? [];
-        const demandes = fiche?.demandes ?? [];
-        const pleins = fiche?.pleins ?? [];
-        const caisse = fiche?.depensesCaisse ?? [];
-        const evals = evaluationsDe(x.numero);
-        const dettesP = dettesDe(x.numero);
-        const avancesP = avancesDe(x.numero);
-        const ouvertes = avancesP.filter(avanceOuverte);
-        const echues = dettesP.filter((d) => ageDette(d.echeance, DATE_REFERENCE) !== "a-venir");
-        const retards = echues.map((d) => Math.round((Date.parse(DATE_REFERENCE) - Date.parse(d.echeance ?? DATE_REFERENCE)) / 86_400_000));
-        const reprises = repriseDe(interventions.map((i) => ({ date: i.date, objet: i.objet, vehiculeId: i.vehiculeId })));
-        /* Un transporteur ne passe pas par les demandes d'achat : ses missions
-           et son montant vivent dans ses affrètements, ses mises à disposition
-           et ses prestations. */
-        const transport = activiteTransport(x.raisonSociale, debut);
-        const transportTout = activiteTransport(x.raisonSociale, "0000-01-01");
-        const dates = [...interventions.map((i) => i.date), ...demandes.map((d) => d.date), ...pleins.map((v) => v.date), ...caisse.map((d) => d.date), ...transportTout.dates].sort();
-        const du = dettesP.reduce((t, d) => t + d.montant, 0);
-        const nonSoldees = ouvertes.reduce((t, a) => t + a.montant, 0);
-        const moyenne = (critere: "qualite" | "delai" | "prix") =>
-          evals.length ? Math.round((evals.reduce((t, e) => t + e.notes[critere], 0) / evals.length) * 10) / 10 : null;
-        return [
-          x.numero,
-          {
-            note: noterPrestataire({
-              evaluations: evals,
-              interventions: interventions.length,
-              reprises,
-              ancienneteMois: ancienneteMois(dates),
-            }),
-            /* L'activité se compte sur douze mois glissants : un garage qui n'a
-               rien fait depuis un an n'est pas un garage actif, quoi qu'en dise
-               la case « actif » du référentiel. */
-            interventions: recent(interventions).length + transport.missions,
-            interventionsTotal: interventions.length + transportTout.missions,
-            demandes: recent(demandes).length,
-            pleins: recent(pleins).length,
-            litres: recent(pleins).reduce((t, v) => t + v.litres, 0),
-            documents: (fiche?.documents ?? []).length,
-            visites: (fiche?.visites ?? []).length,
-            vehicules: new Set(interventions.map((i) => i.vehiculeId)).size,
-            postes: [...new Set(demandes.map((d) => POSTE_DEPENSE[d.poste]))].sort().join(", "),
-            /* Tout ce qu'il a facturé au parc : interventions, achats, caisse.
-               Les seules demandes d'achat afficheraient « — » en face de
-               dix-sept interventions. */
-            montant:
-              recent(interventions).reduce((t, i) => t + i.montant, 0) +
-              recent(demandes).reduce((t, d) => t + coutDe(d).montant, 0) +
-              recent(caisse).reduce((t, d) => t + d.montant, 0) +
-              transport.montant,
-            premiere: dates[0] ?? null,
-            derniere: dates.length ? dates[dates.length - 1]! : null,
-            anciennete: ancienneteMois(dates),
-            evaluations: evals.length,
-            qualite: moyenne("qualite"),
-            delai: moyenne("delai"),
-            prix: moyenne("prix"),
-            reprises,
-            du,
-            pieces: dettesP.length,
-            echu: echues.reduce((t, d) => t + d.montant, 0),
-            piecesEchues: echues.length,
-            retardMax: retards.length ? Math.max(...retards) : null,
-            avances: avancesP.reduce((t, a) => t + a.montant, 0),
-            avancesNonSoldees: nonSoldees,
-            solde: du - nonSoldees,
-          },
-        ];
-      }),
-    );
-  }, [prestataires]);
-
-  const de = (p: Prestataire) => resume.get(p.numero) ?? null;
+  const de = (p: Prestataire) => resumes[p.numero] ?? null;
   const rien = <span className="text-attenue-2">—</span>;
   /** Une valeur numérique, ou le tiret quand elle est nulle ou vide. */
   const chiffre = (v: number | null | undefined, formater: (n: number) => string = String) => (v === null || v === undefined || v === 0 ? rien : <span className="code">{formater(v)}</span>);
@@ -339,7 +266,7 @@ function Interieur({ prestataires, stats, cible }: { prestataires: Prestataire[]
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [resume, stats],
+    [resumes, stats],
   );
 
   return (

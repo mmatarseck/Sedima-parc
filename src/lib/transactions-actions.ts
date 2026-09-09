@@ -28,6 +28,7 @@
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import type { Creation } from "@/domaine/cloture";
+import { afficher } from "@/domaine/immatriculation";
 import { TYPE_TRANSACTION, formerNumero, type TypeTransaction } from "@/domaine/reference";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur, utilisateurCourant } from "@/lib/supabase";
@@ -89,6 +90,34 @@ async function affretementIdDe(client: SupabaseClient, numero: unknown): Promise
   return r.data?.id ?? null;
 }
 
+/** Le libellé de la pièce qu'une évaluation cite, lu sur sa table : ce que l'écran affichera en face de la note. */
+async function libellePieceDe(client: SupabaseClient, numero: unknown): Promise<string | null> {
+  if (typeof numero !== "string" || !numero.trim()) return null;
+  const n = numero.trim();
+  const prefixe = n.slice(0, 3).toUpperCase();
+  if (prefixe === "INT") {
+    const r = await client.from("intervention").select("objet, vehicule (immatriculation)").eq("numero", n).maybeSingle<{ objet: string; vehicule: { immatriculation: string } | null }>();
+    return r.data ? `${r.data.objet}${r.data.vehicule ? ` — ${afficher(r.data.vehicule.immatriculation)}` : ""}` : null;
+  }
+  if (prefixe === "DAC") {
+    const r = await client.from("demande_achat").select("objet").eq("numero", n).maybeSingle<{ objet: string }>();
+    return r.data?.objet ?? null;
+  }
+  if (prefixe === "AFF") {
+    const r = await client.from("affretement").select("origine, destination").eq("numero", n).maybeSingle<{ origine: string; destination: string }>();
+    return r.data ? `${r.data.origine} → ${r.data.destination}` : null;
+  }
+  if (prefixe === "MAD") {
+    const r = await client.from("mise_a_disposition").select("immatriculation, mois").eq("numero", n).maybeSingle<{ immatriculation: string; mois: string }>();
+    return r.data ? `${afficher(r.data.immatriculation)} · ${r.data.mois}` : null;
+  }
+  if (prefixe === "PRS") {
+    const r = await client.from("prestation").select("libelle").eq("numero", n).maybeSingle<{ libelle: string }>();
+    return r.data?.libelle ?? null;
+  }
+  return null;
+}
+
 async function rattacher(client: SupabaseClient, c: Creation): Promise<Rattachement> {
   const s = decomposerSujet(c.sujet);
   const v = c.valeurs;
@@ -111,6 +140,11 @@ async function rattacher(client: SupabaseClient, c: Creation): Promise<Rattachem
   if ((c.type === "caisse" || c.type === "cuve") && !v.enregistrePar) v.enregistrePar = c.auteur;
   /* Le demandeur d'un ordre ou d'un affrètement : la personne qui le crée, telle que le navigateur la nomme. */
   if ((c.type === "ordre" || c.type === "affretement") && !v.demandeur) v.demandeur = c.auteur;
+  /* L'auteur d'une évaluation, et le libellé de la pièce qu'elle juge, lu sur sa table. */
+  if (c.type === "evaluation") {
+    if (!v.auteur) v.auteur = c.auteur;
+    if (!v.pieceLibelle) v.pieceLibelle = (await libellePieceDe(client, v.pieceNumero)) ?? undefined;
+  }
   return { vehiculeId, chauffeurId, prestataireId, camionTiers, affretementId };
 }
 

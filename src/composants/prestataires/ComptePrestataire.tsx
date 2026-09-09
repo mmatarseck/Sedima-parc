@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { HandCoins, Info, Star } from "lucide-react";
+import { HandCoins, Info, Plus, Star } from "lucide-react";
 import { Carte, TableauSimple } from "@/composants/interface/Carte";
 import { Echeance, Pastille } from "@/composants/interface/Pastille";
 import {
@@ -32,7 +32,7 @@ import { date as formaterDate, montant, montantCourt, nombre } from "@/lib/forma
  * lui**.
  * ==========================================================================*/
 
-export function ComptePrestataire({ dettes, avances, aujourdhui }: { dettes: LigneDette[]; avances: Avance[]; aujourdhui: string }) {
+export function ComptePrestataire({ dettes, avances, aujourdhui, onNouvelleAvance }: { dettes: LigneDette[]; avances: Avance[]; aujourdhui: string; onNouvelleAvance?: () => void }) {
   const s = solde(dettes, avances);
   const enRetard = dettes.filter((d) => ageDette(d.echeance, aujourdhui) === "en-retard");
   const ouvertes = avances.filter(avanceOuverte);
@@ -119,7 +119,19 @@ export function ComptePrestataire({ dettes, avances, aujourdhui }: { dettes: Lig
         />
       </Carte>
 
-      <Carte titre="Avances" precision="Un décaissement fait avant le service : il n'éteint rien tant qu'il n'est pas imputé sur une pièce" sansMarge>
+      <Carte
+        titre="Avances"
+        precision="Un décaissement fait avant le service : il n'éteint rien tant qu'il n'est pas imputé sur une pièce"
+        action={
+          onNouvelleAvance ? (
+            <button type="button" onClick={onNouvelleAvance} className="bouton-secondaire h-9">
+              <Plus className="size-4" strokeWidth={2} />
+              Nouvelle avance
+            </button>
+          ) : undefined
+        }
+        sansMarge
+      >
         <TableauSimple<Avance>
           reglages="prestataire.avances"
           cle={(a) => a.numero}
@@ -156,7 +168,7 @@ export function ComptePrestataire({ dettes, avances, aujourdhui }: { dettes: Lig
 
 /* -- L'évaluation ------------------------------------------------------------------ */
 
-export function EvaluationPrestataire({ evaluations, notation }: { evaluations: Evaluation[]; notation: NotationPrestataire }) {
+export function EvaluationPrestataire({ evaluations, notation, onEvaluer }: { evaluations: Evaluation[]; notation: NotationPrestataire; onEvaluer?: () => void }) {
   return (
     <div className="flex flex-col gap-5">
       <div className="carte flex shrink-0 items-start gap-3 px-4 py-3 text-[13px] leading-relaxed text-texte-2">
@@ -211,7 +223,19 @@ export function EvaluationPrestataire({ evaluations, notation }: { evaluations: 
         </ul>
       </Carte>
 
-      <Carte titre="Évaluations des services" precision={`${evaluations.length} évaluation${evaluations.length > 1 ? "s" : ""} · saisies à la réception du service`} sansMarge>
+      <Carte
+        titre="Évaluations des services"
+        precision={`${evaluations.length} évaluation${evaluations.length > 1 ? "s" : ""} · saisies à la réception du service`}
+        action={
+          onEvaluer ? (
+            <button type="button" onClick={onEvaluer} className="bouton-secondaire h-9">
+              <Plus className="size-4" strokeWidth={2} />
+              Évaluer un service
+            </button>
+          ) : undefined
+        }
+        sansMarge
+      >
         <TableauSimple<Evaluation>
           reglages="prestataire.evaluations"
           cle={(e) => e.numero}

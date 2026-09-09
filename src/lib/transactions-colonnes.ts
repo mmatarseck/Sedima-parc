@@ -38,7 +38,9 @@ export type TableBranchee =
   | "ligne_tarif"
   | "affretement"
   | "mise_a_disposition"
-  | "prestation";
+  | "prestation"
+  | "avance_prestataire"
+  | "evaluation_prestataire";
 
 const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   releve: "releve_kilometrique",
@@ -61,6 +63,8 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   affretement: "affretement",
   "mise-a-disposition": "mise_a_disposition",
   prestation: "prestation",
+  avance: "avance_prestataire",
+  evaluation: "evaluation_prestataire",
 };
 
 /** La table d'un type ; nulle tant qu'il n'en a pas. Le statut est à part : il s'écrit sur le véhicule. */
@@ -402,6 +406,32 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
         },
       };
     }
+    case "avance": {
+      /* Un décaissement fait avant le service : il engage la trésorerie, il dit qui l'a décidé. */
+      const montant = nombre(v.montant);
+      if (!r.prestataireId) return { refus: "avance sans prestataire" };
+      if (!texte(v.date)) return { refus: "avance sans date" };
+      if (montant === null || montant <= 0) return { refus: "avance sans montant" };
+      if (!texte(v.motif)) return { refus: "avance sans motif" };
+      if (!texte(v.autorisePar)) return { refus: "avance sans autorisation" };
+      return { ligne: { numero, prestataire_id: r.prestataireId, date: texte(v.date), montant: Math.round(montant), motif: texte(v.motif), imputee_sur: texte(v.imputeeSur), date_imputation: texte(v.dateImputation), autorise_par: texte(v.autorisePar) } };
+    }
+    case "evaluation": {
+      /* Trois notes de 1 à 5 sur la pièce évaluée ; l'auteur est la personne de la session. */
+      const note = (x: unknown) => {
+        const n = nombre(x);
+        return n === null ? null : Math.round(n);
+      };
+      const qualite = note(v.qualite);
+      const delai = note(v.delai);
+      const prix = note(v.prix);
+      if (!r.prestataireId) return { refus: "évaluation sans prestataire" };
+      if (!texte(v.date)) return { refus: "évaluation sans date" };
+      if (!texte(v.pieceNumero)) return { refus: "évaluation sans pièce évaluée" };
+      if ([qualite, delai, prix].some((n) => n === null || n < 1 || n > 5)) return { refus: "évaluation sans les trois notes de 1 à 5" };
+      if (!texte(v.auteur)) return { refus: "évaluation sans auteur" };
+      return { ligne: { numero, prestataire_id: r.prestataireId, date: texte(v.date), piece_numero: texte(v.pieceNumero), piece_libelle: texte(v.pieceLibelle) ?? texte(v.pieceNumero), qualite, delai, prix, commentaire: texte(v.commentaire), auteur: texte(v.auteur) } };
+    }
     case "sanction": {
       if (!r.chauffeurId) return { refus: "sanction sans chauffeur" };
       if (!texte(v.motif)) return { refus: "sanction sans motif" };
@@ -441,11 +471,15 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   affretement: { date: "date", tonnageLivre: "tonnage_livre", statut: "statut", chauffeurExterne: "chauffeur_externe", montantFacture: "montant_facture", prixExceptionnel: "prix_exceptionnel", complementTarif: "complement_tarif", motifTarif: "motif_tarif", dateLivraison: "date_livraison", dateFacture: "date_facture", dateReglement: "date_reglement", referenceFacture: "reference_facture", numeroDemandeX3: "numero_demande_x3", numeroBonCommande: "numero_bon_commande", commentaire: "commentaire" },
   "mise-a-disposition": { joursPanne: "jours_panne", joursRoules: "jours_roules", carburantLitres: "carburant_litres", carburantMontant: "carburant_montant", kmParcourus: "km_parcourus", tonnesTransportees: "tonnes_transportees", statut: "statut", montantFacture: "montant_facture", dateFacture: "date_facture", dateReglement: "date_reglement", referenceFacture: "reference_facture", numeroDemandeX3: "numero_demande_x3", commentaire: "commentaire" },
   prestation: { date: "date", libelle: "libelle", quantite: "quantite", prixUnitaire: "prix_unitaire", statut: "statut", montantFacture: "montant_facture", dateFacture: "date_facture", dateReglement: "date_reglement", referenceFacture: "reference_facture", numeroDemandeX3: "numero_demande_x3", commentaire: "commentaire" },
+  /* L'avance s'impute après coup : c'est sa vie même. */
+  avance: { date: "date", montant: "montant", motif: "motif", imputeeSur: "imputee_sur", dateImputation: "date_imputation", autorisePar: "autorise_par" },
+  evaluation: { date: "date", qualite: "qualite", delai: "delai", prix: "prix", commentaire: "commentaire" },
 };
 
 const NUMERIQUES = new Set([
   "km", "litres", "prix_litre", "montant", "kilometrage", "immobilisation_jours", "jours", "immobilisation_prevue_jours", "montant_estime", "montant_engage", "montant_reel",
   "tonnage", "tonnage_pese", "tonnage_livre", "prix", "minimum", "montant_facture", "prix_exceptionnel", "complement_tarif", "jours_panne", "jours_roules", "carburant_litres", "carburant_montant", "km_parcourus", "tonnes_transportees", "quantite", "prix_unitaire",
+  "qualite", "delai",
 ]);
 /* Les colonnes qui gardent leurs décimales : des litres, des tonnes, des quantités. */
 const DECIMALES = new Set(["litres", "tonnage", "tonnage_pese", "tonnage_livre", "carburant_litres", "tonnes_transportees", "quantite"]);

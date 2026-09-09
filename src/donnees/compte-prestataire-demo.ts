@@ -1,5 +1,5 @@
 /* ============================================================================
- * Le compte d'un prestataire : dettes déduites, avances et évaluations.
+ * Le compte d'un prestataire — données de démonstration.
  *
  * **La dette ne s'invente pas ici, elle se lit ailleurs.** Chaque ligne vient
  * d'un objet que l'application tient déjà : une demande d'achat commandée et non
@@ -9,102 +9,27 @@
  * qu'aucune double saisie ne soit nécessaire.
  *
  * Les **avances** et les **évaluations**, elles, sont des faits nouveaux, qui
- * n'existent nulle part ailleurs : elles sont donc écrites ici, en attendant
- * leur saisie dans l'application.
+ * n'existent nulle part ailleurs : elles sont écrites ici pour la
+ * démonstration, et en table (0002) en production.
+ *
+ * Le rassemblement — dettes déduites, activité de transport, notation — vit
+ * dans le domaine (`assembler-prestataires.ts`) ; ce module lui donne le jeu
+ * du navigateur, `donnees/prestataires.ts` lui donne la base. Les fonctions
+ * `dettesDe`, `avancesDe`, `evaluationsDe`, `activiteTransport`, `repriseDe`
+ * et `ancienneteMois` restent, pour les rapports de démonstration.
  * ==========================================================================*/
 
+import { activiteTransportDe, ancienneteMois as ancienneteMoisDe, comptePrestataireDe, repriseDe as repriseDesInterventions, type ActiviteTransport, type SourcePrestataires } from "@/domaine/assembler-prestataires";
 import type { Avance, Evaluation, LigneDette } from "@/domaine/compte-prestataire";
 import { formerNumero } from "@/domaine/reference";
-import { coutAffretement, coutMiseADisposition, coutPrestation } from "@/domaine/transporteurs";
 import { demandesAchat } from "./caisse-demo";
 import { DATE_REFERENCE } from "./chauffeurs-demo";
 import { fichePrestataire } from "./fiche-prestataire-demo";
 import { listePrestataires } from "./prestataires-demo";
 import { affretements, misesADisposition, prestations } from "./transporteurs-demo";
 
-/* -- Les dettes, déduites ---------------------------------------------------------- */
-
-function echeanceDe(date: string, delaiJours: number | null): string | null {
-  if (delaiJours === null) return null;
-  const d = new Date(`${date}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + delaiJours);
-  return d.toISOString().slice(0, 10);
-}
-
-/**
- * Ce que l'on doit à un prestataire : le travail fait et non encore réglé.
- *
- * La règle est la même partout : **la prestation est faite, l'argent n'est pas
- * sorti**. Une demande d'achat commandée mais non livrée n'est pas une dette,
- * c'est un engagement ; une facture réglée n'en est plus une.
- */
-export function dettesDe(prestataireNumero: string): LigneDette[] {
-  const p = listePrestataires().find((x) => x.numero === prestataireNumero);
-  const delai = p?.delaiPaiementJours ?? null;
-  const lignes: LigneDette[] = [];
-
-  for (const d of demandesAchat()) {
-    if (d.prestataireNumero !== prestataireNumero) continue;
-    /* Livrée, facturée : le service est rendu. Réglée : la dette est éteinte. */
-    if (d.etape !== "livree" && d.etape !== "facturee") continue;
-    const montant = d.montantReel ?? d.montantEngage ?? d.montantEstime;
-    const depuis = d.dateFacture ?? d.dateLivraison ?? d.date;
-    lignes.push({
-      numero: d.numero,
-      origine: "achat",
-      date: depuis,
-      objet: d.objet,
-      montant,
-      facture: d.etape === "facturee",
-      echeance: echeanceDe(depuis, delai),
-    });
-  }
-
-  for (const a of affretements()) {
-    if (a.transporteurNumero !== prestataireNumero) continue;
-    if (a.statut !== "livre" && a.statut !== "facture") continue;
-    lignes.push({
-      numero: a.numero,
-      origine: "affretement",
-      date: a.dateFacture ?? a.dateLivraison ?? a.date,
-      objet: `${a.origine} → ${a.destination}`,
-      montant: coutAffretement(a),
-      facture: a.statut === "facture",
-      echeance: echeanceDe(a.dateFacture ?? a.dateLivraison ?? a.date, delai),
-    });
-  }
-
-  for (const m of misesADisposition()) {
-    if (m.transporteurNumero !== prestataireNumero) continue;
-    if (m.statut !== "livre" && m.statut !== "facture") continue;
-    const depuis = `${m.mois}-28`;
-    lignes.push({
-      numero: m.numero,
-      origine: "mise-a-disposition",
-      date: depuis,
-      objet: `${m.immatriculation} · ${m.mois}`,
-      montant: coutMiseADisposition(m).total,
-      facture: m.statut === "facture",
-      echeance: echeanceDe(depuis, delai),
-    });
-  }
-
-  for (const x of prestations()) {
-    if (x.transporteurNumero !== prestataireNumero) continue;
-    if (x.statut !== "livre" && x.statut !== "facture") continue;
-    lignes.push({
-      numero: x.numero,
-      origine: "prestation",
-      date: x.date,
-      objet: x.libelle,
-      montant: coutPrestation(x),
-      facture: x.statut === "facture",
-      echeance: echeanceDe(x.date, delai),
-    });
-  }
-
-  return lignes.sort((a, b) => a.date.localeCompare(b.date));
-}
+export { JOURS_REPRISE } from "@/domaine/assembler-prestataires";
+export type { ActiviteTransport } from "@/domaine/assembler-prestataires";
 
 /* -- Les avances ------------------------------------------------------------------- */
 
@@ -171,12 +96,6 @@ export function avances(): Avance[] {
   return CACHE_AVANCES;
 }
 
-export function avancesDe(prestataireNumero: string): Avance[] {
-  return avances()
-    .filter((a) => a.prestataireNumero === prestataireNumero)
-    .sort((a, b) => b.date.localeCompare(a.date));
-}
-
 /* -- Les évaluations ---------------------------------------------------------------- */
 
 /*
@@ -239,104 +158,70 @@ function decalerJour(date: string, jours: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/* -- La source de la démonstration --------------------------------------------------- */
+
+let CACHE_SOURCE: SourcePrestataires | null = null;
+
+/** Les faits du module, tels que la démonstration les tient : chaque fiche relue, rapportée à son numéro. */
+export function sourcePrestatairesDemo(): SourcePrestataires {
+  if (CACHE_SOURCE) return CACHE_SOURCE;
+  const prestataires = listePrestataires();
+  const source: SourcePrestataires = {
+    prestataires,
+    demandes: demandesAchat(),
+    interventions: [],
+    pleins: [],
+    depensesCaisse: [],
+    documents: [],
+    visites: [],
+    affretements: affretements(),
+    misesADisposition: misesADisposition(),
+    prestations: prestations(),
+    avances: avances(),
+    evaluations: evaluations(),
+    aujourdhui: DATE_REFERENCE,
+  };
+  for (const p of prestataires) {
+    const f = fichePrestataire(p.numero);
+    if (!f) continue;
+    for (const x of f.interventions) source.interventions.push({ ...x, prestataireNumero: p.numero });
+    for (const x of f.pleins) source.pleins.push({ ...x, prestataireNumero: p.numero });
+    for (const x of f.depensesCaisse) source.depensesCaisse.push({ ...x, prestataireNumero: p.numero });
+    for (const x of f.documents) source.documents.push({ ...x, prestataireNumero: p.numero });
+    for (const x of f.visites) source.visites.push({ ...x, prestataireNumero: p.numero });
+  }
+  CACHE_SOURCE = source;
+  return source;
+}
+
+/* -- Ce que les rapports de démonstration appellent encore ----------------------------- */
+
+export function dettesDe(prestataireNumero: string): LigneDette[] {
+  return comptePrestataireDe(sourcePrestatairesDemo(), prestataireNumero)?.dettes ?? [];
+}
+
+export function avancesDe(prestataireNumero: string): Avance[] {
+  return avances()
+    .filter((a) => a.prestataireNumero === prestataireNumero)
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
 export function evaluationsDe(prestataireNumero: string): Evaluation[] {
   return evaluations()
     .filter((e) => e.prestataireNumero === prestataireNumero)
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-/* -- Ce qu'il faut pour noter --------------------------------------------------------- */
+export const repriseDe = repriseDesInterventions;
 
-/**
- * Les reprises : deux interventions sur le même véhicule, pour le même objet,
- * à moins de soixante jours. C'est le seul indice de qualité que l'application
- * sache lire sans qu'on lui dise rien — et il est têtu : une reprise coûte deux
- * fois, elle immobilise deux fois, et elle se voit dans l'historique.
- */
-export const JOURS_REPRISE = 60;
-
-export function repriseDe(interventions: { date: string; objet: string; vehiculeId: string }[]): number {
-  let reprises = 0;
-  const triees = [...interventions].sort((a, b) => a.date.localeCompare(b.date));
-  for (let i = 1; i < triees.length; i++) {
-    const precedente = triees.slice(0, i).find(
-      (p) =>
-        p.vehiculeId === triees[i]!.vehiculeId &&
-        motsClesCommuns(p.objet, triees[i]!.objet) &&
-        (Date.parse(triees[i]!.date) - Date.parse(p.date)) / 86_400_000 <= JOURS_REPRISE,
-    );
-    if (precedente) reprises += 1;
-  }
-  return reprises;
-}
-
-/** Deux objets d'intervention parlent-ils de la même chose ? */
-function motsClesCommuns(a: string, b: string): boolean {
-  const mots = (t: string) =>
-    new Set(
-      t
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "")
-        .split(/[^a-z0-9]+/)
-        .filter((m) => m.length > 4),
-    );
-  const ma = mots(a);
-  for (const m of mots(b)) if (ma.has(m)) return true;
-  return false;
-}
-
-/** Les mois écoulés depuis la première pièce connue d'un prestataire. */
+/** Les mois écoulés depuis la première pièce connue d'un prestataire, à la date de la démonstration. */
 export function ancienneteMois(dates: string[]): number | null {
-  const premieres = dates.filter(Boolean).sort();
-  if (premieres.length === 0) return null;
-  const debut = new Date(`${premieres[0]}T00:00:00Z`);
-  const fin = new Date(`${DATE_REFERENCE}T00:00:00Z`);
-  return Math.max(0, Math.round((fin.getTime() - debut.getTime()) / (30.44 * 86_400_000)));
+  return ancienneteMoisDe(dates, DATE_REFERENCE);
 }
 
-/* -- Ce qu'un transporteur a facturé au parc ---------------------------------------- */
-
-export interface ActiviteTransport {
-  /** Affrètements, mises à disposition et prestations confondus. */
-  missions: number;
-  montant: number;
-  dates: string[];
-}
-
-/**
- * L'activité de transport d'un prestataire, depuis une date.
- *
- * Un transporteur ne passe pas par les demandes d'achat : ce qu'il fait et ce
- * qu'il coûte vit dans ses affrètements, ses mises à disposition et ses
- * prestations. Sans cette lecture, le référentiel affichait « — » en face
- * d'ADEX, qui pèse pourtant deux cents millions.
- */
+/** L'activité de transport d'un prestataire par sa raison sociale, depuis une date. */
 export function activiteTransport(raisonSociale: string, depuis: string): ActiviteTransport {
-  const dates: string[] = [];
-  let montant = 0;
-  let missions = 0;
-  for (const a of affretements()) {
-    if (a.transporteur !== raisonSociale || a.date < depuis) continue;
-    montant += coutAffretement(a);
-    missions += 1;
-    dates.push(a.date);
-  }
-  for (const m of misesADisposition()) {
-    /* La mise à disposition se facture au mois : on la date au milieu du mois,
-       sans dépasser aujourd'hui — une activité datée dans le futur ferait dire
-       au référentiel que le transporteur a roulé la semaine prochaine. */
-    const jour = [`${m.mois}-15`, DATE_REFERENCE].sort()[0]!;
-    if (m.transporteur !== raisonSociale || jour < depuis) continue;
-    montant += coutMiseADisposition(m).total;
-    missions += 1;
-    dates.push(jour);
-  }
-  for (const p of prestations()) {
-    if (p.transporteur !== raisonSociale || p.date < depuis) continue;
-    montant += coutPrestation(p);
-    missions += 1;
-    dates.push(p.date);
-  }
-  return { missions, montant, dates: dates.sort() };
+  const s = sourcePrestatairesDemo();
+  const p = s.prestataires.find((x) => x.raisonSociale === raisonSociale);
+  return p ? activiteTransportDe(s, p.numero, depuis) : { missions: 0, montant: 0, dates: [] };
 }
