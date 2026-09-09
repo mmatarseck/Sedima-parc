@@ -34,6 +34,45 @@ export async function reduireImage(fichier: File, cote: number, qualite: number)
   return new Promise((resoudre) => toile.toBlob((b) => resoudre(b ?? fichier), "image/jpeg", qualite));
 }
 
+/* -- Les vignettes de démonstration : un budget, les plus anciennes cèdent ---
+ *
+ * La démonstration garde ses vignettes dans le navigateur, une clé par photo.
+ * Rien ne les effaçait : à force de montrer le geste, elles finissent par
+ * occuper les cinq mégaoctets du stockage — et c'est alors *toute* la
+ * démonstration qui cesse de s'écrire, le journal des modifications comme les
+ * réglages. Elles vivent donc sous un budget, et les plus anciennes cèdent la
+ * place aux nouvelles. Une vignette effacée laisse sa référence derrière elle :
+ * la ligne dit toujours qu'une photo a été jointe, sans pouvoir la montrer.
+ * ------------------------------------------------------------------------- */
+
+const PREFIXE_LOCAL = "sedima.parc.photos.";
+/** Deux mégaoctets : des centaines de gestes montrés, sans prendre toute la place. */
+const BUDGET_LOCAL = 2_000_000;
+
+/** Les vignettes gardées, la plus ancienne d'abord. */
+function vignettesLocales(): { cle: string; le: number; poids: number }[] {
+  const liste: { cle: string; le: number; poids: number }[] = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const cle = localStorage.key(i);
+    if (!cle?.startsWith(PREFIXE_LOCAL)) continue;
+    /* L'identifiant porte l'instant du dépôt en base 36 : il ordonne sans autre registre. */
+    const le = Number.parseInt(cle.slice(PREFIXE_LOCAL.length).split("-")[0] ?? "", 36);
+    liste.push({ cle, le: Number.isFinite(le) ? le : 0, poids: (localStorage.getItem(cle) ?? "").length });
+  }
+  return liste.sort((a, b) => a.le - b.le);
+}
+
+/** Efface les plus anciennes jusqu'à ce que `poids` caractères tiennent dans le budget. */
+function fairePlace(poids: number): void {
+  const liste = vignettesLocales();
+  let occupe = liste.reduce((t, v) => t + v.poids, 0);
+  for (const v of liste) {
+    if (occupe + poids <= BUDGET_LOCAL) return;
+    localStorage.removeItem(v.cle);
+    occupe -= v.poids;
+  }
+}
+
 function lireEnDataUrl(blob: Blob): Promise<string> {
   return new Promise((resoudre, rejeter) => {
     const lecteur = new FileReader();
@@ -52,9 +91,17 @@ export async function televerserPhoto(fichier: File, dossier: string): Promise<{
   if (!fichier.type.startsWith("image/")) return { refus: "Ce fichier n'est pas une image." };
   try {
     if (!authentificationReelle()) {
-      const vignette = await reduireImage(fichier, 640, 0.6);
+      const image = await lireEnDataUrl(await reduireImage(fichier, 640, 0.6));
       const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-      localStorage.setItem(`sedima.parc.photos.${id}`, await lireEnDataUrl(vignette));
+      fairePlace(image.length);
+      try {
+        localStorage.setItem(`${PREFIXE_LOCAL}${id}`, image);
+      } catch {
+        /* Refusé malgré le budget : d'autres clés occupent la place. On rend
+           toutes les vignettes et on tente une dernière fois. */
+        for (const v of vignettesLocales()) localStorage.removeItem(v.cle);
+        localStorage.setItem(`${PREFIXE_LOCAL}${id}`, image);
+      }
       return { ref: `local:${id}` };
     }
     const reduite = await reduireImage(fichier, 1280, 0.75);
@@ -131,7 +178,7 @@ export async function urlPhoto(ref: ReferencePhoto | null | undefined): Promise<
   if (adresseDirecte(ref)) return ref;
   if (ref.startsWith("local:")) {
     try {
-      return localStorage.getItem(`sedima.parc.photos.${ref.slice(6)}`);
+      return localStorage.getItem(`${PREFIXE_LOCAL}${ref.slice(6)}`);
     } catch {
       return null;
     }

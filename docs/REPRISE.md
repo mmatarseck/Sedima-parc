@@ -46,6 +46,12 @@ Un module de démonstration importé par un composant client (l'assistant lit
 démonstration ont leurs fichiers (`flotte-demo.ts`, `conformite-demo.ts`,
 `visites-demo.ts`).
 
+**Les seize bancs PGlite passent** (9 septembre, nuit), lancés d'affilée avec
+`PGLITE_DIR` sur le dossier du poste : budget, caisse et cuve, conformité,
+discussions, écritures, fiche chauffeur, fiche rendue, fiche, maintenance,
+notifications, parc léger, pièces, prestataires, rapports, tableau,
+transporteurs. Le répertoire est sain avant la poussée.
+
 **La photo du véhicule ne s'écrit plus dans la base** (9 septembre, nuit) :
 elle rejoint le seau privé comme les pièces justificatives, la fiche n'en
 garde qu'une référence, et les vignettes d'une liste se signent en un seul
@@ -1208,8 +1214,19 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
 - Vérifié en démonstration : réponse à une demande avec une image générée
   (vignette de 7,7 Ko dans le navigateur), vignette dans la liste du
   bureau ; PGlite : 0014 rejouée, plein et dépense insérés avec leur photo.
-- Reste : l'essai en ligne du dépôt dans le seau ; le nettoyage des photos
-  locales de démonstration (elles pèsent dans le stockage du navigateur).
+- Reste : l'essai en ligne du dépôt dans le seau.
+- **Les vignettes de démonstration ont un budget** (9 septembre 2026, nuit) :
+  rien ne les effaçait, et à force de montrer le geste elles finissaient par
+  occuper les cinq mégaoctets du navigateur — c'est alors *toute* la
+  démonstration qui cesse de s'écrire, journal des modifications compris.
+  Deux mégaoctets leur sont réservés dans `photos.ts` ; au-delà, les plus
+  anciennes cèdent la place (l'identifiant porte l'instant du dépôt en
+  base 36, il ordonne sans autre registre), et un refus malgré le budget les
+  rend toutes avant une dernière tentative. Une vignette effacée laisse sa
+  référence : la ligne dit qu'une photo a été jointe, sans la montrer.
+  Vérifié dans le navigateur : sept fausses vignettes portées à 2,1 Mo, une
+  photo de plus, la plus ancienne effacée, le total revenu à 1,8 Mo, la
+  nouvelle affichée.
 
 ### La photo du véhicule rejoint le seau (9 septembre 2026, nuit)
 
@@ -1907,10 +1924,16 @@ lectures avant et après une migration. Il reproduit la régression (fiche
   parc de transport = démonstration au franc près, incidents, visites,
   relevé, affectations en cours, résumé des fiches, puis les 48 rapports
   dressés sur une source mixte sans erreur.
-- **Limites écrites** : le parc léger reste celui du dossier de
-  démonstration dans les deux modes (ses huit rapports comme ses forfaits) ;
-  `lire_parc()` ne rend que les affectations en cours ; le coût d'un
-  incident n'est pas rattaché en base (nul).
+- **Limites écrites** : ~~le parc léger reste celui du dossier de
+  démonstration dans les deux modes~~ — levée le soir même, section « Le
+  parc léger lu en base » ; `lire_parc()` ne rend que les affectations en
+  cours ; le coût d'un incident est nul en base. Cette dernière n'est pas
+  un branchement oublié mais **une capacité qui n'existe nulle part** :
+  aucun écran ne rattache une dépense à une déclaration, et la table
+  `depense` n'a pas de colonne pour le dire (seule la demande d'achat cite
+  une transaction d'origine, incident compris). En démonstration, le coût
+  est un champ du dossier, pas une somme. La combler demande une décision
+  du gestionnaire et une migration : à proposer, pas à improviser.
 
 ### Le courriel au détenteur — la notification de la plateforme (9 septembre 2026, migration 0027)
 
@@ -1953,8 +1976,10 @@ lectures avant et après une migration. Il reproduit la régression (fiche
   par personne et par fait, refus d'un détenteur qui notifie, lecture et
   marquage bornés aux siennes (rôle non privilégié, `auth.uid()` basculé),
   récapitulatif composé. Tout passe.
-- **Limite** : les discussions (citations) restent notifiées en
-  démonstration seulement — il n'y a pas de table `message` en base.
+- ~~**Limite** : les discussions (citations) restent notifiées en
+  démonstration seulement — il n'y a pas de table `message` en base.~~
+  Levée le soir même par la 0028 : `publier_message()` signe le message de
+  la session et prévient les comptes cités dans la table `notification`.
 
 ### Le parc léger lu en base (9 septembre 2026, sans migration)
 
