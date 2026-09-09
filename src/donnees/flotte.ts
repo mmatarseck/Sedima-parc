@@ -503,9 +503,12 @@ async function lignesFlotteBrut(parametres: Parametres): Promise<LigneFlotte[]> 
   /* La démonstration : les fiches, et le parc léger du dossier (`flotte-demo.ts`). */
   if (!authentificationReelle()) return lignesFlotteDemonstration(parametres);
   const parc = await parcServeur();
-  /* Les véhicules à recevoir ferment la liste : sous leur numéro de lot, sans
-     compteur ni coût, avec le bénéficiaire prévu. */
-  const aRecevoir = parc.aRecevoir.map((r) => {
+  return [...parc.vehicules.map((v) => ligneDepuisLaBase(v, parc, parametres)), ...lignesARecevoir(parc)];
+}
+
+/** Les véhicules à recevoir en lignes de la Flotte : sous leur numéro de lot, sans compteur ni coût, avec le bénéficiaire prévu. */
+export function lignesARecevoir(parc: ParcBrut): LigneFlotte[] {
+  return parc.aRecevoir.map((r) => {
     const a = r.attributaire_id ? (parc.attributaires.get(r.attributaire_id) ?? null) : null;
     return ligneLegere(
       {
@@ -531,7 +534,6 @@ async function lignesFlotteBrut(parametres: Parametres): Promise<LigneFlotte[]> 
       a ? { nom: a.nom, fonction: a.fonction } : null,
     );
   });
-  return [...parc.vehicules.map((v) => ligneDepuisLaBase(v, parc, parametres)), ...aRecevoir];
 }
 
 /** Une lecture par requête : la liste, le téléphone et Paramètres › Véhicules partagent le même parc quand ils sont rendus ensemble. */

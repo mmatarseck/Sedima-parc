@@ -129,6 +129,75 @@ export function idAttributaire(nom: string): string {
 }
 
 /** Le forfait carburant mensuel d'un attributaire de véhicule de fonction. */
+/** Ce que le parc léger tient : ses véhicules, les personnes qui les tiennent, les forfaits carburant. Démonstration ou base, la même forme. */
+export interface SourceParcLeger {
+  vehicules: VehiculeLeger[];
+  attributaires: Attributaire[];
+  forfaits: ForfaitCarburant[];
+}
+
+/** Premier mois où les forfaits carburant sont portés en charge, faute de date sur la carte. */
+export const DEBUT_FORFAITS = "2025-01";
+
+/** Un forfait carburant du mois, sous la forme d'une dépense : c'est ainsi que le budget et les coûts le lisent. */
+export interface DepenseForfait {
+  numero: string;
+  date: string;
+  mois: string;
+  poste: "carburant";
+  libelle: string;
+  montant: number;
+  beneficiaire: string;
+  origine: "facture";
+  justificatif: boolean;
+  businessUnit: BusinessUnit | null;
+  vehiculeId: string;
+  immatriculation: string;
+  immatriculationAffichee: string;
+  vehicule: string;
+}
+
+/**
+ * Les forfaits carburant mois par mois, du premier mois jusqu'au mois de
+ * référence : une dépense de carburant par véhicule de fonction en
+ * circulation et par mois, sur la BU de l'agent, sans plein ni kilométrage.
+ * Une seule fabrique, lue par le budget, les coûts et les rapports — la même
+ * somme partout.
+ */
+export function depensesForfaitsDe(source: SourceParcLeger, jusqua: string, forfaitDefaut: number, depuis: string = DEBUT_FORFAITS): DepenseForfait[] {
+  const parAttributaire = new Map(source.attributaires.map((a) => [a.id, a]));
+  const montantPar = new Map(source.forfaits.map((f) => [f.attributaireId, f.montantMensuel ?? forfaitDefaut]));
+  const mois: string[] = [];
+  for (let m = depuis; m <= jusqua.slice(0, 7); ) {
+    mois.push(m);
+    const [a, mm] = m.split("-").map(Number);
+    m = new Date(Date.UTC(a!, mm!, 1)).toISOString().slice(0, 7);
+  }
+  return source.vehicules
+    .filter((v) => v.immatriculation !== null && v.attributaireId !== null && montantPar.has(v.attributaireId))
+    .flatMap((v) => {
+      const a = parAttributaire.get(v.attributaireId!);
+      const montant = montantPar.get(v.attributaireId!)!;
+      const nom = a?.nom ?? "—";
+      return mois.map((m) => ({
+        numero: `FOR-${m.replace("-", "")}-${v.immatriculation}`,
+        date: `${m}-01`,
+        mois: m,
+        poste: "carburant" as const,
+        libelle: `Forfait carburant — ${nom}`,
+        montant,
+        beneficiaire: nom,
+        origine: "facture" as const,
+        justificatif: true,
+        businessUnit: v.businessUnit,
+        vehiculeId: v.id,
+        immatriculation: v.immatriculation!,
+        immatriculationAffichee: v.immatriculationAffichee,
+        vehicule: `${v.marque} ${v.modele}`,
+      }));
+    });
+}
+
 export interface ForfaitCarburant {
   attributaireId: string;
   /** Montant mensuel en francs ; nul quand il suit le paramètre. */

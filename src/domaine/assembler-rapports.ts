@@ -96,9 +96,9 @@ import { MODE_EXECUTION, PRODUIT_TRANSPORTE, ecartPesee, type LigneReleve } from
 import { MODE_REMUNERATION } from "@/domaine/flotte-tierce";
 import { ETAT_BUDGET } from "@/domaine/budget";
 import { NIVEAU_PRESTATAIRE, ageDette, avanceOuverte } from "@/domaine/compte-prestataire";
-import { ETAT_LEGER, REGIME_USAGE, echeancierPlanCar } from "@/domaine/parc-leger";
+import { ETAT_LEGER, REGIME_USAGE, depensesForfaitsDe, echeancierPlanCar, type SourceParcLeger } from "@/domaine/parc-leger";
 import { libelleMois } from "@/donnees/fiche-demo";
-import { attributaires as tousAttributaires, depensesForfaits, forfaitsCarburant, vehiculesLegers } from "@/donnees/parc-leger-demo";
+
 
 /* -- Ce qu'il faut savoir pour dresser un rapport ------------------------------ */
 
@@ -108,8 +108,7 @@ import { attributaires as tousAttributaires, depensesForfaits, forfaitsCarburant
  * donne le jeu du navigateur (`rapports-demo.ts`), la base ce que chaque
  * lecteur rend (`donnees/rapports.ts`) — les mêmes formes des deux côtés.
  *
- * Le parc léger reste celui du dossier de démonstration dans les deux modes,
- * tant qu'il n'est pas construit en base (cadrage du 7 septembre 2026).
+ * Le parc léger vient du dossier de démonstration ou des tables 0004 (`parcLeger`).
  */
 /**
  * Ce que la fiche d'un véhicule apporte aux rapports de la flotte : son
@@ -154,6 +153,8 @@ export interface SourceRapports {
   /** Tout le relevé de transport, parc et tiers confondus. */
   releves: LigneReleve[];
   budget: SourceBudget;
+  /** Le parc léger : ses véhicules, ses attributaires, ses forfaits — le dossier en démonstration, les tables en base. */
+  parcLeger: SourceParcLeger;
 }
 
 /** Le budget assemblé une fois par source — trois rapports le lisent. */
@@ -1823,10 +1824,10 @@ export function construireRapportDe(s: SourceRapports, id: string, c: ContexteRa
 
 const tonEtatLeger = (e: keyof typeof ETAT_LEGER): ValeurEtat => etat(ETAT_LEGER[e].libelle, ETAT_LEGER[e].ton, ["actif", "pool", "a-recevoir", "panne", "a-reformer"].indexOf(e));
 
-function inventaireLeger(_s: SourceRapports, parametres: Parametres): LigneRapport[] {
-  const parId = new Map(tousAttributaires().map((a) => [a.id, a]));
-  const forfaitPar = new Map(forfaitsCarburant().map((f) => [f.attributaireId, f.montantMensuel ?? parametres.parcLeger.forfaitCarburantMensuel]));
-  return vehiculesLegers().map((v) => {
+function inventaireLeger(s: SourceRapports, parametres: Parametres): LigneRapport[] {
+  const parId = new Map(s.parcLeger.attributaires.map((a) => [a.id, a]));
+  const forfaitPar = new Map(s.parcLeger.forfaits.map((f) => [f.attributaireId, f.montantMensuel ?? parametres.parcLeger.forfaitCarburantMensuel]));
+  return s.parcLeger.vehicules.map((v) => {
     const a = v.attributaireId ? (parId.get(v.attributaireId) ?? null) : null;
     return {
       immatriculation: v.immatriculationAffichee,
@@ -1851,10 +1852,10 @@ function inventaireLeger(_s: SourceRapports, parametres: Parametres): LigneRappo
   });
 }
 
-function attributairesLeger(_s: SourceRapports, parametres: Parametres): LigneRapport[] {
-  const vehicules = vehiculesLegers();
-  const forfaitPar = new Map(forfaitsCarburant().map((f) => [f.attributaireId, f.montantMensuel ?? parametres.parcLeger.forfaitCarburantMensuel]));
-  return tousAttributaires().map((a) => {
+function attributairesLeger(s: SourceRapports, parametres: Parametres): LigneRapport[] {
+  const vehicules = s.parcLeger.vehicules;
+  const forfaitPar = new Map(s.parcLeger.forfaits.map((f) => [f.attributaireId, f.montantMensuel ?? parametres.parcLeger.forfaitCarburantMensuel]));
+  return s.parcLeger.attributaires.map((a) => {
     const tenus = vehicules.filter((v) => v.attributaireId === a.id);
     const forfait = forfaitPar.get(a.id) ?? null;
     return {
@@ -1873,9 +1874,9 @@ function attributairesLeger(_s: SourceRapports, parametres: Parametres): LigneRa
 }
 
 function planCarLeger(s: SourceRapports, parametres: Parametres): LigneRapport[] {
-  const parId = new Map(tousAttributaires().map((a) => [a.id, a]));
-  const forfaitPar = new Map(forfaitsCarburant().map((f) => [f.attributaireId, f.montantMensuel ?? parametres.parcLeger.forfaitCarburantMensuel]));
-  return vehiculesLegers()
+  const parId = new Map(s.parcLeger.attributaires.map((a) => [a.id, a]));
+  const forfaitPar = new Map(s.parcLeger.forfaits.map((f) => [f.attributaireId, f.montantMensuel ?? parametres.parcLeger.forfaitCarburantMensuel]));
+  return s.parcLeger.vehicules
     .filter((v) => v.planCar !== null)
     .map((v) => {
       const a = v.attributaireId ? (parId.get(v.attributaireId) ?? null) : null;
@@ -1899,10 +1900,10 @@ function planCarLeger(s: SourceRapports, parametres: Parametres): LigneRapport[]
 
 function forfaitsLeger(s: SourceRapports, c: ContexteRapport, parametres: Parametres): LigneRapport[] {
   const { debut, fin } = resoudrePeriode(c.periode, s.aujourdhui);
-  const parId = new Map(tousAttributaires().map((a) => [a.id, a]));
-  const parVehicule = new Map(vehiculesLegers().map((v) => [v.id, v]));
+  const parId = new Map(s.parcLeger.attributaires.map((a) => [a.id, a]));
+  const parVehicule = new Map(s.parcLeger.vehicules.map((v) => [v.id, v]));
   const parCarte = new Map<string, { montant: number; mois: Set<string>; forfait: number; vehiculeId: string }>();
-  for (const d of depensesForfaits(s.aujourdhui, parametres.parcLeger.forfaitCarburantMensuel)) {
+  for (const d of depensesForfaitsDe(s.parcLeger, s.aujourdhui, parametres.parcLeger.forfaitCarburantMensuel)) {
     if (!dansLaPeriode(d.date, debut, fin)) continue;
     const v = parVehicule.get(d.vehiculeId);
     const cle = v?.attributaireId ?? d.vehiculeId;
@@ -1931,8 +1932,8 @@ function forfaitsLeger(s: SourceRapports, c: ContexteRapport, parametres: Parame
 
 function chargesLegerParBu(s: SourceRapports, c: ContexteRapport, parametres: Parametres): LigneRapport[] {
   const { debut, fin } = resoudrePeriode(c.periode, s.aujourdhui);
-  const vehicules = vehiculesLegers().filter((v) => v.regime !== "exploitation");
-  const forfaitPar = new Map(forfaitsCarburant().map((f) => [f.attributaireId, f.montantMensuel ?? parametres.parcLeger.forfaitCarburantMensuel]));
+  const vehicules = s.parcLeger.vehicules.filter((v) => v.regime !== "exploitation");
+  const forfaitPar = new Map(s.parcLeger.forfaits.map((f) => [f.attributaireId, f.montantMensuel ?? parametres.parcLeger.forfaitCarburantMensuel]));
   const parBu = new Map<string, { vehicules: number; service: number; fonction: number; cartes: Set<string>; forfaitMensuel: number; montant: number }>();
   const de = (bu: string) => {
     let x = parBu.get(bu);
@@ -1953,7 +1954,7 @@ function chargesLegerParBu(s: SourceRapports, c: ContexteRapport, parametres: Pa
       x.forfaitMensuel += forfaitPar.get(v.attributaireId)!;
     }
   }
-  for (const d of depensesForfaits(s.aujourdhui, parametres.parcLeger.forfaitCarburantMensuel)) {
+  for (const d of depensesForfaitsDe(s.parcLeger, s.aujourdhui, parametres.parcLeger.forfaitCarburantMensuel)) {
     if (!dansLaPeriode(d.date, debut, fin)) continue;
     de(d.businessUnit ? BUSINESS_UNIT[d.businessUnit] : "Sans BU").montant += d.montant;
   }
@@ -1963,9 +1964,9 @@ function chargesLegerParBu(s: SourceRapports, c: ContexteRapport, parametres: Pa
     .map(([bu, x]) => ({ businessUnit: bu, vehicules: x.vehicules, service: x.service, fonction: x.fonction, cartes: x.cartes.size, forfaitMensuel: x.forfaitMensuel, montant: x.montant, part: total > 0 ? arrondir((x.montant / total) * 100) : null }));
 }
 
-function renouvellementLeger(_s: SourceRapports): LigneRapport[] {
-  const parId = new Map(tousAttributaires().map((a) => [a.id, a]));
-  return vehiculesLegers()
+function renouvellementLeger(s: SourceRapports): LigneRapport[] {
+  const parId = new Map(s.parcLeger.attributaires.map((a) => [a.id, a]));
+  return s.parcLeger.vehicules
     .filter((v) => v.lot !== null)
     .sort((a, b) => a.lot!.localeCompare(b.lot!) || a.etat.localeCompare(b.etat))
     .map((v) => {
@@ -1984,8 +1985,8 @@ function renouvellementLeger(_s: SourceRapports): LigneRapport[] {
     });
 }
 
-function immobilisesLeger(_s: SourceRapports): LigneRapport[] {
-  return vehiculesLegers()
+function immobilisesLeger(s: SourceRapports): LigneRapport[] {
+  return s.parcLeger.vehicules
     .filter((v) => v.etat === "panne" || v.etat === "a-reformer")
     .map((v) => ({
       immatriculation: v.immatriculationAffichee,
@@ -2001,8 +2002,8 @@ function immobilisesLeger(_s: SourceRapports): LigneRapport[] {
     }));
 }
 
-function poolLeger(_s: SourceRapports): LigneRapport[] {
-  return vehiculesLegers()
+function poolLeger(s: SourceRapports): LigneRapport[] {
+  return s.parcLeger.vehicules
     .filter((v) => v.etat === "pool")
     .map((v) => ({
       immatriculation: v.immatriculationAffichee,

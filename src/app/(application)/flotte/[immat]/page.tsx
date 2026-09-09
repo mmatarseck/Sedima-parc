@@ -8,7 +8,7 @@ import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
 import { ficheServeur } from "@/donnees/fiche";
 import { transfertsServeur } from "@/donnees/transferts";
 import { fichePourImmatriculation } from "@/donnees/fiche-demo";
-import { attributairePour, forfaitsCarburant, vehiculesLegers } from "@/donnees/parc-leger-demo";
+import { parcLegerServeur } from "@/donnees/parc-leger";
 import { parametresServeur } from "@/lib/parametres-serveur";
 import { authentificationReelle } from "@/lib/session-demo";
 
@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props) {
        introuvable ce que la page va peut-être trouver. Un véhicule léger, ou un
        véhicule à recevoir sous son numéro de lot, se titre par le dossier. */
     const brut = decodeURIComponent(immat);
-    const leger = fiche ? null : vehiculesLegers().find((v) => v.immatriculation === normaliser(brut) || v.id === brut.toLowerCase());
+    const leger = fiche ? null : (await parcLegerServeur(await parametresServeur())).vehicules.find((v) => v.immatriculation === normaliser(brut) || v.id === brut.toLowerCase());
     return { title: titrePage(fiche ? fiche.ligne.vehicule.immatriculationAffichee : (leger?.immatriculationAffichee ?? afficher(normaliser(brut)))) };
   } catch (e) {
     console.error(`Titre de la fiche ${immat} : ${e instanceof Error ? e.message : String(e)}`);
@@ -58,15 +58,16 @@ export default async function PageVehicule({ params, searchParams }: Props) {
        du parc léger (fusion du 7 septembre 2026). */
     /* Par immatriculation, ou par numéro de lot pour un véhicule à recevoir. */
     const brut = decodeURIComponent(immat).toLowerCase();
-    const leger = vehiculesLegers().find((v) => v.immatriculation === canonique || v.id === brut);
+    const parcLeger = await parcLegerServeur(parametres);
+    const leger = parcLeger.vehicules.find((v) => v.immatriculation === canonique || v.id === brut);
     if (leger) {
       return (
         <FicheVehiculeLeger
           vehicule={leger}
-          attributaire={attributairePour(leger.attributaireId)}
-          forfait={forfaitsCarburant().find((f) => f.attributaireId === leger.attributaireId) ?? null}
+          attributaire={parcLeger.attributaires.find((a) => a.id === leger.attributaireId) ?? null}
+          forfait={parcLeger.forfaits.find((f) => f.attributaireId === leger.attributaireId) ?? null}
           regles={parametres.parcLeger}
-          aujourdhui={DATE_REFERENCE}
+          aujourdhui={authentificationReelle() ? new Date().toISOString().slice(0, 10) : DATE_REFERENCE}
         />
       );
     }

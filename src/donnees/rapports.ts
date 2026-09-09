@@ -30,6 +30,7 @@ import { lignesFlotte, parcServeur, type ParcBrut } from "./flotte";
 import { incidentsServeur } from "./incidents";
 import { interventionsServeur, travauxServeur } from "./maintenance";
 import { ordresServeur } from "./ordres";
+import { parcLegerServeur } from "./parc-leger";
 import { prestatairesServeur } from "./prestataires";
 import { affectationsDemonstration, resumesFicheDemonstration } from "./rapports-demo";
 import { relevesServeur } from "./releves";
@@ -76,7 +77,7 @@ export function affectationsDepuisLeParc(parc: ParcBrut): Map<string, Affectatio
 }
 
 async function sourceRapportsServeurBrut(parametres: Parametres): Promise<SourceRapports> {
-  const [lignes, conformite, visites, couts, carburant, interventions, ordres, travaux, incidents, chauffeurs, fichesChauffeurs, achats, caisse, prestataires, transporteurs, releves, budget] = await Promise.all([
+  const [lignes, conformite, visites, couts, carburant, interventions, ordres, travaux, incidents, chauffeurs, fichesChauffeurs, achats, caisse, prestataires, transporteurs, releves, budget, parcLeger] = await Promise.all([
     lignesFlotte(parametres),
     conformiteServeur(parametres),
     visitesServeur(parametres),
@@ -94,6 +95,7 @@ async function sourceRapportsServeurBrut(parametres: Parametres): Promise<Source
     transporteursServeur(),
     relevesServeur(),
     budgetServeur(),
+    parcLegerServeur(parametres),
   ]);
   const reel = authentificationReelle();
   const affectations = reel ? affectationsDepuisLeParc(await parcServeur()) : affectationsDemonstration(parametres);
@@ -119,6 +121,7 @@ async function sourceRapportsServeurBrut(parametres: Parametres): Promise<Source
     transporteurs,
     releves,
     budget,
+    parcLeger,
   };
   /* Ce que la fiche apporte : lu sur les fiches en démonstration, dérivé des lecteurs en base. */
   return { ...sansFiches, resumesFiche: reel ? resumesFicheDepuisLaSource(sansFiches) : resumesFicheDemonstration(parametres) };

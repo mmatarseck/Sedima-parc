@@ -26,6 +26,7 @@ import { lignesFlotteDemonstration } from "./flotte-demo";
 import { listeIncidents } from "./incidents-demo";
 import { interventionsFlotte, ordresDeTravail, travauxAFaire } from "./maintenance-demo";
 import { FLOTTE } from "./parc-demo";
+import { sourceParcLegerDemo } from "./parc-leger-demo";
 import { relevesTransport } from "./releve-demo";
 import { visitesDemonstration } from "./visites-demo";
 
@@ -90,6 +91,7 @@ export function sourceRapportsDemo(parametres: Parametres = PARAMETRES_DEFAUT): 
       transporteurs: sourceTransporteursDemo(),
       releves: relevesTransport(),
       budget: sourceBudgetDemo(),
+      parcLeger: sourceParcLegerDemo(),
     };
     CACHE.set(cle, source);
   }

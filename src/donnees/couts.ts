@@ -15,6 +15,7 @@ import { REFERENCE_L100 } from "@/domaine/assembler-fiche";
 import type { ConsommationMensuelleFlotte } from "@/domaine/carburant";
 import type { DonneesVehicule, MoisVehicule } from "@/domaine/couts";
 import type { LigneInterventionFlotte } from "@/domaine/maintenance";
+import { depensesForfaitsDe, type DepenseForfait } from "@/domaine/parc-leger";
 import type { Parametres } from "@/domaine/parametres";
 import type { CategorieVehicule, LigneFlotte, PosteDepense } from "@/domaine/types";
 import { authentificationReelle } from "@/lib/session-demo";
@@ -23,6 +24,7 @@ import { carburantServeur } from "./carburant";
 import { donneesCouts } from "./couts-demo";
 import { lignesFlotte } from "./flotte";
 import { interventionsServeur } from "./maintenance";
+import { parcLegerServeur } from "./parc-leger";
 
 /** Une dépense telle que les coûts la lisent : sa date, son poste, son montant, son véhicule. */
 export interface LigneDepenseCout {
@@ -40,8 +42,12 @@ function moisServis(aujourdhui: string): string[] {
   return liste;
 }
 
-/** Les coûts de chaque véhicule depuis ce que la base a rendu — pure, pour le banc d'essai. */
-export function donneesCoutsDepuisLaBase(lignes: LigneFlotte[], depenses: LigneDepenseCout[], consommations: ConsommationMensuelleFlotte[], interventions: LigneInterventionFlotte[], aujourdhui: string): DonneesVehicule[] {
+/**
+ * Les coûts de chaque véhicule depuis ce que la base a rendu — pure, pour le
+ * banc d'essai. Le parc léger apporte ses forfaits carburant en dépense de
+ * carburant, sur chaque véhicule de fonction en circulation.
+ */
+export function donneesCoutsDepuisLaBase(lignes: LigneFlotte[], depenses: LigneDepenseCout[], consommations: ConsommationMensuelleFlotte[], interventions: LigneInterventionFlotte[], aujourdhui: string, forfaits: DepenseForfait[] = []): DonneesVehicule[] {
   const mois = moisServis(aujourdhui);
   const retenu = new Set(mois);
   const parVehicule = new Map<string, Map<string, MoisVehicule>>();
@@ -64,6 +70,11 @@ export function donneesCoutsDepuisLaBase(lignes: LigneFlotte[], depenses: LigneD
     if (!retenu.has(m)) continue;
     const x = de(d.vehicule.immatriculation, m);
     x.parPoste[d.poste] = (x.parPoste[d.poste] ?? 0) + Number(d.montant);
+  }
+  for (const f of forfaits) {
+    if (!retenu.has(f.mois)) continue;
+    const x = de(f.immatriculation, f.mois);
+    x.parPoste.carburant = (x.parPoste.carburant ?? 0) + f.montant;
   }
   for (const c of consommations) {
     if (!retenu.has(c.mois)) continue;
@@ -106,7 +117,7 @@ async function coutsServeurBrut(parametres: Parametres): Promise<DonneesVehicule
   if (!authentificationReelle()) return donneesCouts();
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const client = await clientServeur();
-  const [lignes, depenses, carburant, interventions] = await Promise.all([
+  const [lignes, depenses, carburant, interventions, parcLeger] = await Promise.all([
     lignesFlotte(parametres),
     client
       .from("depense")
@@ -117,9 +128,10 @@ async function coutsServeurBrut(parametres: Parametres): Promise<DonneesVehicule
       .returns<LigneDepenseCout[]>(),
     carburantServeur(parametres),
     interventionsServeur(),
+    parcLegerServeur(parametres),
   ]);
   if (depenses.error) console.warn(`Coûts : dépenses illisibles (${depenses.error.message}).`);
-  return donneesCoutsDepuisLaBase(lignes, depenses.data ?? [], carburant.consommations, interventions, aujourdhui);
+  return donneesCoutsDepuisLaBase(lignes, depenses.data ?? [], carburant.consommations, interventions, aujourdhui, depensesForfaitsDe(parcLeger, aujourdhui, parametres.parcLeger.forfaitCarburantMensuel));
 }
 
 export const coutsServeur = cache(coutsServeurBrut);

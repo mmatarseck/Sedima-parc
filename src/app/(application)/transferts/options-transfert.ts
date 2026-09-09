@@ -3,7 +3,7 @@ import type { Parametres } from "@/domaine/parametres";
 import type { TypeDocument } from "@/domaine/types";
 import { listeChauffeurs } from "@/donnees/chauffeurs-demo";
 import { lignesFlotte } from "@/donnees/flotte";
-import { attributaires } from "@/donnees/parc-leger-demo";
+import { parcLegerServeur } from "@/donnees/parc-leger";
 
 /**
  * Ce qu'une fiche de transfert propose : les véhicules du périmètre avec
@@ -12,7 +12,8 @@ import { attributaires } from "@/donnees/parc-leger-demo";
  * léger —, et les documents qu'un véhicule porte à bord.
  */
 export async function optionsTransfert(parametres: Parametres): Promise<{ cibles: CibleTransfert[]; personnes: PersonnesTransfert; documents: { id: TypeDocument; libelle: string }[] }> {
-  const lignes = await lignesFlotte(parametres);
+  const [lignes, parcLeger] = await Promise.all([lignesFlotte(parametres), parcLegerServeur(parametres)]);
+  const attributaires = () => parcLeger.attributaires;
   const parNom = new Map(attributaires().map((a) => [a.nom, a.id]));
   const cibles: CibleTransfert[] = lignes
     .filter((l) => l.vehicule.statut !== "a-recevoir")

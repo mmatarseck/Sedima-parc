@@ -58,17 +58,18 @@ branché (un rapport, la page d'un poste budgétaire, le compte d'un
 prestataire, une fiche de transfert créée depuis la fiche véhicule → la
 cloche du détenteur).
 
-**Ce qui reste sur la démonstration, par choix ou par manque de table** :
-le parc léger (dossier DO ; ses forfaits carburant n'existent pas en base,
-le carburant du Budget et des coûts s'y lit sans eux — à construire quand le
-parc léger le sera : attributions et forfaits en table) ; les discussions et
-leurs citations (pas de table `message`) ; les rapports du parc léger.
+**Ce qui reste sur la démonstration, par manque de table** : les
+discussions et leurs citations (pas de table `message`). Le parc léger est
+lu en base depuis le soir du 9 septembre (section « Le parc léger lu en
+base » plus bas) : attributaires, attributions, forfaits, véhicules à
+recevoir — sans migration, les tables datent de la 0004.
 Limites écrites dans chaque section : `lire_parc()` ne rend que les
 affectations en cours, le coût d'un incident n'est pas rattaché en base.
 
 **Prochaines étapes proposées** : jouer la 0027 et poser les variables du
-courriel ; vérifier en ligne ; puis, au choix du gestionnaire, les pièces de
-rechange (après décisions) ou le parc léger en base.
+courriel ; vérifier en ligne ; puis les pièces de rechange, après les sept
+décisions ; la maintenance des légers et les dates de début des plans car
+restent à saisir dans le dossier.
 
 ---
 
@@ -1909,6 +1910,41 @@ lectures avant et après une migration. Il reproduit la régression (fiche
   récapitulatif composé. Tout passe.
 - **Limite** : les discussions (citations) restent notifiées en
   démonstration seulement — il n'y a pas de table `message` en base.
+
+### Le parc léger lu en base (9 septembre 2026, sans migration)
+
+- Les tables existaient depuis la 0004 (attributaires, attributions,
+  forfaits carburant, véhicules à recevoir) et le seed les remplit ; la
+  fiche d'un véhicule léger, les options de transfert, de demande et de
+  fiche d'accès, les huit rapports du parc léger, les coûts et le budget
+  lisaient encore le dossier de démonstration.
+- **Domaine** : `SourceParcLeger` (véhicules, attributaires, forfaits) et
+  la fabrique des forfaits en dépense, `depensesForfaitsDe()`, montées dans
+  `src/domaine/parc-leger.ts` ; `parc-leger-demo.ts` garde le dossier et
+  n'en est plus qu'un fournisseur (`sourceParcLegerDemo()`,
+  `depensesForfaits()` en enveloppe).
+- **Base** : `src/donnees/parc-leger.ts` — `parcLegerServeur(parametres)`
+  relit les lignes de la Flotte hors exploitation (compteur, attribution,
+  véhicules à recevoir sous leur lot) et trois lectures bornées :
+  l'attribution en cours (plan car), l'attributaire (département, business
+  unit), le forfait (montant, carte). L'état suit le statut posé par le seed,
+  le lot se relit en tête du commentaire (« Lot 1 - 03 — … »). **Les
+  identifiants d'attributaire sont ceux de la table** : la fiche d'accès et
+  les demandes enregistrent enfin un vrai identifiant.
+- Branchés dessus : la fiche véhicule léger (`/flotte/[immat]`, titre
+  compris, datée du jour en base), `demandes/page.tsx`,
+  `options-transfert.ts`, `options-acces.ts`, la source des rapports
+  (`parcLeger`), les coûts (`couts.ts` : forfaits en carburant des véhicules
+  de fonction) et le budget (`budget.ts` : forfaits dans les dépenses) —
+  le carburant du budget et des coûts est désormais **identique en base et
+  en démonstration**, forfaits compris. `flotte.ts` exporte
+  `lignesARecevoir(parc)`.
+- **Banc** `scripts/tester-parc-leger.mts` (PGlite) : 113 véhicules
+  légers = le dossier hors les deux déjà dans la flotte de transport, mêmes
+  régimes et états, 77 attributaires (uuid), 34 forfaits, 735 forfaits en
+  dépense pour 110,25 M F, les huit rapports ligne à ligne en nombre, le
+  carburant du budget au franc près. Photographie des rapports : aucun
+  écart.
 
 **À faire, dans l'ordre** (mis à jour le 9 septembre 2026).
 

@@ -3,7 +3,7 @@ import { titrePage } from "@/domaine/marque";
 import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
 import { demandesServeur } from "@/donnees/demandes";
 import { lignesFlotte } from "@/donnees/flotte";
-import { attributaires } from "@/donnees/parc-leger-demo";
+import { parcLegerServeur } from "@/donnees/parc-leger";
 import { sites } from "@/donnees/referentiels";
 import { parametresServeur } from "@/lib/parametres-serveur";
 import { authentificationReelle } from "@/lib/session-demo";
@@ -17,8 +17,8 @@ export const metadata = { title: titrePage("Demandes") };
  */
 export default async function PageDemandes() {
   const [parametres, listeSites, demandes] = await Promise.all([parametresServeur(), sites(), demandesServeur()]);
-  const lignes = await lignesFlotte(parametres);
-  const parNom = new Map(attributaires().map((a) => [a.nom, a.id]));
+  const [lignes, parcLeger] = await Promise.all([lignesFlotte(parametres), parcLegerServeur(parametres)]);
+  const parNom = new Map(parcLeger.attributaires.map((a) => [a.nom, a.id]));
   const cibles: CibleDemande[] = lignes.flatMap((l) => {
     const v = l.vehicule;
     if (!v.engage || v.statut === "a-recevoir") return [];

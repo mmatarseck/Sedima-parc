@@ -14,7 +14,7 @@
  * ==========================================================================*/
 
 import { afficher, normaliser } from "@/domaine/immatriculation";
-import { idAttributaire, type Attributaire, type EtatLeger, type ForfaitCarburant, type RegimeUsage, type VehiculeLeger } from "@/domaine/parc-leger";
+import { depensesForfaitsDe, idAttributaire, type Attributaire, type DepenseForfait, type EtatLeger, type ForfaitCarburant, type RegimeUsage, type SourceParcLeger, type VehiculeLeger } from "@/domaine/parc-leger";
 import type { BusinessUnit } from "@/domaine/types";
 
 type Categorie = VehiculeLeger["categorie"];
@@ -229,68 +229,18 @@ export function forfaitsCarburant(): ForfaitCarburant[] {
   return construire().forfaits;
 }
 
-/** Premier mois où les forfaits carburant sont portés en charge dans la démonstration. */
-export const DEBUT_FORFAITS = "2025-01";
-
-/** Un forfait carburant du mois, sous la forme d'une dépense : c'est ainsi que le budget et les coûts le lisent. */
-export interface DepenseForfait {
-  numero: string;
-  date: string;
-  mois: string;
-  poste: "carburant";
-  libelle: string;
-  montant: number;
-  beneficiaire: string;
-  origine: "facture";
-  justificatif: boolean;
-  businessUnit: BusinessUnit | null;
-  vehiculeId: string;
-  immatriculation: string;
-  immatriculationAffichee: string;
-  vehicule: string;
+/** Ce que le parc léger tient, tel que la démonstration le porte : la même forme que la base. */
+export function sourceParcLegerDemo(): SourceParcLeger {
+  return construire();
 }
+
+export type { DepenseForfait } from "@/domaine/parc-leger";
+export { DEBUT_FORFAITS } from "@/domaine/parc-leger";
 
 let CACHE_FORFAITS: DepenseForfait[] | null = null;
 
-/**
- * Les forfaits carburant mois par mois, depuis `DEBUT_FORFAITS` jusqu'au mois
- * de référence : une dépense de carburant par véhicule de fonction en
- * circulation et par mois, sur la BU de l'agent, sans plein ni kilométrage.
- * Une seule fabrique, lue par le budget et par les coûts — la même somme
- * des deux côtés.
- */
+/** Les forfaits carburant de la démonstration, mois par mois — la fabrique du domaine sur le jeu du dossier. */
 export function depensesForfaits(jusqua: string, forfaitDefaut: number): DepenseForfait[] {
-  if (CACHE_FORFAITS) return CACHE_FORFAITS;
-  const { vehicules, attributaires: liste, forfaits } = construire();
-  const parAttributaire = new Map(liste.map((a) => [a.id, a]));
-  const montantPar = new Map(forfaits.map((f) => [f.attributaireId, f.montantMensuel ?? forfaitDefaut]));
-  const mois: string[] = [];
-  for (let m = DEBUT_FORFAITS; m <= jusqua.slice(0, 7); ) {
-    mois.push(m);
-    const [a, mm] = m.split("-").map(Number);
-    m = new Date(Date.UTC(a!, mm!, 1)).toISOString().slice(0, 7);
-  }
-  CACHE_FORFAITS = vehicules
-    .filter((v) => v.immatriculation !== null && v.attributaireId !== null && montantPar.has(v.attributaireId))
-    .flatMap((v) => {
-      const a = parAttributaire.get(v.attributaireId!)!;
-      const montant = montantPar.get(a.id)!;
-      return mois.map((m) => ({
-        numero: `FOR-${m.replace("-", "")}-${v.immatriculation}`,
-        date: `${m}-01`,
-        mois: m,
-        poste: "carburant" as const,
-        libelle: `Forfait carburant — ${a.nom}`,
-        montant,
-        beneficiaire: a.nom,
-        origine: "facture" as const,
-        justificatif: true,
-        businessUnit: v.businessUnit,
-        vehiculeId: v.id,
-        immatriculation: v.immatriculation!,
-        immatriculationAffichee: v.immatriculationAffichee,
-        vehicule: `${v.marque} ${v.modele}`,
-      }));
-    });
+  if (!CACHE_FORFAITS) CACHE_FORFAITS = depensesForfaitsDe(construire(), jusqua, forfaitDefaut);
   return CACHE_FORFAITS;
 }
