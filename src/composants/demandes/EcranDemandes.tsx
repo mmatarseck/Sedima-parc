@@ -53,8 +53,13 @@ export function EcranDemandes({ initial, cibles, sites, maintenant }: { initial:
 
   useEffect(() => {
     setListe(lireDemandes(initial));
-    setAcces(lireAccesCourant());
+    const a = lireAccesCourant();
+    setAcces(a);
     setAuteur(lireIdentite()?.nom ?? trouverRole(lireRole()).nom);
+    /* Le raccourci « Demander » du téléphone arrive avec `?nouvelle` : le
+       panneau s'ouvre directement. Lu sur l'adresse plutôt que par
+       `useSearchParams`, qui exigerait une frontière Suspense au rendu statique. */
+    if (new URLSearchParams(window.location.search).has("nouvelle") && a.profil !== "detenteur" && (a.niveaux.demandes === "saisie" || a.niveaux.demandes === "gestion")) setPanneau(true);
   }, [initial]);
 
   const envoie = acces !== null && acces.profil !== "detenteur" && (acces.niveaux.demandes === "saisie" || acces.niveaux.demandes === "gestion");

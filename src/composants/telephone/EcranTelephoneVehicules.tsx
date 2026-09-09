@@ -16,7 +16,7 @@ import { EnTeteTelephone, PastilleStatutTelephone } from "./Telephone";
  * dans l'adresse (relevé, plein, panne) suit jusqu'à la fiche, qui l'ouvre.
  * ==========================================================================*/
 
-const GESTES: Record<string, string> = { releve: "Relevé de compteur", plein: "Plein", panne: "Signaler une panne" };
+const GESTES: Record<string, string> = { releve: "Relevé de compteur", plein: "Plein", panne: "Signaler une panne", statut: "Changer le statut", document: "Document renouvelé" };
 
 function sansAccents(t: string): string {
   return t
@@ -46,7 +46,7 @@ export function EcranTelephoneVehicules({ lignes }: { lignes: LigneFlotte[] }) {
   return (
     <div className="mx-auto flex w-full max-w-[520px] flex-col gap-3 px-3 pb-24 pt-1">
       <EnTeteTelephone titre={geste && GESTES[geste] ? GESTES[geste] : "Véhicules"} retour="/telephone" />
-      {geste && GESTES[geste] ? <p className="meta -mt-2 px-4">Choisissez le véhicule ; la saisie s&apos;ouvre sur sa fiche.</p> : null}
+      {geste && GESTES[geste] ? <p className="meta -mt-2 px-4">Choisissez le véhicule ; {geste === "statut" ? "le panneau de statut" : "la saisie"} s&apos;ouvre sur sa fiche.</p> : null}
       <label className="relative block">
         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-attenue" strokeWidth={2} />
         <input

@@ -117,3 +117,11 @@ pas de SMS. Tout est arbitré ; la construction commence par la fiche d'accès.
 
 Les six étapes sont livrées. Restent le stockage des photos (seul le nom
 est gardé) et le courriel au détenteur (notification de la plateforme).
+
+7. **Les raccourcis de la journée** (8 septembre, soir) : l'accueil porte
+   tous les gestes que la personne accomplit dans sa journée, et seulement
+   ceux-là — relevé, plein, panne, statut, document, atelier, pièces
+   (ajouté le 9 septembre, nuit, avec le module des pièces de rechange),
+   demander, transfert, affecter, valider, chercher ; répondre et signer
+   pour le détenteur. Chaque geste est borné au niveau de l'action, pas au
+   simple accès au module.

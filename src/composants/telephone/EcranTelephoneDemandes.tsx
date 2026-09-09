@@ -70,10 +70,10 @@ export function EcranTelephoneDemandes({ initial, maintenant }: { initial: Deman
       {acces && !detenteur ? (
         <p className="meta -mt-2 px-4">
           Le suivi de ce qui est parti sur votre périmètre.{" "}
-          <Link href="/demandes" className="font-semibold text-accent-fonce">
+          <Link href="/demandes?nouvelle" className="font-semibold text-accent-fonce">
             Envoyer une demande
           </Link>{" "}
-          se fait au bureau.
+          ouvre le panneau du bureau.
         </p>
       ) : null}
       {erreur ? <p className="rounded-[8px] bg-defavorable-fond px-3 py-2 text-[12.5px] text-defavorable">{erreur}</p> : null}

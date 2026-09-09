@@ -3,16 +3,18 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Fuel, Gauge, TriangleAlert, X } from "lucide-react";
+import { FileCheck, Fuel, Gauge, TriangleAlert, X } from "lucide-react";
 import { champsCreation } from "@/composants/transactions/champs";
 import { FournisseurEdition, useEdition } from "@/composants/transactions/ContexteEdition";
 import { fabriquerPeriodeStatut } from "@/composants/transactions/fabriques";
 import { trouverProfil, type AccesCourant } from "@/domaine/acces";
 import { MOTIF_IMMOBILISATION, STATUT_VEHICULE, TYPE_DOCUMENT, libelleCategorie } from "@/domaine/libelles";
+import { prixEnergie } from "@/domaine/parametres";
 import type { LigneFlotte, MotifImmobilisation, StatutVehicule } from "@/domaine/types";
 import { lireAccesCourant } from "@/lib/acces-courant";
 import { enregistrerCreation } from "@/lib/clotures-demo";
 import { date as formaterDate, montant, nombre } from "@/lib/format";
+import { lireParametres } from "@/lib/parametres-demo";
 import { BoutonQr } from "@/composants/vehicule/PanneauQr";
 import { noterRecent } from "./accueil-widgets";
 import { Bloc, Chiffre, EnTeteTelephone, Ligne, PastilleStatutTelephone } from "./Telephone";
@@ -22,8 +24,10 @@ import { Bloc, Chiffre, EnTeteTelephone, Ligne, PastilleStatutTelephone } from "
  * conduit, où en est le compteur, ce qui vient à échéance, les derniers
  * faits. Un bouton d'action : changer le statut, dans un panneau qui ne
  * propose que les statuts que le profil a le droit de poser (cadrage du
- * 7 septembre 2026). Relevé, plein et panne passent par la même modale de
- * transaction que le bureau ; la photo obligatoire viendra avec le stockage.
+ * 7 septembre 2026). Relevé, plein, panne et document renouvelé passent par
+ * la même modale de transaction que le bureau. Un geste passé dans l'adresse
+ * depuis les raccourcis de l'accueil (`?geste=releve|plein|panne|statut|document`)
+ * s'ouvre à l'arrivée, une fois, si la personne y a droit.
  * ==========================================================================*/
 
 export interface DerniersFaits {
@@ -61,19 +65,24 @@ function Interieur({ ligne, faits, aujourdhui }: { ligne: LigneFlotte; faits: De
   const posables = useMemo(() => (profil ? (profil.statuts === "tous" ? STATUTS_POSABLES : profil.statuts) : []), [profil]);
   const saisit = acces ? acces.niveaux.releves === "saisie" || acces.niveaux.releves === "gestion" : false;
   const signale = acces ? acces.niveaux.incidents !== "aucun" && acces.niveaux.incidents !== "lecture" : false;
+  const documente = acces ? acces.niveaux.documents === "saisie" || acces.niveaux.documents === "gestion" : false;
 
-  function ouvrir(geste: "releve" | "plein" | "panne") {
+  function ouvrir(geste: "releve" | "plein" | "panne" | "document") {
     if (geste === "releve") creer({ type: "releve", titre: `Relevé · ${v.immatriculationAffichee}`, champs: champsCreation("releve", { pour: "vehicule" }), valeurs: { date: aujourdhui, source: "Téléphone" } });
-    else if (geste === "plein") creer({ type: "plein", titre: `Plein · ${v.immatriculationAffichee}`, champs: champsCreation("plein", { pour: "vehicule" }), valeurs: { date: aujourdhui } });
+    /* Le prix du litre est celui du barème du jour, selon l'énergie — comme sur la fiche du bureau. */
+    else if (geste === "plein") creer({ type: "plein", titre: `Plein · ${v.immatriculationAffichee}`, champs: champsCreation("plein", { pour: "vehicule" }), valeurs: { date: aujourdhui, prixLitre: prixEnergie(v.energie, aujourdhui, lireParametres()) } });
+    else if (geste === "document") creer({ type: "document", titre: `Document renouvelé · ${v.immatriculationAffichee}`, champs: champsCreation("document", { pour: "vehicule" }), valeurs: { dateEffet: aujourdhui } });
     else creer({ type: "incident", titre: `Panne · ${v.immatriculationAffichee}`, champs: champsCreation("incident", { pour: "vehicule" }), valeurs: { vehiculeId: v.id, nature: "incident", type: "panne", dateHeure: `${aujourdhui}T08:00`, statut: "declare" } });
   }
 
-  /* Le geste demandé depuis la liste s'ouvre à l'arrivée, une fois. */
+  /* Le geste demandé depuis la liste ou les raccourcis s'ouvre à l'arrivée, une fois. */
   const geste = params.get("geste");
   useEffect(() => {
     if (!geste || gesteOuvert || !acces) return;
     if ((geste === "releve" || geste === "plein") && saisit) ouvrir(geste);
     else if (geste === "panne" && signale) ouvrir("panne");
+    else if (geste === "document" && documente) ouvrir("document");
+    else if (geste === "statut" && posables.length > 0) setPanneau(true);
     setGesteOuvert(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geste, acces]);
@@ -123,8 +132,8 @@ function Interieur({ ligne, faits, aujourdhui }: { ligne: LigneFlotte; faits: De
         </Link>
       </Bloc>
 
-      {saisit || signale ? (
-        <div className="grid grid-cols-3 gap-2">
+      {saisit || signale || documente ? (
+        <div className={`grid gap-2 ${[saisit, saisit, signale, documente].filter(Boolean).length > 3 ? "grid-cols-4" : "grid-cols-3"}`}>
           {saisit ? (
             <>
               <Geste onClick={() => ouvrir("releve")} icone={<Gauge className="size-4" strokeWidth={2} />} libelle="Relevé" />
@@ -132,6 +141,7 @@ function Interieur({ ligne, faits, aujourdhui }: { ligne: LigneFlotte; faits: De
             </>
           ) : null}
           {signale ? <Geste onClick={() => ouvrir("panne")} icone={<TriangleAlert className="size-4" strokeWidth={2} />} libelle="Panne" /> : null}
+          {documente ? <Geste onClick={() => ouvrir("document")} icone={<FileCheck className="size-4" strokeWidth={2} />} libelle="Document" /> : null}
         </div>
       ) : null}
 

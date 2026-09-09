@@ -2,18 +2,21 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Fuel, Gauge, Inbox, PenLine, ScanLine, Search, Settings2, TriangleAlert, Wrench } from "lucide-react";
+import { ClipboardCheck, FileCheck, Fuel, Gauge, Inbox, Package, PenLine, RefreshCw, ScanLine, Search, Send, Settings2, Stamp, TriangleAlert, UserPlus, Wrench } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { trouverProfil, type AccesCourant } from "@/domaine/acces";
+import { peutCloturer } from "@/domaine/cloture";
 import { TYPE_DEMANDE, statutDemande, type Demande } from "@/domaine/demandes";
 import { TYPE_DOCUMENT } from "@/domaine/libelles";
 import { trouverRole } from "@/domaine/roles";
 import { statutTransfert, type Transfert } from "@/domaine/transferts";
 import type { LigneFlotte } from "@/domaine/types";
 import { lireAccesCourant } from "@/lib/acces-courant";
+import { lireDemandes as lireDemandesModification } from "@/lib/clotures-demo";
 import { lireDemandes } from "@/lib/demandes-demo";
 import { initiales as initialesDe, lireIdentite, lireRole } from "@/lib/session-demo";
 import { lireTransferts } from "@/lib/transferts-demo";
-import { WIDGETS, lireRecents, lireReglageAccueil, type CleWidget, type VehiculeRecent } from "./accueil-widgets";
+import { WIDGETS, lireRecents, lireReglageAccueil, raccourcisPour, type CleRaccourci, type CleWidget, type Raccourci, type VehiculeRecent } from "./accueil-widgets";
 import { mesDemandes } from "./EcranTelephoneDemandes";
 import { mesTransferts } from "./EcranTelephoneTransferts";
 import { dansPerimetre } from "./perimetre";
@@ -25,6 +28,12 @@ import { Bloc, Chiffre, Ligne } from "./Telephone";
  * l'accueil »), l'avatar qui mène aux réglages, et en bas les quatre onglets
  * Accueil, Parcourir, Notifications, Rechercher. Tout reste borné au périmètre
  * et à l'accès de la personne.
+ *
+ * Le widget « Raccourcis » porte **tous les gestes de la journée** de la
+ * personne (demande du métier du 8 septembre 2026) : le catalogue est dans
+ * `accueil-widgets.ts`, et chaque geste n'apparaît qu'à qui peut l'accomplir.
+ * « À faire aujourd'hui » dit ce qui attend : demandes, fiches à signer,
+ * échéances, immobilisés, relevés, atelier, modifications à approuver.
  * ==========================================================================*/
 
 const OPERATIONNELS = new Set(["en-service", "en-backup"]);
@@ -42,6 +51,8 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, transferts
   const [listeDemandes, setListeDemandes] = useState<Demande[]>(demandes);
   const [listeTransferts, setListeTransferts] = useState<Transfert[]>(transferts);
   const [recents, setRecents] = useState<VehiculeRecent[]>([]);
+  /* Les modifications sur des mois clos qui attendent une décision ; lues après le montage, comme tout ce que le navigateur garde. */
+  const [aValider, setAValider] = useState(0);
   useEffect(() => {
     setAcces(lireAccesCourant());
     setNom(lireIdentite()?.nom ?? trouverRole(lireRole()).nom);
@@ -49,6 +60,7 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, transferts
     setListeDemandes(lireDemandes(demandes));
     setListeTransferts(lireTransferts(transferts));
     setRecents(lireRecents());
+    setAValider(peutCloturer(lireRole()) ? lireDemandesModification().filter((d) => d.statut === "en-attente").length : 0);
   }, [demandes, transferts]);
 
   const detenteur = acces?.profil === "detenteur";
@@ -66,6 +78,10 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, transferts
   const profil = acces ? trouverProfil(acces.profil) : null;
   const niveau = (m: Parameters<typeof peut>[1]) => peut(acces, m);
   const monVehicule = detenteur ? (demandesOuvertes[0]?.vehicule ?? mesDemandes(listeDemandes, acces!)[0]?.vehicule ?? transfertsASigner[0]?.vehicule ?? null) : null;
+  const raccourcis = useMemo(() => (acces ? raccourcisPour(acces) : []), [acces]);
+  /* L'atelier n'est « à faire » que pour qui y agit : un ordre à clôturer ne concerne pas un lecteur. */
+  const agitAtelier = acces !== null && !detenteur && (acces.niveaux.maintenance === "saisie" || acces.niveaux.maintenance === "gestion");
+  const atelierAFaire = agitAtelier ? atelier.enAtelier + atelier.planifies : 0;
 
   const visibles = (ordre ?? []).filter((c) => {
     const w = WIDGETS.find((x) => x.cle === c);
@@ -112,19 +128,13 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, transferts
       {visibles.map((cle) => {
         switch (cle) {
           case "raccourcis":
+            /* Quatre par ligne : jusqu'à treize gestes pour un administrateur, trois
+               pour un détenteur — la grille se remplit dans l'ordre de la journée. */
             return (
-              <div key={cle} className="grid grid-cols-3 gap-2">
-                <Geste href="/telephone/scanner" icone={<ScanLine className="size-4" strokeWidth={2} />} libelle="Scanner" />
-                {niveau("releves") && !detenteur ? (
-                  <>
-                    <Geste href="/telephone/vehicules?geste=releve" icone={<Gauge className="size-4" strokeWidth={2} />} libelle="Relevé" />
-                    <Geste href="/telephone/vehicules?geste=plein" icone={<Fuel className="size-4" strokeWidth={2} />} libelle="Plein" />
-                  </>
-                ) : null}
-                {niveau("incidents") && !detenteur ? <Geste href="/telephone/vehicules?geste=panne" icone={<TriangleAlert className="size-4" strokeWidth={2} />} libelle="Panne" /> : null}
-                {detenteur ? <Geste href="/telephone/demandes" icone={<Inbox className="size-4" strokeWidth={2} />} libelle="Demandes" /> : <Geste href="/telephone/vehicules" icone={<Search className="size-4" strokeWidth={2} />} libelle="Chercher" />}
-                {niveau("maintenance") && !detenteur ? <Geste href="/telephone/atelier" icone={<Wrench className="size-4" strokeWidth={2} />} libelle="Atelier" /> : null}
-                {detenteur ? <Geste href="/telephone/transferts" icone={<PenLine className="size-4" strokeWidth={2} />} libelle="Transferts" /> : null}
+              <div key={cle} className={`grid gap-2 ${raccourcis.length <= 3 ? "grid-cols-3" : "grid-cols-4"}`}>
+                {raccourcis.map((r) => (
+                  <Geste key={r.cle} raccourci={r} pastille={r.cle === "valider" ? aValider : r.cle === "repondre" ? demandesOuvertes.length : r.cle === "signer" ? transfertsASigner.length : 0} />
+                ))}
               </div>
             );
           case "mon-vehicule":
@@ -141,10 +151,12 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, transferts
               </div>
             );
           case "a-faire": {
-            const vide = echeances.length === 0 && immobilises.length === 0 && sansReleve === 0 && demandesOuvertes.length === 0 && transfertsASigner.length === 0;
+            const vide = echeances.length === 0 && immobilises.length === 0 && sansReleve === 0 && demandesOuvertes.length === 0 && transfertsASigner.length === 0 && atelierAFaire === 0 && aValider === 0;
             return (
-              <Bloc key={cle} titre="À faire aujourd'hui" accent={demandesOuvertes.length + transfertsASigner.length > 0}>
+              <Bloc key={cle} titre="À faire aujourd'hui" accent={demandesOuvertes.length + transfertsASigner.length + aValider > 0}>
                 {vide ? <p className="meta py-1">Rien d&apos;urgent sur ce périmètre.</p> : null}
+                {aValider > 0 ? <Ligne icone={<Stamp className="size-4" strokeWidth={2} />} ton="vigilance" titre="Modifications à approuver" precision={`${aValider} sur des mois clos`} href="/clotures" /> : null}
+                {atelierAFaire > 0 ? <Ligne icone={<Wrench className="size-4" strokeWidth={2} />} ton={atelier.enAtelier > 0 ? "vigilance" : "neutre"} titre="Atelier" precision={[atelier.enAtelier ? `${atelier.enAtelier} à clôturer` : "", atelier.planifies ? `${atelier.planifies} à faire entrer` : ""].filter(Boolean).join(" · ")} href="/telephone/atelier" /> : null}
                 {demandesOuvertes.slice(0, detenteur ? 4 : 1).map((d) =>
                   detenteur ? (
                     <Ligne key={d.id} icone={<Inbox className="size-4" strokeWidth={2} />} ton={statutDemande(d, maintenant) === "en-retard" ? "defavorable" : "vigilance"} titre={TYPE_DEMANDE[d.type].libelle} precision={`${d.vehicule.immatriculation} · ${statutDemande(d, maintenant) === "en-retard" ? "en retard" : "à répondre"}`} href="/telephone/demandes" />
@@ -234,11 +246,34 @@ function peut(acces: AccesCourant | null, module: keyof AccesCourant["niveaux"])
   return acces !== null && acces.niveaux[module] !== "aucun";
 }
 
-function Geste({ href, icone, libelle }: { href: string; icone: React.ReactNode; libelle: string }) {
+const ICONE_RACCOURCI: Record<CleRaccourci, LucideIcon> = {
+  scanner: ScanLine,
+  releve: Gauge,
+  plein: Fuel,
+  panne: TriangleAlert,
+  statut: RefreshCw,
+  document: FileCheck,
+  atelier: Wrench,
+  pieces: Package,
+  demander: Send,
+  demandes: Inbox,
+  repondre: Inbox,
+  transfert: ClipboardCheck,
+  signer: PenLine,
+  affecter: UserPlus,
+  valider: Stamp,
+  chercher: Search,
+};
+
+function Geste({ raccourci, pastille }: { raccourci: Raccourci; pastille: number }) {
+  const Icone = ICONE_RACCOURCI[raccourci.cle];
   return (
-    <Link href={href} className="carte flex flex-col items-center gap-1.5 px-2 py-3 text-[12.5px] font-semibold text-texte hover:bg-surface-2">
-      <span className="grid size-9 place-items-center rounded-[10px] bg-accent-fond text-accent-fonce">{icone}</span>
-      {libelle}
+    <Link href={raccourci.href} className="carte flex flex-col items-center gap-1.5 px-1 py-3 text-[12px] font-semibold text-texte hover:bg-surface-2">
+      <span className="relative grid size-9 place-items-center rounded-[10px] bg-accent-fond text-accent-fonce">
+        <Icone className="size-4" strokeWidth={2} />
+        {pastille > 0 ? <span className="badge-texte absolute -top-1.5 -right-1.5 rounded-full bg-defavorable px-1.5 py-px text-[10px] text-white">{pastille}</span> : null}
+      </span>
+      {raccourci.libelle}
     </Link>
   );
 }

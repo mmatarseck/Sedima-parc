@@ -112,6 +112,14 @@ function Interieur({ vehicules, chauffeurs, chauffeursTiers, aujourdhui }: { veh
 
   const positionJour = position(bornes.maintenant, bornes.debut, bornes.fin);
 
+  /* Le raccourci « Affecter » du téléphone arrive avec `?nouvelle` : le
+     formulaire s'ouvre directement, une fois. Lu sur l'adresse plutôt que par
+     `useSearchParams`, qui exigerait une frontière Suspense au rendu statique. */
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has("nouvelle")) affecter();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="flex flex-col gap-5 px-8 py-7 lg:h-full lg:min-h-0">
       <TitreEcran

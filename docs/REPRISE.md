@@ -46,10 +46,11 @@ Un module de démonstration importé par un composant client (l'assistant lit
 démonstration ont leurs fichiers (`flotte-demo.ts`, `conformite-demo.ts`,
 `visites-demo.ts`).
 
-**Attention.** Le répertoire de travail porte des modifications qui ne
-viennent pas de cette session (accueil du téléphone, demandes, affectations,
-fiche rapide, `PROPOSITION-MOBILE.md`) : une autre session y travaille. Ne
-pas les commettre ni les écraser sans savoir.
+**Les raccourcis de la journée sont commis.** La session qui tenait
+l'accueil du téléphone (raccourcis par profil, demandes, affectations,
+fiche rapide) a terminé et vérifié son travail ; il est commis le
+9 septembre 2026, nuit avec le raccourci « Pièces ». Plus rien d'une autre
+session ne traîne dans le répertoire de travail.
 
 **En attente du gestionnaire.** Le compte Resend et ses variables ; l'essai en ligne de ce qui vient d'être
 branché (un rapport, la page d'un poste budgétaire, le compte d'un
@@ -75,8 +76,8 @@ vérifier en ligne (dont `/pieces`, magasin vide tant que rien n'est saisi —
 le premier inventaire ou les premières entrées le peuplent) ; la maintenance des légers et les dates de
 début des plans car restent à saisir dans le dossier. Les pièces sont
 complètes (magasin, mouvements, pneus, réapprovisionnement → demande
-d'achat, inventaire, téléphone) ; il ne manque qu'un raccourci sur
-l'accueil du téléphone, dans un fichier que l'autre session tient encore.
+d'achat, inventaire, téléphone, raccourci « Pièces » sur l'accueil du
+téléphone depuis le 9 septembre 2026, nuit, à qui a la saisie en maintenance).
 
 ---
 
@@ -1148,9 +1149,9 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   journée ». Le widget « Raccourcis » n'en portait que six, les mêmes pour
   tout le monde, et les offrait à qui n'avait qu'un droit de lecture
   (« Relevé » proposé au contrôle de gestion, qui ne peut pas saisir).
-- **Un catalogue de quinze gestes** dans `accueil-widgets.ts` (`RACCOURCIS`,
+- **Un catalogue de seize gestes** dans `accueil-widgets.ts` (`RACCOURCIS`,
   `raccourcisPour()`), chacun borné au **niveau de l'action** — saisie pour
-  relevé, plein, panne, document, demander, transfert ; gestion pour
+  relevé, plein, panne, document, pièces, demander, transfert ; gestion pour
   affecter ; les statuts du profil pour « Statut » ; le droit de clôture pour
   « Valider » — et au profil (détenteur : Scanner, Répondre, Signer, avec le
   nombre en pastille). Par profil : administrateur et direction 12 gestes,
@@ -2070,10 +2071,12 @@ de QR de casier** pour l'instant.
   le véhicule, sinon on le choisit ; en réception, le prix payé (pré-rempli
   au dernier prix) et le bon livré. Même sujet « pieces », même
   `enregistrerCreation`, donc même synchronisation en base ; le mois clos
-  remonte tel quel. Les fichiers de l'autre session n'ont pas été touchés :
-  l'entrée se fait par `EcranTelephoneAtelier.tsx`, pas par les raccourcis
-  de l'accueil (`accueil-widgets.ts`, modifié par elle) — à ajouter quand
-  ce fichier sera libre.
+  remonte tel quel. Deux entrées : les boutons de `EcranTelephoneAtelier.tsx`
+  (sortie rattachée à l'ordre, réception), et depuis le 9 septembre 2026, nuit le
+  raccourci « Pièces » de l'accueil (`accueil-widgets.ts`, module
+  maintenance au niveau saisie, icône Package comme au bureau) — l'écran
+  est en lecture seule sous ce niveau, le raccourci ne promet donc rien
+  que le serveur refuserait.
 - **Limites** : les kilomètres parcourus d'un pneu monté demandent le
   compteur du véhicule (non lu ici : « en cours ») ; pas de scan de casier
   (pas de QR, décision du 9 septembre).
@@ -2100,8 +2103,8 @@ de QR de casier** pour l'instant.
 10. ~~Le réapprovisionnement qui prépare une demande d'achat~~,
     ~~l'inventaire qui produit ses régularisations d'un coup~~ et ~~sortir
     et recevoir depuis le téléphone~~ — faits le 9 septembre 2026 au soir.
-    Reste un raccourci « Pièces » sur l'accueil du téléphone, quand
-    `accueil-widgets.ts` sera rendu par l'autre session.
+    ~~Reste un raccourci « Pièces » sur l'accueil du téléphone~~ — ajouté le
+    9 septembre 2026, nuit, une fois `accueil-widgets.ts` rendu.
 
 ---
 
