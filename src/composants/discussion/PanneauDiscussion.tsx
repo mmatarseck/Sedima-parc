@@ -4,8 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AtSign, MessageSquare, SendHorizontal, X } from "lucide-react";
 import { HAUTEUR_BARRE } from "@/composants/coquille/mesures";
 import { mentionsDe, segmenter, type Message, type Personne } from "@/domaine/discussion";
+import { lireMessagesServeur, publierMessage } from "@/lib/discussion-actions";
 import { ajouterMessage, lireMessages } from "@/lib/discussion-demo";
 import { date as formaterDate } from "@/lib/format";
+import { authentificationReelle } from "@/lib/session-demo";
 
 /* ============================================================================
  * Panneau de discussion — le fil attaché à une fiche.
@@ -92,10 +94,27 @@ export function PanneauDiscussion({
   const [mention, setMention] = useState<{ debut: number; terme: string } | null>(null);
   const [surligne, setSurligne] = useState(0);
 
+  const [refus, setRefus] = useState<string | null>(null);
+  const [envoi, setEnvoi] = useState(false);
+
   useEffect(() => {
-    const lus = lireMessages(sujet, libelle, personnes);
-    setMessages(lus);
-    onNombre?.(lus.length);
+    let vivant = true;
+    /* Base branchée : le fil vient de la table, par le serveur ; sinon du navigateur. */
+    if (authentificationReelle()) {
+      void lireMessagesServeur(sujet).then((lus) => {
+        if (!vivant) return;
+        const liste = lus ?? [];
+        setMessages(liste);
+        onNombre?.(liste.length);
+      });
+    } else {
+      const lus = lireMessages(sujet, libelle, personnes);
+      setMessages(lus);
+      onNombre?.(lus.length);
+    }
+    return () => {
+      vivant = false;
+    };
     // Les personnes ne changent pas pendant la vie de la fiche ; les relire à
     // chaque rendu recréerait le fil à chaque frappe.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -157,8 +176,26 @@ export function PanneauDiscussion({
 
   function envoyer() {
     const texte = brouillon.trim();
-    if (!texte || !messages) return;
-    const suite = ajouterMessage(sujet, libelle, `${href}?discussion=1`, texte, mentionsDe(texte, personnes), messages);
+    if (!texte || !messages || envoi) return;
+    const mentions = mentionsDe(texte, personnes);
+    if (authentificationReelle()) {
+      setEnvoi(true);
+      setRefus(null);
+      void publierMessage(sujet, libelle, `${href}?discussion=1`, texte, mentions).then((r) => {
+        setEnvoi(false);
+        if ("refus" in r) {
+          setRefus(r.refus);
+          return;
+        }
+        const suite = [...messages, r.message];
+        setMessages(suite);
+        onNombre?.(suite.length);
+        setBrouillon("");
+        setMention(null);
+      });
+      return;
+    }
+    const suite = ajouterMessage(sujet, libelle, `${href}?discussion=1`, texte, mentions, messages);
     setMessages(suite);
     onNombre?.(suite.length);
     setBrouillon("");
@@ -330,13 +367,14 @@ export function PanneauDiscussion({
             <button
               type="button"
               onClick={envoyer}
-              disabled={!brouillon.trim()}
+              disabled={!brouillon.trim() || envoi}
               title="Envoyer (Entrée)"
               className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-white transition-colors hover:bg-accent-fonce disabled:cursor-not-allowed disabled:bg-surface-3 disabled:text-attenue-2"
             >
               <SendHorizontal className="size-4" strokeWidth={1.8} />
               <span className="sr-only">Envoyer</span>
             </button>
+            {refus ? <p className="w-full px-1 pb-1 text-[12px] text-defavorable">{refus}</p> : null}
           </div>
           <p className="meta mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]">
             {cites.length > 0 ? (

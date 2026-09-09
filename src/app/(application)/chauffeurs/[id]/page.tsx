@@ -6,6 +6,7 @@ import { titrePage } from "@/domaine/marque";
 import { classer, kmMoyen } from "@/domaine/performance";
 import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
 import { ficheChauffeurServeur, fichesChauffeursServeur } from "@/donnees/fiche-chauffeur";
+import { personnesServeur } from "@/lib/personnes-serveur";
 import { authentificationReelle } from "@/lib/session-demo";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string; discussion?: string; ref?: string }> };
@@ -53,7 +54,7 @@ export default async function PageChauffeur({ params, searchParams }: Props) {
 
   return (
     <FournisseurEdition sujet={`chauffeur:${fiche.ligne.id}`} href={`/chauffeurs/${fiche.ligne.id}`}>
-      <FicheChauffeur fiche={fiche} ongletInitial={onglet} aujourdhui={aujourdhui} contexte={contexte} discussionInitiale={discussion === "1"} cible={ref} />
+      <FicheChauffeur fiche={fiche} ongletInitial={onglet} aujourdhui={aujourdhui} contexte={contexte} utilisateurs={await personnesServeur()} discussionInitiale={discussion === "1"} cible={ref} />
     </FournisseurEdition>
   );
 }

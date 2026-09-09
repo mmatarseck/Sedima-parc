@@ -10,6 +10,7 @@ import { transfertsServeur } from "@/donnees/transferts";
 import { fichePourImmatriculation } from "@/donnees/fiche-demo";
 import { parcLegerServeur } from "@/donnees/parc-leger";
 import { parametresServeur } from "@/lib/parametres-serveur";
+import { personnesServeur } from "@/lib/personnes-serveur";
 import { authentificationReelle } from "@/lib/session-demo";
 
 type Props = { params: Promise<{ immat: string }>; searchParams: Promise<{ onglet?: string; discussion?: string; ref?: string }> };
@@ -46,7 +47,7 @@ export const dynamic = "force-dynamic";
  * visé directement : /flotte/AA032EA?onglet=carburant.
  */
 export default async function PageVehicule({ params, searchParams }: Props) {
-  const [{ immat }, { onglet, discussion, ref }, parametres, transferts] = await Promise.all([params, searchParams, parametresServeur(), transfertsServeur()]);
+  const [{ immat }, { onglet, discussion, ref }, parametres, transferts, utilisateurs] = await Promise.all([params, searchParams, parametresServeur(), transfertsServeur(), personnesServeur()]);
   const fiche = await ficheServeur(decodeURIComponent(immat), parametres);
   /* Un véhicule saisi depuis la liste Flotte n'existe que dans le navigateur :
      le serveur ne peut pas le connaître, mais sa fiche doit s'ouvrir comme
@@ -83,7 +84,7 @@ export default async function PageVehicule({ params, searchParams }: Props) {
   const siennes = transferts.filter((t) => t.vehicule.id === v.id || normaliser(t.vehicule.immatriculation) === v.immatriculation);
   return (
     <FournisseurEdition sujet={`vehicule:${v.immatriculation}`} href={`/flotte/${v.immatriculation}`}>
-      <FicheVehicule fiche={fiche} transferts={siennes} ongletInitial={onglet} discussionInitiale={discussion === "1"} cible={ref} />
+      <FicheVehicule fiche={fiche} transferts={siennes} utilisateurs={utilisateurs} ongletInitial={onglet} discussionInitiale={discussion === "1"} cible={ref} />
     </FournisseurEdition>
   );
 }

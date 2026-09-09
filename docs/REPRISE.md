@@ -19,7 +19,7 @@ groupé par Resend). Au passage : les fiches de transfert ont quitté le rail
 pour la fiche véhicule, et le sélecteur de colonnes des rapports reste dans
 l'écran.
 
-**Migrations : 0001 à 0026 jouées ; 0027 à jouer** dans le SQL Editor.
+**Migrations : 0001 à 0026 jouées ; 0027 et 0028 à jouer** dans le SQL Editor, dans l'ordre.
 Commits à pousser selon `git log origin/main..HEAD`.
 
 **À poser sur Vercel pour que les courriels partent** : `RESEND_API_KEY`,
@@ -58,8 +58,8 @@ branché (un rapport, la page d'un poste budgétaire, le compte d'un
 prestataire, une fiche de transfert créée depuis la fiche véhicule → la
 cloche du détenteur).
 
-**Ce qui reste sur la démonstration, par manque de table** : les
-discussions et leurs citations (pas de table `message`). Le parc léger est
+**Plus rien ne reste sur la démonstration** : les discussions ont leur
+table depuis la 0028 (section « Les discussions en base »). Le parc léger est
 lu en base depuis le soir du 9 septembre (section « Le parc léger lu en
 base » plus bas) : attributaires, attributions, forfaits, véhicules à
 recevoir — sans migration, les tables datent de la 0004.
@@ -1946,6 +1946,32 @@ lectures avant et après une migration. Il reproduit la régression (fiche
   carburant du budget au franc près. Photographie des rapports : aucun
   écart.
 
+### Les discussions en base (9 septembre 2026, migration 0028)
+
+- Le fil de chaque fiche (véhicule, chauffeur) ne vivait que dans le
+  navigateur. **Migration 0028** : table `message` (sujet
+  « vehicule:AA032EA », auteur signé de la session, texte, comptes cités,
+  chauffeurs cités — qui ne sont pas des comptes) ; lecture pour tout rôle ;
+  publication par `publier_message()` seulement (SECURITY DEFINER), qui
+  prévient chaque compte cité autre que l'auteur par une ligne de
+  `notification` (0027, clé `message:<id>`), courriel à envoyer s'il a une
+  adresse. Un message ne se modifie ni ne s'efface.
+- **Serveur** : `src/lib/discussion-actions.ts` (`lireMessagesServeur`,
+  `publierMessage` — qui déclenche l'envoi des courriels) ;
+  `src/lib/personnes-serveur.ts` : les comptes actifs des fiches d'accès,
+  tels qu'on peut les citer (identifiant de la table, nom, fonction ou
+  profil).
+- **Écrans** : `PanneauDiscussion` lit et publie par le serveur quand la base
+  est branchée (refus affiché sous la zone de saisie), le navigateur sinon ;
+  les fiches véhicule et chauffeur reçoivent `utilisateurs` de leur page
+  (`personnesServeur()`), et gardent les identités de démonstration à
+  défaut. Les chauffeurs cités restent mis en évidence sans notification.
+- **Banc** `scripts/tester-discussions.mts` (PGlite) : citations relevées
+  par le domaine, message signé, une notification pour le compte cité (pas
+  l'auteur, pas le chauffeur), fil relu dans l'ordre, sujet hors fiche et
+  compte sans rôle refusés. Piège appris : `select (f()).*` appelle la
+  fonction une fois par colonne — `select * from f()`.
+
 **À faire, dans l'ordre** (mis à jour le 9 septembre 2026).
 
 1. ~~Le seed~~, ~~le premier administrateur~~, ~~Vercel~~ — faits : la
@@ -1962,7 +1988,8 @@ lectures avant et après une migration. Il reproduit la régression (fiche
 7. ~~**Courriel au détenteur**~~ — fait le 9 septembre 2026 (0027) : table
    `notification`, cloche en base, courriel groupé par Resend dès que
    `RESEND_API_KEY` et `COURRIEL_EXPEDITEUR` sont posés sur Vercel.
-8. **Pièces de rechange**, après les sept décisions de `PROPOSITION-PIECES.md`.
+8. ~~**Parc léger lu en base**~~ et ~~**discussions en base (0028)**~~ — faits le 9 septembre 2026 au soir.
+9. **Pièces de rechange**, après les sept décisions de `PROPOSITION-PIECES.md`.
 
 ---
 

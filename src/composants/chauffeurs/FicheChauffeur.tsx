@@ -95,6 +95,7 @@ export function FicheChauffeur({
   ongletInitial,
   aujourdhui,
   contexte,
+  utilisateurs,
   discussionInitiale = false,
   cible,
 }: {
@@ -102,6 +103,8 @@ export function FicheChauffeur({
   ongletInitial?: string;
   aujourdhui: string;
   contexte: ContexteFiche;
+  /** Les comptes que la discussion peut citer ; ceux de la démonstration à défaut. */
+  utilisateurs?: Personne[];
   discussionInitiale?: boolean;
   /** Numéro de transaction à souligner, venu de la recherche. */
   cible?: string;
@@ -159,8 +162,8 @@ export function FicheChauffeur({
   const entreesAjout = useMemo(() => ENTREES_CHAUFFEUR.filter((e) => e.cle !== "sanction" || voitSanctions), [voitSanctions]);
 
   const personnes: Personne[] = useMemo(
-    () => [...personnesUtilisateurs(), { id: `chauffeur:${l.id}`, nom: l.nomComplet, initiales: l.initiales, precision: "Chauffeur" }],
-    [l.id, l.nomComplet, l.initiales],
+    () => [...(utilisateurs ?? personnesUtilisateurs()), { id: `chauffeur:${l.id}`, nom: l.nomComplet, initiales: l.initiales, precision: "Chauffeur" }],
+    [l.id, l.nomComplet, l.initiales, utilisateurs],
   );
 
   const TITRE_CREATION: Partial<Record<CibleAjout, string>> = {

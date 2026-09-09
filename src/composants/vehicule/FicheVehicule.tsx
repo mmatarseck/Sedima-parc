@@ -91,7 +91,7 @@ function estOnglet(valeur: string | undefined): valeur is Onglet {
  * le dernier enfant prend le reste et porte le défilement ; aucun `sticky`,
  * donc aucun décalage à compenser.
  */
-export function FicheVehicule({ fiche, transferts = [], ongletInitial, discussionInitiale = false, cible }: { fiche: Fiche; transferts?: Transfert[]; ongletInitial?: string; discussionInitiale?: boolean; cible?: string }) {
+export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInitial, discussionInitiale = false, cible }: { fiche: Fiche; transferts?: Transfert[]; /** Les comptes que la discussion peut citer ; ceux de la démonstration à défaut. */ utilisateurs?: Personne[]; ongletInitial?: string; discussionInitiale?: boolean; cible?: string }) {
   const [onglet, setOnglet] = useState<Onglet>(estOnglet(ongletInitial) ? ongletInitial : "apercu");
   useCible(cible, onglet);
   const [discussionOuverte, setDiscussionOuverte] = useState(discussionInitiale);
@@ -202,8 +202,8 @@ export function FicheVehicule({ fiche, transferts = [], ongletInitial, discussio
       vus.add(a.chauffeurId);
       chauffeurs.push({ id: `chauffeur:${a.chauffeurId}`, nom: a.chauffeur, initiales: a.initiales, precision: `Chauffeur — ${a.fin === null ? (a.role === "titulaire" ? "titulaire" : "suppléant") : "ancienne affectation"}` });
     }
-    return [...personnesUtilisateurs(), ...chauffeurs];
-  }, [fiche.affectations]);
+    return [...(utilisateurs ?? personnesUtilisateurs()), ...chauffeurs];
+  }, [fiche.affectations, utilisateurs]);
 
   return (
     <div className="flex flex-col lg:h-full">
