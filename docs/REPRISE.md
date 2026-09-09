@@ -1,7 +1,62 @@
-# Reprise du projet — état au 3 septembre 2026
+# Reprise du projet — état au 9 septembre 2026
 
 Note de passage de relais : à lire en premier dans une nouvelle session.
 Elle dit où en est le projet, ce qui a été décidé, et ce qui reste à faire.
+
+---
+
+## 0 quater. Passage de relais du 9 septembre 2026 — lire ceci d'abord
+
+**Où en est la production.** L'application tourne sur Vercel (région cdg1)
+avec Supabase ; le gestionnaire pousse (`git push`) et joue les migrations
+dans le SQL Editor. **Jouées : 0001 à 0023.** À jouer : **0024**
+(`lire_tableau()`, les courbes du tableau de bord), commit 63caff1, poussé ou
+à pousser selon l'état du dépôt distant (`git log origin/main..HEAD`).
+
+**Tout le bureau lit la base**, sauf quatre modules encore sur la
+démonstration : Budget, Compte des prestataires, Rapports, Transporteurs
+(leurs tables existent depuis la 0002 ; les pages lisent `*-demo.ts`). Les
+écritures de quinze types de transaction vont en base (`transactions-colonnes.ts`).
+Le téléphone est branché comme le bureau.
+
+**Ce qui a été fait le 8 septembre au soir, dans l'ordre** (chaque étape a sa
+section plus bas, sous « 0 ter ») : ordres de travail (0016), caisse et
+cuve (0017) et leur écran Paramètres, diagnostic `/parametres/diagnostic`,
+erreur de la fiche véhicule trouvée (`generateStaticParams` + cookies =
+`DYNAMIC_SERVER_USAGE`, six pages passées en `force-dynamic`), situation
+journalière en ensembles (0018 : 8,2 s → 1,4 s), politiques d'accès
+(0019 a fait pire, **0021** l'a corrigée : parc 182 ms, fiche 121, chauffeurs
+134, situations 832), classement des chauffeurs (0020), demandes d'achat
+(0022), visites techniques et observations (0023), Conformité et tableau de
+bord base branchée (0024).
+
+**Les bancs d'essai**, tous dans PGlite avec le seed, à lancer avec
+`PGLITE_DIR=<dossier où @electric-sql/pglite est installé>` (la session
+précédente l'avait dans son bac à sable ; en installer un si besoin) :
+`scripts/tester-*.mts` (`npx tsx`), `scripts/tester-fiche-rendu.mts` avec
+`node --import tsx --import ./scripts/rendu/hook.mjs`, et le banc des
+politiques sous rôle non privilégié (commit b148673). Règle apprise : **une
+politique ou une fonction SQL avec une sous-requête corrélée coûte une
+évaluation de politique par ligne** — CTE matérialisées et sous-plans non
+corrélés ; et **mesurer sous politiques actives** avant de livrer une
+migration de performance.
+
+**Attention.** Le répertoire de travail porte des modifications qui ne
+viennent pas de la session précédente (accueil du téléphone, demandes,
+affectations, fiche rapide, `PROPOSITION-MOBILE.md`) : une autre session y
+travaille. Ne pas les commettre ni les écraser sans savoir.
+
+**En attente du gestionnaire.** Les sept décisions de
+`docs/PROPOSITION-PIECES.md` (pièces de rechange : rien n'est construit) ; le
+journal Vercel n'est plus nécessaire, le diagnostic suffit.
+
+**Prochaines étapes proposées, dans l'ordre :** Transporteurs base branchée
+(lecture des tables 0002, écritures affrètement / mise à disposition /
+prestation / relevé de transport), puis Compte des prestataires (dette déduite
+des achats, interventions, affrètements ; avances en table), Budget
+(enveloppes en table 0002, dépenses lues), Rapports (chaque rapport une
+lecture), courriel au détenteur (notification de la plateforme), pièces de
+rechange après décisions.
 
 ---
 
@@ -1574,19 +1629,21 @@ lectures avant et après une migration. Il reproduit la régression (fiche
   caisse à 1 499 692 F, 12 alertes critiques d'abord ; 137 ms de lecture,
   47 ms d'assemblage.
 
-**À faire, dans l'ordre.**
+**À faire, dans l'ordre** (mis à jour le 9 septembre 2026).
 
-1. ~~Le seed~~ — fait.
-2. **Le premier administrateur** : Authentication › Users › *Invite user* avec
-   l'adresse du gestionnaire, puis dans le SQL Editor :
-   `insert into profil (utilisateur_id, nom, role) values ('<uuid du compte>',
-   'Prénom Nom', 'administrateur');`
-3. **Vercel** : importer le dépôt GitHub, poser les trois variables de
-   `.env.example` (`SUPABASE_SERVICE_ROLE_KEY` sans préfixe `NEXT_PUBLIC_`).
-   Tant que les variables ne sont pas posées, l'application déployée tourne
-   sur son jeu de démonstration — ce qui est déjà une recette utile.
-4. **Le branchement écran par écran** (`src/donnees/` → `src/lib/supabase.ts`),
-   en commençant par les référentiels.
+1. ~~Le seed~~, ~~le premier administrateur~~, ~~Vercel~~ — faits : la
+   production tourne, le gestionnaire s'y connecte en administrateur.
+2. ~~Le branchement écran par écran~~ — fait pour tout le bureau et le
+   téléphone, sauf Transporteurs, Compte des prestataires, Budget, Rapports.
+3. **Transporteurs base branchée** : lecture des tables de la 0002
+   (affretement, mise_a_disposition, prestation, releve_transport, grilles,
+   camions et chauffeurs tiers), écritures des quatre transactions.
+4. **Compte des prestataires** : dette déduite des achats, interventions et
+   affrètements en base ; avances et évaluations (tables 0002).
+5. **Budget** : enveloppes (table 0002) et dépenses lues.
+6. **Rapports** : une lecture par rapport, sur les fonctions existantes.
+7. **Courriel au détenteur** (notification de la plateforme).
+8. **Pièces de rechange**, après les sept décisions de `PROPOSITION-PIECES.md`.
 
 ---
 
