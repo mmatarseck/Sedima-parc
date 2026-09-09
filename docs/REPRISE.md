@@ -9,9 +9,9 @@ Elle dit où en est le projet, ce qui a été décidé, et ce qui reste à faire
 
 **Où en est la production.** L'application tourne sur Vercel (région cdg1)
 avec Supabase ; le gestionnaire pousse (`git push`) et joue les migrations
-dans le SQL Editor. **Jouées : 0001 à 0025** (la 0025 le 9 septembre 2026). Rien à jouer
-(la dernière : `lire_transporteurs()`, le module Transporteurs — section « Les
-Transporteurs base branchée » plus bas). Commit cb71723 poussé ou à pousser selon l'état
+dans le SQL Editor. **Jouées : 0001 à 0026** (0025 et 0026 le 9 septembre 2026). Rien à jouer
+(la dernière : `lire_prestataires()`, le Compte des prestataires — section « Le
+Compte des prestataires base branchée » plus bas). Commits poussés ou à pousser selon l'état
 du dépôt distant (`git log origin/main..HEAD`).
 
 **Tout le bureau lit la base**, sauf trois modules encore sur la
@@ -1773,16 +1773,56 @@ lectures avant et après une migration. Il reproduit la régression (fiche
   vides tant que les saisies réelles ne les nommeront pas. Les rapports
   lisent encore `compte-prestataire-demo.ts` : à brancher avec leur module.
 
+### Le Budget base branché (9 septembre 2026, sans migration)
+
+- Même démarche que les transporteurs et les prestataires : l'arithmétique du
+  suivi quitte `budget-demo.ts` pour un assembleur pur,
+  `src/domaine/assembler-budget.ts` — `SourceBudget` (exercice, enveloppes,
+  dépenses depuis l'ouverture de l'exercice sur la business unit de leur
+  véhicule, demandes d'achat), `donneesBudgetDe()`, `fichePosteDe()`,
+  `cumulDuPoste()`, `suiviDe()`. Les types `DonneesBudget`, `SuiviPoste`,
+  `FichePoste`, `DepenseBudget`, `EngagementBudget` y vivent ;
+  `budget-demo.ts` les ré-exporte, garde la dérivation des enveloppes
+  (`enveloppes()`, que le seed lit) et `sourceBudgetDemo()`, et `donneesBudget()`
+  et `fichePoste()` restent pour les rapports de démonstration.
+  `PROFIL_PAR_POSTE` et `SEUIL_ENVELOPPE` sont montés dans `domaine/budget.ts`.
+- **Base branchée sans migration** : `src/donnees/budget.ts` —
+  `budgetServeur()` lit la table `enveloppe` (0002) sur l'exercice, les
+  `depense` de l'exercice avec leur véhicule (immatriculation, marque,
+  appellation, business unit ; une dépense sans véhicule ne se ventile pas et
+  ne consomme aucune enveloppe, comme en démonstration), et `achatsServeur()`.
+  `sourceDepuisLignes()` est pure, pour le banc. Les pages `/budget` et
+  `/budget/[poste]` assemblent dessus.
+- **L'enveloppe se pose et se corrige depuis la page du poste** : le crayon
+  de la ventilation ouvre la modification (montant, base, commentaire —
+  `CHAMPS.budget`) d'une enveloppe existante, ou la création d'une enveloppe
+  sur un couple hors budget (« Poser une enveloppe »). Le navigateur rejoue
+  le suivi avec la même arithmétique (`suivre`, `attenduADate`,
+  `cumulDuPoste`) : ligne, cumul et courbe suivent. Écriture base :
+  `budget` → table `enveloppe` (`transactions-colonnes.ts`, création avec
+  exercice, poste, business unit, montant, base ; modification limitée au
+  montant, à la base et au commentaire — changer le poste serait une autre
+  enveloppe).
+- **Limite écrite** : les forfaits carburant du parc léger n'existent qu'en
+  démonstration tant que le parc léger n'est pas construit en base ; le
+  carburant s'y lit sans eux.
+- Banc `scripts/tester-budget.mts` : lecture, assemblage, liste poste
+  par poste = démonstration hors forfaits (11 postes, 28 enveloppes,
+  synthèse), fiche carburant (460 dépenses, neuf mois), engagements des
+  pièces, écriture d'une enveloppe puis correction, refus sans base et sans
+  exercice, relecture. Tout passe.
+
 **À faire, dans l'ordre** (mis à jour le 9 septembre 2026).
 
 1. ~~Le seed~~, ~~le premier administrateur~~, ~~Vercel~~ — faits : la
    production tourne, le gestionnaire s'y connecte en administrateur.
 2. ~~Le branchement écran par écran~~ — fait pour tout le bureau et le
-   téléphone, sauf Compte des prestataires, Budget, Rapports.
+   téléphone, sauf Rapports.
 3. ~~**Transporteurs base branchée**~~ — fait le 9 septembre 2026 (0025).
 4. ~~**Compte des prestataires**~~ — fait le 9 septembre 2026 (0026) :
    dette déduite, avances et évaluations lues et saisies.
-5. **Budget** : enveloppes (table 0002) et dépenses lues.
+5. ~~**Budget**~~ — fait le 9 septembre 2026, sans migration : enveloppes
+   lues et saisies, dépenses et engagements lus.
 6. **Rapports** : une lecture par rapport, sur les fonctions existantes.
 7. **Courriel au détenteur** (notification de la plateforme).
 8. **Pièces de rechange**, après les sept décisions de `PROPOSITION-PIECES.md`.

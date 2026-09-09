@@ -156,3 +156,23 @@ export function synthetiser(suivis: SuiviEnveloppe[], horsBudget: number): Synth
 
 /** Le profil d'une saisonnalité plate — douze mois égaux. */
 export const PROFIL_PLAT: number[] = Array.from({ length: 12 }, () => 1 / 12);
+
+/** Au-dessous, une enveloppe coûterait plus cher à tenir qu'elle ne rapporte de maîtrise. */
+export const SEUIL_ENVELOPPE = 500_000;
+
+/**
+ * La saisonnalité de l'aliment : les enlèvements montent d'août à novembre,
+ * retombent en saison des pluies. Elle vaut pour le carburant et les frais de
+ * route, qui suivent l'activité ; pas pour l'assurance, qui se paie d'un coup.
+ * C'est le profil qu'on prête à un poste sans enveloppe, ou à la synthèse d'un
+ * poste : une enveloppe enregistrée porte le sien.
+ */
+const PROFIL_ACTIVITE = [0.075, 0.07, 0.075, 0.08, 0.085, 0.08, 0.075, 0.09, 0.095, 0.095, 0.095, 0.085];
+const PROFIL_ASSURANCE = [0.5, 0, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 0];
+
+export const PROFIL_PAR_POSTE: Partial<Record<PosteDepense, number[]>> = {
+  carburant: PROFIL_ACTIVITE,
+  "frais-de-route": PROFIL_ACTIVITE,
+  peage: PROFIL_ACTIVITE,
+  assurance: PROFIL_ASSURANCE,
+};

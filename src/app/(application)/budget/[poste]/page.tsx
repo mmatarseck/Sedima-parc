@@ -1,14 +1,16 @@
 import { notFound } from "next/navigation";
 import { FichePoste } from "@/composants/budget/FichePoste";
+import { FournisseurEdition } from "@/composants/transactions/ContexteEdition";
+import { fichePosteDe } from "@/domaine/assembler-budget";
 import { titrePage } from "@/domaine/marque";
 import { POSTE_DEPENSE } from "@/domaine/libelles";
-import { fichePoste } from "@/donnees/budget-demo";
+import { budgetServeur } from "@/donnees/budget";
 
 type Props = { params: Promise<{ poste: string }> };
 
 export async function generateMetadata({ params }: Props) {
   const { poste } = await params;
-  const fiche = fichePoste(decodeURIComponent(poste));
+  const fiche = fichePosteDe(await budgetServeur(), decodeURIComponent(poste));
   return { title: titrePage(fiche ? POSTE_DEPENSE[fiche.poste] : "Poste budgétaire introuvable") };
 }
 
@@ -25,11 +27,16 @@ export const dynamic = "force-dynamic";
  * poste et voir la fiche du poste de dépense avec les dépenses qui l'ont
  * impacté », et « le filtre par BU sera appliqué à l'intérieur du poste ».
  * Les postes **hors budget** s'ouvrent de la même façon — leur enveloppe vaut
- * zéro, leurs dépenses sont bien réelles.
+ * zéro, leurs dépenses sont bien réelles. C'est ici que l'enveloppe se pose
+ * et se corrige, business unit par business unit.
  */
 export default async function PagePosteBudgetaire({ params }: Props) {
   const { poste } = await params;
-  const fiche = fichePoste(decodeURIComponent(poste));
+  const fiche = fichePosteDe(await budgetServeur(), decodeURIComponent(poste));
   if (!fiche) notFound();
-  return <FichePoste fiche={fiche} />;
+  return (
+    <FournisseurEdition sujet={`budget:${fiche.poste}`} href={`/budget/${fiche.poste}`}>
+      <FichePoste fiche={fiche} />
+    </FournisseurEdition>
+  );
 }

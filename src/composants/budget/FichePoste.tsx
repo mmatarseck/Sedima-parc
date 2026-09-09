@@ -5,10 +5,13 @@ import { useMemo, useState } from "react";
 import { ChevronLeft } from "lucide-react";
 import { Carte, TableauSimple } from "@/composants/interface/Carte";
 import { Pastille } from "@/composants/interface/Pastille";
-import { ETAT_BUDGET } from "@/domaine/budget";
+import { CHAMPS } from "@/composants/transactions/champs";
+import { useEdition } from "@/composants/transactions/ContexteEdition";
+import { cumulDuPoste, type DepenseBudget, type EngagementBudget, type FichePoste as Fiche } from "@/domaine/assembler-budget";
+import { ETAT_BUDGET, PROFIL_PAR_POSTE, attenduADate, suivre, type Enveloppe, type SuiviEnveloppe } from "@/domaine/budget";
+import type { Creation } from "@/domaine/cloture";
 import { BUSINESS_UNIT, POSTE_DEPENSE } from "@/domaine/libelles";
-import type { BusinessUnit } from "@/domaine/types";
-import type { DepenseBudget, EngagementBudget, FichePoste as Fiche } from "@/donnees/budget-demo";
+import type { BusinessUnit, PosteDepense } from "@/domaine/types";
 import { date as formaterDate, montant, montantCourt, pourcentage } from "@/lib/format";
 
 /* ============================================================================
@@ -34,9 +37,74 @@ function libelleMois(mois: string): string {
 
 const libelleBu = (bu: BusinessUnit | null) => (bu ? BUSINESS_UNIT[bu] : "tout le parc");
 
+/** Une enveloppe posée depuis la page, à la forme du domaine. */
+function fabriquerEnveloppe(exercice: string, poste: PosteDepense) {
+  return (c: Creation): Enveloppe | null => {
+    const v = c.valeurs as Record<string, string | undefined>;
+    const montant = Number(String(v.montant ?? "").replace(/\s/g, ""));
+    if (!Number.isFinite(montant) || montant < 0 || !v.base) return null;
+    return { numero: c.numero, exercice, poste, businessUnit: (v.businessUnit as BusinessUnit | undefined) || null, montant: Math.round(montant), profil: PROFIL_PAR_POSTE[poste] ?? null, base: v.base, commentaire: v.commentaire || null };
+  };
+}
+
 export function FichePoste({ fiche }: { fiche: Fiche }) {
-  const { suivi, depenses, engagements, parMois } = fiche;
+  const { depenses, engagements } = fiche;
+  const { surcharger, demander, creer, creations } = useEdition();
+
+  /*
+   * L'enveloppe se pose et se corrige ici, business unit par business unit.
+   * Ce que le navigateur a saisi — un montant revu, une enveloppe posée sur
+   * un couple hors budget — se rejoue sur le suivi du serveur avec la même
+   * arithmétique : l'état de la ligne, le cumul du poste et la courbe
+   * disent alors la même chose que la liste au prochain chargement.
+   */
+  const posees = creations("budget", fabriquerEnveloppe(fiche.exercice, fiche.poste));
+  const suivi = useMemo(() => {
+    const mois = Number(fiche.aujourdhui.slice(5, 7));
+    const jour = Number(fiche.aujourdhui.slice(8, 10));
+    const joursDuMois = new Date(Date.UTC(Number(fiche.exercice), mois, 0)).getUTCDate();
+    const rejouer = (s: SuiviEnveloppe, e: Enveloppe): SuiviEnveloppe => suivre(e, s.consomme, s.engage, attenduADate(e, mois, jour, joursDuMois));
+    let change = false;
+    const parBu = fiche.suivi.parBu.map((s) => {
+      if (s.enveloppe.numero) {
+        const e = surcharger(s.enveloppe);
+        if (e.montant === s.enveloppe.montant && e.base === s.enveloppe.base && e.commentaire === s.enveloppe.commentaire) return s;
+        change = true;
+        return rejouer(s, { ...e, montant: Number(e.montant) });
+      }
+      const posee = posees.find((e) => e.businessUnit === s.enveloppe.businessUnit);
+      if (!posee) return s;
+      change = true;
+      return rejouer(s, posee);
+    });
+    return change ? { ...fiche.suivi, parBu, cumul: cumulDuPoste(fiche.exercice, fiche.poste, parBu) } : fiche.suivi;
+  }, [fiche, posees, surcharger]);
   const cumul = suivi.cumul;
+  /* La courbe suit l'enveloppe corrigée : l'attendu se recalcule sur le nouveau montant. */
+  const parMois = useMemo(() => {
+    if (cumul === fiche.suivi.cumul) return fiche.parMois;
+    const moisCourant = Number(fiche.aujourdhui.slice(5, 7));
+    return fiche.parMois.map((p, i) => {
+      const m = i + 1;
+      const joursDuMoisM = new Date(Date.UTC(Number(fiche.exercice), m, 0)).getUTCDate();
+      const jourM = m === moisCourant ? Number(fiche.aujourdhui.slice(8, 10)) : joursDuMoisM;
+      return { ...p, attendu: attenduADate(cumul.enveloppe, m, jourM, joursDuMoisM) };
+    });
+  }, [fiche, cumul]);
+
+  function modifierEnveloppe(s: SuiviEnveloppe) {
+    const e = s.enveloppe;
+    if (e.numero) {
+      demander({ type: "budget", numero: e.numero, titre: `Enveloppe ${e.numero} · ${POSTE_DEPENSE[e.poste]} · ${libelleBu(e.businessUnit)}`, valeurs: e as unknown as Record<string, unknown>, champs: CHAMPS.budget });
+      return;
+    }
+    creer({
+      type: "budget",
+      titre: `Poser une enveloppe · ${POSTE_DEPENSE[e.poste]} · ${libelleBu(e.businessUnit)}`,
+      champs: CHAMPS.budget,
+      valeurs: { date: `${fiche.exercice}-01-01`, exercice: fiche.exercice, poste: e.poste, businessUnit: e.businessUnit ?? "", base: `posée en cours d'exercice ${fiche.exercice}` },
+    });
+  }
   const etat = ETAT_BUDGET[cumul.etat];
   const horsBudget = cumul.etat === "sans-budget";
 
@@ -124,13 +192,15 @@ export function FichePoste({ fiche }: { fiche: Fiche }) {
           <CourbeCumul parMois={parMois} budget={cumul.enveloppe.montant} />
         </Carte>
 
-        <Carte titre="La ventilation" precision="La maille des enveloppes : le carburant de l'Aliment ne se compense pas avec les pneumatiques de l'Abattoir" sansMarge>
+        <Carte titre="La ventilation" precision="La maille des enveloppes : le carburant de l'Aliment ne se compense pas avec les pneumatiques de l'Abattoir. Chaque ligne se corrige ici, ou se pose quand elle manque" sansMarge>
           <TableauSimple<(typeof suivi.parBu)[number]>
             reglages="budget.ventilation"
             cle={(s) => s.enveloppe.businessUnit ?? "parc"}
             lignes={suivi.parBu}
             filtrable={false}
             vide="Aucune ventilation."
+            numero={(s) => s.enveloppe.numero || `${s.enveloppe.poste}:${s.enveloppe.businessUnit ?? "parc"}`}
+            surModifier={modifierEnveloppe}
             colonnes={[
               { cle: "bu", libelle: "Business unit", rendu: (s) => <span className="block truncate font-medium text-texte">{libelleBu(s.enveloppe.businessUnit)}</span> },
               {

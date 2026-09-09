@@ -40,7 +40,8 @@ export type TableBranchee =
   | "mise_a_disposition"
   | "prestation"
   | "avance_prestataire"
-  | "evaluation_prestataire";
+  | "evaluation_prestataire"
+  | "enveloppe";
 
 const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   releve: "releve_kilometrique",
@@ -65,6 +66,7 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   prestation: "prestation",
   avance: "avance_prestataire",
   evaluation: "evaluation_prestataire",
+  budget: "enveloppe",
 };
 
 /** La table d'un type ; nulle tant qu'il n'en a pas. Le statut est à part : il s'écrit sur le véhicule. */
@@ -406,6 +408,18 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
         },
       };
     }
+    case "budget": {
+      /* Une enveloppe : un montant pour un poste, une business unit (ou tout le
+         parc) et un exercice, avec la base qui la justifie — c'est la phrase
+         qui se discute en comité, pas le chiffre. */
+      const montant = nombre(v.montant);
+      const exercice = texte(v.exercice) ?? texte(v.date)?.slice(0, 4) ?? null;
+      if (!exercice || !/^\d{4}$/.test(exercice)) return { refus: "enveloppe sans exercice" };
+      if (!texte(v.poste)) return { refus: "enveloppe sans poste" };
+      if (montant === null || montant < 0) return { refus: "enveloppe sans montant" };
+      if (!texte(v.base)) return { refus: "enveloppe sans base" };
+      return { ligne: { numero, exercice, poste: texte(v.poste), business_unit: texte(v.businessUnit), montant: Math.round(montant), profil: null, base: texte(v.base), commentaire: texte(v.commentaire) } };
+    }
     case "avance": {
       /* Un décaissement fait avant le service : il engage la trésorerie, il dit qui l'a décidé. */
       const montant = nombre(v.montant);
@@ -474,6 +488,8 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   /* L'avance s'impute après coup : c'est sa vie même. */
   avance: { date: "date", montant: "montant", motif: "motif", imputeeSur: "imputee_sur", dateImputation: "date_imputation", autorisePar: "autorise_par" },
   evaluation: { date: "date", qualite: "qualite", delai: "delai", prix: "prix", commentaire: "commentaire" },
+  /* L'enveloppe se corrige en comité : le montant et la base ; jamais son poste ni sa business unit — ce serait une autre enveloppe. */
+  budget: { montant: "montant", base: "base", commentaire: "commentaire" },
 };
 
 const NUMERIQUES = new Set([
