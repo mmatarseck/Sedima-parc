@@ -6,6 +6,7 @@ import {
   Handshake,
   Inbox,
   LayoutGrid,
+  Package,
   PiggyBank,
   Settings,
   ShieldCheck,
@@ -84,6 +85,8 @@ export const NAVIGATION: GroupeNavigation[] = [
     entrees: [
       { module: "documents", href: "/conformite", libelle: "Conformité", icone: ShieldCheck, livre: true },
       { module: "maintenance", href: "/maintenance", libelle: "Maintenance", icone: Wrench, livre: true },
+      /* Les pièces de rechange vivent avec la maintenance — mêmes droits, même atelier (décisions du 9 septembre 2026). */
+      { module: "maintenance", href: "/pieces", libelle: "Pièces de rechange", icone: Package, livre: true },
       { module: "incidents", href: "/incidents", libelle: "Incidents & sinistres", icone: TriangleAlert, livre: true },
       { module: "releves", href: "/carburant", libelle: "Carburant", icone: Fuel, livre: true },
       { module: "demandes", href: "/demandes", libelle: "Demandes", icone: Inbox, livre: true },

@@ -10,6 +10,7 @@
  * ==========================================================================*/
 
 import type { ChampEdition } from "@/domaine/cloture";
+import { CATEGORIE_PIECE, ETAT_PNEU, NATURE_MOUVEMENT, POSITIONS_PNEU, UNITE_PIECE } from "@/domaine/pieces";
 import { URGENCE_ACHAT } from "@/domaine/caisse";
 import { SOURCE_TARIF, STATUT_AFFRETEMENT } from "@/domaine/transporteurs";
 import { ENERGIE } from "@/domaine/libelles";
@@ -113,6 +114,51 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "motif", libelle: "Motif de l'avance", type: "texte", obligatoire: true },
     { cle: "imputeeSur", libelle: "Imputée sur la pièce", type: "texte" },
     { cle: "autorisePar", libelle: "Autorisée par", type: "texte", obligatoire: true },
+  ],
+  /* Les pièces de rechange (décisions du 9 septembre 2026). La pièce d'un
+     mouvement ou d'un pneu se choisit sur l'écran, qui connaît le référentiel :
+     ici, sa référence se tape. */
+  piece: [
+    { cle: "reference", libelle: "Référence (casier)", type: "texte", obligatoire: true },
+    { cle: "designation", libelle: "Désignation", type: "texte", obligatoire: true },
+    { cle: "categorie", libelle: "Catégorie", type: "choix", options: options(CATEGORIE_PIECE), obligatoire: true },
+    { cle: "unite", libelle: "Unité", type: "choix", options: Object.entries(UNITE_PIECE).map(([valeur, u]) => ({ valeur, libelle: u.libelle })), obligatoire: true },
+    { cle: "referenceConstructeur", libelle: "Référence constructeur", type: "texte" },
+    { cle: "compatibilites", libelle: "Compatibilités (marques et modèles, séparés par des points-virgules)", type: "texte" },
+    { cle: "fournisseur", libelle: "Fournisseur habituel", type: "texte" },
+    { cle: "prixReference", libelle: "Prix de référence", type: "nombre", unite: "F" },
+    { cle: "stockMinimum", libelle: "Stock minimum", type: "nombre", obligatoire: true },
+    { cle: "stockMaximum", libelle: "Stock maximum (quantité visée)", type: "nombre" },
+    { cle: "commentaire", libelle: "Commentaire", type: "texte" },
+  ],
+  mouvement: [
+    DATE("date", "Date du mouvement"),
+    { cle: "nature", libelle: "Nature", type: "choix", options: Object.entries(NATURE_MOUVEMENT).map(([valeur, n]) => ({ valeur, libelle: n.libelle })), obligatoire: true },
+    { cle: "pieceNumero", libelle: "Pièce", type: "texte", obligatoire: true },
+    { cle: "quantite", libelle: "Quantité", type: "nombre", obligatoire: true },
+    { cle: "prixUnitaire", libelle: "Prix unitaire payé (entrée)", type: "nombre", unite: "F" },
+    { cle: "demandeNumero", libelle: "Demande d'achat livrée (entrée)", type: "reference", references: ["achat"] },
+    { cle: "fournisseur", libelle: "Fournisseur (entrée)", type: "texte" },
+    { cle: "ordreNumero", libelle: "Ordre de travail servi (sortie)", type: "reference", references: ["ordre"] },
+    { cle: "interventionNumero", libelle: "Intervention servie (sortie)", type: "reference", references: ["intervention"] },
+    { cle: "vehiculeId", libelle: "Véhicule (sortie)", type: "choix", options: optionsVehicules() },
+    { cle: "ecart", libelle: "Écart compté (régularisation, signé)", type: "nombre" },
+    { cle: "motif", libelle: "Motif", type: "texte" },
+  ],
+  pneu: [
+    { cle: "dimension", libelle: "Dimension", type: "texte", obligatoire: true },
+    { cle: "marque", libelle: "Marque", type: "texte" },
+    { cle: "numeroSerie", libelle: "Numéro de série ou DOT", type: "texte" },
+    { cle: "pieceNumero", libelle: "Pièce du référentiel (la dimension)", type: "texte" },
+    { cle: "etat", libelle: "État", type: "choix", options: Object.entries(ETAT_PNEU).map(([valeur, e]) => ({ valeur, libelle: e.libelle })), obligatoire: true },
+    { cle: "vehiculeId", libelle: "Véhicule (monté ou déposé)", type: "choix", options: optionsVehicules() },
+    { cle: "position", libelle: "Position", type: "choix", options: POSITIONS_PNEU.map((p) => ({ valeur: p, libelle: p })) },
+    { cle: "datePose", libelle: "Posé le", type: "date" },
+    { cle: "kmPose", libelle: "Compteur à la pose", type: "nombre", unite: "km" },
+    { cle: "dateDepose", libelle: "Déposé le", type: "date" },
+    { cle: "kmDepose", libelle: "Compteur à la dépose", type: "nombre", unite: "km" },
+    { cle: "rechapages", libelle: "Rechapages", type: "nombre" },
+    { cle: "commentaire", libelle: "Commentaire", type: "texte" },
   ],
   evaluation: [
     DATE("date", "Date de l'évaluation"),

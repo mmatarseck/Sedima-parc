@@ -22,6 +22,9 @@ export type TypeTransaction =
   | "transport"
   | "avance"
   | "evaluation"
+  | "piece"
+  | "mouvement"
+  | "pneu"
   | "budget"
   | "affectation"
   | "attelage"
@@ -70,6 +73,11 @@ export const TYPE_TRANSACTION: Record<TypeTransaction, DefinitionTypeTransaction
      deux faits que rien d'autre ne porte, donc deux transactions à part. */
   avance: { prefixe: "AVA", libelle: "Avance à un prestataire", ongletVehicule: null, ongletChauffeur: null },
   evaluation: { prefixe: "EVA", libelle: "Évaluation d'un service", ongletVehicule: null, ongletChauffeur: null },
+  /* Les pièces de rechange (décisions du 9 septembre 2026) : la fiche d'une
+     pièce, un mouvement du magasin, un pneu suivi un par un. */
+  piece: { prefixe: "PCE", libelle: "Pièce de rechange", ongletVehicule: null, ongletChauffeur: null },
+  mouvement: { prefixe: "MVT", libelle: "Mouvement de stock", ongletVehicule: "entretien", ongletChauffeur: null },
+  pneu: { prefixe: "PNE", libelle: "Pneu", ongletVehicule: "entretien", ongletChauffeur: null },
   budget: { prefixe: "BUD", libelle: "Enveloppe budgétaire", ongletVehicule: null, ongletChauffeur: null },
   affectation: { prefixe: "AFF", libelle: "Affectation", ongletVehicule: "affectations", ongletChauffeur: "affectations" },
   attelage: { prefixe: "ATT", libelle: "Attelage", ongletVehicule: "affectations", ongletChauffeur: null },

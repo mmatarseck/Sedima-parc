@@ -121,6 +121,10 @@ export const CHAMP_DATE: Record<TypeTransaction, string> = {
   transport: "date",
   avance: "date",
   evaluation: "date",
+  /* Une pièce et un pneu ne se datent pas ; un mouvement se rattache au mois de sa date. */
+  piece: "",
+  mouvement: "date",
+  pneu: "",
   /* Une enveloppe couvre un exercice : elle ne tombe pas dans un mois. */
   budget: "",
   "mise-a-disposition": "mois",

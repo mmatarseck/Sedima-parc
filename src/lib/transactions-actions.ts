@@ -76,6 +76,16 @@ async function prestataireIdParNumero(client: SupabaseClient, numero: unknown): 
   return r.data?.id ?? null;
 }
 
+/** Une pièce de rechange, par son numéro PCE ou par sa référence de casier. */
+async function pieceIdDe(client: SupabaseClient, numeroOuReference: unknown): Promise<string | null> {
+  if (typeof numeroOuReference !== "string" || !numeroOuReference.trim()) return null;
+  const cle = numeroOuReference.trim();
+  const parNumero = await client.from("piece").select("id").eq("numero", cle).limit(1).maybeSingle<{ id: string }>();
+  if (parNumero.data) return parNumero.data.id;
+  const parReference = await client.from("piece").select("id").ilike("reference", cle).limit(1).maybeSingle<{ id: string }>();
+  return parReference.data?.id ?? null;
+}
+
 /** Un camion du référentiel tiers, par sa plaque telle qu'on l'écrit ; nul quand la plaque n'y est pas — elle restera libre. */
 async function camionTiersDe(client: SupabaseClient, plaque: unknown): Promise<string | null> {
   if (typeof plaque !== "string" || !plaque.trim()) return null;
@@ -145,7 +155,10 @@ async function rattacher(client: SupabaseClient, c: Creation): Promise<Rattachem
     if (!v.auteur) v.auteur = c.auteur;
     if (!v.pieceLibelle) v.pieceLibelle = (await libellePieceDe(client, v.pieceNumero)) ?? undefined;
   }
-  return { vehiculeId, chauffeurId, prestataireId, camionTiers, affretementId };
+  /* Un mouvement de stock ou un pneu cite sa pièce de rechange ; le mouvement nomme qui l'a fait. */
+  const pieceId = c.type === "mouvement" || c.type === "pneu" ? await pieceIdDe(client, v.pieceNumero) : null;
+  if (c.type === "mouvement" && !v.auteur) v.auteur = c.auteur;
+  return { vehiculeId, chauffeurId, prestataireId, camionTiers, affretementId, pieceId };
 }
 
 /** Le numéro suivant du type pour l'année, d'après ce que la table porte déjà. */

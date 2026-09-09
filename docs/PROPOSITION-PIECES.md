@@ -201,3 +201,27 @@ Pour chacune, la proposition retenue est en premier ; dire « d'accord » suffit
 Deux questions ouvertes, sans proposition : y a-t-il aujourd'hui un magasinier
 désigné, et le stock initial sera-t-il compté (un premier inventaire) ou repris
 d'une liste existante ?
+
+## Décidé (9 septembre 2026)
+
+Les réponses du gestionnaire, dans l'ordre des sept questions :
+
+1. **Un seul magasin**, l'atelier central.
+2. **Le stock se tient en quantités et se déduit des mouvements** — sans
+   valorisation au coût moyen pondéré : « le stock n'est pas géré sur X3 pour
+   le moment, ça passe directement en charges à l'achat ». Le dernier prix
+   d'entrée donne une valeur indicative, rien de plus.
+3. **Sage X3 ne tient pas de stock de pièces** ; la charge passe à l'achat,
+   à l'entrée en magasin comme aujourd'hui. L'application tient le stock
+   technique et cite le bon de commande à chaque entrée.
+4. **Toute sortie est rattachée** (ordre, intervention ou véhicule) — mais,
+   conséquence du point 2, **la sortie ne crée pas de dépense** : elle dit
+   quel véhicule a consommé quoi.
+5. **Suivi individuel des pneus dès le départ.**
+6. **Pas de nouveau profil** : les droits du module Maintenance.
+7. **Pas de QR de casier** pour l'instant.
+
+Construit le soir même : référentiel, stock déduit, mouvements, pneus, fiche,
+écritures et banc (migration 0029). Restent, dans l'ordre proposé : sortir et
+recevoir depuis le téléphone, le réapprovisionnement qui prépare une demande
+d'achat, l'inventaire.

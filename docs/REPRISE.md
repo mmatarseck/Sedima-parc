@@ -19,7 +19,7 @@ groupé par Resend). Au passage : les fiches de transfert ont quitté le rail
 pour la fiche véhicule, et le sélecteur de colonnes des rapports reste dans
 l'écran.
 
-**Migrations : 0001 à 0028 jouées** (0027 et 0028 confirmées le 9 septembre 2026 au soir). Rien en attente dans le SQL Editor.
+**Migrations : 0001 à 0028 jouées** (0027 et 0028 confirmées le 9 septembre 2026 au soir). **En attente dans le SQL Editor : la 0029** (pièces de rechange : tables `piece`, `mouvement_stock`, `pneu`) — sans elle, l'écran `/pieces` lit un magasin vide en production (avertissement en console, pas d'erreur).
 Commits à pousser selon `git log origin/main..HEAD`.
 
 **À poser sur Vercel pour que les courriels partent** : `RESEND_API_KEY`,
@@ -51,9 +51,7 @@ viennent pas de cette session (accueil du téléphone, demandes, affectations,
 fiche rapide, `PROPOSITION-MOBILE.md`) : une autre session y travaille. Ne
 pas les commettre ni les écraser sans savoir.
 
-**En attente du gestionnaire.** Les sept décisions de
-`docs/PROPOSITION-PIECES.md` (pièces de rechange : rien n'est construit) ;
-le compte Resend et ses variables ; l'essai en ligne de ce qui vient d'être
+**En attente du gestionnaire.** Jouer la 0029 ; le compte Resend et ses variables ; l'essai en ligne de ce qui vient d'être
 branché (un rapport, la page d'un poste budgétaire, le compte d'un
 prestataire, une fiche de transfert créée depuis la fiche véhicule → la
 cloche du détenteur).
@@ -66,10 +64,17 @@ recevoir — sans migration, les tables datent de la 0004.
 Limites écrites dans chaque section : `lire_parc()` ne rend que les
 affectations en cours, le coût d'un incident n'est pas rattaché en base.
 
-**Prochaines étapes proposées** : jouer la 0027 et poser les variables du
-courriel ; vérifier en ligne ; puis les pièces de rechange, après les sept
-décisions ; la maintenance des légers et les dates de début des plans car
-restent à saisir dans le dossier.
+**Les pièces de rechange sont construites** (9 septembre 2026, soir, section
+« Les pièces de rechange : magasin, mouvements, pneus » plus bas) sur les
+sept décisions du gestionnaire : un magasin, stock en quantités déduit des
+mouvements, charge à l'achat, sorties rattachées, pneus un par un, droits du
+module Maintenance, pas de QR.
+
+**Prochaines étapes proposées** : jouer la 0029 et poser les variables du
+courriel ; vérifier en ligne ; puis la suite des pièces (sortir et recevoir
+depuis le téléphone, le réapprovisionnement qui prépare une demande d'achat,
+l'inventaire) ; la maintenance des légers et les dates de début des plans
+car restent à saisir dans le dossier.
 
 ---
 
@@ -1972,6 +1977,72 @@ lectures avant et après une migration. Il reproduit la régression (fiche
   compte sans rôle refusés. Piège appris : `select (f()).*` appelle la
   fonction une fois par colonne — `select * from f()`.
 
+### Les pièces de rechange : magasin, mouvements, pneus (9 septembre 2026, migration 0029)
+
+Les sept décisions du gestionnaire, prises le 9 septembre 2026 sur
+`docs/PROPOSITION-PIECES.md` : **un seul magasin** (l'atelier central) ;
+**le stock se tient en quantités et se déduit des mouvements** ; **la charge
+passe à l'achat**, comme aujourd'hui — Sage X3 ne tient pas de stock de
+pièces, une sortie ne crée donc *aucune* dépense (elle dit quel véhicule a
+consommé quoi ; le dernier prix d'entrée donne une valeur indicative, sans
+coût moyen pondéré) ; **toute sortie est rattachée** à un ordre, une
+intervention ou un véhicule ; **les pneus se suivent un par un dès le
+départ** ; **pas de nouveau profil** (droits du module Maintenance) ; **pas
+de QR de casier** pour l'instant.
+
+- **Domaine** `src/domaine/pieces.ts` : `Piece` (référence de casier,
+  catégorie, unité, compatibilités, fournisseur PRE, prix de référence,
+  minimum et maximum), `MouvementStock` (entrée, sortie, retour,
+  régularisation — la quantité toujours positive, l'écart signé sur la
+  régularisation, `variation()`), `stockDe()` qui déduit pour chaque
+  pièce la quantité, l'état (épuisée, sous le seuil, dormante à 183 jours
+  sans mouvement, à jour), le dernier prix, la valeur indicative, les
+  sorties sur douze mois, la quantité à commander pour revenir au maximum ;
+  `Pneu` (en stock, monté, déposé, rebuté ; véhicule, position, compteur à
+  la pose et à la dépose, rechapages, `kmParcourus()`). Trois fabricants
+  depuis une création du navigateur.
+- **Migration 0029** : `piece` (référence unique à la casse près),
+  `mouvement_stock` (insertion seule ; contraintes : une sortie cite un
+  ordre, une intervention ou un véhicule ; une régularisation porte un écart
+  et un motif ; régulariser demande le niveau *gestion* du module), `pneu`
+  (monté ⇒ véhicule, en stock ⇒ sans véhicule). Politiques sur
+  `peut('maintenance', …)`.
+- **Lecture** `src/donnees/pieces.ts` (`piecesServeur()`, trois
+  lectures bornées, magasin vide sans erreur tant que la 0029 n'est pas
+  jouée) ; **démonstration** `pieces-demo.ts` : quarante références,
+  entrées puis sorties déduites des interventions du jeu (vidange, freins,
+  batterie…), réapprovisionnement la veille quand une sortie dépasserait le
+  stock (le magasin ne descend jamais sous zéro), un retour, trois
+  régularisations d'inventaire (une pièce épuisée, une sous le seuil),
+  dix-sept pneus.
+- **Écritures** : types `piece` (PCE), `mouvement` (MVT), `pneu`
+  (PNE) dans `reference.ts`, `cloture.ts`, `champs.ts`,
+  `transactions-colonnes.ts` (refus du domaine avant la base) ;
+  `transactions-actions.ts` résout la pièce par son numéro ou sa
+  référence (`pieceIdDe`).
+- **Écrans** : `/pieces` (`EcranPieces`, vues Stock, Mouvements, Pneus
+  ; bandeau : références actives, valeur indicative, à réapprovisionner,
+  sorties 12 mois, pneus montés ; boutons Nouvelle pièce, Entrée, Sortie,
+  Retour, Régularisation, Nouveau pneu — le champ « pièce » est un choix sur
+  le référentiel, les champs varient avec la nature) ; `/pieces/PCE-…`
+  (`FichePiece` : identité, approvisionnement, mouvements, pneus de la
+  dimension ; Entrée et Sortie pré-remplies). Les deux écrans partagent le
+  sujet d'édition « pieces » : une sortie saisie sur la fiche se voit dans
+  le journal, et le stock déduit est le même partout. Une sortie mène à la
+  fiche du véhicule servi (onglet Entretien). Entrée « Pièces de rechange »
+  au rail, groupe Suivi, sous Maintenance.
+- **Banc** `scripts/tester-pieces.mts` (PGlite) : les trois tables, deux
+  pièces et cinq mouvements écrits par `ligneCreation`, un pneu monté,
+  refus du domaine (sortie dans le vide, régularisation sans motif, sans
+  pièce, quantité nulle, pneu monté sans véhicule) et de la base (mêmes
+  contraintes, référence en doublon, pneu en stock avec véhicule), relecture
+  par les mêmes lectures que le serveur : stock déduit 4, dernier prix de
+  l'entrée, sorties sur douze mois, fournisseur du référentiel, pneu relu.
+- **Limites, à faire ensuite** : les kilomètres parcourus d'un pneu monté
+  demandent le compteur du véhicule (non lu ici : « en cours ») ; pas de
+  sortie depuis le téléphone ; « à commander » ne prépare pas encore de
+  demande d'achat ; pas d'inventaire groupé.
+
 **À faire, dans l'ordre** (mis à jour le 9 septembre 2026).
 
 1. ~~Le seed~~, ~~le premier administrateur~~, ~~Vercel~~ — faits : la
@@ -1989,7 +2060,11 @@ lectures avant et après une migration. Il reproduit la régression (fiche
    `notification`, cloche en base, courriel groupé par Resend dès que
    `RESEND_API_KEY` et `COURRIEL_EXPEDITEUR` sont posés sur Vercel.
 8. ~~**Parc léger lu en base**~~ et ~~**discussions en base (0028)**~~ — faits le 9 septembre 2026 au soir.
-9. **Pièces de rechange**, après les sept décisions de `PROPOSITION-PIECES.md`.
+9. ~~**Pièces de rechange**~~ — fait le 9 septembre 2026 au soir (0029, à
+   jouer) : référentiel, stock déduit, mouvements, pneus, fiche, écritures.
+10. **La suite des pièces** : sortir et recevoir depuis le téléphone (atelier),
+    le réapprovisionnement qui prépare une demande d'achat depuis « à
+    commander », l'inventaire qui produit ses régularisations d'un coup.
 
 ---
 

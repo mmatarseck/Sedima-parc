@@ -41,7 +41,10 @@ export type TableBranchee =
   | "prestation"
   | "avance_prestataire"
   | "evaluation_prestataire"
-  | "enveloppe";
+  | "enveloppe"
+  | "piece"
+  | "mouvement_stock"
+  | "pneu";
 
 const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   releve: "releve_kilometrique",
@@ -66,6 +69,9 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   prestation: "prestation",
   avance: "avance_prestataire",
   evaluation: "evaluation_prestataire",
+  piece: "piece",
+  mouvement: "mouvement_stock",
+  pneu: "pneu",
   budget: "enveloppe",
 };
 
@@ -83,6 +89,8 @@ export interface Rattachement {
   camionTiers?: string | null;
   /** L'affrètement que cite une ligne de relevé, résolu par son numéro. */
   affretementId?: string | null;
+  /** La pièce de rechange qu'un mouvement ou un pneu cite, résolue par son numéro. */
+  pieceId?: string | null;
 }
 
 /**
@@ -420,6 +428,35 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       if (!texte(v.base)) return { refus: "enveloppe sans base" };
       return { ligne: { numero, exercice, poste: texte(v.poste), business_unit: texte(v.businessUnit), montant: Math.round(montant), profil: null, base: texte(v.base), commentaire: texte(v.commentaire) } };
     }
+    case "piece": {
+      /* Une fiche du référentiel : sa référence de casier, sa désignation, ses compatibilités, son seuil. */
+      if (!texte(v.reference)) return { refus: "pièce sans référence" };
+      if (!texte(v.designation)) return { refus: "pièce sans désignation" };
+      const compatibilites = (texte(v.compatibilites) ?? "").split(/[;,]/).map((x) => x.trim()).filter(Boolean);
+      return { ligne: { numero, reference: texte(v.reference), designation: texte(v.designation), categorie: texte(v.categorie) ?? "autre", unite: texte(v.unite) ?? "piece", reference_constructeur: texte(v.referenceConstructeur), compatibilites, prestataire_id: r.prestataireId, fournisseur: texte(v.fournisseur), prix_reference: nombre(v.prixReference) === null ? null : Math.round(nombre(v.prixReference)!), stock_minimum: Math.max(0, Math.round(nombre(v.stockMinimum) ?? 0)), stock_maximum: nombre(v.stockMaximum) === null ? null : Math.max(0, Math.round(nombre(v.stockMaximum)!)), actif: v.actif === undefined ? true : booleen(v.actif), commentaire: texte(v.commentaire) } };
+    }
+    case "mouvement": {
+      /* Le stock ne se saisit pas, il se déduit : une entrée cite sa livraison, une sortie ce qu'elle sert, une régularisation son motif. */
+      const nature = texte(v.nature) ?? "sortie";
+      const quantite = nombre(v.quantite);
+      const ecart = nombre(v.ecart);
+      if (!r.pieceId) return { refus: "mouvement sans pièce" };
+      if (!texte(v.date)) return { refus: "mouvement sans date" };
+      if (!["entree", "sortie", "retour", "regularisation"].includes(nature)) return { refus: "mouvement d'une nature inconnue" };
+      if (nature === "regularisation") {
+        if (ecart === null || ecart === 0) return { refus: "régularisation sans écart" };
+        if (!texte(v.motif)) return { refus: "régularisation sans motif" };
+      } else if (quantite === null || quantite <= 0) return { refus: "mouvement sans quantité" };
+      if (nature === "sortie" && !r.vehiculeId && !texte(v.ordreNumero) && !texte(v.interventionNumero)) return { refus: "sortie sans ordre, intervention ni véhicule : rien ne sort dans le vide" };
+      return { ligne: { numero, date: texte(v.date), nature, piece_id: r.pieceId, quantite: nature === "regularisation" ? Math.abs(ecart!) : quantite, ecart: nature === "regularisation" ? ecart : null, prix_unitaire: nombre(v.prixUnitaire) === null ? null : Math.round(nombre(v.prixUnitaire)!), demande_numero: texte(v.demandeNumero), ordre_numero: texte(v.ordreNumero), intervention_numero: texte(v.interventionNumero), vehicule_id: r.vehiculeId, fournisseur: texte(v.fournisseur), motif: texte(v.motif), auteur_nom: texte(v.auteur) } };
+    }
+    case "pneu": {
+      /* Un pneu, un par un : sa dimension, et s'il est monté, son véhicule, sa position, ses kilomètres de pose. */
+      const etat = texte(v.etat) ?? (r.vehiculeId ? "monte" : "en-stock");
+      if (!texte(v.dimension)) return { refus: "pneu sans dimension" };
+      if (etat === "monte" && !r.vehiculeId) return { refus: "pneu monté sans véhicule" };
+      return { ligne: { numero, piece_id: r.pieceId, marque: texte(v.marque) ?? "", dimension: texte(v.dimension), numero_serie: texte(v.numeroSerie), etat, vehicule_id: etat === "en-stock" ? null : r.vehiculeId, position: texte(v.position), date_pose: texte(v.datePose), km_pose: nombre(v.kmPose) === null ? null : Math.round(nombre(v.kmPose)!), date_depose: texte(v.dateDepose), km_depose: nombre(v.kmDepose) === null ? null : Math.round(nombre(v.kmDepose)!), rechapages: Math.max(0, Math.round(nombre(v.rechapages) ?? 0)), commentaire: texte(v.commentaire) } };
+    }
     case "avance": {
       /* Un décaissement fait avant le service : il engage la trésorerie, il dit qui l'a décidé. */
       const montant = nombre(v.montant);
@@ -488,6 +525,9 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   /* L'avance s'impute après coup : c'est sa vie même. */
   avance: { date: "date", montant: "montant", motif: "motif", imputeeSur: "imputee_sur", dateImputation: "date_imputation", autorisePar: "autorise_par" },
   evaluation: { date: "date", qualite: "qualite", delai: "delai", prix: "prix", commentaire: "commentaire" },
+  /* La fiche d'une pièce se corrige ; un mouvement, jamais (on le corrige par un autre) ; un pneu suit sa vie : monté, déposé, rebuté. */
+  piece: { reference: "reference", designation: "designation", categorie: "categorie", unite: "unite", referenceConstructeur: "reference_constructeur", fournisseur: "fournisseur", prixReference: "prix_reference", stockMinimum: "stock_minimum", stockMaximum: "stock_maximum", actif: "actif", commentaire: "commentaire" },
+  pneu: { marque: "marque", dimension: "dimension", numeroSerie: "numero_serie", etat: "etat", position: "position", datePose: "date_pose", kmPose: "km_pose", dateDepose: "date_depose", kmDepose: "km_depose", rechapages: "rechapages", commentaire: "commentaire" },
   /* L'enveloppe se corrige en comité : le montant et la base ; jamais son poste ni sa business unit — ce serait une autre enveloppe. */
   budget: { montant: "montant", base: "base", commentaire: "commentaire" },
 };
@@ -495,7 +535,7 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
 const NUMERIQUES = new Set([
   "km", "litres", "prix_litre", "montant", "kilometrage", "immobilisation_jours", "jours", "immobilisation_prevue_jours", "montant_estime", "montant_engage", "montant_reel",
   "tonnage", "tonnage_pese", "tonnage_livre", "prix", "minimum", "montant_facture", "prix_exceptionnel", "complement_tarif", "jours_panne", "jours_roules", "carburant_litres", "carburant_montant", "km_parcourus", "tonnes_transportees", "quantite", "prix_unitaire",
-  "qualite", "delai",
+  "qualite", "delai", "quantite", "ecart", "prix_unitaire", "prix_reference", "stock_minimum", "stock_maximum", "km_pose", "km_depose", "rechapages",
 ]);
 /* Les colonnes qui gardent leurs décimales : des litres, des tonnes, des quantités. */
 const DECIMALES = new Set(["litres", "tonnage", "tonnage_pese", "tonnage_livre", "carburant_litres", "tonnes_transportees", "quantite"]);
