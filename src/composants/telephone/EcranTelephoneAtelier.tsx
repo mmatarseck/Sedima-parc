@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Check, Play, Wrench, X } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, Check, Play, Wrench, X } from "lucide-react";
 import { CHAMPS, champsCreation } from "@/composants/transactions/champs";
 import { FournisseurEdition, useEdition } from "@/composants/transactions/ContexteEdition";
 import { fabriquerLigneOrdre } from "@/composants/transactions/fabriques";
@@ -131,6 +131,21 @@ function Interieur({ ordres, travaux, statuts, aujourdhui }: { ordres: LigneOrdr
           </button>
         ))}
       </Bloc>
+
+      {agit ? (
+        /* Les pièces, depuis la fosse : sortir pour le véhicule qu'on répare,
+           recevoir une livraison (décisions du 9 septembre 2026). */
+        <div className="grid grid-cols-2 gap-2">
+          <Link href="/telephone/pieces?geste=sortie" className="bouton-secondaire h-11 justify-center rounded-[12px] text-[13px]">
+            <ArrowUpFromLine className="size-4 text-texte-2" strokeWidth={2} />
+            Sortir une pièce
+          </Link>
+          <Link href="/telephone/pieces?geste=entree" className="bouton-secondaire h-11 justify-center rounded-[12px] text-[13px]">
+            <ArrowDownToLine className="size-4 text-texte-2" strokeWidth={2} />
+            Recevoir
+          </Link>
+        </div>
+      ) : null}
 
       <Bloc titre="Planifiés">
         {planifies.length === 0 ? <p className="meta py-1">Aucun rendez-vous pris.</p> : null}

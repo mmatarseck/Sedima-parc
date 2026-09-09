@@ -71,11 +71,11 @@ mouvements, charge à l'achat, sorties rattachées, pneus un par un, droits du
 module Maintenance, pas de QR.
 
 **Prochaines étapes proposées** : jouer la 0029 et poser les variables du
-courriel ; vérifier en ligne ; puis sortir et recevoir des pièces depuis le
-téléphone (quand l'autre session aura rendu `src/composants/telephone/`) ;
-la maintenance des légers et les dates de début des plans car restent à
-saisir dans le dossier. Le réapprovisionnement (demande d'achat par
-fournisseur) et l'inventaire (régularisations d'un coup) sont faits.
+courriel ; vérifier en ligne ; la maintenance des légers et les dates de
+début des plans car restent à saisir dans le dossier. Les pièces sont
+complètes (magasin, mouvements, pneus, réapprovisionnement → demande
+d'achat, inventaire, téléphone) ; il ne manque qu'un raccourci sur
+l'accueil du téléphone, dans un fichier que l'autre session tient encore.
 
 ---
 
@@ -2059,10 +2059,23 @@ de QR de casier** pour l'instant.
   **saisie** — les boutons se cachent sinon. Attention : le profil
   *responsable* (gestionnaire-parc, direction) n'a que la *lecture* sur
   Maintenance par défaut ; en production le gestionnaire est administrateur.
-- **Limites, à faire ensuite** : les kilomètres parcourus d'un pneu monté
-  demandent le compteur du véhicule (non lu ici : « en cours ») ; pas de
-  sortie ni de réception depuis le téléphone (l'autre session travaille
-  sur `src/composants/telephone/`).
+- **Le téléphone** (même soir) : `/telephone/pieces`
+  (`EcranTelephonePieces`, page qui lit `piecesServeur()`, les véhicules
+  du parc et les ordres en atelier), atteint depuis l'atelier par deux
+  boutons « Sortir une pièce » et « Recevoir » (`?geste=sortie|entree`).
+  Un panneau bas, comme la clôture : la pièce se **cherche** (référence,
+  désignation, constructeur, modèle compatible — pas un menu de quarante
+  lignes), puis la quantité, puis le rattachement — l'ordre en atelier fixe
+  le véhicule, sinon on le choisit ; en réception, le prix payé (pré-rempli
+  au dernier prix) et le bon livré. Même sujet « pieces », même
+  `enregistrerCreation`, donc même synchronisation en base ; le mois clos
+  remonte tel quel. Les fichiers de l'autre session n'ont pas été touchés :
+  l'entrée se fait par `EcranTelephoneAtelier.tsx`, pas par les raccourcis
+  de l'accueil (`accueil-widgets.ts`, modifié par elle) — à ajouter quand
+  ce fichier sera libre.
+- **Limites** : les kilomètres parcourus d'un pneu monté demandent le
+  compteur du véhicule (non lu ici : « en cours ») ; pas de scan de casier
+  (pas de QR, décision du 9 septembre).
 
 **À faire, dans l'ordre** (mis à jour le 9 septembre 2026).
 
@@ -2083,10 +2096,11 @@ de QR de casier** pour l'instant.
 8. ~~**Parc léger lu en base**~~ et ~~**discussions en base (0028)**~~ — faits le 9 septembre 2026 au soir.
 9. ~~**Pièces de rechange**~~ — fait le 9 septembre 2026 au soir (0029, à
    jouer) : référentiel, stock déduit, mouvements, pneus, fiche, écritures.
-10. ~~Le réapprovisionnement qui prépare une demande d'achat~~ et
-    ~~l'inventaire qui produit ses régularisations d'un coup~~ — faits le
-    9 septembre 2026 au soir. Reste **sortir et recevoir depuis le
-    téléphone** (atelier), quand `src/composants/telephone/` sera libre.
+10. ~~Le réapprovisionnement qui prépare une demande d'achat~~,
+    ~~l'inventaire qui produit ses régularisations d'un coup~~ et ~~sortir
+    et recevoir depuis le téléphone~~ — faits le 9 septembre 2026 au soir.
+    Reste un raccourci « Pièces » sur l'accueil du téléphone, quand
+    `accueil-widgets.ts` sera rendu par l'autre session.
 
 ---
 
