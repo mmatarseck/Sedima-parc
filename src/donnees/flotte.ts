@@ -25,97 +25,15 @@ import type { EtatDocument } from "@/domaine/fiche";
 import { afficher } from "@/domaine/immatriculation";
 import { idChauffeur } from "@/domaine/chauffeur";
 import type { Parametres } from "@/domaine/parametres";
-import type { EcheanceVehicule, LigneFlotte, Site, TypeDocument, Vehicule } from "@/domaine/types";
+import type { EcheanceVehicule, LigneFlotte, PosteDepense, Site, TypeDocument, Vehicule } from "@/domaine/types";
 import { joursRestants } from "@/lib/format";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { passagesReleves, programmeParDefaut } from "./entretien-demo";
-import { fichePourImmatriculation } from "./fiche-demo";
-import { FLOTTE } from "./parc-demo";
-import { PARAMETRES_DEFAUT } from "@/domaine/parametres";
-import type { EtatLeger, VehiculeLeger } from "@/domaine/parc-leger";
-import { attributairePour, depensesForfaits, vehiculesLegers } from "./parc-leger-demo";
 
-/* -- Le parc léger dans la liste (fusion du 7 septembre 2026) ------------------ */
-
-/** L'état du dossier parc, traduit en statut de véhicule. */
-const STATUT_LEGER: Record<EtatLeger, Vehicule["statut"]> = { actif: "en-service", pool: "en-backup", panne: "en-reparation", "a-reformer": "retrait-en-cours", "a-recevoir": "a-recevoir" };
-
-/**
- * Un véhicule léger comme ligne de la Flotte : pas de chauffeur mais un
- * attributaire, pas d'échéance de conformité ni d'entretien tant que ses
- * documents et son plan ne sont pas tenus, et pour coût le forfait carburant
- * de l'année. Les véhicules à recevoir n'y entrent pas : sans immatriculation,
- * ce ne sont pas encore des véhicules du parc.
- */
-export function ligneLegere(v: VehiculeLeger, coutDouzeMois: number | null, personne?: { nom: string; fonction: string | null } | null): LigneFlotte {
-  /* La personne vient du dossier de démonstration, ou de la base quand c'est elle qui parle. */
-  const a = personne ?? attributairePour(v.attributaireId);
-  const vehicule: Vehicule = {
-    id: v.id,
-    regime: v.regime,
-    immatriculation: v.immatriculation ?? v.id,
-    immatriculationAffichee: v.immatriculationAffichee,
-    vin: null,
-    marque: v.marque,
-    appellation: v.modele,
-    typeModele: null,
-    categorie: v.categorie,
-    categorieFlotte: "interne",
-    transportSpecial: false,
-    usage: v.categorie === "bus" ? "autre" : "utilitaire",
-    engage: false,
-    premiereMiseEnCirculation: v.annee ? `${v.annee}-01-01` : null,
-    dateImmatriculation: null,
-    puissanceCv: null,
-    cylindree: null,
-    ptac: null,
-    ptra: null,
-    poidsVide: null,
-    chargeUtile: null,
-    energie: "gasoil",
-    capaciteReservoir: null,
-    businessUnit: v.businessUnit,
-    siteId: null,
-    statut: STATUT_LEGER[v.etat],
-    valeurAcquisition: null,
-    dureeAmortissementAnnees: null,
-    commentaire: [v.lot, v.commentaire].filter(Boolean).join(" — ") || null,
-  };
-  return {
-    vehicule,
-    chauffeurTitulaire: null,
-    nombreSuppleants: 0,
-    site: null,
-    kilometrage: v.kilometrage,
-    dateKilometrage: null,
-    prochaineEcheanceConformite: null,
-    prochaineEcheanceEntretien: null,
-    coutDouzeMois,
-    attelageCourant: null,
-    statutEffectif: vehicule.statut,
-    immobilisationAdministrative: [],
-    attributaire: a ? { nom: a.nom, fonction: a.fonction, pool: false, planCar: v.planCar !== null } : v.pool ? { nom: v.pool, fonction: null, pool: true, planCar: false } : null,
-  };
-}
-
-/**
- * Les lignes du parc léger de la démonstration, véhicules à recevoir compris :
- * le lot 2 est dans la Flotte, au statut « à recevoir », sous son numéro de lot
- * en attendant l'immatriculation (demande du métier, 7 septembre 2026).
- */
-function lignesLegeresDemo(): LigneFlotte[] {
-  const aujourdhui = new Date().toISOString().slice(0, 10);
-  const depuis = `${Number(aujourdhui.slice(0, 4)) - 1}${aujourdhui.slice(4)}`;
-  const coutPar = new Map<string, number>();
-  for (const d of depensesForfaits(aujourdhui, PARAMETRES_DEFAUT.parcLeger.forfaitCarburantMensuel)) {
-    if (d.date >= depuis) coutPar.set(d.vehiculeId, (coutPar.get(d.vehiculeId) ?? 0) + d.montant);
-  }
-  return vehiculesLegers().map((v) => ligneLegere(v, coutPar.get(v.id) ?? null));
-}
-
-/* -- Les lignes de la base -------------------------------------------------- */
+export { ligneLegere } from "./flotte-demo";
+import { ligneLegere, lignesFlotteDemonstration } from "./flotte-demo";
 
 interface LigneVehicule {
   id: string;
@@ -184,6 +102,9 @@ interface LigneAffectation {
   role: "titulaire" | "suppleant";
   debut: string;
   fin: string | null;
+  /** Le numéro et le motif, quand lire_parc() les rend : les rapports d'affectation les lisent. */
+  numero?: string;
+  motif?: string | null;
 }
 
 interface LigneDocument {
@@ -216,6 +137,8 @@ interface LigneDepense {
   montant: number;
   km: number | null;
   km_motif_rejet: string | null;
+  /** Le poste, quand lire_parc() le rend : les coûts par poste des rapports le lisent. */
+  poste?: PosteDepense;
 }
 
 interface LignePlein {
@@ -577,21 +500,8 @@ export const parcServeur = cache(async (): Promise<ParcBrut> => lireParc(await c
 
 /** Les lignes de la liste Flotte, statut effectif et immobilisation compris. */
 async function lignesFlotteBrut(parametres: Parametres): Promise<LigneFlotte[]> {
-  if (!authentificationReelle()) {
-    /* Le statut effectif vient des documents de la fiche : un document critique
-       manquant ou échu immobilise le véhicule administrativement. Le coût sur
-       douze mois est celui des dépenses de la fiche — la même somme que
-       l'Aperçu et que Coûts & analyses, pas un chiffre à part. */
-    const transport = FLOTTE.map((l) => {
-      const f = fichePourImmatriculation(l.vehicule.immatriculation, parametres);
-      const imm = f?.immobilisationAdministrative ?? null;
-      return { ...l, coutDouzeMois: f?.indicateurs.coutDouzeMois ?? l.coutDouzeMois, statutEffectif: imm?.statut ?? l.vehicule.statut, immobilisationAdministrative: imm?.documents ?? [] };
-    });
-    /* Le parc léger rejoint la liste (fusion du 7 septembre 2026) ; un léger
-       déjà dans la flotte de transport n'est pas doublé. */
-    const immats = new Set(transport.map((l) => l.vehicule.immatriculation));
-    return [...transport, ...lignesLegeresDemo().filter((l) => !immats.has(l.vehicule.immatriculation))];
-  }
+  /* La démonstration : les fiches, et le parc léger du dossier (`flotte-demo.ts`). */
+  if (!authentificationReelle()) return lignesFlotteDemonstration(parametres);
   const parc = await parcServeur();
   /* Les véhicules à recevoir ferment la liste : sous leur numéro de lot, sans
      compteur ni coût, avec le bénéficiaire prévu. */

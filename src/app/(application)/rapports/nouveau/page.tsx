@@ -1,10 +1,10 @@
 import { ChoixBase } from "@/composants/rapports/ChoixBase";
 import { EcranConstructeur } from "@/composants/rapports/EcranConstructeur";
+import { construireRapportDe } from "@/domaine/assembler-rapports";
 import { titrePage } from "@/domaine/marque";
 import { periodeDeLAdresse } from "@/domaine/periodes";
 import { rapportParId } from "@/domaine/rapports";
-import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
-import { construireRapport } from "@/donnees/rapports-demo";
+import { sourceRapportsServeur } from "@/donnees/rapports";
 import { parametresServeur } from "@/lib/parametres-serveur";
 
 export const metadata = { title: titrePage("Nouveau rapport") };
@@ -31,6 +31,7 @@ export default async function PageNouveauRapport({ searchParams }: Props) {
 
   const periode = periodeDeLAdresse(un);
   const perimetre = un("perimetre") === "complet" ? "complet" : "exploitation";
-  const lignes = construireRapport(base.id, { periode, perimetre }, parametres);
-  return <EcranConstructeur baseId={base.id} lignes={lignes} aujourdhui={DATE_REFERENCE} persoId={un("perso") ?? undefined} periodeCourante={periode} perimetreCourant={perimetre} />;
+  const source = await sourceRapportsServeur(parametres);
+  const lignes = construireRapportDe(source, base.id, { periode, perimetre }, parametres);
+  return <EcranConstructeur baseId={base.id} lignes={lignes} aujourdhui={source.aujourdhui} persoId={un("perso") ?? undefined} periodeCourante={periode} perimetreCourant={perimetre} />;
 }

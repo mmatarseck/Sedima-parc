@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { EcranRapport } from "@/composants/rapports/EcranRapport";
+import { construireRapportDe } from "@/domaine/assembler-rapports";
 import { titrePage } from "@/domaine/marque";
 import { periodeDeLAdresse } from "@/domaine/periodes";
 import { rapportParId } from "@/domaine/rapports";
-import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
-import { construireRapport } from "@/donnees/rapports-demo";
+import { sourceRapportsServeur } from "@/donnees/rapports";
 import { parametresServeur } from "@/lib/parametres-serveur";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -26,6 +26,9 @@ export const dynamic = "force-dynamic";
  * lien décrit exactement la fenêtre de temps regardée, et se transmet tel quel.
  * Les filtres, le tri et les colonnes travaillent sur ces lignes, dans le
  * navigateur, et sont conservés par profil.
+ *
+ * Base branchée : la source des rapports réunit ce que chaque écran lit déjà
+ * (`donnees/rapports.ts`) ; l'assemblage est celui de la démonstration.
  */
 export default async function PageRapport({ params, searchParams }: Props) {
   const [{ id }, requete, parametres] = await Promise.all([params, searchParams, parametresServeur()]);
@@ -48,6 +51,7 @@ export default async function PageRapport({ params, searchParams }: Props) {
     const s = Array.isArray(v) ? v[0] : v;
     return s && s.trim() ? s.trim() : null;
   };
-  const lignes = construireRapport(rapport.id, { periode: periodeDeLAdresse(un), perimetre: un("perimetre") === "complet" ? "complet" : "exploitation" }, parametres);
-  return <EcranRapport rapportId={rapport.id} lignes={lignes} aujourdhui={DATE_REFERENCE} />;
+  const source = await sourceRapportsServeur(parametres);
+  const lignes = construireRapportDe(source, rapport.id, { periode: periodeDeLAdresse(un), perimetre: un("perimetre") === "complet" ? "complet" : "exploitation" }, parametres);
+  return <EcranRapport rapportId={rapport.id} lignes={lignes} aujourdhui={source.aujourdhui} />;
 }

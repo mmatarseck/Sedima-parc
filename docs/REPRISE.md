@@ -1812,6 +1812,49 @@ lectures avant et après une migration. Il reproduit la régression (fiche
   pièces, écriture d'une enveloppe puis correction, refus sans base et sans
   exercice, relecture. Tout passe.
 
+### Les Rapports base branchés (9 septembre 2026, sans migration)
+
+- Les cinquante rapports lisaient la démonstration. Les lignes se dressent
+  désormais depuis une **source de faits**, `SourceRapports`
+  (`src/domaine/assembler-rapports.ts`, `construireRapportDe(source, id,
+  contexte, parametres)`) : la flotte, le résumé des fiches, les
+  affectations, l'échéancier de la Conformité, les visites, les coûts
+  mensuels, les pleins et la cuve, les interventions, ordres et travaux, les
+  incidents, les chauffeurs et leurs fiches, les achats et le journal de
+  caisse, les prestataires, les transporteurs, le relevé entier, le budget —
+  chacun à la forme de son écran. Un rapport ne calcule rien de neuf.
+- **Base** : `src/donnees/rapports.ts` — `sourceRapportsServeur(parametres)`
+  réunit les lecteurs existants (une lecture par requête, en cache) et quatre
+  lecteurs neufs, sans migration : `couts.ts` (dépenses de deux ans avec
+  leur poste + consommations + interventions → `DonneesVehicule`),
+  `incidents.ts`, `visites.ts`, `releves.ts` (le relevé entier, tous modes).
+  Les affectations viennent de `lire_parc()` (celles en cours seulement) ;
+  le résumé des fiches (identité, indicateurs de douze mois, immobilisation,
+  prochaine échéance) est **dérivé** des lecteurs (`resumesFicheDepuisLaSource`).
+- **Démonstration** : `rapports-demo.ts` donne la même source depuis les
+  modules de démonstration, **sans un seul import serveur** — l'assistant du
+  navigateur dresse les rapports dessus (`construireRapport` reste
+  synchrone). Pour cela, les aides de démonstration ont quitté les modules
+  serveur : `flotte-demo.ts` (lignes de la Flotte, parc léger),
+  `conformite-demo.ts` (échéancier), `visites-demo.ts`.
+- **Non-régression** : `scripts/instantane-rapports.mts <dossier> [comparer]`
+  photographie les 48 rapports de démonstration et compare. Après le
+  remaniement, 40 sont identiques ligne à ligne ; les 8 autres changent pour
+  une raison écrite : les rapports de la flotte comptent les deux véhicules
+  d'exploitation du parc léger (21 au lieu de 19) ; « Conformité › documents »
+  lit l'échéancier (licence de la flotte une fois, pas par véhicule ; pas de
+  date d'effet ni de montant, que seule la fiche porte ; émetteur et numéro
+  des pièces des chauffeurs désormais portés) ; les coûts par véhicule
+  donnent leur situation aux légers.
+- **Banc** `scripts/tester-rapports.mts` (PGlite) : coûts de douze mois du
+  parc de transport = démonstration au franc près, incidents, visites,
+  relevé, affectations en cours, résumé des fiches, puis les 48 rapports
+  dressés sur une source mixte sans erreur.
+- **Limites écrites** : le parc léger reste celui du dossier de
+  démonstration dans les deux modes (ses huit rapports comme ses forfaits) ;
+  `lire_parc()` ne rend que les affectations en cours ; le coût d'un
+  incident n'est pas rattaché en base (nul).
+
 **À faire, dans l'ordre** (mis à jour le 9 septembre 2026).
 
 1. ~~Le seed~~, ~~le premier administrateur~~, ~~Vercel~~ — faits : la
@@ -1823,7 +1866,8 @@ lectures avant et après une migration. Il reproduit la régression (fiche
    dette déduite, avances et évaluations lues et saisies.
 5. ~~**Budget**~~ — fait le 9 septembre 2026, sans migration : enveloppes
    lues et saisies, dépenses et engagements lus.
-6. **Rapports** : une lecture par rapport, sur les fonctions existantes.
+6. ~~**Rapports**~~ — fait le 9 septembre 2026, sans migration : une source
+   de faits réunie depuis les lecteurs existants et quatre lecteurs neufs.
 7. **Courriel au détenteur** (notification de la plateforme).
 8. **Pièces de rechange**, après les sept décisions de `PROPOSITION-PIECES.md`.
 
