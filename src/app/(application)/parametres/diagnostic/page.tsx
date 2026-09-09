@@ -13,6 +13,11 @@ import { lignesFlotte, parcServeur } from "@/donnees/flotte";
 import { ordresServeur } from "@/donnees/ordres";
 import { situationsServeur } from "@/donnees/situations";
 import { transfertsServeur } from "@/donnees/transferts";
+import { budgetServeur } from "@/donnees/budget";
+import { prestatairesServeur } from "@/donnees/prestataires";
+import { sourceRapportsServeur } from "@/donnees/rapports";
+import { etatCourriel } from "@/lib/courriel";
+import { mesNotificationsServeur } from "@/lib/notifications-serveur";
 import { parametresServeur } from "@/lib/parametres-serveur";
 import { authentificationReelle } from "@/lib/session-demo";
 import { sessionCourante } from "@/lib/session-serveur";
@@ -110,6 +115,15 @@ export default async function PageDiagnostic({ searchParams }: { searchParams: P
   await mesurer("Ordres de travail", () => ordresServeur(), (l) => `${l.length} ordres`);
   await mesurer("Demandes", () => demandesServeur(), (l) => `${l.length} demandes`);
   await mesurer("Transferts", () => transfertsServeur(), (l) => `${l.length} transferts`);
+  /* Les modules branchés le 9 septembre 2026 : une lecture chacun, puis la source des rapports qui les réunit. */
+  await mesurer("Prestataires — lire_prestataires() + achats + transport", () => prestatairesServeur(), (s) => `${s.prestataires.length} prestataires, ${s.interventions.length} interventions rapportées, ${s.avances.length} avances, ${s.evaluations.length} évaluations`);
+  await mesurer("Budget — enveloppe + depense de l'exercice", () => budgetServeur(), (s) => `${s.enveloppes.length} enveloppes, ${s.depenses.length} dépenses, ${s.demandes.length} demandes d'achat`);
+  if (parametres) {
+    await mesurer("Rapports — la source réunie (tous lecteurs)", () => sourceRapportsServeur(parametres), (s) => `${s.lignes.length} lignes de flotte, ${s.couts.length} véhicules aux coûts, ${s.echeances.length} échéances, ${s.incidents.length} incidents, ${s.releves.length} lignes de relevé, ${s.visites.length} visites`);
+  }
+  await mesurer("Notifications — les miennes", () => mesNotificationsServeur(), (l) => `${l.length} notification${l.length > 1 ? "s" : ""}, ${l.filter((n) => !n.lue).length} non lue${l.filter((n) => !n.lue).length > 1 ? "s" : ""}`);
+  const courriel = etatCourriel();
+  etapes.push({ nom: "Courriel — fournisseur", ms: 0, resultat: courriel.pret ? `prêt, expéditeur ${courriel.expediteur}` : null, erreur: courriel.pret ? null : `${courriel.raison} Les notifications restent « à envoyer » jusque-là.` });
   const total = Math.round(performance.now() - debutTotal);
 
   const hote = (() => {

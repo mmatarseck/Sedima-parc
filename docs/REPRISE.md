@@ -7,57 +7,68 @@ Elle dit où en est le projet, ce qui a été décidé, et ce qui reste à faire
 
 ## 0 quater. Passage de relais du 9 septembre 2026 — lire ceci d'abord
 
-**Où en est la production.** L'application tourne sur Vercel (région cdg1)
-avec Supabase ; le gestionnaire pousse (`git push`) et joue les migrations
-dans le SQL Editor. **Jouées : 0001 à 0026** (0025 et 0026 le 9 septembre 2026). À jouer : **0027**
-(`notification`, le courriel au détenteur — section « Le courriel au
-détenteur » plus bas). Commits poussés ou à pousser selon l'état
-du dépôt distant (`git log origin/main..HEAD`).
+**Tout lit la base, bureau et téléphone.** La journée du 9 septembre a
+branché les quatre modules qui restaient sur la démonstration, dans l'ordre
+du relais, chacun avec sa section plus bas et son banc PGlite :
+Transporteurs (0025), Compte des prestataires (0026, avances et évaluations
+saisies), Budget (sans migration, enveloppes posées depuis la page du
+poste), Rapports (sans migration : une source de faits réunie depuis les
+lecteurs existants, quarante-huit rapports photographiés avant/après), et le
+courriel au détenteur (0027 : table `notification`, cloche en base, envoi
+groupé par Resend). Au passage : les fiches de transfert ont quitté le rail
+pour la fiche véhicule, et le sélecteur de colonnes des rapports reste dans
+l'écran.
 
-**Tout le bureau lit la base**, sauf trois modules encore sur la
-démonstration : Budget, Compte des prestataires, Rapports (leurs tables
-existent depuis la 0002 ; les pages lisent `*-demo.ts`). Les écritures de
-vingt types de transaction vont en base (`transactions-colonnes.ts`), le
-transport tiers compris. Le téléphone est branché comme le bureau.
+**Migrations : 0001 à 0026 jouées ; 0027 à jouer** dans le SQL Editor.
+Commits à pousser selon `git log origin/main..HEAD`.
 
-**Ce qui a été fait le 8 septembre au soir, dans l'ordre** (chaque étape a sa
-section plus bas, sous « 0 ter ») : ordres de travail (0016), caisse et
-cuve (0017) et leur écran Paramètres, diagnostic `/parametres/diagnostic`,
-erreur de la fiche véhicule trouvée (`generateStaticParams` + cookies =
-`DYNAMIC_SERVER_USAGE`, six pages passées en `force-dynamic`), situation
-journalière en ensembles (0018 : 8,2 s → 1,4 s), politiques d'accès
-(0019 a fait pire, **0021** l'a corrigée : parc 182 ms, fiche 121, chauffeurs
-134, situations 832), classement des chauffeurs (0020), demandes d'achat
-(0022), visites techniques et observations (0023), Conformité et tableau de
-bord base branchée (0024).
+**À poser sur Vercel pour que les courriels partent** : `RESEND_API_KEY`,
+`COURRIEL_EXPEDITEUR` (« SEDIMA Parc <parc@sedima.sn> »), `CRON_SECRET`
+(le passage du matin `/api/courriels`, planifié dans `vercel.json`). Sans
+eux, la cloche marche et les lignes restent « à envoyer ».
 
 **Les bancs d'essai**, tous dans PGlite avec le seed, à lancer avec
-`PGLITE_DIR=<dossier où @electric-sql/pglite est installé>` (la session
-précédente l'avait dans son bac à sable ; en installer un si besoin) :
-`scripts/tester-*.mts` (`npx tsx`), `scripts/tester-fiche-rendu.mts` avec
-`node --import tsx --import ./scripts/rendu/hook.mjs`, et le banc des
-politiques sous rôle non privilégié (commit b148673). Règle apprise : **une
-politique ou une fonction SQL avec une sous-requête corrélée coûte une
-évaluation de politique par ligne** — CTE matérialisées et sous-plans non
-corrélés ; et **mesurer sous politiques actives** avant de livrer une
-migration de performance.
+`PGLITE_DIR=<dossier où @electric-sql/pglite est installé>` (sur ce poste :
+`C:\Users\mamadou.seck\AppData\Local\Temp\sedima-pglite`) : `scripts/tester-*.mts`
+(`npx tsx`), `scripts/instantane-rapports.mts <dossier> [comparer]` pour la
+photographie des rapports, `scripts/tester-rls.mjs` pour les politiques.
+Règle apprise : **une politique ou une fonction SQL avec une sous-requête
+corrélée coûte une évaluation de politique par ligne** — CTE matérialisées et
+sous-plans non corrélés ; et **mesurer sous politiques actives** avant de
+livrer une migration de performance.
+
+**La démarche, désormais partout** : un assembleur pur dans `src/domaine/`
+(`assembler-*.ts`) reçoit une source de faits et rend ce que l'écran montre ;
+la démonstration lui donne le jeu du navigateur, la base ce que les lecteurs
+de `src/donnees/` rendent — mêmes formes, mêmes lignes, un banc qui compare.
+Un module de démonstration importé par un composant client (l'assistant lit
+`rapports-demo.ts`) **ne tire aucun module serveur** : les aides de
+démonstration ont leurs fichiers (`flotte-demo.ts`, `conformite-demo.ts`,
+`visites-demo.ts`).
 
 **Attention.** Le répertoire de travail porte des modifications qui ne
-viennent pas de la session précédente (accueil du téléphone, demandes,
-affectations, fiche rapide, `PROPOSITION-MOBILE.md`) : une autre session y
-travaille. Ne pas les commettre ni les écraser sans savoir.
+viennent pas de cette session (accueil du téléphone, demandes, affectations,
+fiche rapide, `PROPOSITION-MOBILE.md`) : une autre session y travaille. Ne
+pas les commettre ni les écraser sans savoir.
 
 **En attente du gestionnaire.** Les sept décisions de
-`docs/PROPOSITION-PIECES.md` (pièces de rechange : rien n'est construit) ; le
-journal Vercel n'est plus nécessaire, le diagnostic suffit.
+`docs/PROPOSITION-PIECES.md` (pièces de rechange : rien n'est construit) ;
+le compte Resend et ses variables ; l'essai en ligne de ce qui vient d'être
+branché (un rapport, la page d'un poste budgétaire, le compte d'un
+prestataire, une fiche de transfert créée depuis la fiche véhicule → la
+cloche du détenteur).
 
-**Prochaines étapes proposées, dans l'ordre :** Compte des prestataires
-(dette déduite des achats, interventions, affrètements ; avances en table —
-`transporteursServeur()` rend déjà affrètements, mises à disposition et
-prestations à la forme du domaine), Budget (enveloppes en table 0002,
-dépenses lues), Rapports (chaque rapport une lecture), courriel au détenteur
-(notification de la plateforme), pièces de rechange après décisions.
-Transporteurs est fait (9 septembre 2026, 0025).
+**Ce qui reste sur la démonstration, par choix ou par manque de table** :
+le parc léger (dossier DO ; ses forfaits carburant n'existent pas en base,
+le carburant du Budget et des coûts s'y lit sans eux — à construire quand le
+parc léger le sera : attributions et forfaits en table) ; les discussions et
+leurs citations (pas de table `message`) ; les rapports du parc léger.
+Limites écrites dans chaque section : `lire_parc()` ne rend que les
+affectations en cours, le coût d'un incident n'est pas rattaché en base.
+
+**Prochaines étapes proposées** : jouer la 0027 et poser les variables du
+courriel ; vérifier en ligne ; puis, au choix du gestionnaire, les pièces de
+rechange (après décisions) ou le parc léger en base.
 
 ---
 
