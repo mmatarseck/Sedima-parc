@@ -9,9 +9,9 @@ Elle dit où en est le projet, ce qui a été décidé, et ce qui reste à faire
 
 **Où en est la production.** L'application tourne sur Vercel (région cdg1)
 avec Supabase ; le gestionnaire pousse (`git push`) et joue les migrations
-dans le SQL Editor. **Jouées : 0001 à 0024.** À jouer : **0025**
-(`lire_transporteurs()`, le module Transporteurs — section « Les
-Transporteurs base branchée » plus bas), poussée ou à pousser selon l'état
+dans le SQL Editor. **Jouées : 0001 à 0025** (la 0025 le 9 septembre 2026). Rien à jouer
+(la dernière : `lire_transporteurs()`, le module Transporteurs — section « Les
+Transporteurs base branchée » plus bas). Commit cb71723 poussé ou à pousser selon l'état
 du dépôt distant (`git log origin/main..HEAD`).
 
 **Tout le bureau lit la base**, sauf trois modules encore sur la
@@ -1696,6 +1696,26 @@ lectures avant et après une migration. Il reproduit la régression (fiche
   Affectations et `champs.ts` lisent les camions et chauffeurs tiers de
   `flotte-tierce-demo.ts` (Affectations est en cours de modification par une
   autre session : ne pas y toucher sans savoir).
+
+### Les fiches de transfert quittent le rail (9 septembre 2026)
+
+- Demande du gestionnaire : « retirer du menu et intégrer ailleurs où c'est
+  plus pertinent ». Une remise de véhicule est le même fait que l'affectation
+  qu'elle ouvre et qu'elle ferme : les fiches de transfert d'un véhicule se
+  lisent désormais sur **sa fiche, onglet Affectations** (`CarteTransferts`
+  dans `composants/vehicule/onglets.tsx`), avec « Nouvelle fiche » qui
+  pré-remplit le véhicule, son détenteur et son compteur
+  (`/transferts/nouveau?vehicule=AA032EA`) et « Toutes les fiches » vers la
+  liste `/transferts`, qui reste — le téléphone y mène toujours (accueil,
+  Parcourir). L'entrée « Fiches de transfert » du groupe Exploitation est
+  retirée de `navigation.ts` ; le module d'accès `transferts` est inchangé.
+- La page de la fiche véhicule lit `transfertsServeur()` avec le reste et ne
+  passe au composant que les fiches du véhicule ; le navigateur y ajoute
+  celles qu'il a dressées depuis (`lireTransferts`).
+- **Sélecteur de colonnes des rapports** : la liste « Affichées · glisser
+  pour ranger » s'ouvrait alignée à droite du bouton et passait sous le rail
+  (signalé le 9 septembre). Elle s'ouvre alignée à gauche, au-dessus de tout
+  (`ColonnesRapport.tsx`).
 
 **À faire, dans l'ordre** (mis à jour le 9 septembre 2026).
 

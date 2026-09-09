@@ -6,6 +6,7 @@ import { titrePage } from "@/domaine/marque";
 import { FicheVehiculeLeger } from "@/composants/parc-leger/FicheVehiculeLeger";
 import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
 import { ficheServeur } from "@/donnees/fiche";
+import { transfertsServeur } from "@/donnees/transferts";
 import { fichePourImmatriculation } from "@/donnees/fiche-demo";
 import { attributairePour, forfaitsCarburant, vehiculesLegers } from "@/donnees/parc-leger-demo";
 import { parametresServeur } from "@/lib/parametres-serveur";
@@ -45,7 +46,7 @@ export const dynamic = "force-dynamic";
  * visé directement : /flotte/AA032EA?onglet=carburant.
  */
 export default async function PageVehicule({ params, searchParams }: Props) {
-  const [{ immat }, { onglet, discussion, ref }, parametres] = await Promise.all([params, searchParams, parametresServeur()]);
+  const [{ immat }, { onglet, discussion, ref }, parametres, transferts] = await Promise.all([params, searchParams, parametresServeur(), transfertsServeur()]);
   const fiche = await ficheServeur(decodeURIComponent(immat), parametres);
   /* Un véhicule saisi depuis la liste Flotte n'existe que dans le navigateur :
      le serveur ne peut pas le connaître, mais sa fiche doit s'ouvrir comme
@@ -75,9 +76,13 @@ export default async function PageVehicule({ params, searchParams }: Props) {
       </FournisseurEdition>
     );
   }
+  /* Les fiches de transfert de ce véhicule : la remise d'un véhicule se lit
+     sur sa fiche, à côté des affectations qu'elle ouvre et qu'elle ferme. */
+  const v = fiche.ligne.vehicule;
+  const siennes = transferts.filter((t) => t.vehicule.id === v.id || normaliser(t.vehicule.immatriculation) === v.immatriculation);
   return (
-    <FournisseurEdition sujet={`vehicule:${fiche.ligne.vehicule.immatriculation}`} href={`/flotte/${fiche.ligne.vehicule.immatriculation}`}>
-      <FicheVehicule fiche={fiche} ongletInitial={onglet} discussionInitiale={discussion === "1"} cible={ref} />
+    <FournisseurEdition sujet={`vehicule:${v.immatriculation}`} href={`/flotte/${v.immatriculation}`}>
+      <FicheVehicule fiche={fiche} transferts={siennes} ongletInitial={onglet} discussionInitiale={discussion === "1"} cible={ref} />
     </FournisseurEdition>
   );
 }

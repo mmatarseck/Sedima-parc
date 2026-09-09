@@ -1,5 +1,4 @@
 import {
-  ArrowLeftRight,
   BarChart3,
   CalendarRange,
   ClipboardList,
@@ -73,7 +72,10 @@ export const NAVIGATION: GroupeNavigation[] = [
       { module: "flotte", href: "/disponibilite", libelle: "Disponibilité du jour", icone: ClipboardList, livre: true },
       { module: "chauffeurs", href: "/chauffeurs", libelle: "Chauffeurs", icone: Users, livre: true },
       { module: "chauffeurs", href: "/affectations", libelle: "Affectations", icone: CalendarRange, livre: true },
-      { module: "transferts", href: "/transferts", libelle: "Fiches de transfert", icone: ArrowLeftRight, livre: true },
+      /* Les fiches de transfert n'ont plus d'entrée au rail (9 septembre 2026) :
+         une remise de véhicule se lit et se dresse depuis la fiche du véhicule,
+         onglet Affectations — c'est l'affectation qu'elle ouvre et qu'elle
+         ferme. La liste `/transferts` reste, à un clic de là et du téléphone. */
       { module: "transporteurs", href: "/transporteurs", libelle: "Transporteurs", icone: Handshake, livre: true },
     ],
   },

@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Columns3, GripVertical, RotateCcw, Search, X } from "lucide-react";
 import type { ColonneRapport } from "@/domaine/rapports";
 
+/** La largeur de la liste, en pixels — celle de sa classe `w-[340px]`. */
+const LARGEUR_LISTE = 340;
+
 /* ============================================================================
  * Choix et **rangement** des colonnes d'un rapport.
  *
@@ -35,6 +38,11 @@ export function ColonnesRapport({
   onRetablir: () => void;
 }) {
   const [ouvert, setOuvert] = useState(false);
+  /* De quel côté la liste s'ouvre. Alignée à droite du bouton, elle passait
+     sous le rail quand la barre d'outils se repliait et rejetait le bouton à
+     gauche (9 septembre 2026) ; alignée à gauche, elle sortirait de l'écran
+     quand le bouton est à droite. On mesure à l'ouverture. */
+  const [versLaGauche, setVersLaGauche] = useState(false);
   const [terme, setTerme] = useState("");
   const [saisi, setSaisi] = useState<string | null>(null);
   const [survole, setSurvole] = useState<string | null>(null);
@@ -98,7 +106,11 @@ export function ColonnesRapport({
     <div ref={zone} className="relative">
       <button
         type="button"
-        onClick={() => setOuvert((o) => !o)}
+        onClick={() => {
+          const rect = zone.current?.getBoundingClientRect();
+          if (rect) setVersLaGauche(rect.left + LARGEUR_LISTE > window.innerWidth - 16);
+          setOuvert((o) => !o);
+        }}
         aria-expanded={ouvert}
         className="flex h-8 items-center gap-2 rounded-full border border-bordure-champ bg-surface px-3 text-[12.5px] font-medium text-texte hover:border-accent"
       >
@@ -111,7 +123,7 @@ export function ColonnesRapport({
       </button>
 
       {ouvert ? (
-        <div role="dialog" aria-label="Choisir et ranger les colonnes" className="absolute top-full right-0 z-40 mt-1.5 flex w-[340px] flex-col overflow-hidden rounded-[12px] border border-bordure bg-surface shadow-modale">
+        <div role="dialog" aria-label="Choisir et ranger les colonnes" className={`absolute top-full z-50 mt-1.5 flex w-[340px] flex-col overflow-hidden rounded-[12px] border border-bordure bg-surface shadow-modale ${versLaGauche ? "right-0" : "left-0"}`}>
           {/* ---- Affichées, dans l'ordre ---- */}
           <p className="micro-sur-titre border-b border-bordure px-3.5 py-2">Affichées · glisser pour ranger</p>
           <ul className="defilement-discret max-h-[240px] overflow-y-auto py-1">

@@ -19,6 +19,7 @@ import { TYPE_TRANSACTION, type TypeTransaction } from "@/domaine/reference";
 import { PastilleStatut } from "@/composants/interface/Pastille";
 import type { FicheVehicule as Fiche } from "@/domaine/fiche";
 import type { Personne } from "@/domaine/discussion";
+import type { Transfert } from "@/domaine/transferts";
 import { BUSINESS_UNIT, STATUT_VEHICULE, TYPE_DOCUMENT, libelleCategorie } from "@/domaine/libelles";
 import { personnesUtilisateurs } from "@/lib/discussion-demo";
 import { date, montantCourt, nombre } from "@/lib/format";
@@ -90,7 +91,7 @@ function estOnglet(valeur: string | undefined): valeur is Onglet {
  * le dernier enfant prend le reste et porte le défilement ; aucun `sticky`,
  * donc aucun décalage à compenser.
  */
-export function FicheVehicule({ fiche, ongletInitial, discussionInitiale = false, cible }: { fiche: Fiche; ongletInitial?: string; discussionInitiale?: boolean; cible?: string }) {
+export function FicheVehicule({ fiche, transferts = [], ongletInitial, discussionInitiale = false, cible }: { fiche: Fiche; transferts?: Transfert[]; ongletInitial?: string; discussionInitiale?: boolean; cible?: string }) {
   const [onglet, setOnglet] = useState<Onglet>(estOnglet(ongletInitial) ? ongletInitial : "apercu");
   useCible(cible, onglet);
   const [discussionOuverte, setDiscussionOuverte] = useState(discussionInitiale);
@@ -404,7 +405,7 @@ export function FicheVehicule({ fiche, ongletInitial, discussionInitiale = false
       <div role="tabpanel" className="defilement-discret min-h-0 flex-1 px-8 py-6 lg:overflow-y-auto">
         {onglet === "apercu" && <OngletApercu fiche={fiche} />}
         {onglet === "caracteristiques" && <OngletCaracteristiques fiche={fiche} />}
-        {onglet === "affectations" && <OngletAffectations fiche={fiche} cible={cible} />}
+        {onglet === "affectations" && <OngletAffectations fiche={fiche} transferts={transferts} cible={cible} />}
         {onglet === "conformite" && <OngletConformite fiche={fiche} cible={cible} />}
         {onglet === "incidents" && <OngletIncidents fiche={fiche} cible={cible} />}
         {onglet === "maintenance" && <OngletMaintenance fiche={fiche} cible={cible} />}

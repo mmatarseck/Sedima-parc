@@ -1,6 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ENERGIE } from "@/domaine/libelles";
+import { STATUT_TRANSFERT, libellePartie, statutTransfert, type Transfert } from "@/domaine/transferts";
+import { lireAccesCourant } from "@/lib/acces-courant";
+import { lireTransferts } from "@/lib/transferts-demo";
 
 import Link from "next/link";
 import { AlertTriangle, FileText, Plus, Wrench } from "lucide-react";
@@ -372,7 +376,71 @@ export function OngletCaracteristiques({ fiche }: { fiche: FicheVehicule }) {
 /* Affectations — liste                                                       */
 /* ========================================================================== */
 
-export function OngletAffectations({ fiche, cible }: { fiche: FicheVehicule; cible?: string }) {
+/** « 2026-09-08T12:00:00Z » → « 08/09/2026 12:00 », comme la liste des fiches. */
+function heureRemise(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+}
+
+/**
+ * Les fiches de transfert du véhicule — la remise, l'état des lieux, les deux
+ * signatures. Elles vivent ici, à côté des affectations, parce qu'une fiche
+ * complète **ouvre l'affectation du récipiendaire et ferme la précédente** :
+ * c'est le même fait, vu de l'autre côté. L'entrée du rail a été retirée le
+ * 9 septembre 2026 ; la liste de toutes les fiches reste à un clic.
+ */
+function CarteTransferts({ immatriculation, initial }: { immatriculation: string; initial: Transfert[] }) {
+  const [liste, setListe] = useState<Transfert[]>(initial);
+  const [peutCreer, setPeutCreer] = useState(false);
+  useEffect(() => {
+    /* Celles que le navigateur a dressées depuis, comme la liste des fiches. */
+    setListe(lireTransferts(initial).filter((t) => t.vehicule.immatriculation.replace(/[^0-9A-Za-z]/g, "").toUpperCase() === immatriculation || initial.some((x) => x.id === t.id)));
+    const acces = lireAccesCourant();
+    setPeutCreer(acces.profil !== "detenteur" && (acces.niveaux.transferts === "saisie" || acces.niveaux.transferts === "gestion"));
+  }, [initial, immatriculation]);
+  const aSigner = liste.filter((t) => { const s = statutTransfert(t); return s !== "complete" && s !== "annulee"; }).length;
+  const triees = [...liste].sort((a, b) => b.date.localeCompare(a.date));
+  return (
+    <Carte
+      titre="Fiches de transfert"
+      precision={liste.length ? `${liste.length} remise${liste.length > 1 ? "s" : ""}${aSigner ? ` · ${aSigner} à signer` : ""} · une fiche complète ouvre l'affectation qui suit et ferme la précédente` : "Compteur, carburant, documents, équipements, réserves et deux signatures à chaque remise du véhicule"}
+      action={
+        <span className="flex items-center gap-2.5">
+          <Link href="/transferts" className="bouton-discret h-9 px-3 text-[12.5px]">
+            Toutes les fiches
+          </Link>
+          {peutCreer ? (
+            <Link href={`/transferts/nouveau?vehicule=${immatriculation}`} className="bouton-secondaire h-9">
+              <Plus className="size-4" strokeWidth={2} />
+              Nouvelle fiche
+            </Link>
+          ) : null}
+        </span>
+      }
+      sansMarge
+    >
+      <TableauSimple<Transfert>
+        reglages="fiche-vehicule.transferts"
+        cle={(t) => t.id}
+        lignes={triees}
+        vide="Aucune fiche de transfert pour ce véhicule."
+        colonnes={[
+          { cle: "numero", libelle: "N°", rendu: (t) => <Link href={`/transferts/${t.id}`} className="code text-[12.5px] font-medium text-accent-fonce hover:text-accent hover:underline">{t.numero}</Link> },
+          { cle: "date", libelle: "Remise", rendu: (t) => <span className="code">{heureRemise(t.date)}</span> },
+          { cle: "de", libelle: "Remis par", rendu: (t) => <span className="text-texte">{libellePartie(t.remettant)}</span> },
+          { cle: "a", libelle: "Reçu par", rendu: (t) => <span className="text-texte">{libellePartie(t.recipiendaire)}</span> },
+          { cle: "motif", libelle: "Motif", rendu: (t) => <span className="text-texte-2">{t.motif}</span> },
+          { cle: "km", libelle: "Compteur", alignee: "droite", rendu: (t) => (t.km === null ? <span className="text-attenue-2">—</span> : kilometrage(t.km)) },
+          { cle: "reserves", libelle: "Réserves", alignee: "droite", rendu: (t) => (t.reserves.length ? <span className="font-medium text-vigilance">{t.reserves.length}</span> : <span className="text-attenue-2">—</span>) },
+          { cle: "statut", libelle: "Statut", rendu: (t) => { const s = statutTransfert(t); return <Pastille ton={STATUT_TRANSFERT[s].ton}>{STATUT_TRANSFERT[s].libelle}</Pastille>; } },
+        ]}
+      />
+    </Carte>
+  );
+}
+
+export function OngletAffectations({ fiche, transferts = [], cible }: { fiche: FicheVehicule; transferts?: Transfert[]; cible?: string }) {
   const ajouter = useAjoutVehicule(fiche);
   const { surcharger, demander, creations } = useEdition();
   const categorie = fiche.ligne.vehicule.categorie;
@@ -427,6 +495,8 @@ export function OngletAffectations({ fiche, cible }: { fiche: FicheVehicule; cib
         ]}
       />
     </Carte>
+
+    <CarteTransferts immatriculation={fiche.ligne.vehicule.immatriculation} initial={transferts} />
 
     {attelable ? (
       <Carte

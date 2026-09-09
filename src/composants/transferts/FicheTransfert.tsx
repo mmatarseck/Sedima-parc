@@ -53,7 +53,7 @@ function heure(iso: string): string {
   return `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()} à ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
 }
 
-export function FicheTransfert({ initial, id, cibles, personnes, documents, maintenant }: { initial: Transfert[]; id: string | null; cibles: CibleTransfert[]; personnes: PersonnesTransfert; documents: { id: TypeDocument; libelle: string }[]; maintenant: string }) {
+export function FicheTransfert({ initial, id, cibles, personnes, documents, maintenant, vehiculeInitial = null }: { initial: Transfert[]; id: string | null; cibles: CibleTransfert[]; personnes: PersonnesTransfert; documents: { id: TypeDocument; libelle: string }[]; maintenant: string; vehiculeInitial?: string | null }) {
   const router = useRouter();
   const [liste, setListe] = useState<Transfert[]>(initial);
   const [acces, setAcces] = useState<AccesCourant | null>(null);
@@ -83,7 +83,7 @@ export function FicheTransfert({ initial, id, cibles, personnes, documents, main
   }
   if (!acces) return <div className="px-8 py-7" />;
   if (existante) return <Lecture t={existante} liste={liste} acces={acces} auteur={auteur} detenteurIds={detenteurIds} maintenant={maintenant} onChange={(t) => setListe(lireTransferts(initial.map((x) => (x.id === t.id ? t : x))))} />;
-  return <Nouvelle liste={liste} cibles={cibles} personnes={personnes} documents={documents} maintenant={maintenant} auteur={auteur} onCree={(t) => router.push(`/transferts/${t.id}`)} />;
+  return <Nouvelle liste={liste} cibles={cibles} personnes={personnes} documents={documents} maintenant={maintenant} auteur={auteur} vehiculeInitial={vehiculeInitial} onCree={(t) => router.push(`/transferts/${t.id}`)} />;
 }
 
 function Retour() {
@@ -99,13 +99,17 @@ function Retour() {
 
 /* ---- Une fiche nouvelle ---------------------------------------------------- */
 
-function Nouvelle({ liste, cibles, personnes, documents, maintenant, auteur, onCree }: { liste: Transfert[]; cibles: CibleTransfert[]; personnes: PersonnesTransfert; documents: { id: TypeDocument; libelle: string }[]; maintenant: string; auteur: string; onCree: (t: Transfert) => void }) {
-  const [vehiculeId, setVehiculeId] = useState("");
-  const [remettant, setRemettant] = useState<PartieTransfert>({ genre: "parc", id: null, nom: "" });
+function Nouvelle({ liste, cibles, personnes, documents, maintenant, auteur, vehiculeInitial, onCree }: { liste: Transfert[]; cibles: CibleTransfert[]; personnes: PersonnesTransfert; documents: { id: TypeDocument; libelle: string }[]; maintenant: string; auteur: string; vehiculeInitial: string | null; onCree: (t: Transfert) => void }) {
+  /* Le véhicule d'où l'on vient — sa fiche a envoyé ici par `?vehicule=` —,
+     retrouvé par son identifiant ou par sa plaque, quelle qu'en soit l'écriture. */
+  const plaque = (x: string) => x.replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+  const initiale = vehiculeInitial ? (cibles.find((c) => c.vehiculeId === vehiculeInitial || plaque(c.immatriculation) === plaque(vehiculeInitial)) ?? null) : null;
+  const [vehiculeId, setVehiculeId] = useState(initiale?.vehiculeId ?? "");
+  const [remettant, setRemettant] = useState<PartieTransfert>(initiale ? (initiale.detenteur ?? { genre: "parc", id: null, nom: initiale.siteLibelle ?? "" }) : { genre: "parc", id: null, nom: "" });
   const [recipiendaire, setRecipiendaire] = useState<PartieTransfert>({ genre: "chauffeur", id: null, nom: "" });
   const [date, setDate] = useState(maintenant.slice(0, 16));
   const [motif, setMotif] = useState("Nouvelle affectation");
-  const [km, setKm] = useState("");
+  const [km, setKm] = useState(initiale && initiale.km !== null ? String(initiale.km) : "");
   const [carburant, setCarburant] = useState<number | null>(null);
   const [docs, setDocs] = useState<Set<TypeDocument>>(new Set());
   const [equipements, setEquipements] = useState<{ libelle: string; present: boolean }[]>(EQUIPEMENTS_STANDARD.map((e) => ({ libelle: e, present: true })));
