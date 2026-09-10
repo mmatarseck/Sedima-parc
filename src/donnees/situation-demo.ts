@@ -61,6 +61,10 @@ export function situationsJournalieres(aujourdhui: string = DATE_REFERENCE, prof
 
   /* Les chauffeurs indisponibles un jour donné, par identifiant. */
   const indisponibleLe = (jour: string) => new Set(chauffeurs.filter((c) => c.indisponibilites.some((i) => i.debut <= jour && (i.fin === null || i.fin >= jour))).map((c) => c.ligne.id));
+  /* Les chauffeurs déclarés inaptes : l'aptitude ne dépend pas du jour, elle
+     est portée par la fiche. Un inapte n'est pas au volant, quel que soit son
+     calendrier — c'est ce que la règle de disponibilité dit depuis toujours. */
+  const inaptes = new Set(chauffeurs.filter((c) => c.ligne.chauffeur.aptitude === "inapte").map((c) => c.ligne.id));
   const dernierAccidentAvant = (jour: string) => incidents.filter((i) => i.nature === "accident" && i.dateHeure.slice(0, 10) <= jour).map((i) => i.dateHeure.slice(0, 10)).sort().at(-1) ?? null;
 
   const fiches = FLOTTE.map((l) => ({ l, f: fichePourImmatriculation(l.vehicule.immatriculation) })).filter((x): x is { l: (typeof FLOTTE)[number]; f: NonNullable<ReturnType<typeof fichePourImmatriculation>> } => x.f !== null);
@@ -89,8 +93,17 @@ export function situationsJournalieres(aujourdhui: string = DATE_REFERENCE, prof
       const depensesDuJour = f.depenses.filter((d) => d.date === jour && d.poste !== "amortissement" && d.poste !== "salaire");
       const incidentsDuJour = incidents.filter((i) => i.vehiculeId === v.id && i.dateHeure.slice(0, 10) === jour);
 
-      const titulaire = f.affectations.find((a) => a.role === "titulaire" && a.debut <= jour && (a.fin === null || a.fin >= jour)) ?? null;
-      const pretACharger = OPERATIONNELS.has(statut) && titulaire !== null && titulaire.chauffeurId !== null && !indisponibles.has(titulaire.chauffeurId);
+      /* « Prêt à charger » : opérationnel, et **quelqu'un au volant** — le
+         titulaire ou un suppléant —, qui ne soit ni indisponible ni inapte.
+         La règle ne regardait que le titulaire et que l'indisponibilité, si
+         bien que la pastille annonçait 22 là où « Disponibilité du jour » en
+         comptait 21 (métier, 10 septembre 2026). Corrigée ici et en base
+         (migration 0031), pour que les deux modes disent la même chose.
+         Limite assumée, écrite dans la migration : le domaine écarte aussi le
+         conducteur dont un document est échu, ce que l'historique journalier
+         ne rejuge pas. L'écran du jour fait foi. */
+      const auVolant = f.affectations.filter((a) => a.debut <= jour && (a.fin === null || a.fin >= jour) && a.chauffeurId !== null);
+      const pretACharger = OPERATIONNELS.has(statut) && auVolant.some((a) => !indisponibles.has(a.chauffeurId!) && !inaptes.has(a.chauffeurId!));
 
       return {
         vehiculeId: v.id,

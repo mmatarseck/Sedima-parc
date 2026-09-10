@@ -52,36 +52,19 @@ import { date as formaterDate, montantCourt, nombre } from "@/lib/format";
  * Rien ne s'y saisit : chaque pastille mène à l'écran où sa valeur se vérifie.
  * ==========================================================================*/
 
-type Periode = "semaine" | "mois" | "annee";
-const PERIODES: { cle: Periode; libelle: string; vs: string }[] = [
-  { cle: "semaine", libelle: "Semaine", vs: "vs semaine précédente" },
-  { cle: "mois", libelle: "Mois en cours", vs: "vs mois précédent" },
-  { cle: "annee", libelle: "Année", vs: "vs même période l'an passé" },
-];
+/* Le sélecteur de période — « Semaine / Mois en cours / Année » — a été retiré
+   le 10 septembre 2026. Le métier a constaté qu'il ne changeait rien à
+   l'écran, et c'était vrai : depuis que les pastilles disent l'état du moment
+   (8 septembre) et que les courbes tiennent les douze mois de l'exercice,
+   **plus aucun bloc de la page ne dépendait de ce choix**. Il ne réécrivait
+   que le sous-titre. Un filtre qui ne filtre rien promet une prise qu'il n'a
+   pas ; mieux vaut trois filtres qui bornent vraiment la page — BU, catégorie,
+   site — qu'un quatrième qui fait semblant. */
 
 const MOIS_LONG = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 function libelleMoisLong(mois: string): string {
   const [a, m] = mois.split("-");
   return `${MOIS_LONG[Number(m) - 1]} ${a}`;
-}
-
-/** Le segment de période : une seule pilule, trois positions. */
-function Segments({ valeur, onChange }: { valeur: Periode; onChange: (p: Periode) => void }) {
-  return (
-    <div role="group" aria-label="Période" className="inline-flex rounded-full bg-surface-3 p-[3px]">
-      {PERIODES.map((p) => (
-        <button
-          key={p.cle}
-          type="button"
-          aria-pressed={valeur === p.cle}
-          onClick={() => onChange(p.cle)}
-          className={`h-7 rounded-full px-3 text-[12.5px] whitespace-nowrap transition-colors ${valeur === p.cle ? "bg-surface font-semibold text-texte shadow-flottante" : "font-medium text-texte-2 hover:text-texte"}`}
-        >
-          {p.libelle}
-        </button>
-      ))}
-    </div>
-  );
 }
 
 /** Un menu déroulant de filtre — le `select` recouvre toute la pilule. */
@@ -187,8 +170,6 @@ export function EcranTableauBord({
   vehicules,
   faits,
   flotte,
-  semaine,
-  flotteSemaine,
   jour,
   alertes,
   aujourdhui,
@@ -199,8 +180,6 @@ export function EcranTableauBord({
   vehicules: VehiculeTableau[];
   faits: FaitsVehiculeMois[];
   flotte: FaitsFlotteMois[];
-  semaine: FaitsVehiculeMois[];
-  flotteSemaine: FaitsFlotteMois[];
   jour: SituationJour;
   alertes: Alerte[];
   aujourdhui: string;
@@ -209,7 +188,6 @@ export function EcranTableauBord({
   /** Les seuils réglés dans Paramètres › Pastilles, par identifiant de pastille. */
   seuils: Record<string, number>;
 }) {
-  const [periode, setPeriode] = useState<Periode>("mois");
   const [bu, setBu] = useState<string>("tous");
   const [categorie, setCategorie] = useState<string>("tous");
   const [site, setSite] = useState<string>("tous");
@@ -305,9 +283,6 @@ export function EcranTableauBord({
   );
   const filtreVehicule = bu !== "tous" || categorie !== "tous" || site !== "tous";
 
-  /* La durée nominale de la période met les cibles mensuelles à l'échelle. */
-  const joursNominaux = periode === "semaine" ? 7 : periode === "annee" ? 365 : 30.44;
-
   const cumulDe = useMemo(
     () =>
       (fenetre: string[]): Cumul =>
@@ -320,13 +295,14 @@ export function EcranTableauBord({
     [faits, flotte, retenus, jour],
   );
 
-  /* La période courante, et la précédente pour l'écart. La semaine a ses
-     propres faits — sept jours glissants ne se découpent pas dans des mois —
-     et pas de semaine d'avant : son écart reste muet. */
-  const cumul = useMemo(() => {
-    if (periode === "semaine") return cumuler(semaine.filter((f) => retenus.has(f.vehiculeId)), flotteSemaine, jour, joursNominaux);
-    return cumulDe(periode === "annee" ? moisExercice : [moisCourant]);
-  }, [periode, semaine, flotteSemaine, retenus, jour, joursNominaux, cumulDe, moisExercice, moisCourant]);
+  /* Le parc tel qu'il est, pour le sous-titre : combien de véhicules, combien
+     d'engagés. Ce cumul portait autrefois une période choisie — semaine, mois,
+     année — mais depuis que les pastilles disent l'état du moment (8 septembre
+     2026) et que les courbes tiennent les douze mois, **plus rien de la page
+     ne dépendait de ce choix** : il ne changeait que le sous-titre. Le
+     sélecteur a donc été retiré le 10 septembre 2026, à la demande du métier
+     qui l'a constaté. Reste le mois courant, qui n'est plus un choix. */
+  const cumul = useMemo(() => cumulDe([moisCourant]), [cumulDe, moisCourant]);
   /* Chaque mois cumulé pour lui-même : la seule façon d'obtenir une valeur
      mensuelle d'un indicateur qui, sinon, se lit sur toute la période. */
   const valeurDuMois = useMemo(() => {
@@ -451,9 +427,8 @@ export function EcranTableauBord({
   const bus = useMemo(() => [...new Set(vehicules.map((v) => v.businessUnit).filter((b): b is NonNullable<typeof b> => b !== null))], [vehicules]);
   const categories = useMemo(() => [...new Set(vehicules.map((v) => v.categorieFlotte))], [vehicules]);
 
-  const libellePeriode = periode === "semaine" ? "7 derniers jours" : periode === "mois" ? libelleMoisLong(moisCourant) : `année ${exercice}, depuis janvier`;
   const contexte = [
-    libellePeriode,
+    libelleMoisLong(moisCourant),
     bu === "tous" ? "toutes les BU" : BUSINESS_UNIT[bu as keyof typeof BUSINESS_UNIT],
     categorie === "tous" ? null : CATEGORIE_FLOTTE[categorie as keyof typeof CATEGORIE_FLOTTE],
     site === "tous" ? "tous les sites" : site,
@@ -474,7 +449,9 @@ export function EcranTableauBord({
             une fois la rangée passée à la ligne, elle se recale à gauche et le
             bouton avec elle. */}
         <div className="flex grow flex-wrap items-center justify-end gap-2">
-          <Segments valeur={periode} onChange={setPeriode} />
+          {/* Le sélecteur « Semaine / Mois en cours / Année » est retiré :
+              il ne changeait plus que le sous-titre. Les filtres qui restent —
+              BU, catégorie, site — bornent réellement toute la page. */}
           <FiltreChoix etiquette="BU" valeur={bu} options={bus.map((b) => ({ cle: b as string, libelle: BUSINESS_UNIT[b] }))} onChange={setBu} />
           <FiltreChoix etiquette="Catégorie" valeur={categorie} options={categories.map((c) => ({ cle: c as string, libelle: CATEGORIE_FLOTTE[c] }))} onChange={setCategorie} />
           <FiltreChoix etiquette="Site" valeur={site} options={sites.map((s) => ({ cle: s, libelle: s }))} onChange={setSite} />

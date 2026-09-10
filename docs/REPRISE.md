@@ -1278,6 +1278,37 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   photo de plus, la plus ancienne effacée, le total revenu à 1,8 Mo, la
   nouvelle affichée.
 
+### Le filtre de période retiré, « prêt à charger » recollé (10 septembre 2026, migration 0031)
+
+**Le sélecteur « Semaine / Mois en cours / Année » ne filtrait rien.** Le
+métier l'a constaté, et c'était vrai : depuis que les pastilles disent l'état
+du moment (8 septembre) et que les courbes tiennent les douze mois, aucun bloc
+de la page ne dépendait de ce choix — il ne réécrivait que le sous-titre. Il
+est retiré, avec son composant, son type et son état. `semaine` et
+`flotteSemaine` ne sont plus passés à l'écran ; le lecteur continue de les
+produire, sans requête de plus, et le banc `tester-tableau.mts` les éprouve
+toujours base contre démonstration.
+
+**« Prêt à charger » disait 22 au tableau de bord et 21 sur « Disponibilité du
+jour ».** Trois définitions coexistaient : celle du domaine
+(`etatDisponibilite`), celle de la situation journalière en démonstration, et
+celle du SQL (`situation_journaliere`). Les deux dernières se trompaient de la
+même façon, et la 0031 les recolle :
+
+- elles ne regardaient que le **titulaire**, quand le domaine accepte aussi un
+  **suppléant** — un camion dont le suppléant est au volant est prêt ;
+- elles ne vérifiaient que l'**indisponibilité**, jamais l'**aptitude** : un
+  chauffeur déclaré inapte comptait comme prêt.
+
+**⚠ L'écart de 1 subsiste, et sa cause est établie.** Le domaine écarte aussi
+le conducteur dont un **document est échu** (permis, visite médicale) ; la
+situation journalière ne le fait pas. Vérifié sur les 56 lignes de l'écran :
+un seul véhicule sépare les deux comptes, `AA 977 MR`, dont le suppléant est
+dans ce cas. Le rejuger demanderait de revalider chaque document **à chaque
+jour de l'historique**, pour vingt-huit jours et tout le parc. **Décision à
+prendre** : accepter que la pastille reste un cheveu au-dessus de l'écran du
+jour — qui fait foi et qu'elle ouvre d'un clic —, ou payer ce calcul.
+
 ### La rangée d'ouverture dépend du profil (10 septembre 2026)
 
 Demande du métier : « les indicateurs sont affichés par profil ; la personne

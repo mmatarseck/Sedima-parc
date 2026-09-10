@@ -26,5 +26,11 @@ export default async function PageTableauBord() {
   const parametres = await parametresServeur();
   /* Base branchée, les courbes viennent de lire_tableau() (0024), agrégées par le domaine ; en démonstration, du jeu. */
   const [d, situations] = await Promise.all([donneesTableauServeur(parametres), situationsServeur(aujourdhui)]);
-  return <EcranTableauBord mois={d.mois} vehicules={d.vehicules} faits={d.faits} flotte={d.flotte} semaine={d.semaine} flotteSemaine={d.flotteSemaine} jour={d.jour} alertes={d.alertes} aujourdhui={aujourdhui} situations={situations} seuils={parametres.pastilles.seuils} />;
+  /* `d.semaine` et `d.flotteSemaine` ne sont plus passés : le tableau de bord
+     n'a plus de sélecteur de période depuis le 10 septembre 2026. Le lecteur
+     continue de les produire — ils ne coûtent aucune requête de plus, et le
+     banc `tester-tableau.mts` les éprouve encore, base contre démonstration.
+     Ils sont donc là, vérifiés, à un accessoire près si une vue hebdomadaire
+     revient un jour. */
+  return <EcranTableauBord mois={d.mois} vehicules={d.vehicules} faits={d.faits} flotte={d.flotte} jour={d.jour} alertes={d.alertes} aujourdhui={aujourdhui} situations={situations} seuils={parametres.pastilles.seuils} />;
 }
