@@ -16,7 +16,23 @@
 -- ordres_ouverts, ordres_anciens, solde_caisse, seuil_caisse, cuve_litres,
 -- cuve_jours — et donc trois pastilles muettes, « Ordres de travail ouverts »,
 -- « Autonomie de la cuve » et « Caisse parc », qui affichaient « — » au lieu
--- de leur valeur. La lenteur d'avant 0018 était revenue avec.
+-- de leur valeur. C'est mesuré, et c'est ce que cette migration répare.
+--
+-- **Une phrase de trop, retirée le 10 septembre 2026.** Ce commentaire
+-- affirmait aussi que « la lenteur d'avant 0018 était revenue ». Rien ne le
+-- prouvait, et la mesure dit le contraire : sur le parc réel chargé (167
+-- véhicules, 28 jours), la forme en sous-requêtes de 0031 rend en ~350 ms et
+-- la forme en ensembles de 0018 en ~570 ms, que l'on interroge en
+-- superutilisateur ou sous le rôle `authenticated`.
+--
+-- Faut-il alors revenir aux sous-requêtes ? **Non, et pas sur cette base-là.**
+-- PGlite est un Postgres en WASM, à une seule connexion, sans la mémoire ni la
+-- concurrence de la production ; et les 8,2 s de 0018 ont été mesurées en
+-- production, sur une cause précise — les politiques d'accès réévaluées ligne
+-- par ligne. Le banc ne sait pas reproduire cette cause. On garde donc la
+-- forme éprouvée là où le problème s'était posé, et la question de vitesse se
+-- tranchera par une mesure en production, pas par une conviction. La requête
+-- pour le faire est en pied de fichier.
 --
 -- La leçon, pour la prochaine fois : une fonction rejouée par `create or
 -- replace` n'hérite de rien. On repart du DERNIER état, jamais d'un état
@@ -289,3 +305,19 @@ as $$
   ) order by j.jour), '[]'::jsonb)
   from jours j join flotte fl on fl.jour = j.jour cross join vu
 $$;
+
+
+-- ---------------------------------------------------------------------------
+-- Mesurer la vitesse en production, plutôt que d'en discuter.
+--
+-- À coller dans le SQL Editor, une fois la migration jouée. La fonction est
+-- `stable` : le second appel peut profiter du cache du plan, d'où les trois
+-- passages. Ce qui compte est le troisième.
+--
+--   explain (analyze, buffers)
+--   select situation_journaliere(current_date - 27, current_date);
+--
+-- Repère : le tableau de bord lit 28 jours à chaque ouverture. En dessous de
+-- 500 ms la page est vive, au-delà de 2 s elle se traîne, et c'est ce seuil-là
+-- qui avait motivé la réécriture de 0018 (8,2 s mesurées le 8 septembre 2026).
+-- ---------------------------------------------------------------------------

@@ -52,13 +52,14 @@ salaires lisibles par tout compte connecté et une fiche de transfert qu'un
 détenteur pouvait signer seul pour s'attribuer un véhicule. Sections « Les
 accès, audités et fermés avant les données réelles » et suivantes.
 
-**⚠ Migration 0035 à jouer** (10 septembre 2026). Elle fait deux choses. Elle
+**Migration 0035 jouée** (10 septembre 2026). Elle fait deux choses. Elle
 **répare** ce que 0031 avait effacé sans le dire : six champs de la situation
 journalière — ordres, caisse, cuve — étaient revenus à null, laissant trois
-pastilles muettes en production, et la lenteur d'avant 0018 avec. Et elle porte
-le **parc des prestataires** au tableau de bord, à la demande du métier : huit
-champs, cinq pastilles. Section « Le parc des prestataires au tableau de bord »
-plus bas.
+pastilles muettes en production. Et elle porte le **parc des prestataires** au
+tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
+« Le parc des prestataires au tableau de bord » plus bas.
+
+**Migrations : 0001 à 0035 jouées. Rien en attente dans le SQL Editor.**
 
 **Le chargement des données réelles est fait** (10 septembre 2026) : les douze
 parties du seed, `aligner-referentiel.sql`, `purge-demonstration.sql` et
@@ -1334,7 +1335,7 @@ Six champs sont donc revenus à `null` en production — `ordres_ouverts`,
 `ordres_anciens`, `solde_caisse`, `seuil_caisse`, `cuve_litres`, `cuve_jours` —
 et avec eux trois pastilles muettes : « Ordres de travail ouverts »,
 « Autonomie de la cuve », « Caisse parc » affichaient « — » au lieu de leur
-valeur. La lenteur d'avant 0018 était revenue par la même porte.
+valeur.
 
 **La leçon, écrite dans la migration.** Une fonction rejouée par `create or
 replace` n'hérite de rien. On repart du dernier état, jamais d'un état
@@ -1342,6 +1343,43 @@ antérieur qu'on croit connaître. Et le contrôle qui manquait est maintenant
 dans `tester-tableau.mts` : sur une base où le jeu de départ garnit tout,
 **aucun champ de la flotte n'a le droit d'être nul**. Le banc les compte tous,
 et nomme ceux qui manquent.
+
+**Une affirmation retirée, faute de preuve** (10 septembre 2026). Le premier
+jet de cette section disait aussi que « la lenteur d'avant 0018 était revenue
+par la même porte ». Rien ne l'établissait, et la mesure dit le contraire. Sur
+le parc réel chargé — 167 véhicules, la fenêtre de 28 jours que lit le tableau
+de bord — les trois générations de la fonction donnent :
+
+| Forme | En superutilisateur | Sous le rôle `authenticated` |
+| --- | --- | --- |
+| 0031 · sous-requêtes corrélées | 392 ms | 346 ms |
+| 0018 · ensembles (`materialized`) | 568 ms | 646 ms |
+| 0035 · ensembles + 8 champs prestataires | 580 ms | 618 ms |
+
+Deux choses à en tirer, et une seule est solide.
+
+La solide : **les huit champs du parc prestataires ne coûtent rien** — douze
+millisecondes sur cinq cent quatre-vingts. La question de leur prix est close.
+
+L'autre ne l'est pas : la forme en ensembles est ici **plus lente** que celle
+qu'elle remplace, ce qui contredit les 8,2 s mesurées en production le
+8 septembre. La raison probable est que le banc ne sait pas reproduire la cause
+invoquée par 0018 — les politiques d'accès réévaluées ligne par ligne. Passer
+sous le rôle `authenticated` n'y change presque rien, et PGlite reste un
+Postgres en WASM à une connexion, sans la mémoire ni la concurrence de la
+production.
+
+**On ne revient donc pas aux sous-requêtes sur la foi de ce banc.** La forme de
+0018 a été validée là où le problème s'est posé ; c'est elle qu'on garde. La
+mesure qui trancherait est en pied de la migration 0035, à coller dans le SQL
+Editor :
+
+```sql
+explain (analyze, buffers)
+select situation_journaliere(current_date - 27, current_date);
+```
+
+Le repère : sous 500 ms la page est vive, au-delà de 2 s elle se traîne.
 
 **Le parc des prestataires** (métier : « il est important de prévoir aussi
 quelques infos liées au parc des prestataires »). Huit champs s'ajoutent à la
