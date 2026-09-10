@@ -29,20 +29,31 @@ séparées, et se chargeront différemment.
 
 ## Trois faits qui changent le chargement
 
-**1. Le dossier ne dit nulle part le prix du litre.** Le carburant se tire sur
-puce à la pompe, la quantité est suivie, la facturation vit ailleurs. Aucun des
-classeurs — ni les hebdomadaires, ni les mensuels, ni la base ProFleet, ni la
-dotation, ni les codes puce — ne porte un prix ou un montant.
+**1. Le prix du litre est connu, mais pas dans ces classeurs.** Le carburant
+se tire sur puce à la pompe, la quantité est suivie, la facturation vit
+ailleurs : aucun des classeurs ne porte un prix.
 
-Or `plein` exige `prix_litre > 0` et un `montant`. **Cette contrainte encode
-une hypothèse que la donnée réelle contredit** : « tout plein a un prix connu ».
-C'est la contrainte qui doit céder, pas la donnée — et surtout pas en
-inventant un prix moyen, qui ferait passer une estimation pour un relevé.
+Le métier a donné la clé le 10 septembre 2026 : au Sénégal les prix des
+produits pétroliers ne sont pas de marché, ils sont **fixés par arrêté** et
+valent plafond pour toutes les stations. Ils n'ont bougé que deux fois en deux
+ans :
 
-**Décision attendue** : une migration rend `prix_litre` et `montant` nullables,
-avec une contrainte qui exige les deux ensemble ou aucun des deux. Un plein
-sans prix se lit « 152 L · prix non relevé » ; le coût du carburant se calcule
-alors sur les seuls pleins qui en ont un, et l'écran le dit.
+| Période | Gasoil | Supercarburant |
+| --- | ---: | ---: |
+| jusqu'au 5 décembre 2025 | 755 F | 990 F |
+| 6 décembre 2025 → 14 août 2026 | 680 F | 920 F |
+| depuis le 15 août 2026 | 755 F | 990 F |
+
+La grille vit dans `src/domaine/carburant-tarifs.ts`, avec ses dates d'effet et
+l'origine de chaque chiffre. Un prix officiel à une date n'est pas une
+estimation : c'est la donnée, au même titre que les litres.
+
+Ce qu'on dit quand même : le tarif est le **plafond réglementaire**, pas le
+montant d'une facture. Chaque ligne chargée porte donc sa référence — « Tarif
+officiel du 06/12/2025 » — pour qu'on ne prenne jamais un montant calculé pour
+un montant relevé. Avant 2025 la grille s'arrête et `prixOfficiel()` rend
+`null` : les pleins de 2022 à 2024 ne se chargent pas tant que la table ne
+remonte pas jusqu'à eux.
 
 **2. Les suivis couvrent tout le groupe, pas seulement le parc.** Dix-huit
 plaques sur cinquante-cinq (pleins 2025-2026) et dix-huit sur soixante-treize
@@ -79,13 +90,47 @@ en tête (des récapitulatifs, et des classeurs de 2022 dont la date n'est que
 dans le nom du fichier), 152 lignes dont la plaque n'en est pas une, 10 sans
 quantité.
 
-## Ce qui reste à faire, dans l'ordre
+## Le chargement, prêt
 
-1. **Trancher le prix** : migration qui rend le prix facultatif, ou décision de
-   ne charger que les litres sans passer par `plein`.
-2. Charger les **851 pleins de 2025** dont la plaque est au parc.
-3. Décider du sort des **treize mois de cumuls** : une ligne mensuelle par
-   véhicule, dûment marquée comme un cumul, ou hors de `plein`.
-4. Les **trois années antérieures** (2022 à 2024, 10 694 pleins) attendent la
-   même décision ; elles donneraient au tableau de bord un historique que
-   l'application n'a jamais eu.
+`scripts/charger-carburant.mts` fabrique `supabase/carburant-2025-2026.sql` :
+**1 029 lignes, 310 212 litres, 59 véhicules, du 1er janvier 2025 au 31 juillet
+2026.**
+
+| Nature | Lignes | Ce que porte la ligne |
+| --- | ---: | --- |
+| Pompe — suivi hebdomadaire | 614 | un plein daté au jour, `plein_complet` vrai |
+| Cumul mensuel — suivi carburant | 415 | le mois d'un véhicule, daté du dernier jour, `plein_complet` **faux** |
+
+Les cumuls entrent, mais marqués. La colonne `plein_complet` existe pour dire
+ce dont on ne peut pas tirer une consommation entre deux pleins ; un cumul de
+mois en est l'exemple même. Sans elle, il aurait fallu choisir entre laisser
+treize mois de consommation réelle dehors et les faire passer pour des pleins.
+
+Écartées : 6 464 lignes dont la plaque n'est pas au parc (101 plaques du
+groupe), et 4 595 lignes antérieures à 2025, hors des périodes tarifaires
+établies.
+
+`scripts/tester-carburant-reel.mts` charge le fichier dans une base montée avec
+les migrations, le seed et la purge — l'état exact de la production — et vérifie
+treize points : chaque ligne trouve son véhicule, les deux natures restent
+distinctes, les cumuls tombent en fin de mois, chaque prix est celui du tarif
+officiel de sa date, la baisse du 6 décembre est appliquée sur toute sa période,
+le montant est le produit exact, et un second passage n'ajoute rien.
+
+**Un piège attrapé par ce banc**, qui vaut d'être noté : `34,30 × 755` vaut
+25 896,499999999996 en virgule flottante et 25 896,50 en numérique exact.
+JavaScript arrondissait à 25 896 là où Postgres attend 25 897. Le générateur ne
+calcule donc plus le montant : il écrit `round(34.30 * 755)` et laisse la base
+faire sa propre arithmétique décimale.
+
+## Ce qui reste
+
+1. **Jouer le fichier** dans le SQL Editor, après le seed, l'alignement, la
+   purge et la plaque.
+2. **Mai et juin 2025** manquent au dossier : ni suivi hebdomadaire, ni fichier
+   détaillé. À chercher, ou à acter comme un trou.
+3. Les **trois années antérieures** — 2022 à 2024, 10 694 pleins — attendent
+   que la grille tarifaire remonte jusqu'à elles. Elles donneraient au tableau
+   de bord un historique que l'application n'a jamais eu.
+4. Les **relevés kilométriques** restent la matière manquante : sans compteur,
+   pas de consommation aux 100 km ni de coût au kilomètre.
