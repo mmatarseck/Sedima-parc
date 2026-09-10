@@ -66,6 +66,17 @@ export interface FaitsFlotteJour {
   /** Demandes poussées aux détenteurs, échues et sans réponse à la fin du jour ; nul tant que le module n'est pas lu. */
   demandesSansReponse: number | null;
 
+  /**
+   * Le **dernier plein connu du parc**, toutes dates confondues ; nul si le
+   * parc n'en a aucun (migration 0036).
+   *
+   * Il ne sert qu'à une chose, et elle compte : distinguer « la flotte n'a
+   * rien consommé cette semaine » de « rien n'a été relevé depuis six
+   * semaines ». Les deux donnent zéro litre, et le premier est une mesure
+   * quand le second est une absence de mesure.
+   */
+  dernierPlein: string | null;
+
   /* -- Le parc des prestataires (métier, 10 septembre 2026) -----------------
    *
    * « Il est important de prévoir aussi quelques infos liées au parc des
@@ -274,10 +285,34 @@ export const PASTILLES: DefinitionPastille[] = [
     reference: "semaine-passee",
     seuilTexte: "Pas de seuil : à lire contre la semaine passée",
     href: "/carburant",
-    calcul: (c) => somme(c.depuisLundi, (v) => v.litres),
+    /*
+     * **Zéro litre ne veut pas toujours dire zéro litre** (10 septembre 2026).
+     * Le carburant réel s'arrête en juillet 2026 ; en septembre, la semaine
+     * lue tombe entièrement après le dernier relevé et la somme vaut zéro. La
+     * pastille affichait alors « 0 L, comme la semaine passée », c'est-à-dire
+     * une flotte qui n'aurait rien consommé — une mesure là où il n'y a pas de
+     * mesure.
+     *
+     * La règle : si la semaine ne porte aucun litre **et** que le dernier
+     * plein du parc lui est antérieur, on ne sait pas, et on le dit. Une
+     * semaine à zéro alors que des pleins existent après elle est, en
+     * revanche, un vrai zéro : la flotte n'a pas fait le plein, ce qui arrive.
+     */
+    calcul: (c) => {
+      const litres = somme(c.depuisLundi, (v) => v.litres);
+      if (litres > 0) return litres;
+      const dernier = c.jour.flotte.dernierPlein;
+      const debut = c.depuisLundi[0]?.jour ?? c.jour.jour;
+      return dernier !== null && dernier < debut ? null : litres;
+    },
     complement: (c) => {
       const f = somme(c.depuisLundi, (v) => v.carburant);
-      return f ? `${Math.round(f / 1000)} kF` : null;
+      if (f) return `${Math.round(f / 1000)} kF`;
+      /* Sans litres, le complément dit depuis quand la source s'est tue :
+         c'est l'information utile, et elle appelle un geste. */
+      const dernier = c.jour.flotte.dernierPlein;
+      const debut = c.depuisLundi[0]?.jour ?? c.jour.jour;
+      return dernier !== null && dernier < debut ? `dernier relevé le ${dernier.slice(8, 10)}/${dernier.slice(5, 7)}` : null;
     },
   },
   {

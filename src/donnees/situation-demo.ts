@@ -63,6 +63,10 @@ export function situationsJournalieres(aujourdhui: string = DATE_REFERENCE, prof
      sorties, le stock ne faisait que monter et l'autonomie restait vide. */
   const cuve = avecStock([...livraisonsEtJauges(), ...pleinsFlotte().filter((p) => estCuve(p.source)).map(sortieDePlein)], STOCK_INITIAL);
   const demandes = demandesDemo();
+  /* Le dernier plein connu du parc, une fois pour toutes : il ne dépend pas du
+     jour évalué. Il sert à distinguer « la flotte n'a rien consommé » de
+     « rien n'a été relevé » — voir la pastille Carburant. */
+  const dernierPlein = pleinsFlotte().map((x) => x.date).sort().at(-1) ?? null;
 
   /* -- Le parc des prestataires (10 septembre 2026) -------------------------
    *
@@ -190,6 +194,7 @@ export function situationsJournalieres(aujourdhui: string = DATE_REFERENCE, prof
       cuveJours: sorties7 > 0 ? Math.round((Math.max(0, cuveLitres) / (sorties7 / 7)) * 10) / 10 : null,
       joursSansAccident: dernierAccident ? joursEntre(dernierAccident, jour) : null,
       demandesSansReponse: demandes.filter((d) => !d.annuleeLe && d.echeance.slice(0, 10) <= jour && (!d.reponse || d.reponse.le.slice(0, 10) > jour)).length,
+      dernierPlein,
       ...faitsDesTiers(jour),
     };
     return { jour, vehicules, flotte };

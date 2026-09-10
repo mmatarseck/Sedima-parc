@@ -59,7 +59,21 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
-**Migrations : 0001 à 0035 jouées. Rien en attente dans le SQL Editor.**
+**⚠ Migration 0036 à jouer.** Le carburant réel chargé, la pastille
+« Carburant » affichait **0 L, comme la semaine passée** : le dossier s'arrête
+en juillet 2026, la fenêtre du tableau de bord tombe après, et zéro litre
+affirmait une flotte qui n'aurait rien consommé. 0036 ajoute le **dernier plein
+connu du parc** à la situation journalière ; la pastille rend alors « — » avec
+un complément qui dit « dernier relevé le 31/07 ». C'est le zéro qui ment,
+attrapé une fois de plus.
+
+**Le carburant réel est chargé** (10 septembre 2026) : cinq parties dans
+`supabase/carburant-parties/`, 5 871 pleins, 840 284 litres, 66 véhicules, du
+28 février 2022 au 31 juillet 2026. Voir `docs/CARBURANT-REEL.md` — d'où
+viennent les lignes, pourquoi le prix est le tarif officiel de la date, et ce
+qui n'est pas chargé.
+
+**Migrations : 0001 à 0035 jouées ; 0036 en attente.**
 
 **Le chargement des données réelles est fait** (10 septembre 2026) : les douze
 parties du seed, `aligner-referentiel.sql`, `purge-demonstration.sql` et

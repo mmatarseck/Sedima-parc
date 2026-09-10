@@ -21,6 +21,7 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { prixOfficiel } from "../src/domaine/carburant-tarifs";
+import { PASTILLE_PAR_ID, contexteA } from "../src/domaine/pastilles";
 
 const bac = process.env.PGLITE_DIR ?? "";
 const require = createRequire(join(bac, "package.json"));
@@ -132,6 +133,39 @@ attendu("le montant est toujours le produit des litres par le prix", (montants?.
 
 const reference = await un<{ n: number }>(`select count(*)::int as n from plein where reference not like 'Tarif officiel du %'`);
 attendu("chaque ligne dit que son prix est un tarif, non une facture", (reference?.n ?? 1) === 0);
+
+/* -- « Zéro litre » ne ment plus (0036) --------------------------------------
+ *
+ * Le dossier s'arrête en juillet 2026 et nous sommes en septembre : la fenêtre
+ * du tableau de bord tombe entièrement après le dernier relevé. La pastille
+ * doit dire « — » et depuis quand, pas « 0 L ».
+ * -------------------------------------------------------------------------- */
+
+const situations = (await pg.query<{ j: Array<{ jour: string; vehicules: Array<{ litres: string }>; flotte: { dernier_plein: string | null } }> }>(
+  `select situation_journaliere(current_date - 27, current_date) as j`,
+)).rows[0]!.j;
+const derniereSituation = situations[situations.length - 1]!;
+const litresFenetre = situations.reduce((t, j) => t + j.vehicules.reduce((u, v) => u + Number(v.litres), 0), 0);
+attendu(
+  `la fonction rend le dernier plein du parc (${derniereSituation.flotte.dernier_plein})`,
+  typeof derniereSituation.flotte.dernier_plein === "string" && derniereSituation.flotte.dernier_plein >= "2026-07-01",
+);
+attendu(`la fenêtre courante ne porte aucun litre (${Math.round(litresFenetre)}), et c'est bien le cas à traiter`, litresFenetre === 0);
+
+const contexte = contexteA(
+  situations.map((s) => ({
+    jour: s.jour,
+    vehicules: s.vehicules.map((v) => ({ litres: Number(v.litres) })) as never,
+    flotte: { dernierPlein: s.flotte.dernier_plein } as never,
+  })),
+  situations.length - 1,
+)!;
+const carburant = PASTILLE_PAR_ID.get("p-carburant-semaine")!;
+attendu("la pastille Carburant rend « — » plutôt que zéro", carburant.calcul(contexte) === null);
+attendu(
+  `et son complément dit depuis quand (« ${carburant.complement?.(contexte)} »)`,
+  (carburant.complement?.(contexte) ?? "").startsWith("dernier relevé le"),
+);
 
 /* -- Rejouable -------------------------------------------------------------- */
 
