@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { Assistant } from "@/composants/assistant/Assistant";
 import { Cloche } from "./Cloche";
-import { LienDemandes } from "./LienDemandes";
 import { MenuUtilisateur } from "./MenuUtilisateur";
 import { RechercheGlobale } from "./RechercheGlobale";
 import { HAUTEUR_BARRE } from "./mesures";
@@ -50,10 +49,7 @@ export function BarreApplication() {
         {/* L'assistant est à côté de la recherche : on cherche un numéro, on
             demande un chiffre — deux façons d'interroger le parc. */}
         <Assistant />
-        {/* La corbeille des demandes, à côté de la cloche : deux choses qui
-            attendent une réponse, au même endroit. */}
-        <LienDemandes />
-        <Cloche />
+                <Cloche />
         <span className="mx-1 hidden h-6 w-px bg-bordure sm:block" aria-hidden="true" />
         <MenuUtilisateur />
       </div>

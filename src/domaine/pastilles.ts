@@ -342,17 +342,6 @@ export const PASTILLES: DefinitionPastille[] = [
     alerte: (c, seuil) => (c.jour.flotte.ordresAnciens ?? 0) > (seuil ?? 0),
     complement: (c) => (c.jour.flotte.ordresAnciens === null ? null : c.jour.flotte.ordresAnciens ? `dont ${c.jour.flotte.ordresAnciens} de plus de 15 j` : "aucun de plus de 15 j"),
   },
-  {
-    id: "p-demandes-sans-reponse",
-    axe: "M",
-    libelle: "Demandes sans réponse",
-    moment: "instant",
-    reference: "hier",
-    seuil: { sens: "inf", defaut: 0, texte: desLePremier("demandes") },
-    href: "/demandes",
-    /* Une demande poussée à un détenteur, échue et toujours sans réponse (module des demandes, 8 septembre 2026). */
-    calcul: (c) => c.jour.flotte.demandesSansReponse,
-  },
 
   /* -- Le parc des prestataires (métier, 10 septembre 2026) -----------------
    *
@@ -518,7 +507,7 @@ export const PASTILLES_PAR_PROFIL: Record<string, string[]> = {
   /* L'atelier vit sur ce qui est immobilisé, en panne, et sur ses ordres ouverts. */
   maintenance: ["p-hors-service", "p-immobilises-7", "p-pannes-semaine", "p-ordres-ouverts", "p-echeances-7", "p-sans-releve"],
   /* L'agent de terrain agit sur son site : relevés à faire, demandes à répondre, carburant, caisse. */
-  "agent-terrain": ["p-prets", "p-sans-releve", "p-demandes-sans-reponse", "p-carburant-semaine", "p-cuve", "p-caisse"],
+  "agent-terrain": ["p-prets", "p-sans-releve", "p-immobilises-admin", "p-carburant-semaine", "p-cuve", "p-caisse"],
   /*
    * Le contrôle de gestion regarde l'argent et la conformité, pas l'atelier.
    * Le profil « lecteur » couvre aussi les achats : les factures de

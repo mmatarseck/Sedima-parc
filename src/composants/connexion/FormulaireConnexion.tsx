@@ -7,7 +7,26 @@ import { ArrowRight, Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { ROLES } from "@/domaine/roles";
 import { authentificationReelle, fermerSession, ouvrirSession } from "@/lib/session-demo";
 import { clientNavigateur } from "@/lib/supabase";
-import { NOM_APPLICATION, SOUS_TITRE_APPLICATION } from "@/domaine/marque";
+import { ACCROCHE_APPLICATION, NOM_APPLICATION, PRECISION_APPLICATION } from "@/domaine/marque";
+
+/**
+ * Le dégradé du panneau de garde.
+ *
+ * La maquette pose un violet plein ; ici ce sont les deux couleurs de la
+ * maison : le **vert SEDIMA** qui occupe la page, et le **rouge SEDIMA** qui
+ * en tient le coin bas (métier, 10 septembre 2026 : « mettre un peu du rouge
+ * sedima »).
+ *
+ * « Un peu » est le mot. Le rouge arrive en diagonale, dans le dernier quart,
+ * et ne mord pas sur la zone où se lisent la marque et l'accroche. Dans
+ * l'application, le rouge est réservé à ce qui alerte ; cette page est en
+ * dehors de l'application, personne n'y lit un état, et la couleur peut y
+ * redevenir ce qu'elle est ailleurs — une couleur de marque.
+ *
+ * Écrit en clair plutôt qu'en jetons : c'est le seul endroit qui porte un
+ * aplat de couleur pleine, et il n'a pas à peser sur la palette commune.
+ */
+const DEGRADE = "linear-gradient(145deg, #8cc72e 0%, #78b225 30%, #4e7d1a 58%, #7d1c15 86%, #c00000 100%)";
 
 /** Ce que la page de garde dit quand on y revient sans l'avoir choisi. */
 const MOTIFS: Record<string, string> = {
@@ -18,21 +37,24 @@ const MOTIFS: Record<string, string> = {
 /**
  * Page de garde.
  *
- * **Refondue le 10 septembre 2026 : la photo de la citerne vrac est retirée**
- * (demande du métier). L'écran passe de deux panneaux — le camion en pleine
- * hauteur à gauche, la carte à droite — à **une seule colonne centrée**, la
- * même sur un téléphone et sur un bureau.
+ * **Refondue le 10 septembre 2026, d'après une maquette du métier**, et la
+ * photo de la citerne vrac est retirée.
  *
- * Pourquoi la colonne centrée plutôt qu'un demi-écran laissé vide. Une fois la
- * photo partie, la grille en deux colonnes n'avait plus de raison d'être : sa
- * moitié gauche ne portait que la marque et une accroche, que la carte peut
- * porter elle-même. Un seul agencement pour les deux tailles d'écran, c'est
- * aussi une seule chose à vérifier quand on y touche.
+ * Ce que la maquette pose, et qu'on reprend : un **aplat de couleur en
+ * dégradé** sur toute la page, une **carte blanche à grand rayon** qui flotte
+ * dessus avec une marge sur les quatre côtés, la marque et une accroche dans
+ * l'espace coloré à gauche, et dans la carte des **champs et un bouton en
+ * pilule**, sans étiquette au-dessus — l'indication à l'intérieur les nomme.
+ * Le violet devient le vert SEDIMA.
  *
- * Ce qui reste du langage de l'application : le fond froid très clair, la
- * carte blanche à rayon généreux, une seule touche de vert sur l'action
- * principale. La marque monte au-dessus de la carte, sur le fond, plutôt que
- * sur un voile sombre.
+ * Ce qu'on n'en reprend pas : les boutons Google et Facebook sous le
+ * séparateur « ou ». On ne dessine pas une porte qui ne mène nulle part. Le
+ * séparateur reste, et ce qui vient après est le second chemin d'entrée que
+ * cette application a réellement — les comptes de démonstration.
+ *
+ * Sur un téléphone, le panneau de gauche disparaît : il n'aurait fait que
+ * repousser le formulaire vers le bas. La marque revient alors au-dessus du
+ * titre, et la carte prend l'écran, marge comprise.
  *
  * Tant qu'aucun projet Supabase n'est configuré, le formulaire ne vaut pas
  * authentification et l'entrée se fait par les comptes de démonstration. Cet
@@ -105,43 +127,52 @@ export function FormulaireConnexion() {
     router.push(suite && suite.startsWith("/") && !suite.startsWith("//") ? suite : "/flotte");
   }
 
+  /* Les champs en pilule, d'après la maquette : rayon plein, fond très clair
+     plutôt que blanc, bordure discrète qui ne se voit qu'au repos. */
   const champ =
-    "h-11 w-full rounded-[10px] border border-bordure-champ bg-surface px-3.5 text-[13.5px] text-texte outline-none transition-colors placeholder:text-attenue focus:border-accent focus:ring-4 focus:ring-accent/15";
+    "h-12 w-full rounded-full border border-bordure bg-surface-2 px-5 text-[13.5px] text-texte outline-none transition-colors placeholder:text-attenue focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/15";
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-fond px-5 py-10">
-      {/* Le halo vert, seule ornementation qui reste. Il est derrière tout,
-          sans interaction, et se contente de réchauffer un fond très froid. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-40 left-1/2 size-[720px] -translate-x-1/2 rounded-full opacity-60 blur-3xl"
-        style={{ background: "radial-gradient(closest-side, rgba(120,178,37,0.16), rgba(120,178,37,0))" }}
-      />
+    /* Le fond dégradé occupe toute la page ; la carte blanche flotte dessus
+       avec une marge tout autour, si bien que le vert continue de se voir sur
+       les quatre côtés. C'est le trait de la maquette qui porte le plus. */
+    <div className="relative flex min-h-screen flex-col justify-center p-4 sm:p-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(460px,46%)] lg:items-stretch lg:gap-0 lg:p-5" style={{ background: DEGRADE }}>
+      {/* -- À gauche : la marque et l'accroche, sur le dégradé --------------
+          Cachée sous 1024 px : sur un téléphone, la carte prend l'écran et
+          l'accroche n'aurait fait que repousser le formulaire vers le bas. */}
+      <section className="hidden flex-col justify-center px-12 py-12 lg:flex xl:px-16">
+        <div className="flex items-center gap-3">
+          <span className="grid size-12 shrink-0 place-items-center rounded-[14px] bg-white/95 shadow-flottante">
+            <Image src="/sedima-picto.png" alt="" width={30} height={30} priority className="size-[30px] object-contain" />
+          </span>
+          <span className="text-[19px] font-semibold tracking-[-0.01em] text-white">{NOM_APPLICATION}</span>
+        </div>
+        <h2 className="mt-10 max-w-[520px] text-[44px] leading-[1.08] font-semibold tracking-[-0.03em] text-white xl:text-[52px]">Bonjour.</h2>
+        <p className="mt-4 max-w-[480px] text-[16px] leading-[1.45] font-medium text-white/90">{ACCROCHE_APPLICATION}</p>
+        <p className="mt-4 max-w-[460px] text-[13.5px] leading-[1.6] text-white/70">{PRECISION_APPLICATION}</p>
+      </section>
 
-      {/* La marque, au-dessus de la carte et sur le fond clair : le picto n'a
-          plus de voile sombre à porter, il est posé sur sa propre pastille. */}
-      <div className="relative mb-6 flex flex-col items-center gap-3">
-        <span className="grid size-14 place-items-center rounded-[16px] bg-surface shadow-flottante ring-1 ring-bordure">
-          <Image src="/sedima-picto.png" alt="" width={34} height={34} priority className="size-[34px] object-contain" />
-        </span>
-        <span className="text-center leading-tight">
-          <span className="block text-[17px] font-semibold tracking-[-0.01em] text-texte">{NOM_APPLICATION}</span>
-          <span className="meta mt-0.5 block text-[12.5px]">{SOUS_TITRE_APPLICATION}</span>
-        </span>
-      </div>
+      {/* -- À droite : la carte blanche ------------------------------------ */}
+      <div className="mx-auto flex w-full max-w-[440px] flex-col items-center rounded-[26px] bg-surface px-5 py-8 shadow-flottante sm:px-8 lg:my-0 lg:max-w-none lg:justify-center lg:rounded-[28px] lg:px-8 lg:py-10">
+        {/* La marque revient ici sous 1024 px, puisque le panneau de gauche
+            n'y est pas : sans elle, l'écran ne dirait pas où l'on entre. */}
+        <div className="mb-7 flex flex-col items-center gap-2.5 lg:hidden">
+          <span className="grid size-12 place-items-center rounded-[14px] bg-surface ring-1 ring-bordure">
+            <Image src="/sedima-picto.png" alt="" width={30} height={30} priority className="size-[30px] object-contain" />
+          </span>
+          <span className="text-[14.5px] font-semibold tracking-[-0.01em] text-texte">{NOM_APPLICATION}</span>
+        </div>
 
-      <form
-        onSubmit={soumettre}
-        className="relative w-full max-w-[420px] rounded-[20px] border border-bordure bg-surface px-6 py-7 shadow-flottante sm:px-8 sm:py-8"
-      >
-        <h1 className="text-[22px] leading-tight font-semibold tracking-[-0.02em] text-texte">Connexion</h1>
-        <p className="mt-1.5 text-[13px] leading-[1.5] text-texte-2">
-          Réservé à l'équipe de gestion de parc. Les chauffeurs n'y ont pas accès.
-        </p>
+        <form onSubmit={soumettre} className="w-full max-w-[400px]">
+          <h1 className="text-center text-[26px] leading-tight font-semibold tracking-[-0.02em] text-texte">Connexion</h1>
+          <p className="mt-2 text-center text-[13px] leading-[1.5] text-texte-2">Réservé à l&apos;équipe de gestion de parc.</p>
 
-          <div className="mt-7 flex flex-col gap-4">
+          {/* Les champs sans étiquette au-dessus, comme la maquette : c'est
+              l'indication à l'intérieur qui les nomme. L'étiquette reste dans
+              le balisage, pour les lecteurs d'écran, mais ne se dessine pas. */}
+          <div className="mt-7 flex flex-col gap-3">
             <label className="block">
-              <span className="label-champ mb-1.5 block">Identifiant</span>
+              <span className="sr-only">Identifiant</span>
               <input
                 type="email"
                 value={identifiant}
@@ -153,32 +184,21 @@ export function FormulaireConnexion() {
             </label>
 
             <label className="block">
-              <span className="mb-1.5 flex items-baseline">
-                <span className="label-champ">Mot de passe</span>
-                {reelle ? (
-                  <button
-                    type="button"
-                    className="ml-auto text-[12px] font-medium text-accent-fonce hover:text-accent"
-                    onClick={() => void motDePasseOublie()}
-                  >
-                    Mot de passe oublié&nbsp;?
-                  </button>
-                ) : null}
-              </span>
+              <span className="sr-only">Mot de passe</span>
               <span className="relative block">
                 <input
                   type={motDePasseVisible ? "text" : "password"}
                   value={motDePasse}
                   onChange={(e) => setMotDePasse(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Mot de passe"
                   autoComplete="current-password"
-                  className={`${champ} pr-11`}
+                  className={`${champ} pr-12`}
                 />
                 <button
                   type="button"
                   onClick={() => setMotDePasseVisible((v) => !v)}
                   title={motDePasseVisible ? "Masquer le mot de passe" : "Afficher le mot de passe"}
-                  className="absolute top-1/2 right-1.5 grid size-8 -translate-y-1/2 place-items-center rounded-full text-attenue hover:bg-surface-3 hover:text-texte-2"
+                  className="absolute top-1/2 right-2 grid size-8 -translate-y-1/2 place-items-center rounded-full text-attenue hover:bg-surface-3 hover:text-texte-2"
                 >
                   {motDePasseVisible ? <Eye className="size-4" strokeWidth={1.8} /> : <EyeOff className="size-4" strokeWidth={1.8} />}
                   <span className="sr-only">{motDePasseVisible ? "Masquer" : "Afficher"} le mot de passe</span>
@@ -186,6 +206,17 @@ export function FormulaireConnexion() {
               </span>
             </label>
           </div>
+
+          {/* Le lien d'oubli sous les champs, aligné à droite. Il n'apparaît
+              qu'en authentification réelle : sans projet configuré, il n'y a
+              pas de mot de passe à réinitialiser. */}
+          {reelle ? (
+            <div className="mt-2.5 flex justify-end">
+              <button type="button" className="text-[12.5px] font-medium text-accent-fonce hover:text-accent" onClick={() => void motDePasseOublie()}>
+                Mot de passe oublié&nbsp;?
+              </button>
+            </div>
+          ) : null}
 
           {erreur ? (
             <div className="mt-4 flex items-start gap-2.5 rounded-[10px] bg-defavorable-fond px-3.5 py-3">
@@ -200,19 +231,31 @@ export function FormulaireConnexion() {
             </div>
           ) : null}
 
-          <button type="submit" disabled={enCours} className="bouton-principal mt-6 h-11 w-full justify-center text-[14px] disabled:opacity-60">
+          {/* Le bouton en pilule pleine largeur, d'après la maquette. */}
+          <button type="submit" disabled={enCours} className="bouton-principal mt-5 h-12 w-full justify-center rounded-full text-[14px] disabled:opacity-60">
             {enCours ? "Connexion…" : "Se connecter"}
             <ArrowRight className="size-4" strokeWidth={2.2} />
           </button>
 
-          <p className="mt-4 flex items-center justify-center gap-1.5 text-[11.5px] text-attenue">
+          <p className="mt-3.5 flex items-center justify-center gap-1.5 text-[11.5px] text-attenue">
             <LockKeyhole className="size-3.5" strokeWidth={1.8} />
             Double authentification obligatoire pour les administrateurs
           </p>
 
           {!reelle ? (
-            <div className="mt-7 border-t border-bordure pt-6">
-              <div className="mb-3 flex items-baseline">
+            <>
+              {/* Le séparateur « OU » de la maquette. Là où elle propose
+                  Google et Facebook, on n'a rien à proposer de tel — et on ne
+                  va pas dessiner des boutons qui ne mènent nulle part. Ce qui
+                  vient après, c'est ce que cette application a de second
+                  chemin d'entrée : les comptes de démonstration. */}
+              <div className="mt-7 flex items-center gap-3">
+                <span className="h-px flex-1 bg-bordure" />
+                <span className="text-[11.5px] font-semibold tracking-[0.08em] text-attenue uppercase">ou</span>
+                <span className="h-px flex-1 bg-bordure" />
+              </div>
+
+              <div className="mt-5 mb-3 flex items-baseline">
                 <span className="micro-sur-titre">Mode démonstration</span>
                 <span className="meta ml-auto text-[11.5px]">sans mot de passe</span>
               </div>
@@ -223,7 +266,7 @@ export function FormulaireConnexion() {
                     key={role.role}
                     type="button"
                     onClick={() => entrer(role)}
-                    className="flex items-center gap-2.5 rounded-[12px] border border-bordure bg-surface-2 px-3 py-2.5 text-left transition-colors hover:border-accent-bordure hover:bg-accent-fond"
+                    className="flex items-center gap-2.5 rounded-full border border-bordure bg-surface-2 py-1.5 pr-3 pl-1.5 text-left transition-colors hover:border-accent-bordure hover:bg-accent-fond"
                   >
                     <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface text-[11px] font-semibold text-accent-tres-fonce ring-1 ring-bordure">
                       {role.initiales}
@@ -239,17 +282,18 @@ export function FormulaireConnexion() {
               <p className="meta mt-3 text-[11.5px] leading-[1.5]">
                 En production, le rôle ne se choisit pas ici : il est résolu côté serveur, comme dans SEDIMA Opérations.
               </p>
-            </div>
+            </>
           ) : null}
-      </form>
+        </form>
 
-      {/* Le pied : la maison et ses métiers. Sur un téléphone il passe à la
-          ligne plutôt que de rétrécir, d'où le retrait du tiret sous 380 px. */}
-      <p className="relative mt-6 max-w-[420px] text-center text-[12px] leading-[1.6] text-attenue">
-        SEDIMA SA · Agro-industrie · Sénégal
-        <span className="mx-2 hidden text-attenue-2 sm:inline">—</span>
-        <span className="block sm:inline">Aviculture · Minoterie · Abattoirs</span>
-      </p>
+        {/* Le pied : la maison et ses métiers. Sur un téléphone il passe à la
+            ligne plutôt que de rétrécir, d'où le retrait du tiret sous 380 px. */}
+        <p className="mt-8 max-w-[380px] text-center text-[11.5px] leading-[1.6] text-attenue">
+          SEDIMA SA · Agro-industrie · Sénégal
+          <span className="mx-2 hidden text-attenue-2 sm:inline">—</span>
+          <span className="block sm:inline">Aviculture · Minoterie · Abattoirs</span>
+        </p>
+      </div>
     </div>
   );
 }

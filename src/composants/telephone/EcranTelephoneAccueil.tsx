@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardCheck, FileCheck, Fuel, Gauge, Inbox, Package, PenLine, RefreshCw, ScanLine, Search, Send, Settings2, Stamp, TriangleAlert, UserPlus, Wrench } from "lucide-react";
+import { ClipboardCheck, FileCheck, Fuel, Gauge, Package, PenLine, RefreshCw, ScanLine, Search, Settings2, Stamp, TriangleAlert, UserPlus, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { trouverProfil, type AccesCourant } from "@/domaine/acces";
+import { statutDemande, type Demande } from "@/domaine/demandes";
 import { peutCloturer } from "@/domaine/cloture";
-import { TYPE_DEMANDE, statutDemande, type Demande } from "@/domaine/demandes";
 import { TYPE_DOCUMENT } from "@/domaine/libelles";
 import { trouverRole } from "@/domaine/roles";
 import { statutTransfert, type Transfert } from "@/domaine/transferts";
@@ -16,7 +16,7 @@ import { lireDemandes as lireDemandesModification } from "@/lib/clotures-demo";
 import { lireDemandes } from "@/lib/demandes-demo";
 import { initiales as initialesDe, lireIdentite, lireRole } from "@/lib/session-demo";
 import { lireTransferts } from "@/lib/transferts-demo";
-import { WIDGETS, lireRecents, lireReglageAccueil, raccourcisPour, type CleRaccourci, type CleWidget, type Raccourci, type VehiculeRecent } from "./accueil-widgets";
+import { REGLAGE_ACCUEIL_DEFAUT, WIDGETS, lireRecents, lireReglageAccueil, raccourcisAffiches, type CleRaccourci, type Raccourci, type ReglageAccueil, type VehiculeRecent } from "./accueil-widgets";
 import { mesDemandes } from "./EcranTelephoneDemandes";
 import { mesTransferts } from "./EcranTelephoneTransferts";
 import { dansPerimetre } from "./perimetre";
@@ -47,7 +47,8 @@ export interface CompteursAtelier {
 export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, transferts, atelier, maintenant }: { lignes: LigneFlotte[]; aujourdhui: string; demandes: Demande[]; transferts: Transfert[]; atelier: CompteursAtelier; maintenant: string }) {
   const [acces, setAcces] = useState<AccesCourant | null>(null);
   const [nom, setNom] = useState("");
-  const [ordre, setOrdre] = useState<CleWidget[] | null>(null);
+  const [reglage, setReglage] = useState<ReglageAccueil | null>(null);
+  const ordre = reglage?.ordre ?? null;
   const [listeDemandes, setListeDemandes] = useState<Demande[]>(demandes);
   const [listeTransferts, setListeTransferts] = useState<Transfert[]>(transferts);
   const [recents, setRecents] = useState<VehiculeRecent[]>([]);
@@ -56,7 +57,7 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, transferts
   useEffect(() => {
     setAcces(lireAccesCourant());
     setNom(lireIdentite()?.nom ?? trouverRole(lireRole()).nom);
-    setOrdre(lireReglageAccueil().ordre);
+    setReglage(lireReglageAccueil());
     setListeDemandes(lireDemandes(demandes));
     setListeTransferts(lireTransferts(transferts));
     setRecents(lireRecents());
@@ -73,12 +74,14 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, transferts
     .sort((a, b) => a.prochaineEcheanceConformite!.joursRestants - b.prochaineEcheanceConformite!.joursRestants);
   const sansReleve = miennes.filter((l) => l.vehicule.engage && (!l.dateKilometrage || joursEntre(l.dateKilometrage, aujourdhui) > 7)).length;
   const demandesOuvertes = useMemo(() => (acces ? mesDemandes(listeDemandes, acces).filter((d) => statutDemande(d, maintenant) === "a-repondre" || statutDemande(d, maintenant) === "en-retard") : []), [listeDemandes, acces, maintenant]);
-  const enRetard = demandesOuvertes.filter((d) => statutDemande(d, maintenant) === "en-retard").length;
   const transfertsASigner = useMemo(() => (acces ? mesTransferts(listeTransferts, acces).filter((t) => { const s = statutTransfert(t); return s !== "complete" && s !== "annulee"; }) : []), [listeTransferts, acces]);
   const profil = acces ? trouverProfil(acces.profil) : null;
   const niveau = (m: Parameters<typeof peut>[1]) => peut(acces, m);
   const monVehicule = detenteur ? (demandesOuvertes[0]?.vehicule ?? mesDemandes(listeDemandes, acces!)[0]?.vehicule ?? transfertsASigner[0]?.vehicule ?? null) : null;
-  const raccourcis = useMemo(() => (acces ? raccourcisPour(acces) : []), [acces]);
+  /* Deux lignes au plus : le choix de la personne, sinon le défaut de son
+     profil (métier, 10 septembre 2026). Le reste des gestes vit dans
+     « Parcourir » et dans l'écran de personnalisation. */
+  const raccourcis = useMemo(() => (acces ? raccourcisAffiches(acces, reglage ?? REGLAGE_ACCUEIL_DEFAUT) : []), [acces, reglage]);
   /* L'atelier n'est « à faire » que pour qui y agit : un ordre à clôturer ne concerne pas un lecteur. */
   const agitAtelier = acces !== null && !detenteur && (acces.niveaux.maintenance === "saisie" || acces.niveaux.maintenance === "gestion");
   const atelierAFaire = agitAtelier ? atelier.enAtelier + atelier.planifies : 0;
@@ -133,7 +136,7 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, transferts
             return (
               <div key={cle} className={`grid gap-2 ${raccourcis.length <= 3 ? "grid-cols-3" : "grid-cols-4"}`}>
                 {raccourcis.map((r) => (
-                  <Geste key={r.cle} raccourci={r} pastille={r.cle === "valider" ? aValider : r.cle === "repondre" ? demandesOuvertes.length : r.cle === "signer" ? transfertsASigner.length : 0} />
+                  <Geste key={r.cle} raccourci={r} pastille={r.cle === "valider" ? aValider : r.cle === "signer" ? transfertsASigner.length : 0} />
                 ))}
               </div>
             );
@@ -151,19 +154,12 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, transferts
               </div>
             );
           case "a-faire": {
-            const vide = echeances.length === 0 && immobilises.length === 0 && sansReleve === 0 && demandesOuvertes.length === 0 && transfertsASigner.length === 0 && atelierAFaire === 0 && aValider === 0;
+            const vide = echeances.length === 0 && immobilises.length === 0 && sansReleve === 0 && transfertsASigner.length === 0 && atelierAFaire === 0 && aValider === 0;
             return (
-              <Bloc key={cle} titre="À faire aujourd'hui" accent={demandesOuvertes.length + transfertsASigner.length + aValider > 0}>
+              <Bloc key={cle} titre="À faire aujourd'hui" accent={transfertsASigner.length + aValider > 0}>
                 {vide ? <p className="meta py-1">Rien d&apos;urgent sur ce périmètre.</p> : null}
                 {aValider > 0 ? <Ligne icone={<Stamp className="size-4" strokeWidth={2} />} ton="vigilance" titre="Modifications à approuver" precision={`${aValider} sur des mois clos`} href="/clotures" /> : null}
                 {atelierAFaire > 0 ? <Ligne icone={<Wrench className="size-4" strokeWidth={2} />} ton={atelier.enAtelier > 0 ? "vigilance" : "neutre"} titre="Atelier" precision={[atelier.enAtelier ? `${atelier.enAtelier} à clôturer` : "", atelier.planifies ? `${atelier.planifies} à faire entrer` : ""].filter(Boolean).join(" · ")} href="/telephone/atelier" /> : null}
-                {demandesOuvertes.slice(0, detenteur ? 4 : 1).map((d) =>
-                  detenteur ? (
-                    <Ligne key={d.id} icone={<Inbox className="size-4" strokeWidth={2} />} ton={statutDemande(d, maintenant) === "en-retard" ? "defavorable" : "vigilance"} titre={TYPE_DEMANDE[d.type].libelle} precision={`${d.vehicule.immatriculation} · ${statutDemande(d, maintenant) === "en-retard" ? "en retard" : "à répondre"}`} href="/telephone/demandes" />
-                  ) : (
-                    <Ligne key="demandes" icone={<Inbox className="size-4" strokeWidth={2} />} ton={enRetard > 0 ? "defavorable" : "vigilance"} titre="Demandes sans réponse" precision={`${demandesOuvertes.length} en attente${enRetard ? `, dont ${enRetard} en retard` : ""}`} href="/telephone/demandes" />
-                  ),
-                )}
                 {transfertsASigner.slice(0, 3).map((t) => (
                   <Ligne key={t.id} icone={<PenLine className="size-4" strokeWidth={2} />} ton="vigilance" titre={`Fiche de transfert · ${t.motif}`} precision={`${t.vehicule.immatriculation} · à signer`} href={`/transferts/${t.id}`} />
                 ))}
@@ -187,18 +183,6 @@ export function EcranTelephoneAccueil({ lignes, aujourdhui, demandes, transferts
                 {recents.map((r) => (
                   <Ligne key={r.id} icone={r.immatriculation.slice(0, 2)} titre={r.immatriculation} precision={r.libelle} href={`/telephone/vehicules/${r.id}`} />
                 ))}
-              </Bloc>
-            );
-          case "demandes":
-            return (
-              <Bloc key={cle} titre={detenteur ? "Mes demandes" : "Demandes"} accent={demandesOuvertes.length > 0}>
-                {demandesOuvertes.length === 0 ? <p className="meta py-1">{detenteur ? "Rien à répondre." : "Tout le monde a répondu."}</p> : null}
-                {demandesOuvertes.slice(0, 3).map((d) => (
-                  <Ligne key={d.id} icone={<Inbox className="size-4" strokeWidth={2} />} ton={statutDemande(d, maintenant) === "en-retard" ? "defavorable" : "vigilance"} titre={detenteur ? TYPE_DEMANDE[d.type].libelle : `${d.detenteur.nom} · ${TYPE_DEMANDE[d.type].libelle}`} precision={`${d.vehicule.immatriculation} · ${statutDemande(d, maintenant) === "en-retard" ? "en retard" : "à répondre"}`} href="/telephone/demandes" />
-                ))}
-                <Link href="/telephone/demandes" className="mt-1.5 inline-block text-[12.5px] font-semibold text-accent-fonce">
-                  Toutes les demandes
-                </Link>
               </Bloc>
             );
           case "transferts":
@@ -255,9 +239,6 @@ const ICONE_RACCOURCI: Record<CleRaccourci, LucideIcon> = {
   document: FileCheck,
   atelier: Wrench,
   pieces: Package,
-  demander: Send,
-  demandes: Inbox,
-  repondre: Inbox,
   transfert: ClipboardCheck,
   signer: PenLine,
   affecter: UserPlus,

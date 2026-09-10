@@ -188,7 +188,7 @@ function PanneauMouvement({ nature, stock, vehicules, ordres, onFermer, onEnregi
               <span className="label-champ mb-1.5 block">Pièce</span>
               <span className="relative block">
                 <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-attenue" strokeWidth={2} />
-                <input type="search" value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="Référence, désignation, modèle…" className={`${champ} pl-9`} autoFocus />
+                <input type="search" value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="Référence, désignation, modèle…" className={`${champ} pl-9`} />
               </span>
               {candidates.length > 0 ? (
                 <span className="mt-1.5 block overflow-hidden rounded-[12px] border border-bordure">

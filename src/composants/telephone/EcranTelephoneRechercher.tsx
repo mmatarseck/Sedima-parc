@@ -34,7 +34,12 @@ export function EcranTelephoneRechercher() {
       <EnTeteTelephone titre="Rechercher" />
       <label className="relative block">
         <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-attenue" strokeWidth={2} />
-        <input type="search" value={terme} onChange={(e) => setTerme(e.target.value)} placeholder="Plaque, chauffeur, n° de transaction" autoFocus autoComplete="off" className="h-12 w-full rounded-[14px] border border-bordure-champ bg-surface pl-11 pr-3 text-[15px] text-texte outline-none focus:border-accent" />
+        {/* Pas de focus automatique : sur un téléphone il ouvre le clavier
+            dès l arrivée, qui mange la moitié de l écran avant qu on ait rien
+            demandé (métier, 10 septembre 2026). Les champs qui gardent leur
+            focus sont ceux des feuilles de saisie — on les ouvre justement
+            pour taper. */}
+        <input type="search" value={terme} onChange={(e) => setTerme(e.target.value)} placeholder="Plaque, chauffeur, n° de transaction" autoComplete="off" className="h-12 w-full rounded-[14px] border border-bordure-champ bg-surface pl-11 pr-3 text-[15px] text-texte outline-none focus:border-accent" />
       </label>
       {terme.trim().length < 2 ? <p className="meta px-2 py-8 text-center">Tapez au moins deux caractères : un véhicule, un chauffeur, un numéro comme DEP-2026-15012.</p> : null}
       {terme.trim().length >= 2 && chercheur && resultats.length === 0 ? <p className="meta px-2 py-8 text-center">Rien ne correspond à « {terme.trim()} ».</p> : null}
