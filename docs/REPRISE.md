@@ -53,7 +53,15 @@ seul pour s'attribuer un véhicule. Section « Les accès, audités et fermés
 avant les données réelles » plus bas. **À jouer avant de charger la moindre
 donnée réelle.**
 
-**⚠ Le jeu de départ passe de 6 à 9 parties** (10 septembre 2026) : le parc
+**⚠ La purge des transactions fabriquées est écrite, éprouvée, et attend
+d'être jouée** : `supabase/purge-demonstration.sql`, en trois parties dont un
+inventaire en lecture seule à lire d'abord. 12 627 lignes fabriquées partent,
+719 de référentiel restent, les 56 documents d'assurance sont gardés.
+`scripts/tester-purge.mts` le prouve, et vérifie que l'application tient sur
+une base sans histoire. **Ce n'est pas une migration : elle ne se joue pas
+toute seule.**
+
+**⚠ Le jeu de départ passe de 6 à 12 parties** (10 septembre 2026) : le parc
 lourd est complété (151 véhicules, 36 chauffeurs, 17 sites), et deux défauts
 réveillés par cet agrandissement faisaient disparaître **toutes les demandes**
 du seed sans un mot — un `insert` coupé entre deux fichiers, et une heure

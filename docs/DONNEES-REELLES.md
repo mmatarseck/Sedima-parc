@@ -204,10 +204,26 @@ Ces points bloquent le chargement, ils ne se devinent pas :
    disponibilité — ils quittent la flotte, les compter parmi les engagés
    fausserait le taux. Le parc de transport compte désormais **56 véhicules,
    47 engagés**, et le tableau de bord voit enfin ses 19 hors service.
-2. **Purger les transactions fabriquées** de la base, en gardant le
-   référentiel : une migration qui vide relevés, pleins, dépenses,
-   interventions, incidents, mouvements de caisse et de cuve, relevés de
-   transport, et remet les compteurs à leur dernière valeur connue.
+2. ~~**Purger les transactions fabriquées**~~ — le script est écrit et éprouvé
+   (10 septembre 2026) : `supabase/purge-demonstration.sql`. **Il reste à le
+   jouer**, et c'est un geste qui vous revient.
+
+   Ce n'est pas une migration : il ne se joue pas tout seul, il efface des
+   lignes, et rien ne les ramène sinon un rejeu du seed. Il se lit en trois
+   parties — un inventaire en lecture seule, la purge dans une transaction,
+   puis le même inventaire pour vérifier. **Jouer la partie 1 d'abord**, et ne
+   passer à la 2 que si le compte correspond à ce qu'on croit effacer.
+
+   Mesuré sur la base du banc : **12 627 lignes de transactions effacées** sur
+   27 tables, **719 lignes de référentiel intactes** (167 véhicules,
+   37 chauffeurs, sites, prestataires, affectations, parc léger, licences,
+   plans d'entretien, budget, accès). Les **56 documents d'assurance sont
+   gardés** — ils viennent de la police 2026 — et les 230 autres partent.
+
+   `scripts/tester-purge.mts` le prouve avant que vous ne le jouiez, et
+   vérifie en plus que **l'application tient sur une base sans histoire** :
+   les six lectures de production répondent, et la fiche d'un véhicule se
+   dresse encore sans un seul fait à montrer.
 3. **Charger le réel là où le dossier le porte** : échéances de visite,
    d'assurance et de licence (suivi administratif), pannes en cours, puces
    carburant (`BASE DE DONNEES PROFLEET`, `DOTATION HEBDOMADAIRE`).
