@@ -351,6 +351,35 @@ export const MAX_PASTILLES = 6;
  */
 export const PASTILLES_DEFAUT = ["p-hors-service", "p-prets", "p-echeances-7", "p-carburant-semaine", "p-jours-sans-accident", "p-chauffeurs-indisponibles"];
 
+/**
+ * La rangée d'ouverture, par profil (métier, 10 septembre 2026 : « les
+ * indicateurs sont affichés par profil ; la personne choisit ce qu'elle veut
+ * voir, ou revient au défaut »).
+ *
+ * Ce n'est pas une question de droits — le panneau de choix offre les seize à
+ * tout le monde — mais de **première utilité** : ce qu'un responsable veut
+ * voir en arrivant n'est pas ce qui occupe la journée d'un chef d'atelier. Le
+ * profil absent de cette table reçoit `PASTILLES_DEFAUT`.
+ */
+export const PASTILLES_PAR_PROFIL: Record<string, string[]> = {
+  /* Le responsable et l'administrateur voient le parc de haut : disponibilité, conformité, coût, sécurité, équipe. */
+  administrateur: PASTILLES_DEFAUT,
+  responsable: PASTILLES_DEFAUT,
+  /* L'atelier vit sur ce qui est immobilisé, en panne, et sur ses ordres ouverts. */
+  maintenance: ["p-hors-service", "p-immobilises-7", "p-pannes-semaine", "p-ordres-ouverts", "p-echeances-7", "p-sans-releve"],
+  /* L'agent de terrain agit sur son site : relevés à faire, demandes à répondre, carburant, caisse. */
+  "agent-terrain": ["p-prets", "p-sans-releve", "p-demandes-sans-reponse", "p-carburant-semaine", "p-cuve", "p-caisse"],
+  /* Le contrôle de gestion regarde l'argent et la conformité, pas l'atelier. */
+  lecteur: ["p-depenses-semaine", "p-carburant-semaine", "p-caisse", "p-echeances-7", "p-immobilises-admin", "p-hors-service"],
+  /* Le détenteur n'a pas de tableau de bord : il a l'accueil du téléphone. La ligne existe pour ne pas laisser de trou. */
+  detenteur: PASTILLES_DEFAUT,
+};
+
+/** La rangée d'ouverture d'un profil, ou le défaut commun s'il n'en a pas. */
+export function pastillesDuProfil(profil: string | null | undefined): string[] {
+  return (profil && PASTILLES_PAR_PROFIL[profil]) || PASTILLES_DEFAUT;
+}
+
 /** Une sélection relue du stockage, bornée à la rangée. Les anciens identifiants d'indicateurs de période sont ignorés. */
 export function limiterPastilles(selection: string[]): string[] {
   return selection.filter((id) => PASTILLE_PAR_ID.has(id)).slice(0, MAX_PASTILLES);

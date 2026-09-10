@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Banknote, CalendarClock, ChevronDown, ChevronUp, CircleCheck, CircleOff, ClipboardList, Clock, Droplet, FileWarning, Fuel, Gauge, Inbox, ShieldCheck, SlidersHorizontal, TriangleAlert, UserX, Wallet, Wrench, X, type LucideIcon } from "lucide-react";
+import { Banknote, CalendarClock, ChevronDown, ChevronUp, CircleCheck, CircleOff, ClipboardList, Clock, Droplet, FileWarning, Fuel, Gauge, Inbox, RotateCcw, ShieldCheck, SlidersHorizontal, TriangleAlert, UserX, Wallet, Wrench, X, type LucideIcon } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { Carte } from "@/composants/interface/Carte";
 import { Anneau, BarresContribution, BarresMensuelles, Courbe, libelleMoisCourt, type PartAnneau, type PointCourbe } from "./Graphiques";
@@ -21,7 +21,9 @@ import {
   type VehiculeTableau,
 } from "@/domaine/tableau-bord";
 import { BUSINESS_UNIT, CATEGORIE_FLOTTE } from "@/domaine/libelles";
-import { MAX_PASTILLES, MOMENT, PASTILLE_PAR_ID, PASTILLES, PASTILLES_DEFAUT, evaluerPastille, limiterPastilles, type SituationJournaliere } from "@/domaine/pastilles";
+import { MAX_PASTILLES, MOMENT, PASTILLE_PAR_ID, PASTILLES, PASTILLES_DEFAUT, evaluerPastille, limiterPastilles, pastillesDuProfil, type SituationJournaliere } from "@/domaine/pastilles";
+import { PROFILS } from "@/domaine/acces";
+import { lireAccesCourant } from "@/lib/acces-courant";
 import { trouverRole } from "@/domaine/roles";
 import type { Alerte } from "@/donnees/tableau-bord-demo";
 import { lireRole } from "@/lib/session-demo";
@@ -147,6 +149,11 @@ const ICONE_PASTILLE: Record<string, LucideIcon> = {
  * qu'on changeait de registre : l'état du moment, l'évolution sur l'exercice,
  * puis ce qui appelle un geste. Un filet nommé le dit en une ligne.
  */
+/** Deux rangées identiques : mêmes pastilles, même ordre. */
+function memeRangee(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+
 function Separateur({ libelle, precision }: { libelle: string; precision: string }) {
   return (
     <div className="mt-1.5 flex shrink-0 items-center gap-3">
@@ -211,14 +218,23 @@ export function EcranTableauBord({
   const [zoom, setZoom] = useState<string | null>(null);
 
   /* Les choix sont un réglage de compte, comme les colonnes des listes : ils
-     vivent dans le navigateur sous une clé qui porte le rôle. */
+     vivent dans le navigateur sous une clé qui porte le rôle.
+     **La rangée d'ouverture, elle, dépend du profil** (métier, 10 septembre
+     2026) : ce qu'un responsable veut voir en arrivant n'est pas ce qui occupe
+     la journée d'un chef d'atelier. Tant que la personne n'a rien choisi, elle
+     voit la rangée de son profil ; dès qu'elle choisit, c'est son choix qui
+     vaut, et le bouton « Revenir au défaut » le rend au profil. */
+  const [profil, setProfil] = useState<string | null>(null);
   const [selection, setSelection] = useState<string[]>(PASTILLES_DEFAUT);
   const [courbes, setCourbes] = useState<string[]>(COURBES_DEFAUT);
   const [monte, setMonte] = useState(false);
+  const defautDuProfil = useMemo(() => pastillesDuProfil(profil), [profil]);
   useEffect(() => {
     setMonte(true);
     try {
       const role = trouverRole(lireRole()).role;
+      const acces = lireAccesCourant();
+      setProfil(acces.profil);
       const brut = localStorage.getItem(`sedima.parc.tableau-bord.pastilles.${role}`);
       if (brut) {
         /* Une sélection d'avant le 8 septembre 2026 ne porte que des indicateurs
@@ -226,8 +242,8 @@ export function EcranTableauBord({
            que d'une rangée vide. Une rangée vidée exprès reste vide. */
         const lue = JSON.parse(brut) as string[];
         const retenue = limiterPastilles(lue);
-        setSelection(retenue.length > 0 || lue.length === 0 ? retenue : PASTILLES_DEFAUT);
-      }
+        setSelection(retenue.length > 0 || lue.length === 0 ? retenue : pastillesDuProfil(acces.profil));
+      } else setSelection(pastillesDuProfil(acces.profil));
       const brutCourbes = localStorage.getItem(`sedima.parc.tableau-bord-courbes.${role}`);
       if (brutCourbes) setCourbes((JSON.parse(brutCourbes) as string[]).slice(0, MAX_COURBES));
     } catch {
@@ -240,6 +256,16 @@ export function EcranTableauBord({
       localStorage.setItem(`sedima.parc.tableau-bord.pastilles.${trouverRole(lireRole()).role}`, JSON.stringify(suivante));
     } catch {
       /* sans stockage, rien ne persiste */
+    }
+  }
+  const profilLibelle = useMemo(() => (profil ? (PROFILS.find((p) => p.profil === profil)?.libelle ?? null) : null), [profil]);
+  /** Rendre la rangée à son profil : le choix personnel s'efface, le défaut revient. */
+  function revenirAuDefaut() {
+    setSelection(defautDuProfil);
+    try {
+      localStorage.removeItem(`sedima.parc.tableau-bord.pastilles.${trouverRole(lireRole()).role}`);
+    } catch {
+      /* sans stockage, l'état de la page suffit */
     }
   }
   function enregistrerCourbes(suivantes: string[]) {
@@ -859,10 +885,17 @@ export function EcranTableauBord({
                     })}
                   </div>
                   <div className="flex items-center gap-3 border-t border-bordure px-5 py-3 text-[12px] text-texte-2">
-                    <span>{pourPastilles ? "Cinq au plus, sur une seule rangée : l'état du moment, comparé à hier ou à la semaine passée. La tendance est aux courbes." : "Huit courbes au plus, sur deux rangées de quatre, chacune sur sa propre échelle."}</span>
-                    <button type="button" onClick={() => (pourPastilles ? enregistrer([...PASTILLES_DEFAUT]) : enregistrerCourbes([...COURBES_DEFAUT]))} className="bouton-secondaire ml-auto h-8 shrink-0 text-[12px]">
-                      Par défaut
-                    </button>
+                    <span>{pourPastilles ? `Six au plus, sur une seule rangée : l'état du moment, comparé à hier ou à la semaine passée. La tendance est aux courbes.${profilLibelle ? ` La rangée d'ouverture est celle du profil « ${profilLibelle} ».` : ""}` : "Huit courbes au plus, sur deux rangées de quatre, chacune sur sa propre échelle."}</span>
+                    {/* Revenir au défaut **efface le choix** au lieu d'enregistrer
+                        le défaut comme un choix de plus : la rangée redevient
+                        celle du profil, et elle suivra ce profil s'il change.
+                        Le bouton ne s'offre que s'il change quelque chose. */}
+                    {!pourPastilles || !memeRangee(selection, defautDuProfil) ? (
+                      <button type="button" onClick={() => (pourPastilles ? revenirAuDefaut() : enregistrerCourbes([...COURBES_DEFAUT]))} className="bouton-secondaire ml-auto h-8 shrink-0 gap-1.5 text-[12px]">
+                        <RotateCcw className="size-3.5" strokeWidth={2} />
+                        Revenir au défaut
+                      </button>
+                    ) : null}
                     <button type="button" onClick={() => setPanneau(null)} className="bouton-principal h-8 shrink-0 text-[12px]">
                       Terminer
                     </button>

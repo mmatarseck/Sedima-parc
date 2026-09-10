@@ -1278,6 +1278,32 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   photo de plus, la plus ancienne effacée, le total revenu à 1,8 Mo, la
   nouvelle affichée.
 
+### La rangée d'ouverture dépend du profil (10 septembre 2026)
+
+Demande du métier : « les indicateurs sont affichés par profil ; la personne
+choisit ce qu'elle veut voir, ou revient au défaut ».
+
+- **Six rangées d'ouverture**, une par profil, dans `PASTILLES_PAR_PROFIL`.
+  Ce n'est pas une question de droits — le panneau offre les seize à tout le
+  monde — mais de **première utilité** : l'atelier ouvre sur ses immobilisés,
+  ses pannes et ses ordres ; l'agent de terrain sur ses relevés, ses demandes
+  et sa caisse ; le contrôle de gestion sur l'argent et la conformité.
+- **Le choix personnel prime dès qu'il existe**, et il vit toujours sous une
+  clé qui porte le rôle. Tant qu'on n'a rien choisi, on voit la rangée de son
+  profil.
+- **« Revenir au défaut » efface le choix** au lieu d'enregistrer le défaut
+  comme un choix de plus — c'est la différence qui compte : la rangée redevient
+  celle du profil, et elle **suivra ce profil s'il change**. Le bouton
+  existait déjà mais faisait l'inverse, et ramenait au défaut commun.
+- Il ne s'offre que lorsqu'il change quelque chose : proposer de revenir là où
+  l'on est déjà n'apprend rien.
+- Le pied du panneau disait « Cinq au plus » depuis le passage à six, et ne
+  nommait pas le profil. Corrigé.
+
+**Vérifié dans le navigateur**, en basculant le profil sur « maintenance » :
+la rangée d'ouverture change, décocher une pastille fait apparaître le bouton
+et écrit le choix, le bouton rend la rangée du profil et efface la clé.
+
 ### Les pastilles, cinquième passage : filigrane et chevrons (10 septembre 2026)
 
 - **L'icône revient en grand, en filigrane**, débordant par le bas à droite,
