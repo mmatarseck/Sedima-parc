@@ -160,6 +160,40 @@ const BRUT: Brut[] = [
   { immat: "AA350JN", marque: "RENAULT", appellation: "Kerax tracteur citerne", categorie: "tracteur", bu: "fermes", site: "s-fermes", statut: "en-service", chauffeur: "Fallou Ndiaye" },
   { immat: "AA909CW", marque: "CODER", appellation: "Citerne à eau", categorie: "semi-remorque", bu: "fermes", site: "s-fermes", statut: "en-service" },
   { immat: "DK9839BK", marque: "MITSUBISHI", appellation: "L200 pick-up", categorie: "camionnette", bu: "siege", site: "s-siege", statut: "en-service", commentaire: "Opérationnel au suivi administratif, sans chauffeur nommé" },
+
+  /* -- Les seize unités non opérationnelles (10 septembre 2026)
+   *
+   * Elles viennent des trois autres onglets de `SITUATION PARC SEDIMA
+   * LOURDS` : « PANNES », « REPARATION EN COURS », « A REFORMER ». Elles
+   * comptent : un camion en panne pèse sur la disponibilité, et c'est
+   * précisément ce que la pastille « hors service maintenant » doit voir.
+   *
+   * Les véhicules **à réformer** sortent du périmètre de disponibilité
+   * (`engage: false`), comme DK 2347 BD avant eux : ils quittent la flotte,
+   * les compter parmi les engagés fausserait le taux.
+   * ---------------------------------------------------------------------- */
+
+  /* En panne — à Keur Massar sauf mention. */
+  { immat: "DK6874BF", marque: "MITSUBISHI", appellation: "L200 pick-up", categorie: "camionnette", bu: "aliment", site: "s-km", statut: "hors-service", commentaire: "En panne — réimmatriculé AA 335 HK d'après l'état des pannes, à confirmer" },
+  { immat: "AA761JV", marque: "IVECO", appellation: "Citerne vrac", categorie: "camion", special: true, bu: "aliment", site: "s-km", statut: "hors-service", commentaire: "En panne" },
+  { immat: "AA769JV", marque: "IVECO", appellation: "Citerne vrac", categorie: "semi-remorque", special: true, bu: "aliment", site: "s-km", statut: "hors-service", commentaire: "En panne — semi de AA 633 JL d'après les licences" },
+  { immat: "AA217FF", marque: "RENAULT", appellation: "Camion vrac 20T", categorie: "camion", special: true, bu: "aliment", site: "s-siege", statut: "hors-service", commentaire: "En panne — décision de le transformer en 20 T" },
+  { immat: "DK2507BD", marque: "MAN", appellation: "Frigo 10T", categorie: "camion", special: true, bu: "fermes", site: "s-km", statut: "hors-service", commentaire: "En panne — transport des œufs" },
+
+  /* En réparation — garage Gormack, Rufisque. */
+  { immat: "DK4003AG", marque: "RENAULT", appellation: "Benne", categorie: "camion", bu: "aliment", site: "s-gormack", statut: "en-reparation", commentaire: "En réparation" },
+  { immat: "DK7619BG", marque: "RENAULT", appellation: "Plateau nu 35T", categorie: "semi-remorque", bu: "aliment", site: "s-gormack", statut: "en-reparation", commentaire: "En réparation" },
+  { immat: "DL5941D", marque: "RENAULT", appellation: "Plateau nu 35T", categorie: "semi-remorque", bu: "aliment", site: "s-gormack", statut: "en-reparation", commentaire: "En réparation" },
+
+  /* À réformer — hors du périmètre de disponibilité. */
+  { immat: "DK7376AC", marque: "RENAULT", appellation: "Frigo", categorie: "camion", special: true, engage: false, bu: "abattoir", site: "s-siege", statut: "retrait-en-cours", commentaire: "À réformer — sur la liste de vente 2025" },
+  { immat: "DK9361BB", marque: "IVECO", appellation: "Citerne vrac", categorie: "semi-remorque", special: true, engage: false, bu: "aliment", site: "s-km", statut: "retrait-en-cours", commentaire: "À réformer — sur la liste de vente 2025" },
+  { immat: "DK3143BC", marque: "RENAULT", appellation: "Frigo", categorie: "camion", special: true, engage: false, bu: "abattoir", site: "s-djily", statut: "retrait-en-cours", commentaire: "À réformer — sur la liste de vente 2025" },
+  { immat: "DK3142BC", marque: "RENAULT", appellation: "Frigo", categorie: "camion", special: true, engage: false, bu: "abattoir", site: "s-km", statut: "retrait-en-cours", commentaire: "À réformer — sur la liste de vente 2025" },
+  { immat: "AA318AM", marque: "RENAULT", appellation: "Frigo", categorie: "camion", special: true, engage: false, bu: "abattoir", site: "s-km", statut: "retrait-en-cours", commentaire: "À réformer — sur la liste de vente 2025" },
+  { immat: "AA654AS", marque: "RENAULT", appellation: "Tracteur", categorie: "tracteur", engage: false, bu: "aliment", site: "s-km", statut: "retrait-en-cours", commentaire: "À réformer — ex TH 6065 S, sur la liste de vente 2025" },
+  { immat: "DK7620BG", marque: "RENAULT", appellation: "Tracteur", categorie: "tracteur", engage: false, bu: "aliment", site: "s-djily", statut: "retrait-en-cours", commentaire: "À réformer" },
+  { immat: "DK9619BB", marque: "RENAULT", appellation: "Tracteur", categorie: "tracteur", engage: false, bu: "aliment", site: "s-gormack", statut: "retrait-en-cours", commentaire: "À réformer — le dossier note une nouvelle plaque, à confirmer" },
 ];
 
 /**

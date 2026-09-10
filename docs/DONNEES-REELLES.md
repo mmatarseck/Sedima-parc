@@ -153,10 +153,13 @@ Ces points bloquent le chargement, ils ne se devinent pas :
 
 ## Ce qui reste à faire (application), dans l'ordre
 
-1. ~~**Compléter le référentiel**~~ — fait le 10 septembre 2026 pour les 17
-   unités opérationnelles, la plaque corrigée, les statuts alignés et le
-   doublon retiré (section ci-dessus). **Restent les 16 non opérationnelles**
-   (pannes, réparations, à réformer), à entrer sous leur statut.
+1. ~~**Compléter le référentiel**~~ — fait le 10 septembre 2026 : les 17
+   unités opérationnelles, la plaque corrigée, les statuts alignés, le doublon
+   retiré, puis **les 16 non opérationnelles** (5 en panne, 3 en réparation,
+   8 à réformer). Les véhicules à réformer sortent du périmètre de
+   disponibilité — ils quittent la flotte, les compter parmi les engagés
+   fausserait le taux. Le parc de transport compte désormais **56 véhicules,
+   47 engagés**, et le tableau de bord voit enfin ses 19 hors service.
 2. **Purger les transactions fabriquées** de la base, en gardant le
    référentiel : une migration qui vide relevés, pleins, dépenses,
    interventions, incidents, mouvements de caisse et de cuve, relevés de
