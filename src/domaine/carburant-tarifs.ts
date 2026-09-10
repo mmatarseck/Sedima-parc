@@ -21,25 +21,26 @@
  * « Tarif officiel du 06/12/2025 » — pour qu'on ne prenne jamais un montant
  * calculé pour un montant relevé.
  *
- * Trois périodes couvrent 2025 et 2026, et le métier avait raison sur le fond
- * : le prix n'a bougé que deux fois en deux ans.
+ * Quatre périodes couvrent 2022 à aujourd'hui, et le métier avait raison sur
+ * le fond : le prix bouge rarement, et il tient des années entre deux arrêtés.
  *
- * | Période                        | Gasoil | Supercarburant |
- * | ------------------------------ | -----: | -------------: |
- * | jusqu'au 5 décembre 2025       |    755 |            990 |
- * | 6 décembre 2025 → 14 août 2026 |    680 |            920 |
- * | depuis le 15 août 2026         |    755 |            990 |
+ * | Période                          | Gasoil | Supercarburant |
+ * | -------------------------------- | -----: | -------------: |
+ * | 2022 → 6 janvier 2023            |    655 |      non établi |
+ * | 7 janvier 2023 → 5 décembre 2025 |    755 |            990 |
+ * | 6 décembre 2025 → 14 août 2026   |    680 |            920 |
+ * | depuis le 15 août 2026           |    755 |            990 |
  *
- * Sources : communiqué de la Primature du 5 décembre 2025 (baisse effective le
- * 6 décembre à 18 h, arrêté de la CRSE) et l'ajustement du 15 août 2026, qui
- * ramène les tarifs à leur niveau d'avant la baisse.
+ * Sources : le réajustement du 7 janvier 2023 (cent francs sur les deux
+ * carburants) ; le communiqué de la Primature du 5 décembre 2025, baisse
+ * effective le 6 décembre à 18 h par arrêté de la CRSE ; l'ajustement du
+ * 15 août 2026, qui « met fin aux tarifs en vigueur depuis janvier 2023 » et
+ * ramène les prix à leur niveau d'avant la baisse.
  *
- * **Avant décembre 2025, la table s'arrête.** Les suivis hebdomadaires
- * remontent à mars 2022, et le prix y a connu d'autres mouvements que ceux-ci
- * — on ne les a pas établis. Charger 2022-2024 demandera de compléter cette
- * table, pas de prolonger la première ligne au hasard : `prixOfficiel` rend
- * `null` hors des périodes connues, et un plein sans prix se refuse plutôt que
- * de porter un chiffre faux.
+ * **Hors de ces périodes, `prixOfficiel` rend `null`** — et un plein sans prix
+ * ne se charge pas plutôt que de porter un chiffre faux. C'est le cas de
+ * l'essence en 2022, dont on sait qu'elle a changé en juin sans savoir quel
+ * jour, et de tout ce qui précède 2022.
  * ==========================================================================*/
 
 /** Ce qu'un véhicule brûle, du point de vue du tarif. */
@@ -51,7 +52,8 @@ export interface PeriodeTarifaire {
   /** Dernier jour où il s'applique, inclus ; nul pour la période en cours. */
   fin: string | null;
   gasoil: number;
-  super: number;
+  /** Nul quand le tarif du supercarburant n est pas établi pour la période. */
+  super: number | null;
   /** D'où vient le chiffre, pour qu'on puisse le vérifier. */
   origine: string;
 }
@@ -65,7 +67,20 @@ export interface PeriodeTarifaire {
  * une précision feinte.
  */
 export const PERIODES_TARIFAIRES: PeriodeTarifaire[] = [
-  { debut: "2025-01-01", fin: "2025-12-05", gasoil: 755, super: 990, origine: "Tarif en vigueur avant la baisse du 6 décembre 2025" },
+  /* 2022, l'année où l'État a tout absorbé : le gasoil aurait dû coûter
+     1 019 F au coût de revient, il est resté à 655 F toute l'année, pour
+     583,5 milliards de subvention. Le supercarburant, lui, a bougé en cours
+     d'année — 755 F jusqu'en juin, 890 F ensuite — mais **la date exacte du
+     passage n'est pas établie**, d'où un `super` nul : on ne valorise pas un
+     plein d'essence de 2022 tant qu'on ne sait pas de quel côté de juin il
+     tombe. Le parc est au gasoil à 165 véhicules sur 167 ; la lacune ne coûte
+     presque rien. */
+  { debut: "2022-01-01", fin: "2023-01-06", gasoil: 655, super: null, origine: "Prix subventionné maintenu toute l'année 2022 ; le super a changé en juin, date non établie" },
+  /* Le réajustement du 7 janvier 2023 : cent francs de plus sur les deux
+     carburants. Ces tarifs ont tenu **trois ans**, jusqu'à la baisse de
+     décembre 2025 — c'est ce que dit le communiqué d'août 2026, qui parle de
+     mettre fin « aux tarifs en vigueur depuis janvier 2023 ». */
+  { debut: "2023-01-07", fin: "2025-12-05", gasoil: 755, super: 990, origine: "Réajustement du 7 janvier 2023, en vigueur jusqu'à décembre 2025" },
   { debut: "2025-12-06", fin: "2026-08-14", gasoil: 680, super: 920, origine: "Baisse des hydrocarbures, communiqué de la Primature du 5 décembre 2025" },
   { debut: "2026-08-15", fin: null, gasoil: 755, super: 990, origine: "Ajustement du 15 août 2026, retour au niveau d'avant décembre 2025" },
 ];

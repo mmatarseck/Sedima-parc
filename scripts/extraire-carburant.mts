@@ -66,6 +66,30 @@ const plaque = (c: Cellule): string | null => {
   return FORME.test(p) ? p : null;
 };
 
+/* Les feuilles s'appellent par le jour de la semaine. « RECAP » n'en est pas
+   un : c'est un récapitulatif, et il n'a rien à faire dans les transactions. */
+const JOURS = ["LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI", "DIMANCHE"];
+
+/**
+ * La date d'une feuille, déduite du nom du fichier — « SEM DU 01-08 AU
+ * 07-08-2022 » — et du nom du jour. Nulle si quoi que ce soit ne colle :
+ * le nom ne porte pas de date lisible, la feuille n'est pas un jour de la
+ * semaine, ou le lundi annoncé n'en est pas un.
+ */
+function jourDeduit(fichier: string, feuille: string): string | null {
+  const rang = JOURS.indexOf(feuille.trim().toUpperCase());
+  if (rang < 0) return null;
+  const m = /SEM\s+DU\s+(\d{1,2})-(\d{1,2})\s+AU\s+\d{1,2}-\d{1,2}-(\d{4})/i.exec(fichier);
+  if (!m) return null;
+  const [, j, mo, an] = m;
+  const lundi = new Date(Date.UTC(Number(an), Number(mo) - 1, Number(j)));
+  /* Une date qui déborde son mois — le 31 avril — est repliée par Date : on
+     le détecte en relisant ce qu'elle est devenue. */
+  if (lundi.getUTCDate() !== Number(j) || lundi.getUTCMonth() !== Number(mo) - 1) return null;
+  if (lundi.getUTCDay() !== 1) return null;
+  return new Date(lundi.getTime() + rang * 86_400_000).toISOString().slice(0, 10);
+}
+
 export interface Plein {
   date: string;
   immatriculation: string;
@@ -104,6 +128,14 @@ for (const fichier of classeurs(RACINE).filter((f) => /HEBDOMADAIRE/i.test(f))) 
        31 avril qui n'existe pas, et une date fausse vaut moins que rien. */
     let jour: string | null = null;
     for (const l of f.lignes.slice(0, 3)) for (const c of l) if (typeof c === "string" && /^\d{4}-\d{2}-\d{2}$/.test(c)) jour = c;
+    /* Repli pour les classeurs anciens, qui ne posaient pas la date dans la
+       feuille : on la déduit du nom du fichier et du nom du jour. Le repli est
+       **gardé** — il n'accepte la déduction que si le lundi annoncé par le nom
+       du fichier tombe vraiment un lundi. « SEM DU 28-04 AU 31-04-2025 » porte
+       un 31 avril qui n'existe pas, et « SEM DU 24-02 AU 02-02-2025 » finit
+       avant de commencer : une date déduite d'un nom fautif vaut moins que
+       pas de date du tout. */
+    if (!jour) jour = jourDeduit(court, f.nom);
     if (!jour) {
       refusesPleins.push({ fichier: court, feuille: f.nom, raison: "aucune date en tête de feuille", ligne: "" });
       continue;

@@ -1,75 +1,96 @@
-# Le carburant réel de 2025 et 2026 — ce que le dossier porte
+# Le carburant réel, de 2022 à 2026
 
 *10 septembre 2026. Demande du métier : « une fois les données réelles
 consolidées, mettre à jour la base avec les données de 2025 et 2026 ».*
 
-Le référentiel est chargé depuis ce matin : 167 véhicules, 36 chauffeurs, 17
-sites. Il lui manque une histoire. Le **carburant** est la seule matière du
-dossier DO qui soit à la fois datée, volumineuse et tenue régulièrement.
+Le référentiel est chargé — 167 véhicules, 36 chauffeurs, 17 sites — mais sans
+histoire. Le **carburant** est la seule matière du dossier DO qui soit à la
+fois datée, volumineuse et tenue régulièrement. Il y en avait plus que prévu :
+en cherchant 2025 et 2026, on a trouvé **quatre ans et demi**.
 
-## Ce qu'il y a, et ce que ça vaut
+## Ce que le fichier de chargement porte
 
-Deux séries, de deux granularités différentes, qu'il ne faut surtout pas
-confondre.
+`supabase/carburant-reel.sql` : **5 871 lignes, 840 284 litres, 66 véhicules,
+du 28 février 2022 au 31 juillet 2026.**
 
-| Série | Ce qu'une ligne est | Couverture | Volume |
-| --- | --- | --- | --- |
-| `SUIVI CONSOMMATION HEBDOMADAIRE` | **un plein**, daté au jour | mars 2022 → avril 2025 | 11 545 pleins, 1 279 901 L |
-| `FICHIER DETAILLE` | un **cumul mensuel** par véhicule | juillet 2025 → juillet 2026 | 543 lignes, 342 370 L |
+| Nature | Lignes | Ce qu'une ligne est |
+| --- | ---: | --- |
+| Pompe — suivi hebdomadaire | 5 456 | un plein daté au jour, `plein_complet` vrai |
+| Cumul mensuel — suivi carburant | 415 | le mois d'un véhicule, daté du dernier jour, `plein_complet` **faux** |
 
-Sur la fenêtre demandée :
+Les deux séries viennent de deux familles de classeurs, et il ne faut surtout
+pas les confondre. Les **suivis hebdomadaires** tiennent un plein par ligne :
+chauffeur, véhicule, quantité, heure, parfois kilomètres — de février 2022 à
+avril 2025. Les **fichiers détaillés** ne tiennent qu'un cumul par véhicule et
+par mois, de juillet 2025 à juillet 2026.
 
-- **Pleins 2025** : 851 lignes de janvier à avril, 99 861 L, 55 véhicules.
-- **Cumuls** : treize mois pleins, de juillet 2025 à juillet 2026, sans trou.
-- **Mai et juin 2025 manquent** des deux côtés.
+Un cumul mensuel n'est pas un plein. Le charger comme tel inventerait une date,
+une heure et un geste qui n'ont pas eu lieu. Il entre donc **marqué** :
+`plein_complet` à faux, ce qui est exactement ce que cette colonne veut dire —
+« ne tirez pas de consommation de cette ligne ». Sans ce marqueur il aurait
+fallu choisir entre laisser treize mois de consommation réelle dehors et les
+faire passer pour des pleins.
 
-Un cumul mensuel n'est pas un plein. Le poser comme tel inventerait une date,
-une heure et un geste qui n'ont pas eu lieu. Les deux séries sont donc rendues
-séparées, et se chargeront différemment.
+**Mai et juin 2025 manquent** au dossier, des deux côtés : ni suivi
+hebdomadaire, ni fichier détaillé.
 
-## Trois faits qui changent le chargement
+## Le prix, qui bloquait tout
 
-**1. Le prix du litre est connu, mais pas dans ces classeurs.** Le carburant
-se tire sur puce à la pompe, la quantité est suivie, la facturation vit
-ailleurs : aucun des classeurs ne porte un prix.
+Les suivis ne portent **aucun prix** : le carburant se tire sur puce à la
+pompe, la quantité est relevée, la facturation vit ailleurs. Aucun classeur du
+dossier — ni les hebdomadaires, ni les mensuels, ni la base ProFleet, ni la
+dotation, ni les codes puce — ne porte un montant. Or `plein` exige
+`prix_litre > 0`.
 
-Le métier a donné la clé le 10 septembre 2026 : au Sénégal les prix des
-produits pétroliers ne sont pas de marché, ils sont **fixés par arrêté** et
-valent plafond pour toutes les stations. Ils n'ont bougé que deux fois en deux
-ans :
+Le métier a donné la clé : au Sénégal les prix des produits pétroliers ne sont
+pas de marché, ils sont **fixés par arrêté** et valent plafond pour toutes les
+stations. Ils bougent rarement, et tiennent des années entre deux arrêtés.
 
 | Période | Gasoil | Supercarburant |
 | --- | ---: | ---: |
-| jusqu'au 5 décembre 2025 | 755 F | 990 F |
+| 2022 → 6 janvier 2023 | 655 F | non établi |
+| 7 janvier 2023 → 5 décembre 2025 | 755 F | 990 F |
 | 6 décembre 2025 → 14 août 2026 | 680 F | 920 F |
 | depuis le 15 août 2026 | 755 F | 990 F |
 
-La grille vit dans `src/domaine/carburant-tarifs.ts`, avec ses dates d'effet et
-l'origine de chaque chiffre. Un prix officiel à une date n'est pas une
-estimation : c'est la donnée, au même titre que les litres.
+En 2022 l'État a tout absorbé : le gasoil aurait dû coûter 1 019 F au coût de
+revient, il est resté à 655 F toute l'année, pour 583,5 milliards de
+subvention. Le supercarburant a changé en juin 2022, mais **la date exacte
+n'est pas établie** — d'où un tarif nul pour lui sur cette période. Le parc
+étant au gasoil à 165 véhicules sur 167, la lacune ne coûte presque rien.
+
+La grille vit dans `src/domaine/carburant-tarifs.ts`, chaque ligne avec sa date
+d'effet et l'origine de son chiffre. **Un prix officiel à une date n'est pas
+une estimation : c'est la donnée**, au même titre que les litres.
 
 Ce qu'on dit quand même : le tarif est le **plafond réglementaire**, pas le
-montant d'une facture. Chaque ligne chargée porte donc sa référence — « Tarif
-officiel du 06/12/2025 » — pour qu'on ne prenne jamais un montant calculé pour
-un montant relevé. Avant 2025 la grille s'arrête et `prixOfficiel()` rend
-`null` : les pleins de 2022 à 2024 ne se chargent pas tant que la table ne
-remonte pas jusqu'à eux.
+montant d'une facture — une remise négociée ou une livraison en gros s'en
+écartent. Chaque ligne chargée porte donc sa référence, « Tarif officiel du
+07/01/2023 », pour qu'on ne prenne jamais un montant calculé pour un montant
+relevé. Hors des périodes établies, `prixOfficiel()` rend `null` et la ligne ne
+se charge pas.
 
-**2. Les suivis couvrent tout le groupe, pas seulement le parc.** Dix-huit
-plaques sur cinquante-cinq (pleins 2025-2026) et dix-huit sur soixante-treize
-(cumuls) ne sont pas dans la flotte de l'application. La base ProFleet le
-confirme : elle range les puces par filiale — SEDIMA, ABATTOIRS, ADEX, KFC — et
-les séries `AA 5xx EC` comme les `BT …` sont des véhicules d'ADEX et des engins
-de chantier.
+## Ce qui n'est pas chargé
 
-Ces lignes ne seront pas chargées, et ce n'est pas une perte : elles décrivent
-un parc que cette application ne tient pas. Le dire évite qu'on cherche plus
-tard pourquoi les litres du dossier et ceux de l'application ne s'accordent pas.
+**7 261 lignes portent une plaque absente du parc** — 105 plaques. Ce n'est
+pas une anomalie : les suivis couvrent tout le groupe, et la base ProFleet le
+confirme en rangeant les puces par filiale, SEDIMA, ABATTOIRS, ADEX, KFC. Les
+séries `AA 5xx EC` sont des véhicules d'ADEX, les `BT …` des engins de
+chantier. Le dire évite qu'on cherche plus tard pourquoi les litres du dossier
+et ceux de l'application ne s'accordent pas.
 
-**3. Les pleins ne portent presque jamais le kilométrage.** Sur les 851 pleins
-de 2025, **aucun** n'a de compteur. La colonne « KLMS » existe dans les
-classeurs mais reste vide. La consommation aux 100 km ne se déduira donc pas de
-ces pleins seuls ; il y faudra des relevés, qui sont une autre matière.
+**185 feuilles restent sans date.** L'essentiel sont des récapitulatifs, qui
+n'ont rien à faire dans des transactions. Les autres portent une date que le
+nom du fichier écrit faux — « SEM DU 28-04 AU 31-04-2025 » annonce un 31 avril,
+« SEM DU 24-02 AU 02-02-2025 » finit avant de commencer. Le repli qui déduit la
+date du nom du fichier est **gardé** : il n'accepte que si le lundi annoncé
+tombe vraiment un lundi. Il a récupéré ainsi un millier de pleins ; sur les
+autres, une date déduite d'un nom fautif vaut moins que pas de date.
+
+**Le kilométrage manque presque partout** : 586 pleins sur 12 589 en portent
+un, et aucun sur 2025. La colonne « KLMS » existe dans les classeurs et reste
+vide. La consommation aux 100 km et le coût au kilomètre ne se déduiront donc
+pas de ces pleins ; il y faudra des relevés, qui sont une autre matière.
 
 ## L'outillage, et pourquoi il ne passe plus par Excel
 
@@ -78,59 +99,32 @@ COM a rendu « Unable to get the Open property of the Workbooks class » et
 l'extraction s'est arrêtée là. Or un `.xlsx` est une archive ZIP de fichiers
 XML, et Node sait tout ce qu'il faut.
 
-`scripts/lire-xlsx.mts` lit un classeur sans Excel : chaînes partagées, styles
-pour reconnaître les dates, une feuille rendue en tableau de lignes. Trois cents
-lignes remplacent la dépendance, et la lecture devient **de nature** en lecture
-seule — on ne peut pas abîmer un classeur qu'on se contente de dézipper.
-
-`scripts/extraire-carburant.mts` s'en sert pour parcourir les cinq années du
-dossier carburant et rendre les deux séries, plus la liste de ce qu'il a écarté
-et pourquoi. Sur 11 957 lignes lues, 412 sont écartées : 250 feuilles sans date
-en tête (des récapitulatifs, et des classeurs de 2022 dont la date n'est que
-dans le nom du fichier), 152 lignes dont la plaque n'en est pas une, 10 sans
-quantité.
-
-## Le chargement, prêt
-
-`scripts/charger-carburant.mts` fabrique `supabase/carburant-2025-2026.sql` :
-**1 029 lignes, 310 212 litres, 59 véhicules, du 1er janvier 2025 au 31 juillet
-2026.**
-
-| Nature | Lignes | Ce que porte la ligne |
-| --- | ---: | --- |
-| Pompe — suivi hebdomadaire | 614 | un plein daté au jour, `plein_complet` vrai |
-| Cumul mensuel — suivi carburant | 415 | le mois d'un véhicule, daté du dernier jour, `plein_complet` **faux** |
-
-Les cumuls entrent, mais marqués. La colonne `plein_complet` existe pour dire
-ce dont on ne peut pas tirer une consommation entre deux pleins ; un cumul de
-mois en est l'exemple même. Sans elle, il aurait fallu choisir entre laisser
-treize mois de consommation réelle dehors et les faire passer pour des pleins.
-
-Écartées : 6 464 lignes dont la plaque n'est pas au parc (101 plaques du
-groupe), et 4 595 lignes antérieures à 2025, hors des périodes tarifaires
-établies.
-
-`scripts/tester-carburant-reel.mts` charge le fichier dans une base montée avec
-les migrations, le seed et la purge — l'état exact de la production — et vérifie
-treize points : chaque ligne trouve son véhicule, les deux natures restent
-distinctes, les cumuls tombent en fin de mois, chaque prix est celui du tarif
-officiel de sa date, la baisse du 6 décembre est appliquée sur toute sa période,
-le montant est le produit exact, et un second passage n'ajoute rien.
+- `scripts/lire-xlsx.mts` lit un classeur **sans Excel** : chaînes partagées,
+  styles pour reconnaître les dates, feuilles rendues en tableaux de lignes.
+  Trois cents lignes remplacent la dépendance, et la lecture devient de nature
+  en lecture seule — on n'abîme pas un classeur qu'on se contente de dézipper.
+- `scripts/extraire-carburant.mts` parcourt les cinq années du dossier et rend
+  les deux séries, plus la liste de ce qu'il écarte et pourquoi.
+- `scripts/charger-carburant.mts` en fait le fichier SQL, en écartant ce qui
+  n'est pas du parc et ce qui n'a pas de tarif.
+- `scripts/tester-carburant-reel.mts` charge le fichier dans une base montée
+  avec les migrations, le seed et la purge — l'état exact de la production — et
+  vérifie treize points.
 
 **Un piège attrapé par ce banc**, qui vaut d'être noté : `34,30 × 755` vaut
 25 896,499999999996 en virgule flottante et 25 896,50 en numérique exact.
-JavaScript arrondissait à 25 896 là où Postgres attend 25 897. Le générateur ne
-calcule donc plus le montant : il écrit `round(34.30 * 755)` et laisse la base
-faire sa propre arithmétique décimale.
+JavaScript arrondissait un franc en dessous de ce que Postgres attend. Le
+générateur ne calcule donc plus le montant : il écrit `round(34.30 * 755)` et
+laisse la base faire sa propre arithmétique décimale.
 
 ## Ce qui reste
 
-1. **Jouer le fichier** dans le SQL Editor, après le seed, l'alignement, la
-   purge et la plaque.
-2. **Mai et juin 2025** manquent au dossier : ni suivi hebdomadaire, ni fichier
-   détaillé. À chercher, ou à acter comme un trou.
-3. Les **trois années antérieures** — 2022 à 2024, 10 694 pleins — attendent
-   que la grille tarifaire remonte jusqu'à elles. Elles donneraient au tableau
-   de bord un historique que l'application n'a jamais eu.
-4. Les **relevés kilométriques** restent la matière manquante : sans compteur,
-   pas de consommation aux 100 km ni de coût au kilomètre.
+1. **Jouer `supabase/carburant-reel.sql`** dans le SQL Editor, après le seed,
+   l'alignement, la purge et la plaque. Le fichier est rejouable : un second
+   passage n'ajoute rien.
+2. **Mai et juin 2025** : à chercher dans le dossier, ou à acter comme un trou.
+3. **La date de bascule du supercarburant en juin 2022**, si l'on veut charger
+   les quelques pleins d'essence de cette année-là.
+4. **Les relevés kilométriques**, qui sont la matière suivante : sans compteur,
+   le tableau de bord aura des litres et des francs, mais ni consommation aux
+   100 km ni coût au kilomètre.

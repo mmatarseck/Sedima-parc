@@ -1,6 +1,6 @@
 /* Le carburant réel de 2025 et 2026, chargé pour de bon.
  *
- * `supabase/carburant-2025-2026.sql` verse mille vingt-neuf lignes tirées des
+ * `supabase/carburant-reel.sql` verse mille vingt-neuf lignes tirées des
  * suivis du dossier DO. Ce banc les charge dans une base montée avec les
  * migrations, le seed et la purge — l'état exact de la production — et vérifie
  * ce qui doit l'être :
@@ -28,9 +28,9 @@ const { pgcrypto } = require("@electric-sql/pglite/contrib/pgcrypto");
 const projet = process.cwd();
 const MOI = "00000000-0000-0000-0000-000000000001";
 
-const chargement = join(projet, "supabase/carburant-2025-2026.sql");
+const chargement = join(projet, "supabase/carburant-reel.sql");
 if (!existsSync(chargement)) {
-  console.log("supabase/carburant-2025-2026.sql absent — lancez d'abord extraire-carburant puis charger-carburant.");
+  console.log("supabase/carburant-reel.sql absent — lancez d'abord extraire-carburant puis charger-carburant.");
   process.exit(0);
 }
 

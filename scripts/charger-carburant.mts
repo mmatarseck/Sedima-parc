@@ -1,5 +1,5 @@
 /* ============================================================================
- * Fabrique `supabase/carburant-2025-2026.sql` — le carburant réel, chargeable.
+ * Fabrique `supabase/carburant-reel.sql` — le carburant réel, chargeable.
  *
  * Suite de `extraire-carburant.mts`, qui lit les classeurs du dossier DO et
  * rend deux séries. Ce script-ci les transforme en `insert` et ne garde que ce
@@ -32,7 +32,8 @@
  *   * les plaques absentes du parc — les suivis couvrent tout le groupe, ADEX,
  *     KFC et les engins de chantier compris ;
  *   * les dates hors des périodes tarifaires connues, c'est-à-dire tout ce qui
- *     précède 2025 : mieux vaut ne pas charger que porter un prix faux.
+  *     précède 2022, et l'essence de 2022 dont la date de bascule n'est pas
+ *     établie : mieux vaut ne pas charger que porter un prix faux.
  *
  * Lancer : npx tsx scripts/extraire-carburant.mts <sortie>
  *          npx tsx scripts/charger-carburant.mts <sortie>.json
@@ -135,7 +136,7 @@ const nombreCumuls = lignes.length - nombrePleins;
 /* -- 3. Le fichier ---------------------------------------------------------- */
 
 const entete = `-- ============================================================================
--- SEDIMA Parc — le carburant réel de 2025 et 2026.
+-- SEDIMA Parc — le carburant réel, de 2022 à 2026.
 --
 -- **Ce n'est pas une migration.** C'est un chargement de données, à jouer une
 -- fois, après le seed, l'alignement, la purge et la plaque.
@@ -155,8 +156,9 @@ const entete = `-- =============================================================
 --
 -- LE PRIX. Les suivis ne portent aucun prix : le carburant se tire sur puce,
 -- la quantité est relevée, la facturation vit ailleurs. Au Sénégal les prix
--- sont fixés par arrêté et n'ont bougé que deux fois en deux ans — 755 F le
--- gasoil jusqu'au 5 décembre 2025, 680 F jusqu'au 14 août 2026, 755 F depuis.
+-- sont fixés par arrêté et bougent rarement : le gasoil valait 655 F jusqu'au
+-- 6 janvier 2023, 755 F jusqu'au 5 décembre 2025, 680 F jusqu'au 14 août 2026,
+-- 755 F depuis.
 -- Chaque ligne porte donc le **tarif officiel de sa date**, et sa référence le
 -- dit : c'est un plafond réglementaire, pas le montant d'une facture.
 --
@@ -193,9 +195,9 @@ group by source
 order by source;
 `;
 
-writeFileSync(join(projet, "supabase/carburant-2025-2026.sql"), entete + lignes.join(",\n") + pied, "utf8");
+writeFileSync(join(projet, "supabase/carburant-reel.sql"), entete + lignes.join(",\n") + pied, "utf8");
 
 console.log(`${nombrePleins} pleins et ${nombreCumuls} cumuls retenus, ${lignes.length} lignes en tout`);
 console.log(`  ${Math.round(litresPleins + litresCumuls).toLocaleString("fr-FR")} litres`);
 console.log(`  écartés : ${ecartes.horsParcLignes} lignes hors parc (${ecartes.horsParc.size} plaques), ${ecartes.horsTarif} lignes hors période tarifaire`);
-console.log(`supabase/carburant-2025-2026.sql écrit`);
+console.log(`supabase/carburant-reel.sql écrit`);
