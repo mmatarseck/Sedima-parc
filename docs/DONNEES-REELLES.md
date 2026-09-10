@@ -161,6 +161,25 @@ exception. C'est la police *précédente* : la colonne n'a pas été reprise apr
 le renouvellement. La lire telle quelle aurait déclaré tout le parc non
 assuré, du jour au lendemain, sur une donnée périmée d'un an.
 
+### Ce que le suivi administratif peut et ne peut pas donner
+
+Les trois colonnes d'échéance de la même feuille ont été mesurées une à une.
+Elles ne se valent pas, et c'est le fait le plus utile de tout ce travail de
+données : **la feuille n'est pas tenue au même rythme selon la colonne.**
+
+| Colonne | Ce qu'elle contient | Verdict |
+| --- | --- | --- |
+| Expiration assurance | 31 décembre 2025 pour les 98 véhicules, sans une exception | **Périmée d'un cycle.** La police 2026 court jusqu'au 31 décembre 2026. Non chargée ; la police fait foi. |
+| Expiration visite technique | 77 dates distinctes sur 98, mais **85 déjà passées** | **Invérifiable.** Crise réelle ou colonne en retard ? Non chargée. |
+| Expiration licence | 21 dates distinctes sur 33, **15 passées et 18 à venir** | **Partiellement tenue.** Les échéances 2026 semblent reprises, celles de fin 2025 non — deux grappes de quatre au 21 novembre et au 20 décembre 2025. Non chargée. |
+
+**La conclusion vaut pour votre côté, pas pour l'application** : une seule de
+ces trois colonnes est exploitable telle quelle, et ce n'est aucune des trois —
+c'est la police d'assurance, qui vit dans un autre classeur. Avant de charger
+des échéances, il faudrait que la feuille soit reprise après chaque
+renouvellement, ou que l'application devienne elle-même la source et que la
+feuille en découle.
+
 ### ⚠ La visite technique pose la même question, sans la même réponse
 
 La même feuille porte « Expiration Visite Technique », et là les dates

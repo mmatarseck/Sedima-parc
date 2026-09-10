@@ -27,6 +27,8 @@ import { ligneDepuisLaBase, type ParcBrut } from "../src/donnees/flotte";
 import { lignesFlotteDemonstration } from "../src/donnees/flotte-demo";
 import { affectationsDepuisLeParc } from "../src/donnees/rapports";
 import { affectationsDemonstration } from "../src/donnees/rapports-demo";
+import { lignesDepuisLaBase } from "../src/donnees/chauffeurs";
+import { listeChauffeurs } from "../src/donnees/chauffeurs-demo";
 
 const bac = process.env.PGLITE_DIR ?? "";
 const require = createRequire(join(bac, "package.json"));
@@ -157,9 +159,25 @@ const affectationsBase = [...affectationsDepuisLeParc(parc).values()].flat();
 const affectationsDemo = [...affectationsDemonstration(PARAMETRES_DEFAUT).values()].flat();
 console.log(`affectations : ${affectationsBase.length} en base, ${affectationsDemo.length} en démonstration`);
 
-/* -- 3. Le verdict ----------------------------------------------------------- */
+/* -- 3. Les lignes de Chauffeurs ---------------------------------------------
+ *
+ * Ajoutées le 10 septembre 2026 : le détecteur ne regardait que la Flotte et
+ * les affectations, alors que la fiche chauffeur est l'autre grande liste
+ * lue en base — et c'est là qu'on avait trouvé `cout: 0` à la main.
+ * ------------------------------------------------------------------------- */
 
-const trouves = [...suspects(lignesBase, lignesDemo, "ligne"), ...suspects(affectationsBase, affectationsDemo, "affectation")];
+/* `lire_chauffeurs()` rend le même objet que le lecteur de production, en un
+   JSON : on l'appelle en SQL nu, comme le fait `tester-rapports.mts` pour le
+   parc, plutôt que de monter un faux client Supabase. */
+const douzeMoisAvant = `${Number(aujourdhui.slice(0, 4)) - 1}${aujourdhui.slice(4)}`;
+const jChauffeurs = (await pg.query(`select lire_chauffeurs($1) as j`, [douzeMoisAvant])).rows[0].j as Omit<Parameters<typeof lignesDepuisLaBase>[0], "aujourdhui">;
+const chauffeursBase = lignesDepuisLaBase({ aujourdhui, ...jChauffeurs });
+const chauffeursDemo = listeChauffeurs();
+console.log(`chauffeurs : ${chauffeursBase.length} en base, ${chauffeursDemo.length} en démonstration`);
+
+/* -- 4. Le verdict ----------------------------------------------------------- */
+
+const trouves = [...suspects(lignesBase, lignesDemo, "ligne"), ...suspects(affectationsBase, affectationsDemo, "affectation"), ...suspects(chauffeursBase, chauffeursDemo, "chauffeur")];
 const neufs = trouves.filter((t) => !(t.chemin in JUGES));
 const connus = trouves.filter((t) => t.chemin in JUGES);
 

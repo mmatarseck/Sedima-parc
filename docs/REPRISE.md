@@ -1589,7 +1589,13 @@ suspects.
   seed ne posait pas de motif d'affectation. C'est faux — la table le porte,
   c'est la projection de `lire_parc()` qui l'omet.
 
-Dix-sept bancs, désormais.
+**Étendu aux chauffeurs le 10 septembre 2026** : le détecteur ne regardait que
+la Flotte et les affectations, alors que la liste des chauffeurs est l'autre
+grande lecture en base — et c'est sur une fiche chauffeur qu'on avait trouvé
+`cout: 0` à la main. Il lit `lire_chauffeurs()` en SQL nu, comme
+`tester-rapports.mts` lit le parc, plutôt que de monter un faux client
+Supabase. **Résultat : rien de figé sur les 37 lignes**, ce qui est en soi une
+réponse — la liste des chauffeurs n'a pas ce défaut.
 
 ### Les chiffres inventés du mode base, cherchés exprès (10 septembre 2026)
 
