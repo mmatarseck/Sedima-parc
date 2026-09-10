@@ -45,6 +45,7 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { lireClasseur, type Cellule } from "./lire-xlsx.mts";
+import { cleFournisseur, nomPropre } from "./noms-fournisseurs.mts";
 
 const CLASSEUR =
   "C:/Users/mamadou.seck/OneDrive - SEDIMA S.A/Direction des Operations (DO) - Documents/6. Logistique & Distribution/62. Transport & Flotte Automobile/61. Gestion Parc/Maintenance/SEDIMA_Maintenance_Parc_Bons_de_commande.xlsx";
@@ -56,7 +57,8 @@ const entier = (c: Cellule): number | null => {
   return Number.isFinite(n) ? Math.round(n) : null;
 };
 const echappe = (s: string) => s.replace(/'/g, "''");
-const cle = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+const cle = cleFournisseur;
 
 /* -- 1. Les prestataires déjà connus ---------------------------------------- */
 
@@ -109,7 +111,7 @@ for (const l of commandes.lignes.slice(1)) {
     ecarte("bon marqué doublon ou exclu des totaux par l'extraction");
     continue;
   }
-  const fournisseur = texte(l[cFournisseur]);
+  const fournisseur = nomPropre(texte(l[cFournisseur]));
   if (!fournisseur) {
     ecarte("aucun fournisseur nommé — une prestation sans prestataire n'en est pas une");
     continue;

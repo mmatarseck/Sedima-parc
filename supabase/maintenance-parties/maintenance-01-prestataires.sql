@@ -5,7 +5,7 @@
 -- classeur d'extraction des bons de commande du dossier DO — 694 factures
 -- PDF, de novembre 2023 à septembre 2026.
 --
--- 46 garages, magasins de pièces et pneumaticiens que le référentiel
+-- 45 garages, magasins de pièces et pneumaticiens que le référentiel
 -- ne connaissait pas. Leur type vient de la catégorie de dépense de leur
 -- premier bon. Une intervention sans garage vaut la moitié d'une intervention.
 --
@@ -57,8 +57,7 @@ insert into prestataire (numero, raison_sociale, type, actif, note) values
   ('PRE-2026-90040', 'TSA - TECHNIQUE SECURITE AUTO', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
   ('PRE-2026-90041', 'ALIOUNE NDIAYE', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
   ('PRE-2026-90042', 'WAKEUR CHEIKH ISSA DIENE', 'pieces', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
-  ('PRE-2026-90043', 'MOUSSA SENE RÉF PROFORMA :', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
-  ('PRE-2026-90044', 'BAYE MALICK SAMB', 'pieces', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
-  ('PRE-2026-90045', 'COTOA', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
-  ('PRE-2026-90046', 'GENERATION AUTOMOBILE', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.')
+  ('PRE-2026-90043', 'BAYE MALICK SAMB', 'pieces', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90044', 'COTOA', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90045', 'GENERATION AUTOMOBILE', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.')
 on conflict (numero) do nothing;

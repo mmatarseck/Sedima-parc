@@ -33,9 +33,9 @@ insert into prestataire (numero, raison_sociale, type, actif, note) values
   ('PRE-2026-80017', 'MBAYE DIOP', 'transporteur', true, 'Créé le 10 septembre 2026 depuis les bons de location et de transport du dossier DO.'),
   ('PRE-2026-80018', 'SECAA (ex SENAC)', 'transporteur', true, 'Créé le 10 septembre 2026 depuis les bons de location et de transport du dossier DO.'),
   ('PRE-2026-80019', 'MALICK DIOP', 'transporteur', true, 'Créé le 10 septembre 2026 depuis les bons de location et de transport du dossier DO.'),
-  ('PRE-2026-80020', 'GARAYA TRANSPORT IR PROFORMA :', 'transporteur', true, 'Créé le 10 septembre 2026 depuis les bons de location et de transport du dossier DO.'),
+  ('PRE-2026-80020', 'GARAYA TRANSPORT IR PROFORMA', 'transporteur', true, 'Créé le 10 septembre 2026 depuis les bons de location et de transport du dossier DO.'),
   ('PRE-2026-80021', 'ADA LOCATION VOITURE', 'transporteur', true, 'Créé le 10 septembre 2026 depuis les bons de location et de transport du dossier DO.'),
-  ('PRE-2026-80022', 'MBAGNICK GAYE I PROFORMA :', 'transporteur', true, 'Créé le 10 septembre 2026 depuis les bons de location et de transport du dossier DO.'),
+  ('PRE-2026-80022', 'MBAGNICK GAYE I PROFORMA', 'transporteur', true, 'Créé le 10 septembre 2026 depuis les bons de location et de transport du dossier DO.'),
   ('PRE-2026-80023', 'IBRAHIMA DIALLO TRANSP FRIGO', 'transporteur', true, 'Créé le 10 septembre 2026 depuis les bons de location et de transport du dossier DO.'),
   ('PRE-2026-80024', 'GLOBAL FOOD SUPPLY SA', 'transporteur', true, 'Créé le 10 septembre 2026 depuis les bons de location et de transport du dossier DO.'),
   ('PRE-2026-80025', 'SPEEDY', 'transporteur', true, 'Créé le 10 septembre 2026 depuis les bons de location et de transport du dossier DO.')

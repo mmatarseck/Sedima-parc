@@ -44,6 +44,7 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { lireClasseur, type Cellule } from "./lire-xlsx.mts";
+import { cleFournisseur, nomPropre } from "./noms-fournisseurs.mts";
 import { normaliser } from "../src/domaine/immatriculation";
 
 const CLASSEUR =
@@ -91,7 +92,8 @@ for (const b of seed.matchAll(/insert into vehicule \([^)]*\) values[\s\S]*?\non
   for (const m of b[0].matchAll(/'([A-Z]{2}\d{3,4}[A-Z]{1,2})'/g)) parc.add(m[1]!);
 }
 /** Le nom d'un prestataire, réduit à ce qui l'identifie : majuscules, sans ponctuation ni espaces. */
-const cle = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+const cle = cleFournisseur;
 const dejaLa = new Set<string>();
 for (const m of seed.matchAll(/'PRE-\d{4}-\d{5}', '((?:[^']|'')*)'/g)) dejaLa.add(cle(m[1]!.replace(/''/g, "'")));
 
@@ -173,7 +175,7 @@ for (const l of commandes.lignes.slice(1)) {
     numero,
     date,
     immatriculation: immat,
-    fournisseur: texte(l[cFournisseur]) || "Fournisseur non nommé",
+    fournisseur: nomPropre(texte(l[cFournisseur])) || "Fournisseur non nommé",
     categorie,
     objet: objet.length > 160 ? `${objet.slice(0, 157)}…` : objet,
     montant,
