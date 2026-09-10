@@ -140,7 +140,15 @@ function lireFeuille(xml: string, partagees: string[], styleEstDate: boolean[]):
   const lignes: Cellule[][] = [];
   for (const ligne of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)) {
     const cellules: Cellule[] = [];
-    for (const c of ligne[1]!.matchAll(/<c\b([^>]*)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+    /* Les attributs se lisent **paresseusement**, et c'est tout sauf un
+       détail. Avec `([^>]*)` gourmand, une cellule vide auto-fermée —
+       `<c r="AH2" s="6"/>` — laissait le moteur avaler la barre oblique dans
+       les attributs, prendre la branche `>` et courir jusqu'au premier
+       `</c>` venu : quatre cellules vides étaient absorbées d'un coup, et la
+       valeur de la cinquième atterrissait dans la colonne de la première.
+       Les colonnes se décalaient donc en silence, d'autant de rangs qu'il y
+       avait de cellules vides à la suite (10 septembre 2026). */
+    for (const c of ligne[1]!.matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
       const attributs = c[1]!;
       const corps = c[2] ?? "";
       const colonne = colonneDe(/r="([A-Z]+\d+)"/.exec(attributs)?.[1] ?? "A1");

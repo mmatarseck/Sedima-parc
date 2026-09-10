@@ -108,3 +108,50 @@ soit sans garage.
 4. Les **relevés kilométriques** restent la matière absente. Sans compteur, le
    parc a des litres, des francs et des interventions, mais ni consommation aux
    100 km ni coût au kilomètre.
+
+---
+
+## Le défaut du lecteur, et ce qu'il a coûté (10 septembre 2026)
+
+`lire-xlsx.mts` lisait les attributs d'une cellule avec un motif **gourmand** :
+`<c([^>]*)(?:\/>|>…<\/c>)`. Sur une cellule vide auto-fermée —
+`<c r="AH2" s="6"/>` — le moteur avalait la barre oblique dans les attributs,
+prenait la branche `>` et courait jusqu'au premier `</c>` venu. Quatre cellules
+vides à la suite étaient absorbées d'un coup, et la valeur de la cinquième
+atterrissait dans la colonne de la première.
+
+**Les colonnes se décalaient en silence**, d'autant de rangs qu'il y avait de
+vides consécutifs. Rien ne plantait ; les valeurs arrivaient juste ailleurs.
+
+Ce que ça a coûté, précisément :
+
+| Chargement | Lignes fausses | Lignes manquantes | Sur |
+| --- | ---: | ---: | ---: |
+| Carburant | 8 | 8 | 5 871 |
+| Interventions | 3 | 42 | 298 |
+| Dépenses de maintenance | 3 | 42 | 298 |
+
+Les suivis hebdomadaires de carburant ont cinq colonnes et peu de vides : le
+décalage n'y mordait presque pas. Le classeur des bons en a quarante dont
+beaucoup de vides : le décalage y faisait rater l'immatriculation ou le
+montant, et le bon était alors **écarté** au lieu d'être chargé de travers.
+D'où des lignes manquantes plutôt que des lignes fausses — le moins mauvais des
+deux, sans que ce soit une consolation.
+
+`supabase/correctif-chargements.sql` n'est pas un rechargement : c'est la
+**différence** entre ce qui est chargé et ce qui aurait dû l'être — 106 lignes.
+Rejouer 1,1 Mo pour quinze lignes de carburant serait disproportionné, et
+surtout risqué : un rechargement complet demande d'effacer d'abord, donc de
+toucher à des lignes justes.
+
+Le correctif a été éprouvé sur l'état exact de la production : une base montée
+avec les migrations, le seed, la purge et **les anciens fichiers**, puis le
+correctif, puis comparaison avec un rechargement propre des fichiers corrigés.
+Les deux états coïncident au litre et au franc.
+
+**Un second piège, attrapé par cette vérification.** La différence se calculait
+sur la clé naturelle d'une ligne — véhicule, jour, litres. Or deux pleins
+peuvent partager cette clé sans être la même ligne : un camion qui fait deux
+fois cent litres le même jour, cela arrive et c'est vrai. Un simple index en
+écrasait une, et le correctif rendait une ligne de moins que la cible. Les
+répétitions sont maintenant numérotées.

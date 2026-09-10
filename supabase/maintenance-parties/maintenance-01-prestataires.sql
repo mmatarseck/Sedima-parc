@@ -5,7 +5,7 @@
 -- classeur d'extraction des bons de commande du dossier DO — 694 factures
 -- PDF, de novembre 2023 à septembre 2026.
 --
--- 38 garages, magasins de pièces et pneumaticiens que le référentiel
+-- 46 garages, magasins de pièces et pneumaticiens que le référentiel
 -- ne connaissait pas. Leur type vient de la catégorie de dépense de leur
 -- premier bon. Une intervention sans garage vaut la moitié d'une intervention.
 --
@@ -44,13 +44,21 @@ insert into prestataire (numero, raison_sociale, type, actif, note) values
   ('PRE-2026-90027', 'GUEYE ALMOURIDIYA LOGISTIQUE', 'pieces', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
   ('PRE-2026-90028', 'TOUBA DAROU SALAM', 'pieces', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
   ('PRE-2026-90029', 'ETS MALEYE', 'pneumatiques', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
-  ('PRE-2026-90030', 'Fournisseur non nommé', 'pieces', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
-  ('PRE-2026-90031', 'KEUR SERIGNE BABACAR SY', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
-  ('PRE-2026-90032', 'BOYE ET FRERES', 'pieces', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
-  ('PRE-2026-90033', 'TALLA DIOP', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
-  ('PRE-2026-90034', 'PRO KMD', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
-  ('PRE-2026-90035', 'DAROU SALAM MECANIQUE GENERALE CHEZ IBRA DIOP', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
-  ('PRE-2026-90036', 'BIRAME NDIAYE', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
-  ('PRE-2026-90037', 'ETABLISSEMENT ESPACE CLIM BECAYE DIOUCK', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
-  ('PRE-2026-90038', 'MBAYE DIASSE', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.')
+  ('PRE-2026-90030', 'KEUR SERIGNE BABACAR SY', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90031', 'BOYE ET FRERES', 'pieces', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90032', 'TALLA DIOP', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90033', 'PRO KMD', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90034', 'DAROU SALAM MECANIQUE GENERALE CHEZ IBRA DIOP', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90035', 'BIRAME NDIAYE', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90036', 'ETABLISSEMENT ESPACE CLIM BECAYE DIOUCK', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90037', 'MBAYE DIASSE', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90038', 'FOURNISSEURS DIVERS', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90039', 'KHABANE GUEYE', 'depanneur', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90040', 'TSA - TECHNIQUE SECURITE AUTO', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90041', 'ALIOUNE NDIAYE', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90042', 'WAKEUR CHEIKH ISSA DIENE', 'pieces', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90043', 'MOUSSA SENE RÉF PROFORMA :', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90044', 'BAYE MALICK SAMB', 'pieces', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90045', 'COTOA', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.'),
+  ('PRE-2026-90046', 'GENERATION AUTOMOBILE', 'garage', true, 'Créé le 10 septembre 2026 depuis les bons de commande du dossier DO.')
 on conflict (numero) do nothing;
