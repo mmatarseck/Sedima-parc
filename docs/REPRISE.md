@@ -79,10 +79,23 @@ réalignés, les libellés de sites et la plaque fausse dans leur état d'avant.
 D'où `supabase/aligner-referentiel.sql` (fabriqué par
 `scripts/aligner-referentiel.mts`, éprouvé par `scripts/tester-alignement.mts`).
 
-**L'ordre à tenir** : 1. les douze parties du seed, 2. `aligner-referentiel.sql`.
-La suppression de l'ancienne plaque `DK 6875 DF` est la dernière instruction du
-script, gardée par un `exists` sur `DK 6875 BF` : elle ne s'exécute que si la
-bonne ligne est bien là. Section « Rejouer le seed ne réaligne rien » plus bas.
+**⚠ L'ordre à tenir, en quatre temps** (corrigé le 10 septembre 2026 après un
+échec en production) :
+
+1. les douze parties du seed ;
+2. `supabase/aligner-referentiel.sql` — n'écrit que des upserts, ne supprime
+   rien, ne peut rien casser ;
+3. `supabase/purge-demonstration.sql` — les 12 627 lignes fabriquées ;
+4. `supabase/plaque-dk6875.sql` — la plaque écrite deux fois, inventaire
+   d'abord.
+
+Le premier jet mettait la suppression de `DK 6875 DF` en pied de l'alignement.
+Le SQL Editor a rendu `depense_tracable` : la ligne portait des dépenses, les
+délier produisait une dépense sans véhicule ni bénéficiaire, et **tout
+l'alignement est retombé avec l'erreur**. Supprimer un véhicule cascade dans
+quinze tables et délie dans six autres ; ça ne se glisse pas en pied de script.
+Sections « Rejouer le seed ne réaligne rien » et « La plaque écrite deux fois »
+plus bas.
 
 **Le passage aux données réelles est cadré** : `docs/DONNEES-REELLES.md` —
 ce que « démonstration » recouvre vraiment (le référentiel réel *et* des
@@ -93,7 +106,7 @@ DO, les 160 plaques consolidées, et ce qui reste à décider.
 2026) : `scripts/tester-constantes.mts` compare les valeurs distinctes de
 chaque champ entre la base et la démonstration, et signale ceux que la base
 fige. Il retrouve seul le défaut d'hier, et en a nommé un neuf. Les cas
-tranchés vivent dans le banc avec leur raison. **Vingt et un bancs.**
+tranchés vivent dans le banc avec leur raison. **Vingt-deux bancs.**
 
 **Deux autres chiffres inventés ont été trouvés et corrigés** (10 septembre
 2026, section « Les chiffres inventés du mode base, cherchés exprès ») : les
@@ -1292,6 +1305,77 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   Vérifié dans le navigateur : sept fausses vignettes portées à 2,1 Mo, une
   photo de plus, la plus ancienne effacée, le total revenu à 1,8 Mo, la
   nouvelle affichée.
+
+---
+
+### La plaque écrite deux fois (10 septembre 2026, après un échec en production)
+
+Le script d'alignement finissait par une suppression, gardée par un `exists` :
+
+```sql
+delete from vehicule where immatriculation = 'DK6875DF'
+  and exists (select 1 from vehicule v where v.immatriculation = 'DK6875BF');
+```
+
+Le SQL Editor a répondu :
+
+```
+ERROR: 23514: new row for relation "depense" violates check constraint
+"depense_tracable"
+CONTEXT: UPDATE ONLY "public"."depense" SET "vehicule_id" = NULL
+         WHERE $1 = "vehicule_id"
+```
+
+**Le garde-fou gardait la mauvaise chose.** Il vérifiait que la bonne ligne
+existait, ce qui était vrai, et ne disait rien de ce que l'ancienne portait.
+Or `depense.vehicule_id` est en `on delete set null` : supprimer le véhicule
+déliait ses dépenses, et une dépense sans véhicule ni bénéficiaire viole
+`depense_tracable` — une contrainte de 0001 qui a fait exactement son travail.
+
+**Le compte, tiré du catalogue et non de la mémoire** : vingt-deux colonnes
+pointent sur `vehicule`, dont quinze en `cascade`, six en `set null` et une
+bloquante. Une suppression de véhicule est donc une opération à quinze effets
+de bord. Elle n'avait rien à faire en pied d'un script d'alignement, et le prix
+de l'erreur a été net : le SQL Editor enveloppant le tout dans une transaction,
+**l'alignement est retombé avec elle** et rien n'a été appliqué.
+
+**Ce que l'erreur a appris, et qu'on n'avait pas vu.** La dépense qui a bloqué,
+`DEP-2026-17020`, identifiant `e880746d-…`, se retrouve telle quelle dans
+`seed-02.sql`, où elle est rattachée à `DK 6875 BF`. En base elle est restée
+sur `DK 6875 DF` : l'ancien jeu de départ l'y avait posée, et le rejeu, avec
+son `on conflict do nothing`, a vu l'identifiant déjà présent et n'a rien
+touché. C'est la **troisième** conséquence du `do nothing`, après le
+référentiel et les statuts : il laisse aussi les transactions accrochées à
+l'ancienne ligne. Elles partent avec la purge — d'où l'ordre en quatre temps.
+
+**Le nouveau script, `supabase/plaque-dk6875.sql`**, suit le modèle de la
+purge : un inventaire en lecture seule d'abord, qui compte pour chacune des
+deux plaques ce que portent les vingt-deux tables, puis le traitement dans une
+transaction, précédé de sept gardes qui refusent en nommant la table encore
+garnie et en renvoyant à la purge. La liste des tables n'est pas écrite à la
+main : `scripts/plaque-dk6875.mts` la lit dans `pg_constraint` sur une base
+PGlite montée avec les migrations, si bien qu'une table ajoutée demain sera
+reprise sans que personne y pense.
+
+**Le principe retenu : on ne fusionne pas deux histoires.** La ligne
+`DK 6875 BF` vient d'être chargée depuis les listes 2026, c'est elle qui reste.
+L'autre n'existait que par une faute de frappe, et ce qu'elle porte a été
+fabriqué sous cette faute. L'inventaire est là pour qu'on puisse le contredire
+avant d'agir, pas après.
+
+**Le banc reproduit l'échec avant de prouver le remède.** `tester-plaque.mts`
+recrée la ligne et sa dépense, rejoue le `delete` du premier jet et vérifie
+qu'il échoue bien sur `depense_tracable` — c'est la moitié qui compte, car un
+banc qui ne prouverait que le succès du nouveau script ne dirait pas de quoi
+il protège. Il vérifie ensuite le refus propre avant la purge, la justesse de
+l'inventaire, l'aboutissement après la purge, et qu'un second passage ne se
+plaint pas.
+
+**Un piège dans le générateur, attrapé par le compte de gardes.**
+`pg_constraint.confdeltype` est du type `"char"` ; un `case … when 'c'` sans
+`::text` ne filtre rien et ne se plaint pas. Le script est sorti une fois avec
+zéro garde-fou — pire que pas de script du tout. Le générateur annonce
+désormais le nombre de gardes qu'il pose, et le banc le recompte.
 
 ---
 

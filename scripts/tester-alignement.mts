@@ -98,6 +98,12 @@ attendu("et la plaque fausse est toujours là", (fausse?.n ?? 0) === 1);
 const bonne = await un<{ n: number }>(`select count(*)::int as n from vehicule where immatriculation = 'DK6875BF'`);
 attendu("mais il a bien ajouté la bonne, et les véhicules nouveaux", (bonne?.n ?? 0) === 1);
 
+/* La plaque fausse n'est plus traitée ici. Le premier jet la supprimait en pied
+ * de l'alignement ; en production le `delete` a buté sur `depense_tracable` et
+ * a fait retomber tout l'alignement avec lui. Elle a son script et son banc,
+ * `tester-plaque.mts`. Ce banc-ci vérifie seulement que l'alignement **n'y
+ * touche pas** — c'est ce qui le rend sans danger. */
+
 /* -- 3. L'alignement : ce qu'il répare -------------------------------------- */
 
 await pg.exec(readFileSync(join(projet, "supabase/aligner-referentiel.sql"), "utf8"));
@@ -117,10 +123,9 @@ const siteApres = await un<{ libelle: string }>(`select libelle from site where 
 attendu(`le libellé du site revient (« ${siteApres?.libelle} »)`, siteApres?.libelle === "Minoterie");
 
 const fausseApres = await un<{ n: number }>(`select count(*)::int as n from vehicule where immatriculation = 'DK6875DF'`);
-attendu("la plaque fausse est effacée", (fausseApres?.n ?? 0) === 0);
+attendu("l'alignement ne supprime rien, pas même la plaque fausse", (fausseApres?.n ?? 0) === 1);
 
-const bonneApres = await un<{ n: number }>(`select count(*)::int as n from vehicule where immatriculation = 'DK6875BF'`);
-attendu("et la bonne est restée", (bonneApres?.n ?? 0) === 1);
+attendu("et il ne contient aucun `delete`", !readFileSync(join(projet, "supabase/aligner-referentiel.sql"), "utf8").toLowerCase().includes("delete"));
 
 const total = await un<{ n: number }>(`select count(*)::int as n from vehicule`);
 attendu(`le parc compte ${total?.n} véhicules, sans doublon`, (total?.n ?? 0) > 100);

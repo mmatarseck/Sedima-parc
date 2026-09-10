@@ -62,24 +62,32 @@ const entete = `-- =============================================================
 -- identifiants, les dates de création et tout ce qui a été saisi dans
 -- l'application ne bougent pas.
 --
--- ORDRE : 1. les douze parties du seed, 2. ce script, 3. la suppression de
--- l'ancienne plaque (dernière instruction ci-dessous).
+-- ORDRE : 1. les douze parties du seed, 2. ce script.
+--
+-- Ce script ne supprime rien et ne peut rien casser : il n'écrit que des
+-- \`insert ... on conflict do update\`. La plaque fausse DK 6875 DF est traitée
+-- à part, par \`supabase/plaque-dk6875.sql\`, parce que supprimer un véhicule
+-- cascade dans quinze tables.
 -- ============================================================================
 
 `;
 
-const pied = `
-
--- ---------------------------------------------------------------------------
--- La plaque fausse. Toutes les listes 2026 disent DK 6875 BF ; l'application
--- écrivait DK 6875 DF, et le seed ne sait pas remplacer une ligne dont la clé
--- change. Le bon véhicule vient d'être ajouté par le seed ; l'ancien s'efface.
--- À ne jouer qu'après avoir vérifié que DK6875BF existe bien.
--- ---------------------------------------------------------------------------
-
-delete from vehicule where immatriculation = 'DK6875DF'
-  and exists (select 1 from vehicule v where v.immatriculation = 'DK6875BF');
-`;
+/* La plaque fausse n'est PAS traitée ici, et c'est une correction du
+ * 10 septembre 2026, après un échec en production.
+ *
+ * Le premier jet finissait par `delete from vehicule where immatriculation =
+ * 'DK6875DF'`. Joué dans le SQL Editor, il a buté sur la contrainte
+ * `depense_tracable` : la ligne portait des dépenses, et la clé étrangère
+ * `on delete set null` de `depense` a voulu les délier, produisant une dépense
+ * sans véhicule ni bénéficiaire — que la contrainte refuse, à juste titre.
+ *
+ * L'échec a rendu un service : supprimer un véhicule cascade dans quinze
+ * tables et délie dans six autres. Ce n'est pas une opération à glisser en
+ * pied d'un script d'alignement, et l'erreur a fait retomber toute la
+ * transaction, alignement compris. La plaque a désormais son propre script,
+ * `supabase/plaque-dk6875.sql`, avec son inventaire préalable.
+ */
+const pied = "\n";
 
 writeFileSync(join(projet, "supabase/aligner-referentiel.sql"), entete + morceaux.join("\n\n") + pied, "utf8");
 console.log(`\nsupabase/aligner-referentiel.sql — ${morceaux.length} instruction(s)`);

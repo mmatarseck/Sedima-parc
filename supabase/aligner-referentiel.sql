@@ -16,8 +16,12 @@
 -- identifiants, les dates de création et tout ce qui a été saisi dans
 -- l'application ne bougent pas.
 --
--- ORDRE : 1. les douze parties du seed, 2. ce script, 3. la suppression de
--- l'ancienne plaque (dernière instruction ci-dessous).
+-- ORDRE : 1. les douze parties du seed, 2. ce script.
+--
+-- Ce script ne supprime rien et ne peut rien casser : il n'écrit que des
+-- `insert ... on conflict do update`. La plaque fausse DK 6875 DF est traitée
+-- à part, par `supabase/plaque-dk6875.sql`, parce que supprimer un véhicule
+-- cascade dans quinze tables.
 -- ============================================================================
 
 insert into site (id, code, libelle, region, type) values
@@ -281,13 +285,3 @@ on conflict (matricule_rh) do update set
   prenom = excluded.prenom,
   contrat = excluded.contrat,
   site_id = excluded.site_id;
-
--- ---------------------------------------------------------------------------
--- La plaque fausse. Toutes les listes 2026 disent DK 6875 BF ; l'application
--- écrivait DK 6875 DF, et le seed ne sait pas remplacer une ligne dont la clé
--- change. Le bon véhicule vient d'être ajouté par le seed ; l'ancien s'efface.
--- À ne jouer qu'après avoir vérifié que DK6875BF existe bien.
--- ---------------------------------------------------------------------------
-
-delete from vehicule where immatriculation = 'DK6875DF'
-  and exists (select 1 from vehicule v where v.immatriculation = 'DK6875BF');
