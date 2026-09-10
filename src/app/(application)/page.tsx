@@ -1,5 +1,7 @@
+import { redirect } from "next/navigation";
 import { EcranTableauBord } from "@/composants/tableau/EcranTableauBord";
 import { titrePage } from "@/domaine/marque";
+import { requeteDepuisUnTelephone } from "@/lib/telephone-serveur";
 import { situationsServeur } from "@/donnees/situations";
 import { donneesTableauServeur } from "@/donnees/tableau-bord";
 import { DATE_REFERENCE } from "@/donnees/tableau-bord-demo";
@@ -16,6 +18,14 @@ export const metadata = { title: titrePage("Tableau de bord") };
  * l'écran filtre, cumule et affiche. Rien ne s'y saisit.
  */
 export default async function PageTableauBord() {
+  /* Sur un téléphone, l'accueil est la vue téléphone, pas celle-ci (métier,
+     10 septembre 2026 : « à l'ouverture de l'app mobile, on voit le tableau de
+     bord — à retirer »). La redirection est la première instruction de la
+     page : elle tombe avant la moindre lecture en base, si bien qu'un
+     téléphone ne paie ni les vingt-huit jours de situations, ni les deux ans
+     de faits, et n'entrevoit pas l'écran au passage. */
+  if (await requeteDepuisUnTelephone()) redirect("/telephone");
+
   /* Les pastilles lisent l'état du moment : les situations journalières des
      quatre dernières semaines (décision du métier du 8 septembre 2026), et
      leurs seuils viennent des paramètres. Base branchée, les situations

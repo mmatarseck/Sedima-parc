@@ -117,7 +117,7 @@ DO, les 160 plaques consolidées, et ce qui reste à décider.
 2026) : `scripts/tester-constantes.mts` compare les valeurs distinctes de
 chaque champ entre la base et la démonstration, et signale ceux que la base
 fige. Il retrouve seul le défaut d'hier, et en a nommé un neuf. Les cas
-tranchés vivent dans le banc avec leur raison. **Vingt-deux bancs.**
+tranchés vivent dans le banc avec leur raison. **Vingt-trois bancs.**
 
 **Deux autres chiffres inventés ont été trouvés et corrigés** (10 septembre
 2026, section « Les chiffres inventés du mode base, cherchés exprès ») : les
@@ -1316,6 +1316,71 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   Vérifié dans le navigateur : sept fausses vignettes portées à 2,1 Mo, une
   photo de plus, la plus ancienne effacée, le total revenu à 1,8 Mo, la
   nouvelle affichée.
+
+---
+
+### Le téléphone n'ouvre plus sur le tableau de bord (10 septembre 2026)
+
+Le métier, capture à l'appui : « à l'ouverture de l'app mobile, on voit le
+tableau de bord — à retirer ». C'est la suite de la décision du même jour. On
+avait cessé de **dessiner** le tableau de bord pour 375 px ; il fallait cesser
+de l'**ouvrir**.
+
+Deux portes menaient à lui depuis un téléphone, et les deux sont fermées :
+
+- la racine `/`, qui est l'écran d'entrée de l'application ;
+- la tuile « Tableau de bord » dans la grille *Parcourir* du téléphone.
+
+**Pourquoi l'agent utilisateur, et non la largeur de l'écran.** La largeur
+n'est connue que du navigateur, donc après le rendu. Rediriger là-dessus
+voudrait dire calculer tout le tableau de bord — vingt-huit jours de
+situations, deux ans de faits — puis le jeter, et laisser le téléphone
+l'entrevoir au passage. L'agent utilisateur arrive avec la requête :
+`requeteDepuisUnTelephone()` est la **première instruction** de la page, et la
+redirection tombe avant la moindre lecture en base.
+
+Ce que ça vaut, et ce que ça ne vaut pas : un agent utilisateur se déguise et
+se démode. Ce n'est pas une frontière de sécurité, seulement un aiguillage de
+confort, et il est sans conséquence quand il se trompe — les deux destinations
+montrent les mêmes données sous les mêmes droits. Une fenêtre de bureau
+rétrécie n'est pas un téléphone et garde son tableau de bord.
+
+Vérifié au `curl` sur les trois agents : Android et iPhone reçoivent un 307
+vers `/telephone`, Windows un 200. Puis à l'écran, en 375 px : l'application
+ouvre sur « Bonjour », les gestes et « À faire aujourd'hui ».
+
+---
+
+### Les 167 fiches passées au crible, et non plus une seule (10 septembre 2026)
+
+`tester-fiche.mts` vérifie une fiche en détail — AA 032 EA, dont on connaît
+chaque ligne. C'est le bon banc pour prouver qu'un calcul est juste, et le
+mauvais pour trouver ce qui casse ailleurs. Or le parc vient de passer de 19 à
+167 véhicules, et les nouveaux arrivent avec des champs que la démonstration
+n'avait jamais vides : ni VIN, ni date de première mise en circulation, ni
+PTAC, et pour 111 d'entre eux **aucun relevé ni aucun plein**.
+
+`tester-toutes-fiches.mts` ne vérifie donc pas des valeurs mais des
+**invariants** — ce qui doit être vrai de n'importe quelle fiche, quelle que
+soit la maigreur de ses données — et les applique aux 167. Douze règles :
+aucun `NaN` ni infini, aucune grandeur négative, une disponibilité entre 0 et
+100 %, une consommation sous 200 L/100, des périodes de statut qui ne finissent
+pas avant de commencer, et la règle du tiret.
+
+**La règle du tiret est celle qui comptait le plus**, et elle tient : sur les
+111 fiches sans la moindre donnée de roulage, **aucune n'annonce « 0 km »**.
+Toutes disent « — ». Un zéro affirmerait qu'on a mesuré et trouvé rien ; le
+tiret avoue qu'on ne sait pas. C'est la discipline née du « 0 F de coût
+d'incidents » trouvé le matin même sur une fiche chauffeur, et le banc la tient
+maintenant sur tout le parc plutôt que sur un cas.
+
+Un mot sur la façon d'écrire un invariant. Le premier jet acceptait
+`kilometrage === null || kilometrage === 0` — ce qui ne prouvait rien, puisque
+les deux réponses passaient. Il a fallu mesurer d'abord (0 fiche à zéro), puis
+resserrer la règle sur ce que la mesure montrait. **Un invariant qui accepte
+les deux réponses n'est pas un invariant.**
+
+Les 167 fiches s'assemblent en 300 ms.
 
 ---
 

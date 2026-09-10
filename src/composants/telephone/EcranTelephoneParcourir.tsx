@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, BarChart3, CalendarRange, ClipboardList, Fuel, Inbox, LayoutGrid, QrCode, ScanLine, Settings, ShieldCheck, TriangleAlert, Truck, Users, Wallet, Wrench } from "lucide-react";
+import { ArrowLeftRight, BarChart3, CalendarRange, ClipboardList, Fuel, Inbox, QrCode, ScanLine, Settings, ShieldCheck, TriangleAlert, Truck, Users, Wallet, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { AccesCourant, Module } from "@/domaine/acces";
 import { lireAccesCourant } from "@/lib/acces-courant";
@@ -39,7 +39,13 @@ const TUILES: { titre: string; tuiles: Tuile[] }[] = [
   {
     titre: "Le parc",
     tuiles: [
-      { href: "/", libelle: "Tableau de bord", precision: "Pastilles du moment", icone: LayoutGrid, module: "flotte", detenteur: "jamais" },
+      /* Le tableau de bord n'est plus proposé ici (métier, 10 septembre 2026 :
+         « à l'ouverture de l'app mobile, on voit le tableau de bord — à
+         retirer »). Il n'est pas dessiné pour un écran étroit, et l'accueil du
+         téléphone dit déjà ce qu'il y a à faire aujourd'hui. La tuile partie,
+         « Disponibilité » ouvre la rangée : c'est elle que le terrain demande
+         le matin. La route `/` redirige de toute façon vers `/telephone` quand
+         la requête vient d'un téléphone. */
       { href: "/disponibilite", libelle: "Disponibilité", precision: "Ce qui roule aujourd'hui", icone: ClipboardList, module: "flotte", detenteur: "jamais" },
       { href: "/conformite", libelle: "Conformité", precision: "Documents et échéances", icone: ShieldCheck, module: "documents", detenteur: "jamais" },
       { href: "/incidents", libelle: "Incidents", precision: "Pannes, accidents, sinistres", icone: TriangleAlert, module: "incidents", detenteur: "jamais" },
