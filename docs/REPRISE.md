@@ -46,6 +46,18 @@ Un module de démonstration importé par un composant client (l'assistant lit
 démonstration ont leurs fichiers (`flotte-demo.ts`, `conformite-demo.ts`,
 `visites-demo.ts`).
 
+**⚠ Migration 0030 à jouer dans le SQL Editor** (10 septembre 2026) : elle
+ferme quatre trous d'accès trouvés par l'audit, dont les salaires lisibles par
+tout compte connecté et une fiche de transfert qu'un détenteur pouvait signer
+seul pour s'attribuer un véhicule. Section « Les accès, audités et fermés
+avant les données réelles » plus bas. **À jouer avant de charger la moindre
+donnée réelle.**
+
+**Le passage aux données réelles est cadré** : `docs/DONNEES-REELLES.md` —
+ce que « démonstration » recouvre vraiment (le référentiel réel *et* des
+transactions tirées au sort), la chaîne d'extraction des classeurs du dossier
+DO, les 160 plaques consolidées, et ce qui reste à décider.
+
 **La chasse aux chiffres inventés a maintenant sa sentinelle** (10 septembre
 2026) : `scripts/tester-constantes.mts` compare les valeurs distinctes de
 chaque champ entre la base et la démonstration, et signale ceux que la base
@@ -1249,6 +1261,61 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   Vérifié dans le navigateur : sept fausses vignettes portées à 2,1 Mo, une
   photo de plus, la plus ancienne effacée, le total revenu à 1,8 Mo, la
   nouvelle affichée.
+
+### Les accès, audités et fermés avant les données réelles (10 septembre 2026, migration 0030)
+
+Audit demandé avant de charger le réel. Le fil commun des quatre trous :
+**l'application n'est pas le seul chemin vers la base.** PostgREST expose
+chaque table et chaque fonction ; un commentaire qui dit « les fonctions
+serveur s'en assurent » ne protège rien. Tant que la base ne portait qu'un jeu
+inventé, cela ne coûtait rien ; avec les salaires et les tarifs négociés,
+cela coûterait cher.
+
+1. **Les salaires étaient publics.** `lecture_depense` (0019) disait
+   « `vehicule_id is null` **ou** le véhicule m'est visible » : la première
+   branche n'était gardée par rien. Or le poste `salaire` existe et la
+   contrainte `depense_tracable` prévoit justement la dépense sans véhicule.
+   Une dépense sans véhicule demande désormais le module Coûts.
+2. **Une partie signait pour l'autre.** `signature_transfert` (0012)
+   autorisait la mise à jour à qui est partie, sans dire *quelles colonnes* :
+   un récipiendaire écrivait les deux signatures, puis appelait
+   `appliquer_transfert()` et s'attribuait le véhicule. Un déclencheur garde
+   maintenant chaque signature. **Le niveau de saisie ne pouvait pas servir de
+   garde-fou** — le détenteur l'a aussi, c'est ce qui lui permet de signer ;
+   c'est le profil qui tranche (`suis_detenteur()`).
+3. **`appliquer_transfert()` ne vérifiait pas qui appelle.** `security
+   definer`, donc au-dessus des politiques, avec pour seul garde-fou un
+   `exists` tautologique qui retestait la ligne déjà trouvée.
+4. **N'importe qui envoyait un courriel signé de l'entreprise.**
+   `notifier_detenteurs()` prend tous ses champs en paramètres et ne vérifie
+   rien ; ses deux enveloppes, elles, vérifient bien. Le droit d'exécution lui
+   est retiré. **Retirer à `public` ne suffisait pas** : Supabase accorde
+   `execute` à `anon` et `authenticated` par privilège par défaut, il faut
+   les nommer — c'est le banc qui l'a montré.
+5. **Les discussions du parc se lisaient par leur sujet.** Un fil porte
+   « chauffeur:… » : ce que le parc écrivait *sur* un chauffeur était lisible
+   *par* lui. Le profil détenteur en est sorti.
+
+**Le banc qui le prouve** : `scripts/tester-acces.mts` joue le rôle d'un
+détenteur et tente les abus en SQL nu, comme un attaquant les écrirait.
+Neuf contrôles. **Mise de côté la 0030, six tombent** ; avec elle, tout passe.
+Deux pièges rencontrés en l'écrivant, à ne pas refaire : `set local` ne
+survit pas à la requête suivante dans PGlite (chaque requête est sa propre
+transaction) et un premier jet croyait à des refus là où le compte était
+simplement vide ; et la boucle des migrations doit **filtrer sur `.sql`**,
+sinon un fichier mis de côté en `.sql.off` est joué quand même et la preuve
+n'en est pas une.
+
+**Restent ouverts, non corrigés** (l'audit les a nommés, ils demandent un
+essai ou une décision) : le seau `pieces` laisse tout compte lire toutes les
+photos justificatives — le restreindre casserait l'aperçu du détenteur qui
+vient d'envoyer la sienne, à éprouver ; dix-sept tables de transport, tarifs
+et budget sont en lecture universelle (choix assumé en 0002, écrit avant
+l'arrivée du profil détenteur en 0007) ; `voit_sanctions()` sert à la fois de
+droit de lecture et d'écriture ; sept politiques en `for all` donnent au
+niveau « saisie » le droit de modifier et de supprimer, dont
+`mouvement_caisse` ; et la liste des personnes est vide pour tout compte non
+administrateur, ce qui tue le sélecteur de mentions des discussions.
 
 ### La chasse aux chiffres inventés, confiée à un banc (10 septembre 2026)
 
