@@ -186,20 +186,86 @@ disent **DK 6875 BF** (L200 2017, Amadou Baldé / Cheikh Thiaw).
   véhicules du parc ; ils relèvent des transporteurs. Aucun n'est dans la
   flotte, c'est correct.
 
+### Les onze plaques qui restaient sans source (closes le 10 septembre 2026)
+
+Onze plaques du parc léger de l'application n'avaient été retrouvées dans
+aucune des cinq listes 2026. La cause était dans l'outil, pas dans les
+données : le rapprochement lisait `PARC LEGERS AFFECTATION 2026` et le suivi
+administratif, mais pas les huit feuilles de `Plan d'affectation des véhicules
+légers vf.xlsx`. La feuille **Cascade vf** les explique toutes.
+
+| Plaque | D'où elle vient | Devenir au plan |
+| --- | --- | --- |
+| AB 489 JY | Lot 1 · neuf, Assane Gueye (DGA) | Attribution réalisée |
+| AB 282 JT | Lot 1 · neuf, Thierry Goudiaby (Directeur Abattoir) | Attribution réalisée |
+| AB 900 JW | Lot 1 · neuf, Pape Makhtar Diack (commercial farine) | Remplace DK 2346 BD, à réformer |
+| AB 903 JW | Lot 1 · neuf, Adji Néné Boye | Elle était sans véhicule |
+| AB 907 JW | Lot 1 · neuf, Arfand Bakary Coly | Libère AA 389 JG pour Ibrahima Camara |
+| AB 792 JA | Libéré par Assane Gueye | Va à Abdoulaye Soumboundou (DTPA) |
+| AB 571 HZ | Libéré par Abdoulaye Soumboundou | Va à Aly Bo, qui n'avait pas de véhicule |
+| AB 795 JA | Libéré par Thierry Goudiaby | Va à Macodou Gassama — **seul mouvement déjà réalisé** |
+| AA 873 QG | Libéré par Macodou Gassama | Devient véhicule de pool (DACI, DSI, contrôle de gestion) |
+| AB 078 JS | Détenu par Bakary Sow | À réformer (2017, 322 134 km) |
+| DK 4942 AK | Équipe Sécurité, hors service depuis longtemps | À réformer (2010, moteur, organes, carrosserie) |
+
+**Les cinq listes s'accordent donc sans exception**, et la phrase du chapitre 1
+— « aucune plaque de ces trois sources ne manque à l'application » — vaut
+maintenant dans les deux sens : l'application ne porte rien que le dossier
+ignore.
+
+**Une contradiction interne au classeur, trouvée au passage.** La même ligne de
+cascade décrit le même véhicule sous deux plaques différentes :
+
+| Feuille | Plaque | Le reste de la ligne |
+| --- | --- | --- |
+| Cascade vf, Synthèse Parc | **DK 1306 BB** | Mitsubishi L200, 2016, 237 013 km, Cheikhou Keïta → Ibrahima Faye |
+| MAINT | **AB 098 JC** | Mitsubishi L200, 2016, 237 013 km, Cheikhou Keïta → Ibrahima Faye |
+
+Modèle, année, kilométrage, détenteur et bénéficiaire sont identiques : c'est
+un seul camion, écrit deux fois. L'application porte `DK 1306 BB`, la lecture
+majoritaire — deux feuilles contre une —, et `AB 098 JC` n'existe nulle part
+ailleurs, ni au dossier ni dans l'application. **À confirmer par le métier**,
+sans urgence : quelle que soit la réponse, il n'y a qu'un véhicule.
+
+**Une alerte levée, puis retirée.** Le plan d'affectation, daté du 10 août
+2026, dit « Lot 2 : à commander », alors que neuf de ses plaques sont chargées
+« en service ». Ce n'est pas un défaut : le classeur d'attestations porte, sous
+la police **4482823J**, dix attestations émises le 19 août pour ces mêmes
+véhicules. Le plan est simplement antérieur à la livraison. La règle du
+chapitre « Méthode » — le plan d'août fait foi — s'entend contre la feuille
+Finance de mai, pas contre une pièce d'assurance postérieure au plan.
+
 ## 3. Ce qu'il reste à décider, puis à faire
 
-À l'équipe parc :
+### Ce qui est fait (10 septembre 2026)
 
-1. Quelle plaque du 19 août va à quelle ligne du lot 2 (dix sur quinze).
-2. Les onze véhicules hors SEDIMA assurés par le parc : dedans ou dehors.
-3. Les trois plaques à une lettre près (AB 930 BB/BV, DK 9723 BD/BG,
-   DK 9181 BB/BD), le chariot AA 412 UB, la vente de DK 4942 AK.
+Le chargement est passé, dans l'ordre : les douze parties du seed,
+`aligner-referentiel.sql`, `purge-demonstration.sql`, `plaque-dk6875.sql`.
+Sont donc derrière nous :
 
-Dans l'application, une fois arbitré : corriger DK 6875 DF, ajouter les 17
-unités opérationnelles avec leurs attelages, chauffeurs et sites, ajouter les
-16 non opérationnels sous leur statut, aligner les statuts des 16 connus,
-retirer DK 2347 BD de la flotte de transport. Tout cela passe par
-`parc-demo.ts`, puis `npm run generer-seed` et un rejeu de la partie 1 du seed
-(la ligne DK 6875 DF déjà en base se supprime à la main : le seed ne réécrit
-pas). Les chauffeurs de l'affectation qui manquent à la liste des chauffeurs
-seront à ajouter en même temps.
+- l'affectation des dix plaques du 19 août aux lignes du lot 2, arbitrée le
+  7 septembre et portée par l'application ;
+- la plaque `DK 6875 DF`, remplacée par `DK 6875 BF` — non par le seed, qui ne
+  sait pas changer une clé, mais par son propre script gardé ;
+- les 17 unités opérationnelles et les 16 non opérationnelles, ajoutées avec
+  leurs attelages, chauffeurs et sites ;
+- les statuts des 16 lourds connus, réalignés sur la situation 2026 — le seed
+  ne réécrit pas ce qui existe, c'est `aligner-referentiel.sql` qui l'a fait ;
+- les onze plaques sans source, expliquées ci-dessus.
+
+### Ce qui reste à trancher, par le métier
+
+1. Les onze véhicules hors SEDIMA assurés par le parc : dedans ou dehors.
+2. Les trois plaques à une lettre près : AB 930 BB/BV, DK 9723 BD/BG,
+   DK 9181 BB/BD.
+3. Le chariot élévateur AA 412 UB, dans aucune liste : à confirmer ou retirer.
+4. La vente de DK 4942 AK (2010, hors service, équipe Sécurité).
+5. `DK 1306 BB` ou `AB 098 JC` : la même ligne de cascade porte les deux
+   plaques pour un seul camion. L'application suit `DK 1306 BB`.
+6. La visite technique : 85 échéances passées sur 98. Crise réelle, ou colonne
+   du suivi administratif en retard d'un cycle ? Rien n'a été chargé tant que
+   la question n'est pas tranchée — voir `docs/DONNEES-REELLES.md`.
+7. Les trois décisions du coût des incidents, dans
+   `docs/PROPOSITION-COUT-INCIDENT.md`.
+
+Aucune ne bloque l'application : elle tourne sur les données réelles.

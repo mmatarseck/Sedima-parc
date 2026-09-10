@@ -57,6 +57,29 @@ function plaques(c: Cellule): string[] {
     .filter((p) => FORME_PLAQUE.test(p));
 }
 
+/**
+ * Les plaques trouvées **dans du texte libre**, pour les seules feuilles de
+ * cascade. `plaques()` exige que la cellule entière soit une plaque, ce qui
+ * est la bonne règle pour une colonne d'immatriculations : elle écarte les
+ * « ALMADIES » et les « DJILAKH A VERIFIER ». Mais la cascade écrit ses
+ * véhicules libérés en prose — « AB792JA — Toyota Hilux BA (2020, ~90 000 km,
+ * défauts tableau de bord) » — et il faut aller les y chercher.
+ *
+ * Le motif exige une frontière de part et d'autre pour ne pas découper un
+ * numéro plus long, et accepte l'espace entre les groupes : « AB 792 JA »
+ * comme « AB792JA ».
+ */
+const DANS_LE_TEXTE = /\b([A-Z]{2})[\s-]?(\d{3,4})[\s-]?([A-Z]{1,2})\b/g;
+function plaquesDuTexte(c: Cellule): string[] {
+  const t = texte(c).toUpperCase();
+  const trouvees = new Set<string>();
+  for (const m of t.matchAll(DANS_LE_TEXTE)) {
+    const p = `${m[1]}${m[2]}${m[3]}`;
+    if (FORME_PLAQUE.test(p)) trouvees.add(p);
+  }
+  return [...trouvees];
+}
+
 /** Une date Excel est un nombre de jours depuis le 30 décembre 1899. */
 function dateExcel(c: Cellule): string | null {
   if (typeof c === "number" && c > 20_000 && c < 60_000) return new Date(Date.UTC(1899, 11, 30) + c * 86_400_000).toISOString().slice(0, 10);
@@ -278,7 +301,41 @@ for (const onglet of ["Sample Data", "Feuil1", "Sheet1"]) {
   break;
 }
 
-/* -- 7. Le rapport ------------------------------------------------------------ */
+/* -- 7. Le plan d'affectation des légers : la cascade -------------------------
+ *
+ * `Plan d'affectation des véhicules légers vf.xlsx` (10 août 2026), huit
+ * feuilles. Celle qui compte est **Cascade vf** : elle dit, ligne par ligne,
+ * quel véhicule neuf va à qui, ce que ce quelqu'un libère, et qui le reprend.
+ * Les plaques y sont donc partout — en tête de ligne pour les neufs, et dans
+ * des cellules de texte libre pour les véhicules libérés, sous la forme
+ * « AB792JA — Toyota Hilux BA (2020, ~90 000 km) ».
+ *
+ * C'était la deuxième source oubliée, après les attestations, et elle laissait
+ * onze plaques de l'application sans origine apparente (10 septembre 2026).
+ * On lit toutes les feuilles et toutes les cellules : une plaque au bon format
+ * est une plaque, où qu'elle soit écrite. La cascade ne dit ni site ni état —
+ * elle n'apporte qu'une chose, mais la bonne : cette plaque existe au dossier.
+ * -------------------------------------------------------------------------- */
+
+const dossierPlan = join(racine, "plan-legers");
+if (existsSync(dossierPlan)) {
+  let vues = 0;
+  for (const fichier of readdirSync(dossierPlan).filter((f) => f.endsWith(".json"))) {
+    const lignes = JSON.parse(readFileSync(join(dossierPlan, fichier), "utf8")) as Feuille;
+    const onglet = fichier.slice(0, -5).trim();
+    for (const ligne of lignes) {
+      for (const cellule of ligne) {
+        for (const p of plaquesDuTexte(cellule)) {
+          obtenir(p, p, `plan:${onglet}`);
+          vues++;
+        }
+      }
+    }
+  }
+  if (vues) console.log(`plan d'affectation : ${vues} mention(s) de plaque lues dans les feuilles de cascade\n`);
+}
+
+/* -- 8. Le rapport ------------------------------------------------------------ */
 
 const tous = [...parc.values()].sort((a, b) => a.plaque.localeCompare(b.plaque));
 const dansSituation = tous.filter((v) => v.sources.some((s) => s.startsWith("situation")));
