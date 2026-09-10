@@ -82,9 +82,19 @@ export function FicheVehiculeLeger({ vehicule, attributaire, forfait, regles, au
         <p className="px-5 pb-4 text-[13px] leading-[1.5] text-texte">{vehicule.commentaire ?? "Rien à signaler dans le dossier."}</p>
       </Carte>
 
-      <Carte titre="Ce qui viendra avec la base" precision="La fiche complète, comme celle des véhicules de transport">
+      {/* Le message a été refait le 10 septembre 2026. Il disait « ce qui
+          viendra avec la base », ce qui n'est plus vrai : la base porte les
+          cent soixante-sept véhicules, légers compris, et chacun y a sa fiche
+          complète. Cette fiche-ci n'est plus le sort réservé aux légers, c'est
+          le repli pour un véhicule que la base ne connaît pas encore — un
+          véhicule commandé et pas encore immatriculé, ou la démonstration, qui
+          ne tient que le parc de transport. Dire le contraire envoyait
+          chercher un défaut là où il n'y en a pas. */}
+      <Carte titre="Fiche du dossier" precision="Ce véhicule n'est pas encore dans la base">
         <p className="meta px-5 pb-4 leading-[1.5]">
-          Maintenance, documents, relevés et dépenses de ce véhicule ne sont pas encore tenus dans l&apos;application : le dossier du parc n&apos;en porte pas l&apos;historique. Ils s&apos;ajouteront ici, onglet par onglet, à mesure que les saisies commenceront.
+          Ce que vous lisez vient du dossier du parc, pas de la base : le véhicule n&apos;y a pas encore de ligne — il est commandé et pas
+          immatriculé, ou vous êtes en démonstration. Dès qu&apos;il y entre, il ouvre la fiche complète des autres, avec ses onglets
+          maintenance, documents, relevés et dépenses.
         </p>
       </Carte>
     </div>

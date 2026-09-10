@@ -342,6 +342,38 @@ export function OngletCaracteristiques({ fiche }: { fiche: FicheVehicule }) {
         />
       </Carte>
 
+      {/* -- Le détenteur d'un véhicule léger ---------------------------------
+       *
+       * Ajouté le 10 septembre 2026, après une remarque du métier : « certains
+       * véhicules n'ont pas de fiche dédiée — semble-t-il les véhicules
+       * légers ».
+       *
+       * Le diagnostic, une fois posé : les légers **ont** une fiche complète
+       * depuis que la base les porte tous les cent soixante-sept. Ce qu'ils
+       * perdaient, c'est ce qui les distingue — qui tient le véhicule, à quel
+       * titre, et s'il relève du plan car. Ces faits vivaient dans la fiche
+       * réduite du parc léger, celle qui s'ouvre quand la base ne connaît pas
+       * le véhicule ; la fiche complète, elle, ne les affichait nulle part.
+       *
+       * `ligne.attributaire` est déjà rempli par `ligneDepuisLaBase` depuis
+       * `attribution_legere` : il n'y avait qu'à le montrer. La carte
+       * n'apparaît que pour un véhicule qui a un détenteur — un camion de
+       * transport n'en a pas, il a un chauffeur titulaire, qui se lit dans
+       * l'onglet Affectations.
+       * ------------------------------------------------------------------- */}
+      {fiche.ligne.attributaire ? (
+        <Carte titre="Détenteur" precision="Le véhicule est attribué, non affecté à un chauffeur">
+          <Definitions
+            elements={[
+              { libelle: fiche.ligne.attributaire.pool ? "Pool" : "Nom", valeur: fiche.ligne.attributaire.nom },
+              { libelle: "Fonction", valeur: fiche.ligne.attributaire.fonction },
+              { libelle: "Plan car", valeur: fiche.ligne.attributaire.planCar ? "Oui" : "Non" },
+              { libelle: "Régime d'usage", valeur: i.utilisation },
+            ]}
+          />
+        </Carte>
+      ) : null}
+
       <Carte titre="Rattachement">
         <Definitions
           elements={[
