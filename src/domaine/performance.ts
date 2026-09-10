@@ -459,7 +459,11 @@ export function evaluer(fiche: FicheChauffeur, debut: string, fin: string, conte
   const accidentsResponsables = accidents.filter((i) => i.declaration.responsabilite === "sedima" || i.declaration.responsabilite === "partagee");
   const avaries = incidents.filter((i) => i.declaration.type === "avarie-chargement" || i.declaration.type === "accident-chargement");
   const pannesMission = incidents.filter((i) => i.declaration.nature === "incident" && (i.declaration.mission === "livraison" || i.declaration.mission === "transfert"));
-  const coutIncidents = incidents.reduce((s, i) => s + i.cout, 0);
+  /* Un coût inconnu ne vaut pas zéro : des déclarations dont aucune dépense
+     n'est rattachée font taire le signal, au lieu d'annoncer un chauffeur
+     sans suites. Aucune déclaration, en revanche, coûte bien zéro. */
+  const coutsConnus = incidents.filter((i) => i.cout !== null);
+  const coutIncidents = !incidents.length ? 0 : coutsConnus.length ? coutsConnus.reduce((s, i) => s + (i.cout ?? 0), 0) : null;
 
   const joursAbsents = fiche.indisponibilites.filter((i) => i.motif !== "formation").reduce((s, i) => s + joursDans(i.debut, i.fin, debut, fin), 0);
   const joursFormation = fiche.indisponibilites.filter((i) => i.motif === "formation").reduce((s, i) => s + joursDans(i.debut, i.fin, debut, fin), 0);
@@ -490,7 +494,7 @@ export function evaluer(fiche: FicheChauffeur, debut: string, fin: string, conte
     D_CH_ACT: { valeur: contexte.kmMoyenCohorte && km > 0 ? arrondi((km / contexte.kmMoyenCohorte) * 100) : null, precision: contexte.kmMoyenCohorte ? `${nombre(arrondi(km))} km contre ${nombre(arrondi(contexte.kmMoyenCohorte))} km en moyenne` : "pas de cohorte" },
     C_CH_CONS: { valeur: km > 0 && referenceKm > 0 ? arrondi(((litres / km) * 100 - referenceKm / km) / (referenceKm / km) * 100, 1) : null, precision: km > 0 ? `${nombre((litres / km) * 100, 1)} L/100 contre ${nombre(referenceKm / km, 1)} en référence` : "aucun kilomètre attribué" },
     C_CH_FRAIS: { valeur: km > 0 ? arrondi((montantFrais / km) * 100) : null, precision: km > 0 ? `${nombre(arrondi(montantFrais))} F sur ${nombre(arrondi(km))} km` : "aucun kilomètre attribué" },
-    C_CH_INC: { valeur: coutIncidents, precision: incidents.length ? `${incidents.length} déclaration${incidents.length > 1 ? "s" : ""}` : "aucune déclaration" },
+    C_CH_INC: { valeur: coutIncidents, precision: !incidents.length ? "aucune déclaration" : coutIncidents === null ? `${incidents.length} déclaration${incidents.length > 1 ? "s" : ""}, aucune dépense rattachée` : `${incidents.length} déclaration${incidents.length > 1 ? "s" : ""}` },
     M_CH_SANC: { valeur: sanctions.length, precision: sanctions.length ? sanctions.map((s) => s.type).join(", ") : "aucune" },
     M_CH_FORM: { valeur: joursFormation, precision: joursFormation ? "voir Journal" : "aucune formation" },
     M_CH_POLY: { valeur: vehiculesDistincts, precision: vehiculesDistincts ? affectations.map((a) => a.immatriculationAffichee).filter((v, i, t) => t.indexOf(v) === i).join(", ") : "aucune affectation" },

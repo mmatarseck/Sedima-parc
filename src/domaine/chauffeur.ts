@@ -208,8 +208,13 @@ export interface IncidentChauffeur {
   declaration: DeclarationIncident;
   immatriculationAffichee: string;
   vehicule: string;
-  /** Somme des dépenses rattachées à la déclaration — jamais saisie. */
-  cout: number;
+  /**
+   * Somme des dépenses rattachées à la déclaration — jamais saisie. **Nulle
+   * quand rien ne les rattache** : en base, aucun écran ne relie une dépense
+   * à une déclaration et la table n'a pas de colonne pour le dire. Un coût
+   * inconnu se dit ; il ne s'affiche pas comme un coût nul.
+   */
+  cout: number | null;
   immobilisationJours: number;
 }
 

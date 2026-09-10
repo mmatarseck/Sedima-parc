@@ -1516,7 +1516,10 @@ function sinistraliteChauffeurs(s: SourceRapports, c: ContexteRapport): LigneRap
         incidents: incidents.length,
         accidents: incidents.filter((i) => i.declaration.nature === "accident").length,
         responsables: incidents.filter((i) => i.declaration.responsabilite === "sedima" || i.declaration.responsabilite === "partagee").length,
-        cout: incidents.reduce((t, i) => t + i.cout, 0),
+        /* Des déclarations sans une seule dépense rattachée laissent la
+           colonne vide : elle ne dit pas qu'un chauffeur n'a rien coûté,
+           elle dit qu'on l'ignore. Aucune déclaration coûte bien zéro. */
+        cout: !incidents.length ? 0 : incidents.some((i) => i.cout !== null) ? incidents.reduce((t, i) => t + (i.cout ?? 0), 0) : null,
         immobilisation: incidents.reduce((t, i) => t + i.immobilisationJours, 0),
         contraventions: contraventions.length,
         coutContraventions: contraventions.reduce((t, x) => t + x.montant, 0),

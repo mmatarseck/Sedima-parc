@@ -46,6 +46,13 @@ Un module de démonstration importé par un composant client (l'assistant lit
 démonstration ont leurs fichiers (`flotte-demo.ts`, `conformite-demo.ts`,
 `visites-demo.ts`).
 
+**Un coût inconnu se dit** (10 septembre 2026) : en base, la fiche du
+chauffeur annonçait « 0 F » de coût d'incidents, faute de pouvoir rattacher
+une dépense à une déclaration — une affirmation fausse, là où il fallait
+avouer l'ignorance. Section « Un coût inconnu se dit » plus bas ; la
+capacité manquante est proposée dans `docs/PROPOSITION-COUT-INCIDENT.md`,
+**trois décisions vous attendent**.
+
 **Les seize bancs PGlite passent** (9 septembre, nuit), lancés d'affilée avec
 `PGLITE_DIR` sur le dossier du poste : budget, caisse et cuve, conformité,
 discussions, écritures, fiche chauffeur, fiche rendue, fiche, maintenance,
@@ -1228,6 +1235,33 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   photo de plus, la plus ancienne effacée, le total revenu à 1,8 Mo, la
   nouvelle affichée.
 
+### Un coût inconnu se dit (10 septembre 2026)
+
+- **Le défaut.** `assembler-fiche-chauffeur.ts` posait `cout: 0` en dur sur
+  chaque incident lu en base. La fiche du chauffeur annonçait donc « 0 F »
+  au titre « Coût des incidents », le signal `C_CH_INC` valait zéro, et deux
+  rapports portaient une colonne de zéros. Ce n'est pas la même chose de
+  dire qu'un chauffeur n'a rien coûté et qu'on ignore ce qu'il a coûté.
+- **La correction.** `IncidentChauffeur.cout` accepte la valeur nulle. Une
+  somme de dépenses rattachées ne se dit que si au moins une l'est ; sinon,
+  la fiche affiche « non suivi », la colonne du rapport reste vide, et le
+  signal se tait — `OngletPerformance` rend déjà une valeur nulle par un
+  tiret, et `performance.ts` lui donne `score: null`, donc **le classement
+  ne compte pas ce qu'il ne sait pas**.
+- **La nuance qui compte** : un chauffeur **sans aucune déclaration** coûte
+  bien zéro, et l'affiche. Seules des déclarations dont pas une dépense
+  n'est rattachée valent « inconnu ». Le premier jet confondait les deux ;
+  la photographie des rapports l'a montré en signalant deux rapports
+  changés en démonstration — `chauffeurs-performance` et
+  `incidents-chauffeur`, mêmes 21 lignes, montants différents.
+- **Vérifié** : après correction, `instantane-rapports.mts <dossier>
+  comparer` dit « aucun écart » sur les 48 rapports de démonstration — le
+  changement ne touche donc que le mode base, là où le coût est vraiment
+  inconnu — et les seize bancs passent.
+- La capacité manquante — rattacher une dépense à une déclaration — est
+  proposée dans `docs/PROPOSITION-COUT-INCIDENT.md` : trois décisions, puis
+  une migration 0030 d'une seule colonne. **Rien n'est construit avant.**
+
 ### La photo du véhicule rejoint le seau (9 septembre 2026, nuit)
 
 - **Le défaut.** `PhotoVehicule` gardait son propre chemin : l'image réduite
@@ -1927,13 +1961,15 @@ lectures avant et après une migration. Il reproduit la régression (fiche
 - **Limites écrites** : ~~le parc léger reste celui du dossier de
   démonstration dans les deux modes~~ — levée le soir même, section « Le
   parc léger lu en base » ; `lire_parc()` ne rend que les affectations en
-  cours ; le coût d'un incident est nul en base. Cette dernière n'est pas
-  un branchement oublié mais **une capacité qui n'existe nulle part** :
+  cours ; le coût d'un incident est inconnu en base. Cette dernière n'est
+  pas un branchement oublié mais **une capacité qui n'existe nulle part** :
   aucun écran ne rattache une dépense à une déclaration, et la table
   `depense` n'a pas de colonne pour le dire (seule la demande d'achat cite
   une transaction d'origine, incident compris). En démonstration, le coût
-  est un champ du dossier, pas une somme. La combler demande une décision
-  du gestionnaire et une migration : à proposer, pas à improviser.
+  est un champ du dossier, pas une somme. Proposition écrite le 10 septembre
+  2026 : `docs/PROPOSITION-COUT-INCIDENT.md`, trois décisions à prendre.
+  Section « Un coût inconnu se dit » plus bas pour ce qui a été corrigé sans
+  attendre.
 
 ### Le courriel au détenteur — la notification de la plateforme (9 septembre 2026, migration 0027)
 

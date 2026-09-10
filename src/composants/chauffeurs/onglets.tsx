@@ -105,6 +105,18 @@ function TonEcart({ pct }: { pct: number }) {
 
 const PRECISION_PERIODE = (s: Selection) => `du ${date(s.debut)} au ${date(s.fin)}`;
 
+/**
+ * Le coût des déclarations, ou rien du tout. Une somme de dépenses rattachées
+ * ne se dit que si au moins une l'est : sans cela, « 0 F » affirmerait qu'un
+ * chauffeur n'a rien coûté là où l'on ignore ce qu'il a coûté. Sans aucune
+ * déclaration, en revanche, le coût est bien nul.
+ */
+function coutDeclarations(incidents: { cout: number | null }[]): string | null {
+  if (!incidents.length) return montant(0);
+  const connus = incidents.filter((i) => i.cout !== null);
+  return connus.length ? montant(connus.reduce((s, i) => s + (i.cout ?? 0), 0)) : null;
+}
+
 /* ========================================================================== */
 /* Aperçu — agrégats, analyses, alertes                                       */
 /* ========================================================================== */
@@ -281,7 +293,7 @@ export function OngletApercu({ fiche, selection, voitSanctions }: { fiche: Fiche
             colonnes={2}
             elements={[
               { libelle: "Jours d'immobilisation causés", valeur: `${selection.incidents.reduce((s, i) => s + i.immobilisationJours, 0)} j` },
-              { libelle: "Coût des incidents", valeur: montant(selection.incidents.reduce((s, i) => s + i.cout, 0)) },
+              { libelle: "Coût des incidents", valeur: coutDeclarations(selection.incidents) ?? "non suivi" },
               ...(voitSanctions
                 ? [
                     { libelle: "Sanctions", valeur: selection.sanctions.length === 0 ? "Aucune" : `${selection.sanctions.length} — ${selection.sanctions.map((s) => TYPE_SANCTION[s.type].toLowerCase()).join(", ")}` },
@@ -537,12 +549,12 @@ export function OngletIncidents({ selection, voitSanctions, cible, onAjouter }: 
   const incidents = [...creations("incident", (c) => fabriquerIncidentChauffeur(c, chauffeurId)), ...selection.incidents.map((i) => ({ ...i, declaration: surcharger(i.declaration) }))];
   const sanctions = [...creations("sanction", (c) => fabriquerSanction(c, chauffeurId)), ...selection.sanctions.map(surcharger)];
   const accidents = incidents.filter((i) => i.declaration.nature === "accident").length;
-  const cout = incidents.reduce((s, i) => s + i.cout, 0);
+  const cout = coutDeclarations(incidents);
   return (
     <div className="flex flex-col gap-5">
       <Carte
         titre="Incidents et accidents"
-        precision={`${PRECISION_PERIODE(selection)} · ${incidents.length} déclaration${incidents.length > 1 ? "s" : ""}${accidents ? `, dont ${accidents} accident${accidents > 1 ? "s" : ""}` : ""} · ${montant(cout)} de suites`}
+        precision={`${PRECISION_PERIODE(selection)} · ${incidents.length} déclaration${incidents.length > 1 ? "s" : ""}${accidents ? `, dont ${accidents} accident${accidents > 1 ? "s" : ""}` : ""}${cout ? ` · ${cout} de suites` : ""}`}
         action={
           <button type="button" onClick={() => onAjouter?.("incident")} disabled={!onAjouter} className="bouton-secondaire h-9 disabled:cursor-not-allowed disabled:opacity-50">
             <Plus className="size-4" strokeWidth={2} />

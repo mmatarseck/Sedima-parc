@@ -161,7 +161,9 @@ export function assemblerFicheChauffeur(ligne: LigneChauffeur, faits: FaitsFiche
     },
     immatriculationAffichee: i.vehicule.immatriculationAffichee,
     vehicule: `${i.vehicule.marque} ${i.vehicule.appellation}`,
-    cout: 0,
+    /* Rien ne rattache une dépense à une déclaration en base : le coût est
+       inconnu, pas nul. Voir `IncidentChauffeur.cout`. */
+    cout: null,
     immobilisationJours: i.immobilisationJours ?? 0,
   }));
 
