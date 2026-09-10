@@ -1509,16 +1509,38 @@ simplement vide ; et la boucle des migrations doit **filtrer sur `.sql`**,
 sinon un fichier mis de côté en `.sql.off` est joué quand même et la preuve
 n'en est pas une.
 
-**Restent ouverts, non corrigés** (l'audit les a nommés, ils demandent un
-essai ou une décision) : le seau `pieces` laisse tout compte lire toutes les
-photos justificatives — le restreindre casserait l'aperçu du détenteur qui
-vient d'envoyer la sienne, à éprouver ; dix-sept tables de transport, tarifs
-et budget sont en lecture universelle (choix assumé en 0002, écrit avant
-l'arrivée du profil détenteur en 0007) ; `voit_sanctions()` sert à la fois de
-droit de lecture et d'écriture ; sept politiques en `for all` donnent au
-niveau « saisie » le droit de modifier et de supprimer, dont
-`mouvement_caisse` ; et la liste des personnes est vide pour tout compte non
-administrateur, ce qui tue le sélecteur de mentions des discussions.
+**Trois autres points de l'audit, fermés le 10 septembre 2026** (migrations
+0032 et 0033) :
+
+- **Le sélecteur de citations était vide pour tout le monde sauf
+  l'administrateur** — donc personne ne pouvait citer personne. `lecture_acces`
+  (0007) ne rend que sa propre fiche ; `personnes-serveur.ts` en tirait un
+  annuaire d'une personne, sans erreur ni message. La **0032** ouvre une
+  fonction `annuaire()` qui rend le strict nécessaire pour citer quelqu'un —
+  identifiant, prénom, nom, fonction — et **rien d'autre** : ni courriel, ni
+  périmètre, ni niveaux, ni sanctions. Élargir `lecture_acces` aurait été le
+  mauvais remède. Le profil détenteur en est écarté.
+- **Sept politiques écrites `for all` donnaient au niveau « saisie » le droit
+  de modifier et de supprimer**, alors que la fiche d'accès promet au métier
+  que la saisie « ajoute des faits, ne retouche pas le passé ». Un agent doté
+  de « Coûts : saisie » pouvait effacer une sortie de caisse sans trace. La
+  **0033** les range sur le modèle qui existait déjà à côté
+  (`ecriture_mouvement`, 0029) : insertion à `saisie`, modification et
+  suppression à `gestion`. **Aucun profil livré n'y perd** — la maintenance et
+  le responsable ont `gestion` sur les modules concernés.
+- **Voir les sanctions donnait le droit de les écrire.** Le drapeau de la
+  fiche d'accès, décrit au métier comme consultatif, gardait à lui seul une
+  politique `for all`. Écrire une sanction demande désormais, en plus, la
+  gestion du module Chauffeurs.
+
+Le banc `tester-acces.mts` compte maintenant **quinze contrôles**, et chacune
+des deux migrations en fait tomber en son absence.
+
+**Restent ouverts, non corrigés** : le seau `pieces` laisse tout compte lire
+toutes les photos justificatives — le restreindre casserait l'aperçu du
+détenteur qui vient d'envoyer la sienne, à éprouver ; et dix-sept tables de
+transport, tarifs et budget sont en lecture universelle (choix assumé en 0002,
+écrit avant l'arrivée du profil détenteur en 0007).
 
 ### La chasse aux chiffres inventés, confiée à un banc (10 septembre 2026)
 

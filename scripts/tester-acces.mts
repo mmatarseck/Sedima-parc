@@ -183,6 +183,61 @@ attendu("un détenteur étranger à la remise ne l'applique pas", "refus" in app
 
 /* -- 5. Le courriel signé de l'entreprise ------------------------------------- */
 
+/* -- 6. L'annuaire des citations ---------------------------------------------
+ *
+ * `acces_utilisateur` ne se lit que pour soi-même, sauf administrateur : le
+ * sélecteur de mentions était vide pour tout le monde, sans erreur. La 0032
+ * ouvre un annuaire minimal — nom et fonction — à qui a un rôle, détenteur
+ * excepté.
+ * ------------------------------------------------------------------------- */
+
+const annuaireAgent = await sous(AGENT, `select count(*)::int as n from annuaire()`);
+attendu(
+  "un agent de terrain lit l'annuaire des citations",
+  "lignes" in annuaireAgent && (annuaireAgent.lignes[0] as { n: number }).n > 1,
+);
+
+const annuaireDetenteur = await sous(DETENTEUR, `select count(*)::int as n from annuaire()`);
+attendu(
+  "un détenteur n'y lit personne — il n'a pas à connaître l'organigramme",
+  "lignes" in annuaireDetenteur && (annuaireDetenteur.lignes[0] as { n: number }).n === 0,
+);
+
+const annuaireSansCourriel = await sous(AGENT, `select * from annuaire() limit 1`);
+attendu(
+  "l'annuaire ne rend que l'identifiant, le prénom, le nom et la fonction",
+  "lignes" in annuaireSansCourriel && Object.keys((annuaireSansCourriel.lignes[0] ?? {}) as object).sort().join(",") === "fonction,nom,prenom,utilisateur_id",
+);
+
+/* -- 7. « Saisie » ajoute, elle ne retouche pas ------------------------------
+ *
+ * Sept politiques étaient écrites `for all` et donnaient au niveau saisie le
+ * droit d'effacer. On l'éprouve sur la caisse, la plus sensible : l'agent de
+ * terrain reçoit `couts: saisie` le temps du contrôle.
+ * ------------------------------------------------------------------------- */
+
+await pg.exec(`update acces_utilisateur set modules = '{"couts":"saisie"}'::jsonb, ecarts_approuves_par = '${ADMIN}', ecarts_approuves_le = now() where utilisateur_id = '${AGENT}';
+  insert into mouvement_caisse (numero, date, sens, libelle, montant)
+  values ('MVT-ESSAI', current_date, 'sortie', 'Essai de garde', 5000) on conflict (numero) do nothing;`);
+
+const ajout = await sous(AGENT, `insert into mouvement_caisse (numero, date, sens, libelle, montant) values ('MVT-ESSAI-2', current_date, 'sortie', 'Ajouté par la saisie', 2500) returning numero`);
+attendu("le niveau saisie ajoute bien un mouvement de caisse", "lignes" in ajout && ajout.lignes.length === 1);
+
+const effacement = await sous(AGENT, `delete from mouvement_caisse where numero = 'MVT-ESSAI' returning numero`);
+attendu("mais il n'en efface aucun — retoucher le passé demande la gestion", "lignes" in effacement && effacement.lignes.length === 0);
+
+/* -- 8. Voir les sanctions n'est pas les écrire ------------------------------- */
+
+await pg.exec(`update acces_utilisateur set sanctions = true, modules = '{"couts":"saisie","chauffeurs":"lecture"}'::jsonb where utilisateur_id = '${AGENT}';`);
+const sanctionEcrite = await sous(
+  AGENT,
+  `insert into sanction (numero, chauffeur_id, date, type, motif) values ('SAN-ESSAI', '${chauffeur.id}', current_date, 'avertissement', 'Essai de garde') returning numero`,
+);
+attendu(
+  "cocher « voit les sanctions » n'ouvre pas l'écriture des sanctions",
+  "refus" in sanctionEcrite || ("lignes" in sanctionEcrite && sanctionEcrite.lignes.length === 0),
+);
+
 const forgeCourriel = await sous(
   DETENTEUR,
   `select notifier_detenteurs('essai-forge', '${chauffeur.id}', null, 'Direction des Opérations', 'Mise à jour de vos accès', 'Cliquez ici', 'https://ailleurs.example')`,
