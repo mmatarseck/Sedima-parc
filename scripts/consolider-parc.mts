@@ -248,7 +248,37 @@ for (const onglet of ["ASSURANCE SEDIMA SA 2026", "ASSURANCE SEDIMA ABATTOIRS 20
   }
 }
 
-/* -- 6. Le rapport ------------------------------------------------------------ */
+/* -- 6. Les attestations : la preuve qu'un véhicule est couvert --------------
+ *
+ * Le classeur du 19 août 2026 porte les dix L200 du lot 2, police 4482823J,
+ * avec leur attestation jaune et leur carte brune. Il manquait à la
+ * consolidation — d'où dix plaques du parc léger de l'application qui
+ * semblaient n'exister nulle part dans le dossier (10 septembre 2026). Une
+ * source oubliée fait dire à l'outil exactement le contraire de la vérité :
+ * mieux vaut le corriger que d'ouvrir dix dossiers pour rien.
+ * ------------------------------------------------------------------------- */
+
+for (const onglet of ["Sample Data", "Feuil1", "Sheet1"]) {
+  const lignes = feuille("attestations", onglet);
+  if (!lignes.length) continue;
+  const rangEntete = lignes.findIndex((l) => l.some((c) => /IMMATRICUL/i.test(texte(c))));
+  if (rangEntete < 0) continue;
+  const entete = lignes[rangEntete]!.map((c) => texte(c).toUpperCase());
+  const cImmat = entete.findIndex((e) => /IMMATRICUL/.test(e));
+  const cMarque = entete.findIndex((e) => /MARQUE/.test(e));
+  const cModele = entete.findIndex((e) => /MODELE|MODÈLE/.test(e));
+  for (const ligne of lignes.slice(rangEntete + 1)) {
+    for (const p of plaques(ligne[cImmat] ?? null)) {
+      const v = obtenir(p, texte(ligne[cImmat]), "attestation 2026");
+      const marque = cMarque >= 0 ? texte(ligne[cMarque]) : "";
+      const modele = cModele >= 0 ? texte(ligne[cModele]) : "";
+      if (marque || modele) v.genre ??= { valeur: `${marque} ${modele}`.trim(), source: "attestation 2026" };
+    }
+  }
+  break;
+}
+
+/* -- 7. Le rapport ------------------------------------------------------------ */
 
 const tous = [...parc.values()].sort((a, b) => a.plaque.localeCompare(b.plaque));
 const dansSituation = tous.filter((v) => v.sources.some((s) => s.startsWith("situation")));

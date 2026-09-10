@@ -46,12 +46,13 @@ Un module de démonstration importé par un composant client (l'assistant lit
 démonstration ont leurs fichiers (`flotte-demo.ts`, `conformite-demo.ts`,
 `visites-demo.ts`).
 
-**⚠ Migration 0030 à jouer dans le SQL Editor** (10 septembre 2026) : elle
-ferme quatre trous d'accès trouvés par l'audit, dont les salaires lisibles par
-tout compte connecté et une fiche de transfert qu'un détenteur pouvait signer
-seul pour s'attribuer un véhicule. Section « Les accès, audités et fermés
-avant les données réelles » plus bas. **À jouer avant de charger la moindre
-donnée réelle.**
+**Migrations : 0001 à 0034 jouées** (0030 à 0034 confirmées le 10 septembre
+2026). Elles ferment les neuf trous d'accès trouvés par l'audit, dont les
+salaires lisibles par tout compte connecté et une fiche de transfert qu'un
+détenteur pouvait signer seul pour s'attribuer un véhicule. Sections « Les
+accès, audités et fermés avant les données réelles » et suivantes. **Rien en
+attente dans le SQL Editor** ; il ne reste que le seed et son alignement,
+ci-dessous, qui ne sont pas des migrations.
 
 **⚠ La purge des transactions fabriquées est écrite, éprouvée, et attend
 d'être jouée** : `supabase/purge-demonstration.sql`, en trois parties dont un
@@ -66,8 +67,22 @@ lourd est complété (151 véhicules, 36 chauffeurs, 17 sites), et deux défauts
 réveillés par cet agrandissement faisaient disparaître **toutes les demandes**
 du seed sans un mot — un `insert` coupé entre deux fichiers, et une heure
 « 13:61 » composée à la main. Corrigés, avec le banc `tester-seed.mts` qui
-veille désormais. **Les neuf parties sont à rejouer** ; le seed ne réécrit pas
-ce qui existe, la ligne `DK 6875 DF` déjà en base se supprime à la main.
+veille désormais.
+
+**⚠ Rejouer le seed est nécessaire mais ne suffit pas** (10 septembre 2026) :
+le seed pose `on conflict do nothing` dans 102 de ses 103 instructions — il
+ajoute ce qui manque et ne touche jamais à ce qui existe. C'est le bon
+comportement pour un rejeu, car un seed ne doit pas écraser ce qui a été saisi
+dans l'application ; mais le référentiel, lui, a été **corrigé à la source**.
+Un rejeu seul ajouterait les nouveaux véhicules et laisserait les statuts
+réalignés, les libellés de sites et la plaque fausse dans leur état d'avant.
+D'où `supabase/aligner-referentiel.sql` (fabriqué par
+`scripts/aligner-referentiel.mts`, éprouvé par `scripts/tester-alignement.mts`).
+
+**L'ordre à tenir** : 1. les douze parties du seed, 2. `aligner-referentiel.sql`.
+La suppression de l'ancienne plaque `DK 6875 DF` est la dernière instruction du
+script, gardée par un `exists` sur `DK 6875 BF` : elle ne s'exécute que si la
+bonne ligne est bien là. Section « Rejouer le seed ne réaligne rien » plus bas.
 
 **Le passage aux données réelles est cadré** : `docs/DONNEES-REELLES.md` —
 ce que « démonstration » recouvre vraiment (le référentiel réel *et* des
@@ -78,7 +93,7 @@ DO, les 160 plaques consolidées, et ce qui reste à décider.
 2026) : `scripts/tester-constantes.mts` compare les valeurs distinctes de
 chaque champ entre la base et la démonstration, et signale ceux que la base
 fige. Il retrouve seul le défaut d'hier, et en a nommé un neuf. Les cas
-tranchés vivent dans le banc avec leur raison. **Dix-sept bancs.**
+tranchés vivent dans le banc avec leur raison. **Vingt et un bancs.**
 
 **Deux autres chiffres inventés ont été trouvés et corrigés** (10 septembre
 2026, section « Les chiffres inventés du mode base, cherchés exprès ») : les
@@ -1277,6 +1292,69 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   Vérifié dans le navigateur : sept fausses vignettes portées à 2,1 Mo, une
   photo de plus, la plus ancienne effacée, le total revenu à 1,8 Mo, la
   nouvelle affichée.
+
+---
+
+### Rejouer le seed ne réaligne rien (10 septembre 2026)
+
+La question du métier était simple : « dois-je repasser seed01 à 12 ? ». La
+réponse est **oui, mais pas seulement**, et elle tient à une ligne écrite le
+premier jour.
+
+Le seed pose `on conflict do nothing` dans 102 de ses 103 instructions. C'est
+délibéré et c'est bien : un jeu de départ qu'on rejoue ne doit pas écraser ce
+qui a été saisi dans l'application entre-temps. Il ajoute ce qui manque et ne
+touche jamais à ce qui existe.
+
+Seulement, le référentiel a été corrigé **à la source** dans la journée : les
+statuts des seize lourds déjà connus réalignés sur la situation 2026, huit
+sites nouveaux, une plaque fausse remplacée. Rejouer le seed sur la base de
+production ajouterait les quarante nouveaux lourds et les dix-huit chauffeurs,
+et laisserait les seize statuts corrigés dans leur état d'avant. La base
+serait à moitié à jour — l'état le plus difficile à diagnostiquer plus tard.
+
+**Ce qu'on a fait plutôt que de réécrire le seed.** Toucher au seed pour y
+mettre des `do update set` reviendrait à en faire un outil qui écrase ; on
+perdrait la propriété qui le rend sûr à rejouer. `scripts/aligner-referentiel.mts`
+relit donc les douze parties déjà générées et n'en garde que les trois `insert`
+du référentiel — sites, véhicules, chauffeurs — dont il réécrit la seule clause
+de conflit :
+
+```
+on conflict (immatriculation) do update set
+  marque = excluded.marque, ..., statut = excluded.statut, ...
+```
+
+Les colonnes remises à jour sont énumérées à la main, table par table, et ne
+comprennent **que ce qui décrit** : libellé, marque, catégorie, site, statut,
+régime, commentaire. Jamais l'identifiant, jamais la date de création, jamais
+un champ que l'application alimente. Le résultat est `supabase/aligner-referentiel.sql`,
+quatre instructions, à jouer **après** les douze parties.
+
+**La plaque fausse est le seul cas que l'upsert ne sait pas traiter**, parce
+que c'est la clé elle-même qui change : toutes les listes 2026 disent
+`DK 6875 BF`, l'application avait écrit `DK 6875 DF`. Le seed ajoute la bonne
+ligne ; l'ancienne s'efface par la dernière instruction du script, gardée :
+
+```sql
+delete from vehicule where immatriculation = 'DK6875DF'
+  and exists (select 1 from vehicule v where v.immatriculation = 'DK6875BF');
+```
+
+Le `exists` n'est pas de la coquetterie. Si le script est joué par erreur avant
+le seed, la suppression ne s'exécute pas et le parc garde son véhicule sous son
+ancien nom, plutôt que de le perdre.
+
+**Le banc reconstitue la situation exacte du métier.** `scripts/tester-alignement.mts`
+charge le seed, puis « vieillit » la base à la main pour y remettre ce que la
+production porte encore — trois statuts d'avant, un libellé de site faux, la
+plaque fausse. Il rejoue ensuite le seed et vérifie que **rien n'est corrigé** :
+c'est la moitié qui compte, car un banc qui ne prouverait que le succès de
+l'alignement ne dirait pas pourquoi l'alignement est nécessaire. Puis il joue
+le script et vérifie les cinq corrections, dont l'absence de doublon.
+
+
+---
 
 ### Le filtre de période retiré, « prêt à charger » recollé (10 septembre 2026, migration 0031)
 
