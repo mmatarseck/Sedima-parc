@@ -27,7 +27,7 @@ Commits à pousser selon `git log origin/main..HEAD`.
 (le passage du matin `/api/courriels`, planifié dans `vercel.json`). Sans
 eux, la cloche marche et les lignes restent « à envoyer ».
 
-**Les bancs d'essai**, tous dans PGlite avec le seed, à lancer avec
+**Les bancs d'essai** (dix-sept), tous dans PGlite avec le seed, à lancer avec
 `PGLITE_DIR=<dossier où @electric-sql/pglite est installé>` (sur ce poste :
 `C:\Users\mamadou.seck\AppData\Local\Temp\sedima-pglite`) : `scripts/tester-*.mts`
 (`npx tsx`), `scripts/instantane-rapports.mts <dossier> [comparer]` pour la
@@ -45,6 +45,12 @@ Un module de démonstration importé par un composant client (l'assistant lit
 `rapports-demo.ts`) **ne tire aucun module serveur** : les aides de
 démonstration ont leurs fichiers (`flotte-demo.ts`, `conformite-demo.ts`,
 `visites-demo.ts`).
+
+**La chasse aux chiffres inventés a maintenant sa sentinelle** (10 septembre
+2026) : `scripts/tester-constantes.mts` compare les valeurs distinctes de
+chaque champ entre la base et la démonstration, et signale ceux que la base
+fige. Il retrouve seul le défaut d'hier, et en a nommé un neuf. Les cas
+tranchés vivent dans le banc avec leur raison. **Dix-sept bancs.**
 
 **Deux autres chiffres inventés ont été trouvés et corrigés** (10 septembre
 2026, section « Les chiffres inventés du mode base, cherchés exprès ») : les
@@ -1243,6 +1249,38 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   Vérifié dans le navigateur : sept fausses vignettes portées à 2,1 Mo, une
   photo de plus, la plus ancienne effacée, le total revenu à 1,8 Mo, la
   nouvelle affichée.
+
+### La chasse aux chiffres inventés, confiée à un banc (10 septembre 2026)
+
+Trois défauts de la même famille trouvés à la main en un jour, c'est une
+famille qui mérite sa sentinelle. `scripts/tester-constantes.mts` la cherche
+seul, sur la **signature** commune aux trois : *en base le champ ne prend
+qu'une seule valeur sur tout le parc, en démonstration il en prend
+plusieurs*. Il parcourt les champs des lignes de la Flotte et des
+affectations, compte les valeurs distinctes de chaque côté, et nomme les
+suspects.
+
+- **Il ne dit pas « défaut », il dit « à regarder »** : un champ peut être
+  constant pour de bonnes raisons. Les cas déjà tranchés vivent dans une
+  table `JUGES` à l'intérieur du banc, **chacun avec sa raison écrite** ;
+  retirer une ligne rouvre le dossier, ce qui est le but. Le banc échoue
+  seulement sur un suspect qui n'y figure pas.
+- **Preuve qu'il sert** : l'ancien `src/donnees/rapports.ts` remis un
+  instant, le banc dit « À REGARDER affectation.kmParcourus : figé à 0 en
+  base, 36 valeurs distinctes en démonstration ». Il aurait trouvé seul ce
+  qu'il a fallu chercher.
+- **Il a trouvé un cas neuf du premier coup** : `lire_parc()` (0009) ne
+  projette **ni `a.numero` ni `a.motif`** dans sa liste d'affectations —
+  seulement `vehicule_id`, `chauffeur_id`, `role`, `debut`, `fin`. Aucune
+  colonne de rapport ne les montre aujourd'hui, donc rien de visible ; mais
+  en ajouter une les montrerait vides. Jugé et écrit, pas corrigé : élargir
+  la projection demanderait une migration pour un champ que personne
+  n'affiche. La fiche, elle, les lit bien (`lire_fiche`, 0013 et 0023).
+- Il a aussi corrigé **une de mes propres raisons** : j'avais écrit que le
+  seed ne posait pas de motif d'affectation. C'est faux — la table le porte,
+  c'est la projection de `lire_parc()` qui l'omet.
+
+Dix-sept bancs, désormais.
 
 ### Les chiffres inventés du mode base, cherchés exprès (10 septembre 2026)
 
