@@ -28,6 +28,11 @@ import { fichePourImmatriculation } from "./fiche-demo";
 import { listeIncidents } from "./incidents-demo";
 import { ordresDeTravail } from "./maintenance-demo";
 import { FLOTTE } from "./parc-demo";
+import { camionsTiers } from "./flotte-tierce-demo";
+import { relevesTransport } from "./releve-demo";
+import { tonnageRetenu } from "@/domaine/releve-transport";
+import { affretements, misesADisposition, prestations } from "./transporteurs-demo";
+import { joursDus } from "@/domaine/transporteurs";
 
 const OPERATIONNELS = new Set<StatutVehicule>(["en-service", "en-backup"]);
 /* Le seuil de la démonstration est celui des paramètres par défaut : une seule valeur, partout. */
@@ -58,6 +63,49 @@ export function situationsJournalieres(aujourdhui: string = DATE_REFERENCE, prof
      sorties, le stock ne faisait que monter et l'autonomie restait vide. */
   const cuve = avecStock([...livraisonsEtJauges(), ...pleinsFlotte().filter((p) => estCuve(p.source)).map(sortieDePlein)], STOCK_INITIAL);
   const demandes = demandesDemo();
+
+  /* -- Le parc des prestataires (10 septembre 2026) -------------------------
+   *
+   * Les mêmes faits que la fonction `situation_journaliere` en base (0035),
+   * calculés sur les fiches de la démonstration pour que les deux modes
+   * disent la même chose. Les trois voies de facturation d'un prestataire —
+   * affrètement, mise à disposition, prestation — sont mises bout à bout : un
+   * fournisseur n'a pas à être lu en trois fois. */
+  const tiersCamions = camionsTiers().filter((c) => c.actif).length;
+  const mad = misesADisposition().filter((m) => m.statut !== "annule");
+  const affretes = affretements().filter((a) => a.statut !== "annule");
+  const transports = relevesTransport();
+  const facturesTiers: { facture: string; reglement: string | null; montant: number }[] = [
+    ...affretes.filter((a) => a.dateFacture).map((a) => ({ facture: a.dateFacture!, reglement: a.dateReglement, montant: a.montantFacture ?? a.montantConvenu })),
+    ...mad.filter((m) => m.dateFacture).map((m) => ({ facture: m.dateFacture!, reglement: m.dateReglement, montant: m.montantFacture ?? joursDus(m) * m.prixJour })),
+    ...prestations().filter((p) => p.statut !== "annule" && p.dateFacture).map((p) => ({ facture: p.dateFacture!, reglement: p.dateReglement, montant: p.montantFacture ?? Math.round(p.quantite * p.prixUnitaire) })),
+  ];
+
+  /* Ce que les tiers présentaient à la fin d'un jour. Ici les huit champs sont
+     toujours renseignés : la démonstration n'a pas de droits à opposer, alors
+     qu'en base ils valent `null` pour qui ne lit pas le module Transporteurs. */
+  const faitsDesTiers = (jour: string) => {
+    /* La mise à disposition se facture au mois : le jour lit le mois qui le
+       contient, et la valeur ne bouge pas d'un jour à l'autre. On ne fabrique
+       pas une granularité que la donnée n'a pas. */
+    const duMois = mad.filter((m) => m.mois === jour.slice(0, 7));
+    const depuis7 = plusJours(jour, -6);
+    const fenetre = transports.filter((l) => l.date >= depuis7 && l.date <= jour);
+    const impayees = facturesTiers.filter((f) => f.facture <= jour && (f.reglement === null || f.reglement > jour));
+    return {
+      tiersCamions,
+      tiersMad: duMois.length,
+      tiersMadPanne: duMois.reduce((s, m) => s + m.joursPanne, 0),
+      tiersAffretementsOuverts: affretes.filter((a) => a.date <= jour && (a.dateLivraison === null || a.dateLivraison > jour) && ["demande", "confirme", "en-cours"].includes(a.statut)).length,
+      /* Le parc d'un côté, tout le reste de l'autre : l'enlèvement client et le
+         prestataire ponctuel ne sont pas du parc, ils comptent donc dans les
+         tiers comme dans le total. Le tonnage pesé prime sur l'annoncé. */
+      tiersTonnage7: Math.round(fenetre.filter((l) => l.mode !== "parc").reduce((s, l) => s + tonnageRetenu(l), 0) * 10) / 10,
+      tonnage7: Math.round(fenetre.reduce((s, l) => s + tonnageRetenu(l), 0) * 10) / 10,
+      tiersFactures: impayees.length,
+      tiersFacturesMontant: impayees.reduce((s, f) => s + f.montant, 0),
+    };
+  };
 
   /* Les chauffeurs indisponibles un jour donné, par identifiant. */
   const indisponibleLe = (jour: string) => new Set(chauffeurs.filter((c) => c.indisponibilites.some((i) => i.debut <= jour && (i.fin === null || i.fin >= jour))).map((c) => c.ligne.id));
@@ -142,6 +190,7 @@ export function situationsJournalieres(aujourdhui: string = DATE_REFERENCE, prof
       cuveJours: sorties7 > 0 ? Math.round((Math.max(0, cuveLitres) / (sorties7 / 7)) * 10) / 10 : null,
       joursSansAccident: dernierAccident ? joursEntre(dernierAccident, jour) : null,
       demandesSansReponse: demandes.filter((d) => !d.annuleeLe && d.echeance.slice(0, 10) <= jour && (!d.reponse || d.reponse.le.slice(0, 10) > jour)).length,
+      ...faitsDesTiers(jour),
     };
     return { jour, vehicules, flotte };
   });

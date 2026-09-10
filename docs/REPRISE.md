@@ -50,9 +50,19 @@ démonstration ont leurs fichiers (`flotte-demo.ts`, `conformite-demo.ts`,
 2026). Elles ferment les neuf trous d'accès trouvés par l'audit, dont les
 salaires lisibles par tout compte connecté et une fiche de transfert qu'un
 détenteur pouvait signer seul pour s'attribuer un véhicule. Sections « Les
-accès, audités et fermés avant les données réelles » et suivantes. **Rien en
-attente dans le SQL Editor** ; il ne reste que le seed et son alignement,
-ci-dessous, qui ne sont pas des migrations.
+accès, audités et fermés avant les données réelles » et suivantes.
+
+**⚠ Migration 0035 à jouer** (10 septembre 2026). Elle fait deux choses. Elle
+**répare** ce que 0031 avait effacé sans le dire : six champs de la situation
+journalière — ordres, caisse, cuve — étaient revenus à null, laissant trois
+pastilles muettes en production, et la lenteur d'avant 0018 avec. Et elle porte
+le **parc des prestataires** au tableau de bord, à la demande du métier : huit
+champs, cinq pastilles. Section « Le parc des prestataires au tableau de bord »
+plus bas.
+
+**Le chargement des données réelles est fait** (10 septembre 2026) : les douze
+parties du seed, `aligner-referentiel.sql`, `purge-demonstration.sql` et
+`plaque-dk6875.sql` ont été joués dans cet ordre. Il ne reste que 0035.
 
 **⚠ La purge des transactions fabriquées est écrite, éprouvée, et attend
 d'être jouée** : `supabase/purge-demonstration.sql`, en trois parties dont un
@@ -1305,6 +1315,87 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   Vérifié dans le navigateur : sept fausses vignettes portées à 2,1 Mo, une
   photo de plus, la plus ancienne effacée, le total revenu à 1,8 Mo, la
   nouvelle affichée.
+
+---
+
+### Le parc des prestataires au tableau de bord, et six champs rendus (10 septembre 2026, migration 0035)
+
+Deux choses dans la même migration, et la première est une réparation que
+personne n'avait demandée.
+
+**Ce que 0031 avait effacé sans que rien ne le signale.** La migration qui
+corrigeait « prêt à charger » rejouait `situation_journaliere()` — et elle l'a
+rejouée à partir de la forme de 0016, pas de celle de 0018. Or 0018 était deux
+choses à la fois : la réécriture en ensembles qui faisait passer la fonction de
+8,2 s à quelques dizaines de millisecondes, et la migration qui alimentait les
+ordres de travail, la caisse et la cuve.
+
+Six champs sont donc revenus à `null` en production — `ordres_ouverts`,
+`ordres_anciens`, `solde_caisse`, `seuil_caisse`, `cuve_litres`, `cuve_jours` —
+et avec eux trois pastilles muettes : « Ordres de travail ouverts »,
+« Autonomie de la cuve », « Caisse parc » affichaient « — » au lieu de leur
+valeur. La lenteur d'avant 0018 était revenue par la même porte.
+
+**La leçon, écrite dans la migration.** Une fonction rejouée par `create or
+replace` n'hérite de rien. On repart du dernier état, jamais d'un état
+antérieur qu'on croit connaître. Et le contrôle qui manquait est maintenant
+dans `tester-tableau.mts` : sur une base où le jeu de départ garnit tout,
+**aucun champ de la flotte n'a le droit d'être nul**. Le banc les compte tous,
+et nomme ceux qui manquent.
+
+**Le parc des prestataires** (métier : « il est important de prévoir aussi
+quelques infos liées au parc des prestataires »). Huit champs s'ajoutent à la
+situation journalière et portent cinq pastilles :
+
+| Pastille | Axe | Ce qu'elle dit |
+| --- | --- | --- |
+| Camions tiers | D | l'effectif affrété, et combien sont en mise à disposition |
+| Affrètements non livrés | D | ce qui reste dû par les tiers à cette date |
+| Jours de panne des tiers | D | le cumul du mois sur les camions mis à disposition |
+| Part confiée aux tiers | D | les tonnes des sept derniers jours, en part du total |
+| Factures tiers à régler | C | les trois voies de facturation d'un prestataire, ensemble |
+
+**Trois choix qui méritent d'être dits.**
+
+Les huit champs valent `null`, et non zéro, pour qui ne lit pas le module
+Transporteurs. Le droit est évalué une fois par appel, pas une fois par jour.
+Un zéro dirait « aucun affrètement » là où il faut dire « je ne sais pas », et
+la pastille affiche alors « — » — la règle posée pour la caisse avant qu'elle
+ait son module.
+
+« Part confiée aux tiers » croise le taux d'externalisation des courbes
+(C_TED_EXT, cible ≤ 35 %), et la redite est assumée : la courbe dit le mois,
+avec sa cible et son historique ; la pastille dit les sept derniers jours, qui
+sont l'horizon sur lequel on peut encore agir. Même base — les tonnes relevées
+des deux côtés, le pesage primant sur l'annoncé. Pas de sens souhaité : confier
+plus aux tiers peut vouloir dire qu'on livre plus, ou que le parc est à terre,
+et une couleur trancherait ce qu'on ignore.
+
+La mise à disposition se facture au mois, et ses jours de panne sont un cumul
+mensuel. La pastille lit donc le mois qui contient le jour, et ne bouge pas
+d'un jour à l'autre. On ne fabrique pas une granularité que la donnée n'a pas.
+
+**Un défaut attrapé par le banc.** Le premier jet comptait les camions tiers
+dont la date de création précédait le jour évalué. Comme le jeu de départ les
+crée tous le même jour, la valeur sortait à zéro sur toute la fenêtre. Le
+référentiel des camions tiers ne porte aucune date d'entrée — ni mise en
+service, ni rattachement. On compte donc l'effectif d'aujourd'hui appliqué à
+chaque jour, et la migration le dit plutôt que d'inventer une date.
+
+**Ce que la rangée d'ouverture devient.** Elle reste bornée à six : entrer une
+pastille en fait sortir une.
+
+- Responsable et administrateur : « Part confiée aux tiers » entre à la place
+  de « Jours sans accident ». Le raisonnement est celui qui avait fait ajouter
+  la sixième la veille — elle avait été prise pour couvrir l'axe M, donc M
+  reste, et c'est S qui cède. « Jours sans accident » n'a pas de référence, ne
+  bouge que d'un jour par jour, et vit aussi bien sur l'écran Incidents.
+- Lecteur (contrôle de gestion, achats, direction générale) : « Factures tiers
+  à régler » entre à la place de « Immobilisés administrativement », qui est le
+  travail du gestionnaire de parc, pas le sien.
+
+Les cinq sont dans « Choisir les indicateurs » pour tous les profils, et
+n'importe laquelle se remet en un clic.
 
 ---
 

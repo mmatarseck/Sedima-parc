@@ -18,8 +18,20 @@ const { btree_gist } = require("@electric-sql/pglite/contrib/btree_gist");
 const { pgcrypto } = require("@electric-sql/pglite/contrib/pgcrypto");
 const projet = process.cwd();
 const pg = new PGlite({ extensions: { btree_gist, pgcrypto } });
-await pg.exec(`create schema auth; create table auth.users (id uuid primary key); create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;`);
-for (const m of readdirSync(join(projet, "supabase/migrations")).sort()) await pg.exec(readFileSync(join(projet, "supabase/migrations", m), "utf8"));
+/* Un utilisateur identifié, et non plus `auth.uid() = null`. Depuis 0035, les
+ * champs du parc des prestataires passent par `peut('transporteurs','lecture')` :
+ * sans compte, ils sortent nuls et le banc ne verrait jamais leurs valeurs. */
+const MOI = "00000000-0000-0000-0000-000000000001";
+await pg.exec(`create schema auth; create table auth.users (id uuid primary key);
+  insert into auth.users values ('${MOI}');
+  create function auth.uid() returns uuid language sql stable as $$ select '${MOI}'::uuid $$;`);
+for (const r of ["anon", "authenticated", "service_role"]) {
+  try {
+    await pg.exec(`create role ${r}`);
+  } catch {}
+}
+for (const m of readdirSync(join(projet, "supabase/migrations")).filter((f) => f.endsWith(".sql")).sort()) await pg.exec(readFileSync(join(projet, "supabase/migrations", m), "utf8"));
+await pg.exec(`insert into profil (utilisateur_id, nom, role, actif) values ('${MOI}', 'Banc', 'administrateur', true) on conflict do nothing;`);
 for (const p of readdirSync(join(projet, "supabase/seed-parties")).filter((f) => f.endsWith(".sql")).sort()) {
   const texte = readFileSync(join(projet, "supabase/seed-parties", p), "utf8");
   let courant: string[] = [];
@@ -46,8 +58,28 @@ const sit = (await pg.query(`select situation_journaliere($1, $2) as j`, ["2026-
 const situations: SituationJournaliere[] = sit.map((s) => ({
   jour: s.jour,
   vehicules: s.vehicules.map((v: any) => ({ vehiculeId: v.vehicule_id, jour: s.jour, engage: v.engage, statut: v.statut, immobiliseAdmin: v.immobilise_admin, immobiliseDepuisJours: v.immobilise_depuis_jours, echeances7: v.echeances7, echues: v.echues, sansReleve7: v.sans_releve7, litres: Number(v.litres), carburant: Number(v.carburant), depenses: Number(v.depenses), pannes: v.pannes, accidents: v.accidents, pretACharger: v.pret_a_charger })),
-  flotte: { jour: s.jour, chauffeurs: s.flotte.chauffeurs, chauffeursIndisponibles: s.flotte.chauffeurs_indisponibles, ordresOuverts: s.flotte.ordres_ouverts, ordresAnciens: s.flotte.ordres_anciens, soldeCaisse: s.flotte.solde_caisse, seuilCaisse: s.flotte.seuil_caisse, cuveLitres: s.flotte.cuve_litres, cuveJours: s.flotte.cuve_jours, joursSansAccident: s.flotte.jours_sans_accident, demandesSansReponse: s.flotte.demandes_sans_reponse },
+  flotte: { jour: s.jour, chauffeurs: s.flotte.chauffeurs, chauffeursIndisponibles: s.flotte.chauffeurs_indisponibles, ordresOuverts: s.flotte.ordres_ouverts, ordresAnciens: s.flotte.ordres_anciens, soldeCaisse: s.flotte.solde_caisse, seuilCaisse: s.flotte.seuil_caisse, cuveLitres: s.flotte.cuve_litres, cuveJours: s.flotte.cuve_jours, joursSansAccident: s.flotte.jours_sans_accident, demandesSansReponse: s.flotte.demandes_sans_reponse, tiersCamions: s.flotte.tiers_camions, tiersMad: s.flotte.tiers_mad, tiersMadPanne: s.flotte.tiers_mad_panne, tiersAffretementsOuverts: s.flotte.tiers_affretements_ouverts, tiersTonnage7: Number(s.flotte.tiers_tonnage7), tonnage7: Number(s.flotte.tonnage7), tiersFactures: s.flotte.tiers_factures, tiersFacturesMontant: Number(s.flotte.tiers_factures_montant) },
 }));
+
+/* -- Le contrôle qui manquait le 10 septembre 2026 -------------------------
+ *
+ * La migration 0031 avait rejoué situation_journaliere() à partir de la forme
+ * de 0016 et non de celle de 0018 : six champs de la flotte étaient revenus à
+ * null — ordres, caisse, cuve — et trois pastilles affichaient « — » en
+ * production sans que rien ne le signale. Une fonction rejouée par `create or
+ * replace` n'hérite de rien ; ce banc le vérifie désormais.
+ *
+ * La règle : sur une base où le jeu de départ garnit tout, AUCUN champ de la
+ * flotte n'a le droit d'être nul. Le nul est réservé à ce que l'utilisateur
+ * n'a pas le droit de lire, et le banc, lui, a un compte administrateur. */
+const derniere = situations.at(-1)!.flotte;
+const nuls = (Object.entries(derniere) as [string, unknown][]).filter(([, v]) => v === null || (typeof v === "number" && Number.isNaN(v))).map(([c]) => c);
+attendu(nuls.length ? `champs nuls : ${nuls.join(", ")}` : `aucun champ de la flotte n'est nul (${Object.keys(derniere).length} champs lus)`, nuls.length === 0);
+attendu(`caisse ${derniere.soldeCaisse} F, cuve ${derniere.cuveLitres} l, ${derniere.ordresOuverts} ordres ouverts — les six champs que 0031 avait effacés`, (derniere.soldeCaisse ?? 0) > 0 && (derniere.cuveLitres ?? 0) > 0 && derniere.ordresOuverts !== null);
+attendu(
+  `parc prestataires : ${derniere.tiersCamions} camions tiers, ${derniere.tiersMad} en mise à disposition (${derniere.tiersMadPanne} j de panne), ${derniere.tiersAffretementsOuverts} affrètements non livrés, ${derniere.tiersTonnage7} t sur 7 j / ${derniere.tonnage7} t, ${derniere.tiersFactures} factures à régler`,
+  (derniere.tiersCamions ?? 0) > 0 && (derniere.tonnage7 ?? 0) >= (derniere.tiersTonnage7 ?? 0) && (derniere.tiersTonnage7 ?? 0) > 0,
+);
 const achats = ((await pg.query(`select a.numero, a.date, a.objet, a.poste, a.montant_estime, a.fournisseur, a.urgence, a.origine_numero, a.origine_libelle, a.demandeur_nom, a.demandeur_role, a.etape, a.visa_par, a.visa_le, a.valide_par, a.validee_le, a.numero_demande_x3, a.numero_bon_commande, a.montant_engage, a.date_livraison, a.date_facture, a.montant_reel, a.date_reglement, a.depense_numero, a.commentaire_decision, null as vehicule, null as prestataire from demande_achat a`)).rows as any[]).map((r) => ({ ...r, date: r.date instanceof Date ? r.date.toISOString().slice(0, 10) : r.date, date_reglement: r.date_reglement instanceof Date ? r.date_reglement.toISOString().slice(0, 10) : r.date_reglement }) as LigneAchatBase).map(achatDepuisLigne);
 
 const t1 = performance.now();

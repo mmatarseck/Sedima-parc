@@ -47,6 +47,17 @@ interface FlotteJson {
   cuve_jours: number | null;
   jours_sans_accident: number | null;
   demandes_sans_reponse?: number | null;
+  /* Le parc des prestataires (0035). Absents d'une base restée en deçà, nuls
+     pour qui ne lit pas le module Transporteurs — dans les deux cas la
+     pastille dit « — » plutôt qu'un zéro qui mentirait. */
+  tiers_camions?: number | null;
+  tiers_mad?: number | null;
+  tiers_mad_panne?: number | null;
+  tiers_affretements_ouverts?: number | null;
+  tiers_tonnage7?: number | string | null;
+  tonnage7?: number | string | null;
+  tiers_factures?: number | null;
+  tiers_factures_montant?: number | string | null;
 }
 
 interface SituationJson {
@@ -57,6 +68,8 @@ interface SituationJson {
 
 /* Les sommes en base sont des numérics : ils arrivent en chaîne dans le JSON. */
 const n = (v: number | string) => (typeof v === "number" ? v : Number(v));
+/* Même conversion, mais le nul se garde : il dit « je ne sais pas », pas zéro. */
+const nOuNul = (v: number | string | null | undefined) => (v === null || v === undefined ? null : n(v));
 
 function plusJours(jour: string, k: number): string {
   return new Date(Date.parse(`${jour}T00:00:00Z`) + k * 86_400_000).toISOString().slice(0, 10);
@@ -93,6 +106,14 @@ function situationDepuisJson(s: SituationJson): SituationJournaliere {
     cuveJours: f.cuve_jours,
     joursSansAccident: f.jours_sans_accident,
     demandesSansReponse: f.demandes_sans_reponse ?? null,
+    tiersCamions: f.tiers_camions ?? null,
+    tiersMad: f.tiers_mad ?? null,
+    tiersMadPanne: f.tiers_mad_panne ?? null,
+    tiersAffretementsOuverts: f.tiers_affretements_ouverts ?? null,
+    tiersTonnage7: nOuNul(f.tiers_tonnage7),
+    tonnage7: nOuNul(f.tonnage7),
+    tiersFactures: f.tiers_factures ?? null,
+    tiersFacturesMontant: nOuNul(f.tiers_factures_montant),
   };
   return { jour: s.jour, vehicules, flotte };
 }

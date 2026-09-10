@@ -65,6 +65,38 @@ export interface FaitsFlotteJour {
   joursSansAccident: number | null;
   /** Demandes poussées aux détenteurs, échues et sans réponse à la fin du jour ; nul tant que le module n'est pas lu. */
   demandesSansReponse: number | null;
+
+  /* -- Le parc des prestataires (métier, 10 septembre 2026) -----------------
+   *
+   * « Il est important de prévoir aussi quelques infos liées au parc des
+   * prestataires. » Les tiers transportent une part importante du tonnage ;
+   * le tableau de bord n'en disait rien.
+   *
+   * Ces huit champs sont **nuls, et non à zéro**, pour qui ne lit pas le
+   * module Transporteurs. Un zéro dirait « aucun affrètement » là où il faut
+   * dire « je ne sais pas », et la pastille affiche alors « — ». */
+
+  /**
+   * Camions de tiers actifs. Le référentiel ne porte aucune date d'entrée :
+   * c'est l'effectif d'aujourd'hui, appliqué à chaque jour de la fenêtre. Il
+   * ne bouge donc pas d'un jour à l'autre, et sa référence dira « comme la
+   * semaine passée » tant que personne n'aura ajouté ni retiré un camion.
+   */
+  tiersCamions: number | null;
+  /** Mises à disposition du mois qui contient ce jour : elles se facturent au mois, pas au jour. */
+  tiersMad: number | null;
+  /** Jours de panne cumulés de ces mises à disposition. */
+  tiersMadPanne: number | null;
+  /** Affrètements commandés et non encore livrés à cette date. */
+  tiersAffretementsOuverts: number | null;
+  /** Tonnes confiées aux tiers sur les sept jours qui finissent ce jour-là. */
+  tiersTonnage7: number | null;
+  /** Tonnes transportées sur la même fenêtre, parc compris. */
+  tonnage7: number | null;
+  /** Factures de prestataires reçues et non réglées à cette date. */
+  tiersFactures: number | null;
+  /** Leur montant. */
+  tiersFacturesMontant: number | null;
 }
 
 export interface SituationJournaliere {
@@ -321,6 +353,111 @@ export const PASTILLES: DefinitionPastille[] = [
     /* Une demande poussée à un détenteur, échue et toujours sans réponse (module des demandes, 8 septembre 2026). */
     calcul: (c) => c.jour.flotte.demandesSansReponse,
   },
+
+  /* -- Le parc des prestataires (métier, 10 septembre 2026) -----------------
+   *
+   * Cinq pastilles pour ce que les tiers roulent à notre compte. Elles ne
+   * disent rien du parc propre et ne doublent aucune courbe, à une exception
+   * près qui est assumée plus bas.
+   *
+   * Toutes valent `null` pour qui ne lit pas le module Transporteurs : la
+   * situation journalière n'y répond pas, et la pastille affiche « — ». */
+  {
+    id: "p-tiers-camions",
+    axe: "D",
+    libelle: "Camions tiers",
+    moment: "instant",
+    reference: "semaine-passee",
+    seuilTexte: "Pas de seuil : l'effectif du parc affrété",
+    href: "/transporteurs",
+    calcul: (c) => c.jour.flotte.tiersCamions,
+    complement: (c) => {
+      const mad = c.jour.flotte.tiersMad;
+      return mad === null ? null : `${mad} en mise à disposition`;
+    },
+  },
+  {
+    id: "p-tiers-affretements",
+    axe: "D",
+    libelle: "Affrètements non livrés",
+    moment: "instant",
+    reference: "hier",
+    seuil: { sens: "inf", defaut: 5, texte: desLePremier("affrètements") },
+    href: "/transporteurs",
+    /* Commandés, confirmés ou en route, et sans date de livraison à cette
+       date. C'est ce qui reste dû par les tiers, pas ce qu'on leur a confié. */
+    calcul: (c) => c.jour.flotte.tiersAffretementsOuverts,
+  },
+  {
+    id: "p-tiers-pannes",
+    sensSouhaite: "inf",
+    axe: "D",
+    libelle: "Jours de panne des tiers",
+    moment: "instant",
+    unite: "j",
+    reference: "semaine-passee",
+    seuilTexte: "Cumul du mois sur les camions mis à disposition",
+    href: "/transporteurs",
+    /* La mise à disposition se facture au mois et ses jours de panne sont un
+       cumul mensuel : la valeur ne bouge donc pas d'un jour à l'autre, et
+       c'est voulu — on ne fabrique pas une granularité que la donnée n'a pas.
+       Elle se compare à la semaine passée, où le mois pouvait être un autre. */
+    calcul: (c) => c.jour.flotte.tiersMadPanne,
+    complement: (c) => {
+      const mad = c.jour.flotte.tiersMad;
+      return mad === null ? null : `sur ${mad} camion${mad > 1 ? "s" : ""}`;
+    },
+  },
+  {
+    id: "p-tiers-part",
+    axe: "D",
+    libelle: "Part confiée aux tiers",
+    moment: "7-jours",
+    unite: "%",
+    decimales: 1,
+    reference: "semaine-passee",
+    seuilTexte: "Pas de seuil en pastille : la cible vit sur la courbe",
+    href: "/transporteurs",
+    /*
+     * Elle croise le taux d'externalisation des courbes (C_TED_EXT, cible
+     * ≤ 35 %), et la redite est assumée : la courbe dit **le mois**, avec sa
+     * cible et son historique ; la pastille dit **les sept derniers jours**,
+     * qui sont l'horizon sur lequel on peut encore agir. Ce sont deux
+     * lectures du même fait, pas deux calculs concurrents — la base est la
+     * même, les tonnes relevées des deux côtés.
+     *
+     * Pas de sens souhaité : confier plus aux tiers peut vouloir dire qu'on
+     * livre plus, ou que le parc est à terre. Une couleur trancherait ce
+     * qu'on ignore, comme pour le carburant de la semaine. Le chevron reste
+     * gris ; la cible est sur la courbe, à côté du contexte qui la justifie.
+     */
+    calcul: (c) => {
+      const { tiersTonnage7: tiers, tonnage7: total } = c.jour.flotte;
+      if (tiers === null || total === null || total <= 0) return null;
+      return Math.round((tiers / total) * 1000) / 10;
+    },
+    complement: (c) => {
+      const t = c.jour.flotte.tiersTonnage7;
+      return t === null ? null : `${Math.round(t).toLocaleString("fr-FR")} t sur 7 j`;
+    },
+  },
+  {
+    id: "p-tiers-factures",
+    axe: "C",
+    libelle: "Factures tiers à régler",
+    moment: "instant",
+    reference: "semaine-passee",
+    seuil: { sens: "inf", defaut: 10, texte: desLePremier("factures en attente") },
+    href: "/transporteurs",
+    /* Les trois voies de facturation d'un prestataire — affrètement, mise à
+       disposition, prestation — comptées ensemble : c'est un fournisseur, il
+       n'a pas à être lu en trois fois. */
+    calcul: (c) => c.jour.flotte.tiersFactures,
+    complement: (c) => {
+      const m = c.jour.flotte.tiersFacturesMontant;
+      return m === null ? null : `${Math.round(m / 1000).toLocaleString("fr-FR")} kF`;
+    },
+  },
 ];
 
 export const PASTILLE_PAR_ID = new Map(PASTILLES.map((p) => [p.id, p]));
@@ -362,15 +499,34 @@ export const PASTILLES_DEFAUT = ["p-hors-service", "p-prets", "p-echeances-7", "
  * profil absent de cette table reçoit `PASTILLES_DEFAUT`.
  */
 export const PASTILLES_PAR_PROFIL: Record<string, string[]> = {
-  /* Le responsable et l'administrateur voient le parc de haut : disponibilité, conformité, coût, sécurité, équipe. */
-  administrateur: PASTILLES_DEFAUT,
-  responsable: PASTILLES_DEFAUT,
+  /*
+   * Le responsable et l'administrateur voient le parc de haut : disponibilité,
+   * conformité, coût, équipe — et depuis le 10 septembre 2026 la part confiée
+   * aux tiers, à la demande du métier.
+   *
+   * **Ce que ça coûte, et pourquoi c'est ce choix-là.** La rangée est bornée à
+   * six ; entrer une pastille en fait sortir une. Celle qui cède est « Jours
+   * sans accident », seule représentante de l'axe S. Le raisonnement est celui
+   * qui avait fait ajouter la sixième la veille : elle avait été prise pour
+   * couvrir **M**, donc M reste. Entre S et M, c'est S qui vient d'être servi
+   * en dernier. « Jours sans accident » n'a pas de référence, ne bouge que
+   * d'un jour par jour, et vit aussi bien sur l'écran Incidents ; elle est à
+   * un clic dans « Choisir les indicateurs » pour qui la veut de retour.
+   */
+  administrateur: ["p-hors-service", "p-prets", "p-echeances-7", "p-carburant-semaine", "p-tiers-part", "p-chauffeurs-indisponibles"],
+  responsable: ["p-hors-service", "p-prets", "p-echeances-7", "p-carburant-semaine", "p-tiers-part", "p-chauffeurs-indisponibles"],
   /* L'atelier vit sur ce qui est immobilisé, en panne, et sur ses ordres ouverts. */
   maintenance: ["p-hors-service", "p-immobilises-7", "p-pannes-semaine", "p-ordres-ouverts", "p-echeances-7", "p-sans-releve"],
   /* L'agent de terrain agit sur son site : relevés à faire, demandes à répondre, carburant, caisse. */
   "agent-terrain": ["p-prets", "p-sans-releve", "p-demandes-sans-reponse", "p-carburant-semaine", "p-cuve", "p-caisse"],
-  /* Le contrôle de gestion regarde l'argent et la conformité, pas l'atelier. */
-  lecteur: ["p-depenses-semaine", "p-carburant-semaine", "p-caisse", "p-echeances-7", "p-immobilises-admin", "p-hors-service"],
+  /*
+   * Le contrôle de gestion regarde l'argent et la conformité, pas l'atelier.
+   * Le profil « lecteur » couvre aussi les achats : les factures de
+   * prestataires reçues et non réglées y entrent le 10 septembre 2026, à la
+   * place de l'immobilisation administrative — qui est le travail du
+   * gestionnaire de parc, pas le sien.
+   */
+  lecteur: ["p-depenses-semaine", "p-carburant-semaine", "p-caisse", "p-tiers-factures", "p-echeances-7", "p-hors-service"],
   /* Le détenteur n'a pas de tableau de bord : il a l'accueil du téléphone. La ligne existe pour ne pas laisser de trou. */
   detenteur: PASTILLES_DEFAUT,
 };
