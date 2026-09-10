@@ -109,10 +109,13 @@ function FiltreChoix<T extends string>({ etiquette, valeur, options, onChange }:
 }
 
 /** La lettre de l'axe, en puce neutre : la couleur est réservée à l'alerte. */
-function PuceAxe({ axe, petite }: { axe: string; petite?: boolean }) {
+function PuceAxe({ axe, petite, ronde }: { axe: string; petite?: boolean; ronde?: boolean }) {
   const nom = AXES.find((a) => a.cle === axe)?.nom ?? axe;
+  /* Ronde et plus grande en tête de pastille : c'est elle qui donne à la carte
+     sa ligne de titre, et elle reste neutre — la charte réserve la couleur au
+     sens, une teinte par axe ne dirait rien qu'un lecteur puisse lire. */
   return (
-    <span title={nom} className={`grid shrink-0 place-items-center rounded-[6px] bg-surface-3 font-bold text-texte-2 ${petite ? "size-4 text-[9.5px]" : "size-5 text-[11px]"}`}>
+    <span title={nom} className={`grid shrink-0 place-items-center font-bold text-texte-2 ${ronde ? "size-8 rounded-full bg-surface-3 text-[12.5px]" : petite ? "size-4 rounded-[6px] bg-surface-3 text-[9.5px]" : "size-5 rounded-[6px] bg-surface-3 text-[11px]"}`}>
       {axe}
     </span>
   );
@@ -125,7 +128,7 @@ function PuceAxe({ axe, petite }: { axe: string; petite?: boolean }) {
  */
 function Etincelle({ valeurs, cible, horsCible }: { valeurs: (number | null)[]; cible: number | null; horsCible: boolean }) {
   const connus = valeurs.filter((v): v is number => v !== null);
-  if (connus.length < 2) return <div className="h-10" />;
+  if (connus.length < 2) return <div className="h-7" />;
   const bornes = [...connus, ...(cible !== null ? [cible] : [])];
   const min = Math.min(...bornes);
   const max = Math.max(...bornes);
@@ -143,7 +146,7 @@ function Etincelle({ valeurs, cible, horsCible }: { valeurs: (number | null)[]; 
   const teinte = horsCible ? "var(--color-defavorable)" : "var(--color-attenue)";
   const fond = horsCible ? "var(--color-defavorable-fond)" : "var(--color-surface-3)";
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block h-10 w-full overflow-visible" aria-hidden="true">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block h-7 w-full overflow-visible" aria-hidden="true">
       {cible !== null ? <line x1="4" x2={W - 4} y1={y(cible).toFixed(1)} y2={y(cible).toFixed(1)} stroke="var(--color-attenue-2)" strokeDasharray="3 3" /> : null}
       <path d={`${trace}L${x(dernierIndex).toFixed(1)},${H - 4} L4,${H - 4} Z`} fill={fond} />
       <path d={trace} fill="none" stroke={teinte} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
@@ -447,28 +450,45 @@ export function EcranTableauBord({
               <Link
                 key={d.id}
                 href={d.href}
-                title={`${d.libelle} — ouvrir l'écran qui explique le chiffre`}
-                className={`carte relative grid min-h-[148px] grid-rows-[auto_auto_auto_auto_1fr] gap-1 overflow-hidden px-4 pt-3 pb-2 transition-colors hover:bg-surface-2 ${p.alerte ? "border-defavorable-bordure" : ""}`}
+                title={[d.libelle, MOMENT[d.moment].toLowerCase(), p.seuilTexte, "ouvrir l'écran qui explique le chiffre"].filter(Boolean).join(" — ")}
+                className={`carte relative flex min-h-[152px] flex-col gap-2 overflow-hidden px-4 pt-3 pb-2.5 transition-colors hover:bg-surface-2 ${p.alerte ? "border-defavorable-bordure" : ""}`}
               >
                 {p.alerte ? <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px] bg-defavorable" /> : null}
-                <span className="flex min-h-[32px] items-start gap-2">
-                  <PuceAxe axe={d.axe} />
-                  <span className="line-clamp-2 text-[12.5px] leading-[1.3] font-semibold text-texte">{d.libelle}</span>
-                  <span className="ml-auto shrink-0 pt-0.5 text-[10px] font-semibold tracking-[0.06em] text-attenue uppercase">{MOMENT[d.moment]}</span>
+                {/* La ligne de titre : le libellé tient la largeur, la puce de
+                    l'axe ferme la ligne à droite — c'est elle qui donne son
+                    assise à la carte. Le moment descend au pied, avec le seuil,
+                    parce qu'il précise le chiffre plutôt qu'il ne le nomme. */}
+                <span className="flex items-start gap-2">
+                  <span className="line-clamp-2 min-h-[32px] flex-1 text-[12.5px] leading-[1.3] font-semibold text-texte">{d.libelle}</span>
+                  <PuceAxe axe={d.axe} ronde />
                 </span>
-                <span className={`flex items-baseline gap-1.5 text-[27px] leading-none font-bold tracking-[-0.03em] tabular-nums ${p.valeur === null ? "text-attenue-2" : p.alerte ? "text-defavorable" : "text-texte"}`}>
+                <span className={`flex min-w-0 items-baseline gap-1.5 text-[30px] leading-none font-bold tracking-[-0.03em] tabular-nums ${p.valeur === null ? "text-attenue-2" : p.alerte ? "text-defavorable" : "text-texte"}`}>
                   {p.valeur === null ? "—" : nombre(p.valeur, d.decimales ?? 0)}
                   {p.valeur !== null && d.unite ? <small className="text-[13px] font-medium tracking-normal text-texte-2">{d.unite}</small> : null}
                   {p.complement ? <small className="truncate text-[12px] font-medium tracking-normal text-texte-2">{p.complement}</small> : null}
                 </span>
-                <span className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-texte-2">
-                  {diff !== null ? <span className={`shrink-0 font-semibold ${diff === 0 ? "" : bonSens === false && p.alerte ? "text-defavorable" : bonSens ? "text-favorable" : ""}`}>{diff === 0 ? "=" : diff > 0 ? "▲" : "▼"}</span> : null}
-                  <span className="truncate">{p.referenceTexte || (p.valeur === null ? "sans donnée" : "")}</span>
+                <span className="mt-auto flex min-w-0 flex-col gap-1">
+                  {/* La légende passe à la ligne plutôt que de se couper : nos
+                      références sont des phrases françaises — « 6 484 L de
+                      moins que la semaine passée » — et une phrase tronquée à
+                      « 6 484 L de m… » ne dit plus rien. */}
+                  <span className="flex min-w-0 items-start gap-1.5 text-[11.5px] leading-[1.35] text-texte-2">
+                    {diff !== null ? <span className={`shrink-0 font-semibold ${diff === 0 ? "" : bonSens === false && p.alerte ? "text-defavorable" : bonSens ? "text-favorable" : ""}`}>{diff === 0 ? "=" : diff > 0 ? "▲" : "▼"}</span> : null}
+                    <span className="line-clamp-2">{p.referenceTexte || (p.valeur === null ? "sans donnée" : "")}</span>
+                  </span>
+                  {/* Le seuil n'explique que le rouge : il ne s'affiche donc
+                      qu'avec lui. Hors alerte, « Rouge au-dessus de cinq
+                      véhicules » occupait la ligne sans rien apprendre. Il
+                      reste entier dans l'infobulle de la carte, à toute heure. */}
+                  <span className={`truncate text-[11px] ${p.alerte ? "text-defavorable" : "text-attenue"}`}>
+                    {p.alerte && p.seuilTexte ? p.seuilTexte : <span className="font-semibold tracking-[0.06em] uppercase">{MOMENT[d.moment]}</span>}
+                  </span>
                 </span>
-                <span className="truncate text-[11px] text-attenue" title={p.seuilTexte}>
-                  {p.seuilTexte}
-                </span>
-                <span className="-mx-1 -mb-1 self-end">
+                {/* Les quatorze jours en pied, sur toute la largeur mais courts :
+                    à dix unités de haut ils pesaient plus que le chiffre ; à
+                    sept ils redeviennent une note en marge, et le chiffre comme
+                    la légende gardent la largeur entière. */}
+                <span className="-mx-1 -mb-1 block">
                   <Etincelle valeurs={p.quatorze} cible={p.seuil} horsCible={p.alerte} />
                 </span>
               </Link>

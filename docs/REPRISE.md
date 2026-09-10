@@ -1270,6 +1270,37 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   photo de plus, la plus ancienne effacée, le total revenu à 1,8 Mo, la
   nouvelle affichée.
 
+### Les pastilles redessinées, d'après une maquette (10 septembre 2026)
+
+Le métier a fourni une maquette de tableau de bord (cartes claires, badge rond
+en tête, grand chiffre, tendance en une ligne, mini-graphique discret) et
+demandé de s'en inspirer. Ce qui a été repris, et ce qui ne pouvait pas l'être :
+
+- **Le badge de l'axe passe en pastille ronde, en fin de ligne de titre.** Il
+  était un carré collé devant le libellé, qui poussait le texte sur deux
+  lignes. La ronde ferme la ligne et donne son assise à la carte.
+- **Le chiffre grandit** (27 → 30 px) et respire davantage.
+- **La mini-courbe des quatorze jours maigrit** de dix à sept unités de haut.
+  Elle tenait tout le pied et pesait plus que la valeur ; elle redevient une
+  note en marge.
+- **Le seuil ne s'affiche qu'avec l'alerte qu'il explique.** Hors alerte,
+  « Rouge au-dessus de cinq véhicules » occupait une ligne sans rien
+  apprendre ; il reste entier dans l'infobulle, à toute heure. C'est le moment
+  (INSTANT, 7 JOURS, DEPUIS LUNDI) qui tient la ligne le reste du temps.
+- **La légende passe à la ligne au lieu de se couper** : nos références sont
+  des phrases françaises — « 6 484 L de moins que la semaine passée » — et une
+  phrase tronquée à « 6 484 L de m… » ne dit plus rien.
+
+**Ce qui n'a pas été repris : la teinte par carte.** La maquette donne à
+chaque pastille une couleur propre (violet, bleu, vert, rose) pour son icône.
+La charte du projet réserve la couleur au sens — le rouge à l'alerte, le vert
+au favorable — et une teinte décorative par axe ne dirait rien qu'un lecteur
+puisse lire. La puce reste neutre.
+
+**Vérifié** : à 1440 px, cinq pastilles de front, plus qu'une seule troncature
+(un texte de seuil, entier dans l'infobulle) ; à 375 px, deux colonnes, aucun
+débordement horizontal.
+
 ### Les accès, audités et fermés avant les données réelles (10 septembre 2026, migration 0030)
 
 Audit demandé avant de charger le réel. Le fil commun des quatre trous :
