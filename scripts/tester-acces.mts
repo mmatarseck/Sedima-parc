@@ -238,6 +238,28 @@ attendu(
   "refus" in sanctionEcrite || ("lignes" in sanctionEcrite && sanctionEcrite.lignes.length === 0),
 );
 
+/* -- 9. Les tarifs négociés ne sont pas pour le chauffeur ---------------------
+ *
+ * Dix-sept tables de transport, tarifs et budget étaient ouvertes à tout rôle
+ * — choix assumé en 0002, écrit avant que le profil détenteur n'existe. La
+ * 0034 l'en sort. On éprouve la grille tarifaire et le budget.
+ * ------------------------------------------------------------------------- */
+
+const tarifsDetenteur = await sous(DETENTEUR, `select count(*)::int as n from ligne_tarif`);
+attendu(
+  "un détenteur ne lit pas la grille tarifaire négociée",
+  "lignes" in tarifsDetenteur && (tarifsDetenteur.lignes[0] as { n: number }).n === 0,
+);
+
+const budgetDetenteur = await sous(DETENTEUR, `select count(*)::int as n from enveloppe`);
+attendu("ni les enveloppes du budget", "lignes" in budgetDetenteur && (budgetDetenteur.lignes[0] as { n: number }).n === 0);
+
+const tarifsAgent = await sous(AGENT, `select count(*)::int as n from ligne_tarif`);
+attendu(
+  "un agent de terrain les lit toujours — rien ne change pour les autres profils",
+  "lignes" in tarifsAgent && (tarifsAgent.lignes[0] as { n: number }).n > 0,
+);
+
 const forgeCourriel = await sous(
   DETENTEUR,
   `select notifier_detenteurs('essai-forge', '${chauffeur.id}', null, 'Direction des Opérations', 'Mise à jour de vos accès', 'Cliquez ici', 'https://ailleurs.example')`,

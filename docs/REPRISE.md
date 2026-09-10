@@ -1536,11 +1536,28 @@ n'en est pas une.
 Le banc `tester-acces.mts` compte maintenant **quinze contrôles**, et chacune
 des deux migrations en fait tomber en son absence.
 
-**Restent ouverts, non corrigés** : le seau `pieces` laisse tout compte lire
-toutes les photos justificatives — le restreindre casserait l'aperçu du
-détenteur qui vient d'envoyer la sienne, à éprouver ; et dix-sept tables de
-transport, tarifs et budget sont en lecture universelle (choix assumé en 0002,
-écrit avant l'arrivée du profil détenteur en 0007).
+**Les deux derniers points, fermés le 10 septembre 2026 (migration 0034).**
+Ils avaient été laissés ouverts non par oubli mais parce qu'ils demandaient de
+vérifier qu'on ne casserait rien.
+
+- **Le seau `pieces`** laissait tout compte connecté lire toutes les photos
+  justificatives du parc — tickets, pièces de dépenses, réserves, réponses
+  photo des chauffeurs. Ce qui retenait : un détenteur qui vient d'envoyer sa
+  photo doit la revoir, le champ en affiche la vignette. La sortie était dans
+  `storage.objects.owner`, que le seau tient déjà : **un détenteur ne lit que
+  ses propres dépôts**, ce qui suffit exactement à l'aperçu. Les autres profils
+  lisent comme avant.
+- **Treize tables de transport, tarifs et budget** sortent de la lecture
+  universelle pour le seul profil détenteur — grille tarifaire, affrètements,
+  avances de trésorerie, évaluations de prestataires, enveloppes.
+  **Treize et non dix-sept** : les quatre tables de plan d'entretien restent
+  ouvertes, parce qu'une gamme de vidange n'est pas une donnée commerciale et
+  que l'enfermer n'apporterait qu'un risque. Vérifié au passage : aucune des
+  fonctions de lecture (`lire_parc`, `lire_fiche`, politiques intégrées) ne
+  touche ces quatre tables.
+
+Le banc `tester-acces.mts` compte **dix-huit contrôles**, et chacune des
+migrations 0030 à 0034 en fait tomber en son absence.
 
 ### La chasse aux chiffres inventés, confiée à un banc (10 septembre 2026)
 
