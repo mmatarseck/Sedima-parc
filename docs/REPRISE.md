@@ -1278,6 +1278,32 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   photo de plus, la plus ancienne effacée, le total revenu à 1,8 Mo, la
   nouvelle affichée.
 
+### Les pastilles, quatrième passage : icônes, dégradé, page découpée (10 septembre 2026)
+
+Sur une seconde maquette du métier, quatre demandes.
+
+- **La bande rouge qui bordait les cartes en alerte est retirée.** Elle
+  doublait la bordure rouge et le chiffre rouge : trois façons de dire la même
+  chose.
+- **Un dégradé dit l'état**, en trois cas et pas un de plus, tous lus dans la
+  donnée : rouge très clair au-delà du seuil, vert très clair en deçà, **rien
+  du tout quand la pastille n'a pas de seuil** — on ne teinte pas ce qu'on ne
+  peut pas juger. Le dégradé s'éteint à 62 % de la hauteur pour que le pied de
+  carte reste sur du blanc.
+- **Une icône par pastille** remplace la lettre SQDCM en tête de carte : « D »
+  ne dit rien à qui ouvre l'écran pour la première fois, une jauge ou un bidon
+  se lisent sans glossaire. Seize icônes, choisies sur ce que la pastille
+  compte, pas sur son axe. **L'axe n'est pas perdu** — il tient l'infobulle, et
+  il structure toujours le panneau « Choisir les indicateurs », qui est
+  l'endroit où l'on raisonne par axe.
+- **La page est découpée en trois temps nommés** : « Maintenant », « Dans le
+  temps », « À traiter, et où va l'argent ». Les trois rangées se suivaient à
+  trois unités d'écart et rien ne disait qu'on changeait de registre.
+
+**Vérifié à 1440 px** : plus une seule bande, six icônes, trois cartes en
+dégradé rouge, deux en vert, une sans teinte (le carburant, qui n'a pas de
+seuil), trois séparateurs, aucune troncature.
+
 ### Les pastilles, troisième passage : moins de texte, aucun titre coupé (10 septembre 2026)
 
 - **Les libellés ont maigri à la source**, dans `pastilles.ts`, en cessant de

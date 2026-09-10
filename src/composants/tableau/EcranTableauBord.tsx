@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
+import { Banknote, CalendarClock, ChevronDown, CircleCheck, CircleOff, ClipboardList, Clock, Droplet, FileWarning, Fuel, Gauge, Inbox, ShieldCheck, SlidersHorizontal, TriangleAlert, UserX, Wallet, Wrench, X, type LucideIcon } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { Carte } from "@/composants/interface/Carte";
 import { Anneau, BarresContribution, BarresMensuelles, Courbe, libelleMoisCourt, type PartAnneau, type PointCourbe } from "./Graphiques";
@@ -109,6 +109,54 @@ function FiltreChoix<T extends string>({ etiquette, valeur, options, onChange }:
 }
 
 /** La lettre de l'axe, en puce neutre : la couleur est réservée à l'alerte. */
+/**
+ * L'icône de chaque pastille — une par identifiant, choisie sur ce que la
+ * pastille compte, pas sur son axe.
+ *
+ * Elle prend en tête de carte la place de la lettre SQDCM (10 septembre 2026,
+ * sur une maquette du métier) : « D » ne dit rien à qui ouvre l'écran pour la
+ * première fois, une jauge ou un bidon se lisent sans glossaire. **L'axe n'est
+ * pas perdu** — il tient l'infobulle de la carte, et il structure toujours le
+ * panneau « Choisir les indicateurs », qui est l'endroit où l'on raisonne par
+ * axe.
+ */
+const ICONE_PASTILLE: Record<string, LucideIcon> = {
+  "p-hors-service": CircleOff,
+  "p-prets": CircleCheck,
+  "p-immobilises-7": Clock,
+  "p-pannes-semaine": Wrench,
+  "p-jours-sans-accident": ShieldCheck,
+  "p-accidents-semaine": TriangleAlert,
+  "p-echeances-7": CalendarClock,
+  "p-immobilises-admin": FileWarning,
+  "p-sans-releve": Gauge,
+  "p-carburant-semaine": Fuel,
+  "p-cuve": Droplet,
+  "p-caisse": Wallet,
+  "p-depenses-semaine": Banknote,
+  "p-chauffeurs-indisponibles": UserX,
+  "p-ordres-ouverts": ClipboardList,
+  "p-demandes-sans-reponse": Inbox,
+};
+
+/**
+ * La coupure entre les trois temps de la page (métier, 10 septembre 2026 :
+ * « une séparation nette entre les pastilles, les courbes et le reste »).
+ *
+ * Les trois rangées se suivaient à trois unités d'écart, et rien ne disait
+ * qu'on changeait de registre : l'état du moment, l'évolution sur l'exercice,
+ * puis ce qui appelle un geste. Un filet nommé le dit en une ligne.
+ */
+function Separateur({ libelle, precision }: { libelle: string; precision: string }) {
+  return (
+    <div className="mt-1.5 flex shrink-0 items-center gap-3">
+      <span className="shrink-0 text-[11px] font-semibold tracking-[0.08em] text-texte-2 uppercase">{libelle}</span>
+      <span className="meta hidden shrink-0 md:inline">{precision}</span>
+      <i aria-hidden="true" className="h-px min-w-6 flex-1 bg-bordure" />
+    </div>
+  );
+}
+
 function PuceAxe({ axe, petite, ronde }: { axe: string; petite?: boolean; ronde?: boolean }) {
   const nom = AXES.find((a) => a.cle === axe)?.nom ?? axe;
   /* Ronde et plus grande en tête de pastille : c'est elle qui donne à la carte
@@ -411,6 +459,7 @@ export function EcranTableauBord({
       </div>
 
       {/* ---- Rangée 1 : les pastilles du moment ---- */}
+      <Separateur libelle="Maintenant" precision="l'état du parc à cet instant, ou de la dernière période close" />
       {pastilles.length === 0 ? (
         <div className="carte shrink-0 px-5 py-8 text-center">
           <p className="meta">Aucune pastille retenue. Ouvrez « Choisir les indicateurs » pour composer votre rangée.</p>
@@ -422,16 +471,28 @@ export function EcranTableauBord({
             const diff = p.valeur !== null && p.reference !== null ? p.valeur - p.reference : null;
             /* La flèche dit le sens ; la couleur ne dit que le rouge du seuil. */
             const bonSens = diff === null || diff === 0 || !d.seuil ? null : d.seuil.sens === "inf" ? diff < 0 : diff > 0;
+            const Icone = ICONE_PASTILLE[d.id] ?? CircleCheck;
+            /* Le dégradé dit l'état d'un coup d'œil (métier, 10 septembre
+               2026), et remplace la bande rouge qui bordait les cartes en
+               alerte. Trois cas seulement, tous lus dans la donnée : au-delà
+               du seuil, en deçà, ou sans seuil — on ne teinte pas ce qu'on ne
+               peut pas juger. Il s'éteint à 62 % de la hauteur pour que le
+               texte du pied reste sur du blanc. */
+            const fond = p.alerte
+              ? "linear-gradient(180deg, var(--color-defavorable-fond) 0%, var(--color-surface) 62%)"
+              : d.seuil && p.valeur !== null
+                ? "linear-gradient(180deg, var(--color-favorable-fond) 0%, var(--color-surface) 62%)"
+                : undefined;
             return (
               <Link
                 key={d.id}
                 href={d.href}
                 /* La carte dit court ; l'infobulle dit tout — le sens de
                    l'écart, la période comparée, le seuil qui fait le rouge. */
-                title={[d.libelle, MOMENT[d.moment].toLowerCase(), diff !== null && diff !== 0 ? `${p.referenceTexte.split(" · ")[0]} de ${diff > 0 ? "plus" : "moins"} qu${d.reference === "hier" ? "'hier" : "e la semaine passée"}` : p.referenceTexte, p.seuilTexte, "ouvrir l'écran qui explique le chiffre"].filter(Boolean).join(" — ")}
-                className={`carte relative flex min-h-[140px] flex-col gap-2 overflow-hidden px-4 pt-3 pb-3 transition-colors hover:bg-surface-2 ${p.alerte ? "border-defavorable-bordure" : ""}`}
+                title={[d.libelle, AXES.find((a) => a.cle === d.axe)?.nom ?? d.axe, MOMENT[d.moment].toLowerCase(), diff !== null && diff !== 0 ? `${p.referenceTexte.split(" · ")[0]} de ${diff > 0 ? "plus" : "moins"} qu${d.reference === "hier" ? "'hier" : "e la semaine passée"}` : p.referenceTexte, p.seuilTexte, "ouvrir l'écran qui explique le chiffre"].filter(Boolean).join(" — ")}
+                style={fond ? { backgroundImage: fond } : undefined}
+                className={`carte relative flex min-h-[140px] flex-col gap-2 overflow-hidden px-4 pt-3 pb-3 ${p.alerte ? "border-defavorable-bordure" : ""}`}
               >
-                {p.alerte ? <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px] bg-defavorable" /> : null}
                 {/* La ligne de titre : le libellé tient la largeur, la puce de
                     l'axe ferme la ligne à droite — c'est elle qui donne son
                     assise à la carte. Le moment descend au pied, avec le seuil,
@@ -443,7 +504,9 @@ export function EcranTableauBord({
                     « dans les 7 jours », le titre n'a pas à le répéter. */}
                 <span className="flex items-start gap-2">
                   <span className="min-h-[32px] flex-1 text-[12.5px] leading-[1.3] font-semibold text-balance text-texte">{d.libelle}</span>
-                  <PuceAxe axe={d.axe} ronde />
+                  <span className={`grid size-8 shrink-0 place-items-center rounded-full ${p.alerte ? "bg-defavorable-fond text-defavorable" : "bg-surface-3 text-texte-2"}`}>
+                    <Icone className="size-[17px]" strokeWidth={1.7} aria-hidden="true" />
+                  </span>
                 </span>
                 {/* Le chiffre porte la carte : la mini-courbe des quatorze
                     jours a quitté le pied (demande du métier, 10 septembre
@@ -491,6 +554,7 @@ export function EcranTableauBord({
       )}
 
       {/* ---- Rangée 2 : les courbes ---- */}
+      <Separateur libelle="Dans le temps" precision="douze mois, une échelle par courbe" />
       <div className="carte flex shrink-0 flex-col px-5 pt-3.5 pb-3">
         <div className="mb-2 flex flex-wrap items-center gap-3">
           <h2 className="titre-bloc">Évolution sur {exercice}</h2>
@@ -575,6 +639,7 @@ export function EcranTableauBord({
       </div>
 
       {/* ---- Rangée 3 : agir, où va l'argent, qui le dépense ---- */}
+      <Separateur libelle="À traiter, et où va l'argent" precision="ce qui appelle un geste aujourd'hui, et ce que le parc coûte" />
       <div className="grid shrink-0 grid-cols-1 gap-3 xl:grid-cols-3">
         <Carte
           titre="À traiter aujourd'hui"
