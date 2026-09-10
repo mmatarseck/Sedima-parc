@@ -262,9 +262,10 @@ Sont donc derrière nous :
 4. La vente de DK 4942 AK (2010, hors service, équipe Sécurité).
 5. `DK 1306 BB` ou `AB 098 JC` : la même ligne de cascade porte les deux
    plaques pour un seul camion. L'application suit `DK 1306 BB`.
-6. La visite technique : 85 échéances passées sur 98. Crise réelle, ou colonne
-   du suivi administratif en retard d'un cycle ? Rien n'a été chargé tant que
-   la question n'est pas tranchée — voir `docs/DONNEES-REELLES.md`.
+6. ~~La visite technique : 85 échéances passées sur 98. Crise réelle, ou
+   colonne en retard ?~~ **Tranché le 10 septembre 2026 : colonne en retard.**
+   La fiche de suivi 2026, tenue à part, dit 29 échues sur 113. C'est elle qui
+   est chargée — voir `docs/CONFORMITE-REELLE.md`.
 7. Les trois décisions du coût des incidents, dans
    `docs/PROPOSITION-COUT-INCIDENT.md`.
 
