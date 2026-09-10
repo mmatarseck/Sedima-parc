@@ -18,12 +18,21 @@ const MOTIFS: Record<string, string> = {
 /**
  * Page de garde.
  *
- * Retravaillée le 8 septembre 2026 sur la photo de la citerne vrac SEDIMA :
- * à gauche, le camion en pleine hauteur, la marque et une légende posées sur
- * un voile sombre ; à droite, la carte de connexion, dans le même langage
- * que le reste de l'application — fond froid très clair, carte blanche à
- * rayon généreux, une seule touche de vert sur l'action principale. Sur un
- * téléphone, la photo devient un bandeau au-dessus de la carte.
+ * **Refondue le 10 septembre 2026 : la photo de la citerne vrac est retirée**
+ * (demande du métier). L'écran passe de deux panneaux — le camion en pleine
+ * hauteur à gauche, la carte à droite — à **une seule colonne centrée**, la
+ * même sur un téléphone et sur un bureau.
+ *
+ * Pourquoi la colonne centrée plutôt qu'un demi-écran laissé vide. Une fois la
+ * photo partie, la grille en deux colonnes n'avait plus de raison d'être : sa
+ * moitié gauche ne portait que la marque et une accroche, que la carte peut
+ * porter elle-même. Un seul agencement pour les deux tailles d'écran, c'est
+ * aussi une seule chose à vérifier quand on y touche.
+ *
+ * Ce qui reste du langage de l'application : le fond froid très clair, la
+ * carte blanche à rayon généreux, une seule touche de vert sur l'action
+ * principale. La marque monte au-dessus de la carte, sur le fond, plutôt que
+ * sur un voile sombre.
  *
  * Tant qu'aucun projet Supabase n'est configuré, le formulaire ne vaut pas
  * authentification et l'entrée se fait par les comptes de démonstration. Cet
@@ -100,47 +109,35 @@ export function FormulaireConnexion() {
     "h-11 w-full rounded-[10px] border border-bordure-champ bg-surface px-3.5 text-[13.5px] text-texte outline-none transition-colors placeholder:text-attenue focus:border-accent focus:ring-4 focus:ring-accent/15";
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-fond lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(460px,5fr)]">
-      {/* La photo : la citerne vrac SEDIMA, pleine hauteur à gauche, bandeau
-          sur un téléphone. Le voile sombre monte du bas pour porter la marque
-          et la légende sans éteindre le jaune du camion. */}
-      <section className="relative h-[240px] overflow-hidden bg-encre sm:h-[300px] lg:h-auto lg:min-h-screen">
-        <Image src="/sedima-vrac.jpg" alt="Citerne vrac SEDIMA attelée, prête à livrer" fill priority sizes="(min-width: 1024px) 58vw, 100vw" className="object-cover object-[62%_45%]" />
-        <div aria-hidden="true" className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(34,39,43,0.28) 0%, rgba(34,39,43,0) 32%, rgba(34,39,43,0) 55%, rgba(34,39,43,0.82) 100%)" }} />
-        <div className="absolute inset-x-0 top-0 flex items-center gap-3 px-6 pt-5 lg:px-10 lg:pt-8">
-          <span className="grid size-11 shrink-0 place-items-center rounded-[12px] bg-surface/95 shadow-flottante">
-            <Image src="/sedima-picto.png" alt="" width={30} height={30} priority className="size-[30px] object-contain" />
-          </span>
-          <span className="leading-tight">
-            <span className="block text-[15px] font-semibold tracking-[-0.01em] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">{NOM_APPLICATION}</span>
-            <span className="block text-[12px] text-white/85 drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">{SOUS_TITRE_APPLICATION}</span>
-          </span>
-        </div>
-        <div className="absolute inset-x-0 bottom-0 px-6 pb-5 lg:px-10 lg:pb-10">
-          <p className="max-w-[520px] text-[22px] leading-[1.15] font-semibold tracking-[-0.02em] text-white lg:text-[34px]">Le parc qui livre l&apos;aliment, chaque jour.</p>
-          <p className="mt-2 hidden max-w-[520px] text-[13.5px] leading-[1.5] text-white/80 sm:block">
-            Camions, citernes vrac, véhicules de service et de fonction : un seul endroit pour savoir ce qui roule, ce qui coûte et ce qui arrive à échéance.
-          </p>
-          <p className="mt-3 hidden text-[11.5px] tracking-[0.08em] text-white/60 uppercase lg:block">Citerne vrac Niokko Bokk · SEDIMA SA · Sénégal</p>
-        </div>
-      </section>
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-fond px-5 py-10">
+      {/* Le halo vert, seule ornementation qui reste. Il est derrière tout,
+          sans interaction, et se contente de réchauffer un fond très froid. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-40 left-1/2 size-[720px] -translate-x-1/2 rounded-full opacity-60 blur-3xl"
+        style={{ background: "radial-gradient(closest-side, rgba(120,178,37,0.16), rgba(120,178,37,0))" }}
+      />
 
-      {/* La carte de connexion, sur le fond de l'application. */}
-      <div className="relative flex flex-col items-center justify-center px-5 py-8 lg:min-h-screen lg:px-10 lg:py-10">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-40 -bottom-48 size-[560px] rounded-full opacity-70 blur-3xl"
-          style={{ background: "radial-gradient(closest-side, rgba(120,178,37,0.18), rgba(120,178,37,0))" }}
-        />
+      {/* La marque, au-dessus de la carte et sur le fond clair : le picto n'a
+          plus de voile sombre à porter, il est posé sur sa propre pastille. */}
+      <div className="relative mb-6 flex flex-col items-center gap-3">
+        <span className="grid size-14 place-items-center rounded-[16px] bg-surface shadow-flottante ring-1 ring-bordure">
+          <Image src="/sedima-picto.png" alt="" width={34} height={34} priority className="size-[34px] object-contain" />
+        </span>
+        <span className="text-center leading-tight">
+          <span className="block text-[17px] font-semibold tracking-[-0.01em] text-texte">{NOM_APPLICATION}</span>
+          <span className="meta mt-0.5 block text-[12.5px]">{SOUS_TITRE_APPLICATION}</span>
+        </span>
+      </div>
 
-        <form
-          onSubmit={soumettre}
-          className="relative w-full max-w-[440px] rounded-[20px] border border-bordure bg-surface px-8 py-8 shadow-flottante sm:px-9"
-        >
-          <h1 className="text-[24px] leading-tight font-semibold tracking-[-0.02em] text-texte">Connexion</h1>
-          <p className="mt-1.5 text-[13px] leading-[1.5] text-texte-2">
-            Réservé à l'équipe de gestion de parc. Les chauffeurs n'y ont pas accès.
-          </p>
+      <form
+        onSubmit={soumettre}
+        className="relative w-full max-w-[420px] rounded-[20px] border border-bordure bg-surface px-6 py-7 shadow-flottante sm:px-8 sm:py-8"
+      >
+        <h1 className="text-[22px] leading-tight font-semibold tracking-[-0.02em] text-texte">Connexion</h1>
+        <p className="mt-1.5 text-[13px] leading-[1.5] text-texte-2">
+          Réservé à l'équipe de gestion de parc. Les chauffeurs n'y ont pas accès.
+        </p>
 
           <div className="mt-7 flex flex-col gap-4">
             <label className="block">
@@ -244,14 +241,15 @@ export function FormulaireConnexion() {
               </p>
             </div>
           ) : null}
-        </form>
+      </form>
 
-        <p className="relative mt-7 text-center text-[12px] text-attenue">
-          SEDIMA SA · Agro-industrie · Sénégal
-          <span className="mx-2 text-attenue-2">—</span>
-          Aviculture · Minoterie · Abattoirs
-        </p>
-      </div>
+      {/* Le pied : la maison et ses métiers. Sur un téléphone il passe à la
+          ligne plutôt que de rétrécir, d'où le retrait du tiret sous 380 px. */}
+      <p className="relative mt-6 max-w-[420px] text-center text-[12px] leading-[1.6] text-attenue">
+        SEDIMA SA · Agro-industrie · Sénégal
+        <span className="mx-2 hidden text-attenue-2 sm:inline">—</span>
+        <span className="block sm:inline">Aviculture · Minoterie · Abattoirs</span>
+      </p>
     </div>
   );
 }
