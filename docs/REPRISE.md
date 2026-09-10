@@ -1,4 +1,4 @@
-# Reprise du projet — état au 9 septembre 2026
+# Reprise du projet — état au 10 septembre 2026
 
 Note de passage de relais : à lire en premier dans une nouvelle session.
 Elle dit où en est le projet, ce qui a été décidé, et ce qui reste à faire.
@@ -59,7 +59,24 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
-**⚠ Migration 0036 à jouer.** Le carburant réel chargé, la pastille
+**⚠ Migration 0037 et un correctif à jouer, dans cet ordre** (10 septembre
+2026) : `supabase/migrations/0037_zeros_sans_mesure.sql`, puis
+`supabase/correctif-reglement-transport.sql`. Le rapport
+`scripts/rapport-tableau-reel.mts`, qui montre le tableau de bord sur la base
+à l'état de la production, a trouvé un parc à l'arrêt, une caisse pleine et
+552 M F de dettes, et rien de cela n'était vrai. **Toute la flotte était
+immobilisée** faute de cartes grises jamais saisies : un type dont le parc n'a
+aucune pièce n'est plus exigé (`exigeDocument`, `types_document_suivis()`).
+**La caisse et la cuve** montraient les valeurs de départ de la démonstration,
+sans un mouvement : elles sortent « — ». **Les bons de transport** passaient
+pour des factures impayées : ils sont rangés réglés. La courbe mensuelle des
+non-conformes jugeait sans les licences : 47 chaque mois, désormais de 9 à 16.
+**Piège** : dès la première carte grise saisie, la règle vaut pour tous, et les
+46 autres véhicules sont immobilisés. Il faut les charger en bloc. Voir
+`docs/TABLEAU-REEL.md`, avec les limites connues (disponibilité à 100 %,
+incidents à 0) et le banc `tester-zeros-sans-mesure.mts`.
+
+**Migration 0036 jouée** (10 septembre 2026). Le carburant réel chargé, la pastille
 « Carburant » affichait **0 L, comme la semaine passée** : le dossier s'arrête
 en juillet 2026, la fenêtre du tableau de bord tombe après, et zéro litre
 affirmait une flotte qui n'aurait rien consommé. 0036 ajoute le **dernier plein
@@ -73,7 +90,7 @@ attrapé une fois de plus.
 viennent les lignes, pourquoi le prix est le tarif officiel de la date, et ce
 qui n'est pas chargé.
 
-**Migrations : 0001 à 0035 jouées ; 0036 en attente.**
+**Migrations : 0001 à 0036 jouées ; 0037 en attente.**
 
 **Le chargement des données réelles est fait** (10 septembre 2026) : les douze
 parties du seed, `aligner-referentiel.sql`, `purge-demonstration.sql` et

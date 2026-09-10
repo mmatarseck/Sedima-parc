@@ -157,9 +157,14 @@ const idPrestataire = (nom: string) =>
 const UNITE: Record<string, string> = { "Location véhicule": "mois", "Transport / prestation": "voyage" };
 const FORFAIT = "Bon de commande facturé au forfait : le décompte des jours ou des voyages est sur la facture, non dans l''extraction.";
 
+/* Un bon de commande n'est pas une facture, et l'extraction ne dit rien du
+   règlement. Le premier jet posait la date du bon en date de facture, sans
+   règlement : trois ans de bons passaient pour 552 M F de dette. Un bon retenu
+   dans les totaux de dépense est une dépense faite : il est rangé réglé, sans
+   date de facture ni de règlement, et son numéro reste cité en commentaire. */
 const lignesPrestation = prestations.map(
   (b, i) =>
-    `  ('PRS-R-${String(i + 1).padStart(5, "0")}', '${b.date}', ${idPrestataire(b.fournisseur)}, '${echappe(b.libelle)}', '${UNITE[b.categorie]}', 1, ${b.montant}, 'inconnue', 'facture', ${b.montant}, '${b.date}', '${echappe(b.numero)}', '${FORFAIT}')`,
+    `  ('PRS-R-${String(i + 1).padStart(5, "0")}', '${b.date}', ${idPrestataire(b.fournisseur)}, '${echappe(b.libelle)}', '${UNITE[b.categorie]}', 1, ${b.montant}, 'inconnue', 'regle', ${b.montant}, null, null, 'Bon de commande ${echappe(b.numero)}. ${FORFAIT}')`,
 );
 
 /* Un péage ou un frais de mission n'a pas de véhicule nommé ; il cite donc son

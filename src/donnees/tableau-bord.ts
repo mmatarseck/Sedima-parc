@@ -133,6 +133,11 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
   const interventionsPar = parVehicule(j.interventions);
   const incidentsPar = parVehicule(j.incidents.map((i) => ({ ...i, date: i.date_heure.slice(0, 10) })));
   const documentsPar = parVehicule(j.documents);
+  /* La non-conformité du mois ne juge que les pièces portées par le véhicule —
+     « VT ou assurance échue », comme la fonction SQL. La lecture du tableau ne
+     porte pas les licences : les laisser dans les types les déclarait
+     manquantes chaque mois, et tout poids lourd sortait non conforme. */
+  const parametresVehicule = { ...parametres, documents: { types: parametres.documents.types.filter((t) => t.porteur === "vehicule") } };
   const statutsPar = new Map<string, TableauJson["statuts"]>();
   for (const s of j.statuts) statutsPar.set(s.immatriculation, [...(statutsPar.get(s.immatriculation) ?? []), s]);
 
@@ -188,7 +193,7 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
         litres: Math.round(pleins.reduce((s, p) => s + n(p.litres), 0) * 10) / 10,
         litresReference: (km * refL100) / 100,
         joursImmobilises: Math.min(joursImmobilises, jours),
-        nonConforme: immobilisationAdministrative(profil, documents.map((d) => ({ type: d.type, etat: etatALaDate(d, fin) })), parametres) !== null,
+        nonConforme: immobilisationAdministrative(profil, documents.map((d) => ({ type: d.type, etat: etatALaDate(d, fin) })), parametresVehicule) !== null,
         entretienEnRetard,
         accidents: incidents.filter((i) => i.nature === "accident").length,
         accidentsCorporels: incidents.filter((i) => i.nature === "accident" && i.blesses).length,
@@ -270,7 +275,8 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
   const cycleAchatJours = reglees.length ? Math.round(reglees.reduce((s, d) => s + (Date.parse(d.dateReglement!) - Date.parse(d.date)) / 86_400_000, 0) / reglees.length) : null;
   const engages = (dernier?.vehicules ?? []).filter((x) => x.engage);
   const jour: SituationJour = {
-    soldeCaisse: dernier?.flotte.soldeCaisse ?? parametres.caisse.soldeInitial,
+    /* Pas de repli sur le solde reporté : sans mouvement, ce n'est pas une mesure (0037). */
+    soldeCaisse: dernier?.flotte.soldeCaisse ?? null,
     seuilReapprovisionnement: dernier?.flotte.seuilCaisse ?? parametres.caisse.seuil,
     pretsACharger: engages.filter((x) => x.pretACharger && !x.immobiliseAdmin).length,
     engages: engages.length,

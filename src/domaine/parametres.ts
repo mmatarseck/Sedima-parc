@@ -52,6 +52,13 @@ export interface DefinitionDocument {
   critique: boolean;
   /** Livré avec l'application : connu du code (processus, interdictions). */
   standard: boolean;
+  /**
+   * Faux quand le parc n'a **jamais** enregistré une pièce de ce type : le
+   * document n'est alors pas encore suivi, et son absence ne dit rien — ni
+   * manquant, ni immobilisant. Calculé par le serveur depuis les données, jamais
+   * saisi ; absent, le document est suivi.
+   */
+  suivi?: boolean;
 }
 
 export interface ParametresDocuments {
@@ -501,6 +508,7 @@ function normaliser(brut: unknown): DefinitionDocument | null {
     validiteMois: typeof b.validiteMois === "number" && Number.isFinite(b.validiteMois) && b.validiteMois > 0 ? Math.round(b.validiteMois) : null,
     critique: typeof b.critique === "boolean" ? b.critique : (defaut?.critique ?? false),
     standard: Boolean(defaut),
+    ...(b.suivi === false ? { suivi: false } : {}),
   };
 }
 

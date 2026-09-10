@@ -120,8 +120,8 @@ export interface FaitsFlotteMois {
 
 /** Ce qui se lit au jour dit, et non sur une période. */
 export interface SituationJour {
-  /** Solde de la caisse parc, en francs. */
-  soldeCaisse: number;
+  /** Solde de la caisse parc, en francs ; nul quand la caisse n'a aucun mouvement. */
+  soldeCaisse: number | null;
   /** Seuil de réapprovisionnement de la caisse. */
   seuilReapprovisionnement: number;
   /** Véhicules prêts à charger aujourd'hui, et engagés. */

@@ -49,7 +49,9 @@ function applicable(a: ApplicabiliteDocument, v: ProfilVehicule): boolean {
 /** Le document est-il exigé de ce véhicule ? Un document retiré des paramètres ne l'est plus. */
 export function exigeDocument(type: TypeDocument, v: ProfilVehicule, p: Parametres = PARAMETRES_DEFAUT): boolean {
   const d = definitionDocument(type, p);
-  if (!d || d.porteur === "chauffeur") return false;
+  /* Un type que le parc n'a jamais enregistré n'est pas suivi : le déclarer
+     manquant partout immobiliserait toute la flotte sur une absence de saisie. */
+  if (!d || d.porteur === "chauffeur" || d.suivi === false) return false;
   return applicable(d.applicabilite, v);
 }
 

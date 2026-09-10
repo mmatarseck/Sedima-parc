@@ -202,6 +202,11 @@ export function EcranReglesDocuments() {
                             className={`${CHAMP} w-[200px] font-medium ${t.libelle.trim() ? "" : "border-defavorable"}`}
                           />
                           <span className="code text-[10.5px] text-attenue">{t.standard ? `${t.id} · standard` : t.id.startsWith("doc-nouveau") ? "identifiant donné à l'enregistrement" : t.id}</span>
+                          {t.suivi === false ? (
+                            <span className="meta text-[11px]" title="Tant qu'aucune pièce de ce type n'est enregistrée, son absence n'est ni signalée ni immobilisante. La première pièce saisie rend la règle active pour tous.">
+                              Aucune pièce enregistrée : pas encore exigé
+                            </span>
+                          ) : null}
                         </div>
                       </td>
                       <td className={CELLULE}>

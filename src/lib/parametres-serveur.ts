@@ -37,13 +37,19 @@ interface LigneTypeDocument {
 
 async function depuisLaBase(): Promise<Parametres> {
   const client = await clientServeur();
-  const [parametres, types] = await Promise.all([
+  const [parametres, types, enUsage] = await Promise.all([
     client.from("parametre").select("cle, valeur").returns<LigneParametre[]>(),
     client.from("type_document").select("id, libelle, porteur, applicabilite, validite_mois, critique, standard").returns<LigneTypeDocument[]>(),
+    client.rpc("types_document_suivis"),
   ]);
   if (parametres.error) throw new Error(`Lecture des paramètres : ${parametres.error.message}`);
   if (types.error) throw new Error(`Lecture des types de document : ${types.error.message}`);
   const parCle = new Map(parametres.data.map((l) => [l.cle, l.valeur]));
+  /* Un type dont le parc n'a aucune pièce n'est pas encore suivi (0037). Tant que
+     la migration n'est pas jouée, la fonction manque : tout reste suivi, comme
+     avant, plutôt que de faire tomber chaque page. */
+  if (enUsage.error) console.warn(`Types de document suivis (migration 0037 jouée ?) : ${enUsage.error.message}`);
+  const suivis = enUsage.error ? null : new Set(((enUsage.data ?? []) as { type_document_id: string }[]).map((l) => l.type_document_id));
   /* Une table vide — première visite avant tout enregistrement — donne les défauts,
      comme un cookie absent : `fusionnerParametres` les complète. */
   return fusionnerParametres({
@@ -54,7 +60,7 @@ async function depuisLaBase(): Promise<Parametres> {
     pastilles: parCle.get("pastilles"),
     caisse: parCle.get("caisse"),
     cuve: parCle.get("cuve"),
-    documents: types.data.length > 0 ? { types: types.data.map((t) => ({ id: t.id, libelle: t.libelle, porteur: t.porteur, applicabilite: t.applicabilite, validiteMois: t.validite_mois, critique: t.critique, standard: t.standard })) } : undefined,
+    documents: types.data.length > 0 ? { types: types.data.map((t) => ({ id: t.id, libelle: t.libelle, porteur: t.porteur, applicabilite: t.applicabilite, validiteMois: t.validite_mois, critique: t.critique, standard: t.standard, ...(suivis && !suivis.has(t.id) ? { suivi: false } : {}) })) } : undefined,
   });
 }
 
