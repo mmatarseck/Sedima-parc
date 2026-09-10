@@ -155,3 +155,38 @@ peuvent partager cette clé sans être la même ligne : un camion qui fait deux
 fois cent litres le même jour, cela arrive et c'est vrai. Un simple index en
 écrasait une, et le correctif rendait une ligne de moins que la cible. Les
 répétitions sont maintenant numérotées.
+
+---
+
+## Les compteurs, trouvés dans le texte des bons (10 septembre 2026)
+
+Le parc avait des litres, des francs et des interventions, mais pas de
+kilométrage — donc ni consommation aux 100 km ni coût au kilomètre, deux des
+chiffres que le métier regarde en premier.
+
+Il se cachait dans le **texte** des bons : « ENTRETIEN AUX 16000KM DU VEHICULE
+AA025HD », « ENTRETIEN DU VÉHICULE AA 032 EA A 175000 km ». Cent quinze bons
+sur six cent quatre-vingt-quatorze en citent un.
+
+`supabase/kilometrages.sql` en verse **105, sur 30 véhicules, du 12 janvier
+2024 au 25 août 2026**, de 3 000 à 332 000 km. Ce n'est pas un relevé
+quotidien, mais c'est un point daté, exact, et attesté par une facture.
+`origine_releve` prévoit déjà « garage » pour ce cas : un compteur lu à
+l'atelier, ni saisi par un chauffeur ni remonté par une balise.
+
+Le kilométrage entre à deux endroits : dans `releve_kilometrique`, parce que
+c'est un fait daté du véhicule, et dans la colonne `km` de l'intervention
+correspondante, restée nulle au premier chargement. Le même fait à deux
+endroits qui le regardent différemment — l'histoire du compteur d'un côté, le
+kilométrage auquel ce travail a été fait de l'autre.
+
+**Un compteur qui recule est écarté, et nommé.** Sur AA 554 JD, deux bons
+disent 78 000 km en janvier 2026 puis 69 000 km en mai. Un des deux est faux —
+coquille de saisie, ou moteur remplacé — et on ne sait pas lequel. Charger les
+deux abîmerait tout calcul de distance ; garder le plus grand serait choisir
+sans raison. Les deux restent dehors, avec leur motif écrit dans le fichier.
+
+Les 599 pleins qui portent un compteur ne sont **pas** recopiés ici : ils sont
+déjà en base dans `plein.km`, et l'application les lit comme des relevés — la
+situation journalière comme la fiche cherchent le compteur des deux côtés. Le
+même fait à deux endroits finirait par diverger.
