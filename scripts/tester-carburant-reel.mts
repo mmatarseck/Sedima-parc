@@ -1,9 +1,10 @@
-/* Le carburant réel de 2025 et 2026, chargé pour de bon.
+/* Le carburant réel de 2022 à 2026, chargé pour de bon.
  *
- * `supabase/carburant-reel.sql` verse mille vingt-neuf lignes tirées des
- * suivis du dossier DO. Ce banc les charge dans une base montée avec les
- * migrations, le seed et la purge — l'état exact de la production — et vérifie
- * ce qui doit l'être :
+ * `supabase/carburant-parties/` verse près de six mille lignes tirées des
+ * suivis du dossier DO — coupées en cinq parties, parce que le SQL Editor
+ * refuse une requête d'un mégaoctet. Ce banc les charge toutes dans une base
+ * montée avec les migrations, le seed et la purge — l'état exact de la
+ * production — et vérifie ce qui doit l'être :
  *
  *   * chaque ligne trouve son véhicule (le `select` imbriqué ne rend pas null,
  *     ce qui violerait le `not null` de la clé) ;
@@ -12,7 +13,8 @@
  *     portent `plein_complet = false`, et c'est ce marqueur qui empêche la
  *     fiche d'en tirer une consommation ;
  *   * le prix suit le tarif officiel de la date, pas un prix moyen ;
- *   * le fichier est rejouable — un second passage n'ajoute rien.
+ *   * chaque partie se joue seule et se rejoue sans rien ajouter, ce qui
+ *     compte quand on colle cinq fichiers à la main dans un navigateur.
  *
  * Lancer : PGLITE_DIR=<dossier PGlite> npx tsx scripts/tester-carburant-reel.mts */
 import { readFileSync, readdirSync, existsSync } from "node:fs";
@@ -28,11 +30,16 @@ const { pgcrypto } = require("@electric-sql/pglite/contrib/pgcrypto");
 const projet = process.cwd();
 const MOI = "00000000-0000-0000-0000-000000000001";
 
-const chargement = join(projet, "supabase/carburant-reel.sql");
-if (!existsSync(chargement)) {
-  console.log("supabase/carburant-reel.sql absent — lancez d'abord extraire-carburant puis charger-carburant.");
+const dossierParties = join(projet, "supabase/carburant-parties");
+if (!existsSync(dossierParties)) {
+  console.log("supabase/carburant-parties/ absent — lancez d'abord extraire-carburant puis charger-carburant.");
   process.exit(0);
 }
+/* Le chargement a été coupé en parties de 250 ko : le SQL Editor de Supabase
+   refuse une requête d'un mégaoctet — « Query is too large to be run via the
+   SQL Editor », rencontré le 10 septembre 2026. Le banc les joue toutes, dans
+   l'ordre, comme le métier les collera. */
+const parties = readdirSync(dossierParties).filter((f) => f.endsWith(".sql")).sort();
 
 const pg = new PGlite({ extensions: { btree_gist, pgcrypto } });
 await pg.exec(`create schema auth; create table auth.users (id uuid primary key);
@@ -73,12 +80,21 @@ attendu(`la base part sans aucun plein (${avant?.n})`, (avant?.n ?? -1) === 0);
 
 /* -- Le chargement --------------------------------------------------------- */
 
-const sql = readFileSync(chargement, "utf8");
-await pg.exec(sql.slice(0, sql.indexOf("-- Vérification")));
+/** Joue les parties dans l'ordre, en coupant la requête de vérification finale. */
+async function jouerLesParties(): Promise<void> {
+  for (const f of parties) {
+    const texte = readFileSync(join(dossierParties, f), "utf8");
+    const fin = texte.indexOf("-- Vérification");
+    await pg.exec(fin < 0 ? texte : texte.slice(0, fin));
+  }
+}
+
+await jouerLesParties();
 
 const total = await un<{ n: number; litres: string; du: string; au: string; veh: number }>(
   `select count(*)::int as n, round(sum(litres))::text as litres, min(date)::text as du, max(date)::text as au, count(distinct vehicule_id)::int as veh from plein`,
 );
+console.log(`     ${parties.length} parties jouées`);
 attendu(`${total?.n} lignes chargées, ${Number(total?.litres).toLocaleString("fr-FR")} litres, ${total?.veh} véhicules, du ${total?.du} au ${total?.au}`, (total?.n ?? 0) > 1000);
 
 const orphelins = await un<{ n: number }>(`select count(*)::int as n from plein p left join vehicule v on v.id = p.vehicule_id where v.id is null`);
@@ -119,7 +135,7 @@ attendu("chaque ligne dit que son prix est un tarif, non une facture", (referenc
 
 /* -- Rejouable -------------------------------------------------------------- */
 
-await pg.exec(sql.slice(0, sql.indexOf("-- Vérification")));
+await jouerLesParties();
 const apres = await un<{ n: number }>(`select count(*)::int as n from plein`);
 attendu("un second passage n'ajoute rien", apres?.n === total?.n);
 

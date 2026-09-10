@@ -39,7 +39,7 @@
  *          npx tsx scripts/charger-carburant.mts <sortie>.json
  * ==========================================================================*/
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { prixOfficiel, referenceTarif } from "../src/domaine/carburant-tarifs";
 
@@ -195,9 +195,63 @@ group by source
 order by source;
 `;
 
-writeFileSync(join(projet, "supabase/carburant-reel.sql"), entete + lignes.join(",\n") + pied, "utf8");
+/* -- 4. Le découpage en parties ---------------------------------------------
+ *
+ * Le SQL Editor de Supabase refuse une requête trop grosse — « Query is too
+ * large to be run via the SQL Editor » sur les 1,1 Mo d'un seul fichier
+ * (10 septembre 2026). Le jeu de départ avait rencontré la même borne et y
+ * répond de la même façon : des parties d'environ 250 ko, taille éprouvée par
+ * les douze parties du seed.
+ *
+ * Chaque partie est un `insert` complet et autonome : elle se joue seule, dans
+ * l'ordre ou non, et se rejoue sans rien ajouter. C'est ce qui compte quand on
+ * colle six fichiers à la main dans un navigateur — une partie qui échoue ne
+ * doit pas empêcher les autres, et une partie jouée deux fois ne doit pas
+ * doubler les litres.
+ * ------------------------------------------------------------------------- */
+
+const TAILLE_PARTIE = 250 * 1024;
+const dossier = join(projet, "supabase/carburant-parties");
+rmSync(dossier, { recursive: true, force: true });
+mkdirSync(dossier, { recursive: true });
+
+/* On découpe sur la taille cumulée des lignes, jamais au milieu d'une ligne. */
+const paquets: string[][] = [[]];
+let poids = 0;
+for (const l of lignes) {
+  if (poids > TAILLE_PARTIE && paquets[paquets.length - 1]!.length > 0) {
+    paquets.push([]);
+    poids = 0;
+  }
+  paquets[paquets.length - 1]!.push(l);
+  poids += Buffer.byteLength(l, "utf8") + 2;
+}
+
+const rappel = (n: number, sur: number) => `-- ============================================================================
+-- SEDIMA Parc — carburant réel, partie ${n} sur ${sur}.
+--
+-- **Ce n'est pas une migration**, et le fichier a été coupé parce que le SQL
+-- Editor refuse une requête de plus d'un mégaoctet. Chaque partie est un
+-- \`insert\` complet : elle se joue seule, et \`on conflict (numero) do nothing\`
+-- fait qu'un second passage n'ajoute rien.
+--
+-- À jouer après le seed, l'alignement, la purge et la plaque. L'ordre des
+-- parties entre elles n'a pas d'importance.
+--
+-- Le détail de ce que ces lignes sont, d'où elles viennent et comment leur
+-- prix est établi : \`docs/CARBURANT-REEL.md\`, et l'en-tête de la partie 1.
+-- ============================================================================
+
+`;
+
+paquets.forEach((paquet, i) => {
+  const numero = String(i + 1).padStart(2, "0");
+  const tete = i === 0 ? entete : rappel(i + 1, paquets.length) + `insert into plein (numero, vehicule_id, date, litres, prix_litre, montant, km, plein_complet, source, reference) values\n`;
+  const queue = i === paquets.length - 1 ? pied : "\non conflict (numero) do nothing;\n";
+  writeFileSync(join(dossier, `carburant-${numero}.sql`), tete + paquet.join(",\n") + queue, "utf8");
+});
 
 console.log(`${nombrePleins} pleins et ${nombreCumuls} cumuls retenus, ${lignes.length} lignes en tout`);
 console.log(`  ${Math.round(litresPleins + litresCumuls).toLocaleString("fr-FR")} litres`);
 console.log(`  écartés : ${ecartes.horsParcLignes} lignes hors parc (${ecartes.horsParc.size} plaques), ${ecartes.horsTarif} lignes hors période tarifaire`);
-console.log(`supabase/carburant-reel.sql écrit`);
+console.log(`supabase/carburant-parties/ — ${paquets.length} parties de ${paquets.map((p) => p.length).join(", ")} lignes`);

@@ -8,10 +8,17 @@ histoire. Le **carburant** est la seule matière du dossier DO qui soit à la
 fois datée, volumineuse et tenue régulièrement. Il y en avait plus que prévu :
 en cherchant 2025 et 2026, on a trouvé **quatre ans et demi**.
 
-## Ce que le fichier de chargement porte
+## Ce que le chargement porte
 
-`supabase/carburant-reel.sql` : **5 871 lignes, 840 284 litres, 66 véhicules,
-du 28 février 2022 au 31 juillet 2026.**
+`supabase/carburant-parties/` — **cinq fichiers**, 5 871 lignes, 840 284
+litres, 66 véhicules, du 28 février 2022 au 31 juillet 2026.
+
+Pourquoi cinq fichiers et non un. Le SQL Editor de Supabase refuse une requête
+d'un mégaoctet : « Query is too large to be run via the SQL Editor ». Les
+parties font environ 250 ko, la taille qu'ont les douze parties du jeu de
+départ et qui passe. **Chaque partie est un `insert` complet** : elle se joue
+seule, dans l'ordre ou non, et se rejoue sans rien ajouter — ce qui compte
+quand on colle cinq fichiers à la main dans un navigateur.
 
 | Nature | Lignes | Ce qu'une ligne est |
 | --- | ---: | --- |
@@ -119,9 +126,9 @@ laisse la base faire sa propre arithmétique décimale.
 
 ## Ce qui reste
 
-1. **Jouer `supabase/carburant-reel.sql`** dans le SQL Editor, après le seed,
-   l'alignement, la purge et la plaque. Le fichier est rejouable : un second
-   passage n'ajoute rien.
+1. **Jouer les cinq parties** de `supabase/carburant-parties/` dans le SQL
+   Editor, après le seed, l'alignement, la purge et la plaque. Chacune est
+   rejouable : un second passage n'ajoute rien.
 2. **Mai et juin 2025** : à chercher dans le dossier, ou à acter comme un trou.
 3. **La date de bascule du supercarburant en juin 2022**, si l'on veut charger
    les quelques pleins d'essence de cette année-là.
