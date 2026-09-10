@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Banknote, CalendarClock, ChevronDown, CircleCheck, CircleOff, ClipboardList, Clock, Droplet, FileWarning, Fuel, Gauge, Inbox, ShieldCheck, SlidersHorizontal, TriangleAlert, UserX, Wallet, Wrench, X, type LucideIcon } from "lucide-react";
+import { Banknote, CalendarClock, ChevronDown, ChevronUp, CircleCheck, CircleOff, ClipboardList, Clock, Droplet, FileWarning, Fuel, Gauge, Inbox, ShieldCheck, SlidersHorizontal, TriangleAlert, UserX, Wallet, Wrench, X, type LucideIcon } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { Carte } from "@/composants/interface/Carte";
 import { Anneau, BarresContribution, BarresMensuelles, Courbe, libelleMoisCourt, type PartAnneau, type PointCourbe } from "./Graphiques";
@@ -469,8 +469,12 @@ export function EcranTableauBord({
           {pastilles.map((p) => {
             const d = p.definition;
             const diff = p.valeur !== null && p.reference !== null ? p.valeur - p.reference : null;
-            /* La flèche dit le sens ; la couleur ne dit que le rouge du seuil. */
-            const bonSens = diff === null || diff === 0 || !d.seuil ? null : d.seuil.sens === "inf" ? diff < 0 : diff > 0;
+            /* Le chevron dit le sens ; sa couleur dit si l'on va dans le bon.
+               Le sens voulu vient du seuil quand il y en a un, sinon du
+               `sensSouhaite` posé sur la pastille — et il reste inconnu là où
+               il l'est vraiment, comme le carburant de la semaine. */
+            const sensVoulu = d.seuil?.sens ?? d.sensSouhaite ?? null;
+            const bonSens = diff === null || diff === 0 || !sensVoulu ? null : sensVoulu === "inf" ? diff < 0 : diff > 0;
             const Icone = ICONE_PASTILLE[d.id] ?? CircleCheck;
             /* Le dégradé dit l'état d'un coup d'œil (métier, 10 septembre
                2026), et remplace la bande rouge qui bordait les cartes en
@@ -493,6 +497,15 @@ export function EcranTableauBord({
                 style={fond ? { backgroundImage: fond } : undefined}
                 className={`carte relative flex min-h-[140px] flex-col gap-2 overflow-hidden px-4 pt-3 pb-3 ${p.alerte ? "border-defavorable-bordure" : ""}`}
               >
+                {/* La même icône, en grand et en filigrane, débordant par le
+                    bas à droite (métier, 10 septembre 2026, sur croquis). Elle
+                    donne à la carte sa matière sans rien dire de plus : d'où
+                    l'opacité très basse, le débord qui la coupe, et le
+                    `aria-hidden` — un lecteur d'écran n'a pas à l'annoncer
+                    deux fois. Les blocs qui suivent portent `relative` pour
+                    passer devant : une image posée en absolu peint au-dessus
+                    du texte dans le flux, sans cela. */}
+                <Icone aria-hidden="true" strokeWidth={1.2} className={`pointer-events-none absolute -bottom-7 right-1 size-[112px] ${p.alerte ? "text-defavorable/[0.07]" : "text-texte/[0.045]"}`} />
                 {/* La ligne de titre : le libellé tient la largeur, la puce de
                     l'axe ferme la ligne à droite — c'est elle qui donne son
                     assise à la carte. Le moment descend au pied, avec le seuil,
@@ -502,19 +515,35 @@ export function EcranTableauBord({
                     raccourcis à la source pour qu'il tienne — la mention du
                     moment disait déjà « maintenant », « de la semaine »,
                     « dans les 7 jours », le titre n'a pas à le répéter. */}
-                <span className="flex items-start gap-2">
+                <span className="relative flex items-start gap-2">
                   <span className="min-h-[32px] flex-1 text-[12.5px] leading-[1.3] font-semibold text-balance text-texte">{d.libelle}</span>
-                  <span className={`grid size-8 shrink-0 place-items-center rounded-full ${p.alerte ? "bg-defavorable-fond text-defavorable" : "bg-surface-3 text-texte-2"}`}>
-                    <Icone className="size-[17px]" strokeWidth={1.7} aria-hidden="true" />
-                  </span>
+                  {/* Sans pastille derrière : le croquis du métier montre le
+                      trait seul, et sur une carte déjà teintée un rond de fond
+                      ne se voyait plus de toute façon. */}
+                  <Icone aria-hidden="true" strokeWidth={1.6} className={`mt-0.5 size-[18px] shrink-0 ${p.alerte ? "text-defavorable" : "text-attenue"}`} />
                 </span>
                 {/* Le chiffre porte la carte : la mini-courbe des quatorze
                     jours a quitté le pied (demande du métier, 10 septembre
                     2026), et toute la place qu'elle prenait revient à lui. */}
-                <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="relative flex min-w-0 flex-col gap-0.5">
                   <span className={`flex min-w-0 items-baseline gap-1.5 text-[38px] leading-none font-bold tracking-[-0.035em] tabular-nums ${p.valeur === null ? "text-attenue-2" : p.alerte ? "text-defavorable" : "text-texte"}`}>
                     {p.valeur === null ? "—" : nombre(p.valeur, d.decimales ?? 0)}
                     {p.valeur !== null && d.unite ? <small className="text-[14px] font-medium tracking-normal text-texte-2">{d.unite}</small> : null}
+                    {/* Le chevron de progression, contre le chiffre (métier,
+                        10 septembre 2026). Vert quand cela s'améliore, rouge
+                        quand cela empire — au sens *voulu* de la pastille :
+                        moins de véhicules hors service est une bonne
+                        nouvelle, moins de véhicules prêts n'en est pas une.
+                        **Gris quand la pastille n'a pas de seuil** : sans lui,
+                        rien ne dit si monter est bon ou mauvais, et une
+                        couleur trancherait ce qu'on ignore. Rien du tout
+                        quand le chiffre n'a pas bougé : la légende le dit. */}
+                    {diff !== null && diff !== 0 ? (
+                      (() => {
+                        const Chevron = diff > 0 ? ChevronUp : ChevronDown;
+                        return <Chevron aria-hidden="true" strokeWidth={2.6} className={`size-[22px] shrink-0 self-center ${bonSens === true ? "text-favorable" : bonSens === false ? "text-defavorable" : "text-attenue"}`} />;
+                      })()
+                    ) : null}
                   </span>
                   {/* Le complément descend sous le chiffre : à six pastilles de
                       front la carte fait cent cinquante pixels, et « / 47
@@ -522,24 +551,18 @@ export function EcranTableauBord({
                       trente-huit se coupait. */}
                   {p.complement ? <span className="truncate text-[11.5px] font-medium text-texte-2">{p.complement}</span> : null}
                 </span>
-                <span className="mt-auto flex min-w-0 flex-col gap-1">
+                <span className="relative mt-auto flex min-w-0 flex-col gap-1">
                   {/* La flèche de progression dit le sens d'un coup d'œil, et
                       c'est elle qui remplace la courbe : montée, descente, ou
                       la barre du surplace. Sa couleur suit le sens *voulu* —
                       moins de véhicules hors service est une bonne nouvelle,
                       moins de véhicules prêts n'en est pas une. */}
-                  <span className="flex min-w-0 items-start gap-1 text-[11px] leading-[1.35] text-texte-2">
-                    {diff !== null ? (
-                      <span aria-hidden="true" className={`shrink-0 text-[14px] leading-[1.1] font-semibold ${diff === 0 ? "text-attenue" : bonSens === false && p.alerte ? "text-defavorable" : bonSens ? "text-favorable" : "text-texte-2"}`}>
-                        {diff === 0 ? "→" : diff > 0 ? "↗" : "↘"}
-                      </span>
-                    ) : null}
-                    {/* Deux lignes plutôt qu'une coupure : « 9 031 L · sem.
-                        passée » dépasse de trois pixels sur la carte la plus
-                        étroite, et « 9 031 L · sem. pa… » ne dit plus de quoi
-                        on parle. */}
-                    <span className="line-clamp-2">{p.referenceTexte || (p.valeur === null ? "sans donnée" : "")}</span>
-                  </span>
+                  {/* La légende n'a plus de flèche : le chevron est monté
+                      contre le chiffre. Deux lignes plutôt qu'une coupure —
+                      « 9 031 L · sem. passée » dépasse de trois pixels sur la
+                      carte la plus étroite, et « 9 031 L · sem. pa… » ne dit
+                      plus de quoi on parle. */}
+                  <span className="line-clamp-2 min-w-0 text-[11px] leading-[1.35] text-texte-2">{p.referenceTexte || (p.valeur === null ? "sans donnée" : "")}</span>
                   {/* Le moment tient la dernière ligne, toujours : c'est lui
                       qui dit de quand parle le chiffre, et deux mots y
                       suffisent. Le texte du seuil est descendu dans

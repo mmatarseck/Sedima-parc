@@ -103,6 +103,15 @@ export interface DefinitionPastille {
    * › Pastilles, et le texte se refait sur la valeur réglée.
    */
   seuil?: { sens: Sens; defaut: number; texte: (valeur: number) => string };
+  /**
+   * Le sens souhaité, quand la pastille n'a pas de seuil pour le dire — c'est
+   * lui qui colore le chevron de progression en vert ou en rouge. On ne le
+   * pose que là où il ne fait aucun doute : moins d'échéances vaut mieux, une
+   * caisse plus garnie aussi. **Le carburant de la semaine n'en a pas** : en
+   * consommer moins peut vouloir dire qu'on a moins livré, et une couleur
+   * trancherait ce qu'on ignore. Son chevron reste gris.
+   */
+  sensSouhaite?: Sens;
   /** Le texte du pied quand la pastille n'a pas de seuil réglable. */
   seuilTexte?: string;
   /** L'écran qui explique le chiffre. */
@@ -188,6 +197,7 @@ export const PASTILLES: DefinitionPastille[] = [
   },
   {
     id: "p-echeances-7",
+    sensSouhaite: "inf",
     axe: "Q",
     libelle: "Échéances",
     moment: "7-jours",
@@ -252,6 +262,7 @@ export const PASTILLES: DefinitionPastille[] = [
   },
   {
     id: "p-caisse",
+    sensSouhaite: "sup",
     axe: "C",
     libelle: "Caisse parc",
     moment: "instant",
@@ -265,6 +276,7 @@ export const PASTILLES: DefinitionPastille[] = [
   },
   {
     id: "p-depenses-semaine",
+    sensSouhaite: "inf",
     axe: "C",
     libelle: "Dépenses",
     moment: "semaine",

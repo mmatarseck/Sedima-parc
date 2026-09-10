@@ -1278,6 +1278,25 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   photo de plus, la plus ancienne effacée, le total revenu à 1,8 Mo, la
   nouvelle affichée.
 
+### Les pastilles, cinquième passage : filigrane et chevrons (10 septembre 2026)
+
+- **L'icône revient en grand, en filigrane**, débordant par le bas à droite,
+  coupée par le bord de la carte. Opacité très basse, `aria-hidden` — elle
+  donne de la matière, elle ne dit rien de plus. Piège de mise en page à
+  retenir : **une image posée en absolu peint au-dessus du texte dans le
+  flux** ; les trois blocs de contenu portent `relative` pour repasser devant.
+- **La petite icône perd sa pastille de fond** : le croquis montre le trait
+  seul, et sur une carte déjà teintée un rond de fond ne se voyait plus.
+- **Le chevron de progression monte contre le chiffre**, à sa droite, et se
+  colore : vert quand cela s'améliore, rouge quand cela empire. Rien du tout
+  quand le chiffre n'a pas bougé — la légende le dit déjà.
+- **Ce que « s'améliorer » veut dire ne se devine pas.** Il vient du seuil
+  quand il y en a un ; pour les trois pastilles qui n'en ont pas mais dont le
+  sens est évident — échéances, caisse, dépenses — un champ `sensSouhaite` le
+  pose. **Le carburant de la semaine n'en a pas et n'en aura pas** : en
+  consommer moins peut vouloir dire qu'on a moins livré. Son chevron reste
+  gris, parce qu'une couleur trancherait ce qu'on ignore.
+
 ### Les pastilles, quatrième passage : icônes, dégradé, page découpée (10 septembre 2026)
 
 Sur une seconde maquette du métier, quatre demandes.
