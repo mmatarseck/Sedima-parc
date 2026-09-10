@@ -422,7 +422,9 @@ export function EcranTableauBord({
               <Link
                 key={d.id}
                 href={d.href}
-                title={[d.libelle, MOMENT[d.moment].toLowerCase(), p.seuilTexte, "ouvrir l'écran qui explique le chiffre"].filter(Boolean).join(" — ")}
+                /* La carte dit court ; l'infobulle dit tout — le sens de
+                   l'écart, la période comparée, le seuil qui fait le rouge. */
+                title={[d.libelle, MOMENT[d.moment].toLowerCase(), diff !== null && diff !== 0 ? `${p.referenceTexte.split(" · ")[0]} de ${diff > 0 ? "plus" : "moins"} qu${d.reference === "hier" ? "'hier" : "e la semaine passée"}` : p.referenceTexte, p.seuilTexte, "ouvrir l'écran qui explique le chiffre"].filter(Boolean).join(" — ")}
                 className={`carte relative flex min-h-[140px] flex-col gap-2 overflow-hidden px-4 pt-3 pb-3 transition-colors hover:bg-surface-2 ${p.alerte ? "border-defavorable-bordure" : ""}`}
               >
                 {p.alerte ? <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px] bg-defavorable" /> : null}
@@ -430,8 +432,13 @@ export function EcranTableauBord({
                     l'axe ferme la ligne à droite — c'est elle qui donne son
                     assise à la carte. Le moment descend au pied, avec le seuil,
                     parce qu'il précise le chiffre plutôt qu'il ne le nomme. */}
+                {/* Le titre ne se coupe jamais : il nomme la pastille, et un
+                    nom tronqué ne nomme plus rien. Les libellés ont été
+                    raccourcis à la source pour qu'il tienne — la mention du
+                    moment disait déjà « maintenant », « de la semaine »,
+                    « dans les 7 jours », le titre n'a pas à le répéter. */}
                 <span className="flex items-start gap-2">
-                  <span className="line-clamp-2 min-h-[32px] flex-1 text-[12.5px] leading-[1.3] font-semibold text-texte">{d.libelle}</span>
+                  <span className="min-h-[32px] flex-1 text-[12.5px] leading-[1.3] font-semibold text-balance text-texte">{d.libelle}</span>
                   <PuceAxe axe={d.axe} ronde />
                 </span>
                 {/* Le chiffre porte la carte : la mini-courbe des quatorze
@@ -446,7 +453,7 @@ export function EcranTableauBord({
                       front la carte fait cent cinquante pixels, et « / 47
                       engagés » posé sur la même ligne qu'un chiffre de
                       trente-huit se coupait. */}
-                  {p.complement ? <span className="truncate text-[12px] font-medium text-texte-2">{p.complement}</span> : null}
+                  {p.complement ? <span className="truncate text-[11.5px] font-medium text-texte-2">{p.complement}</span> : null}
                 </span>
                 <span className="mt-auto flex min-w-0 flex-col gap-1">
                   {/* La flèche de progression dit le sens d'un coup d'œil, et
@@ -454,21 +461,24 @@ export function EcranTableauBord({
                       la barre du surplace. Sa couleur suit le sens *voulu* —
                       moins de véhicules hors service est une bonne nouvelle,
                       moins de véhicules prêts n'en est pas une. */}
-                  <span className="flex min-w-0 items-start gap-1.5 text-[11.5px] leading-[1.35] text-texte-2">
+                  <span className="flex min-w-0 items-start gap-1 text-[11px] leading-[1.35] text-texte-2">
                     {diff !== null ? (
-                      <span aria-hidden="true" className={`shrink-0 text-[15px] leading-[1.1] font-semibold ${diff === 0 ? "text-attenue" : bonSens === false && p.alerte ? "text-defavorable" : bonSens ? "text-favorable" : "text-texte-2"}`}>
+                      <span aria-hidden="true" className={`shrink-0 text-[14px] leading-[1.1] font-semibold ${diff === 0 ? "text-attenue" : bonSens === false && p.alerte ? "text-defavorable" : bonSens ? "text-favorable" : "text-texte-2"}`}>
                         {diff === 0 ? "→" : diff > 0 ? "↗" : "↘"}
                       </span>
                     ) : null}
-                    <span className="line-clamp-2 pt-0.5">{p.referenceTexte || (p.valeur === null ? "sans donnée" : "")}</span>
+                    {/* Deux lignes plutôt qu'une coupure : « 9 031 L · sem.
+                        passée » dépasse de trois pixels sur la carte la plus
+                        étroite, et « 9 031 L · sem. pa… » ne dit plus de quoi
+                        on parle. */}
+                    <span className="line-clamp-2">{p.referenceTexte || (p.valeur === null ? "sans donnée" : "")}</span>
                   </span>
-                  {/* Le seuil n'explique que le rouge : il ne s'affiche donc
-                      qu'avec lui. Hors alerte, « Rouge au-dessus de cinq
-                      véhicules » occupait la ligne sans rien apprendre. Il
-                      reste entier dans l'infobulle de la carte, à toute heure. */}
-                  <span className={`truncate text-[11px] ${p.alerte ? "text-defavorable" : "text-attenue"}`}>
-                    {p.alerte && p.seuilTexte ? p.seuilTexte : <span className="font-semibold tracking-[0.06em] uppercase">{MOMENT[d.moment]}</span>}
-                  </span>
+                  {/* Le moment tient la dernière ligne, toujours : c'est lui
+                      qui dit de quand parle le chiffre, et deux mots y
+                      suffisent. Le texte du seuil est descendu dans
+                      l'infobulle — il est long, il ne se lisait qu'en alerte,
+                      et le rouge de la carte dit déjà qu'il est franchi. */}
+                  <span className="truncate text-[10.5px] font-semibold tracking-[0.06em] text-attenue uppercase">{MOMENT[d.moment]}</span>
                 </span>
               </Link>
             );

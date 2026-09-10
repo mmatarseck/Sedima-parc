@@ -1278,6 +1278,34 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   photo de plus, la plus ancienne effacée, le total revenu à 1,8 Mo, la
   nouvelle affichée.
 
+### Les pastilles, troisième passage : moins de texte, aucun titre coupé (10 septembre 2026)
+
+- **Les libellés ont maigri à la source**, dans `pastilles.ts`, en cessant de
+  répéter ce que la mention du moment dit déjà : « Hors service maintenant »
+  → « Hors service » (INSTANT), « Échéances dans les 7 jours » → « Échéances »
+  (7 JOURS), « Carburant de la semaine » → « Carburant » (DEPUIS LUNDI),
+  « Chauffeurs indisponibles aujourd'hui » → « Chauffeurs indisponibles ».
+  Neuf libellés sur seize.
+- **Le titre ne se coupe plus jamais.** Il portait un `line-clamp-2` : un nom
+  tronqué ne nomme plus rien. Il est retiré, et les libellés raccourcis font
+  qu'il tient.
+- **La légende a perdu sa moitié.** La flèche dit le sens, le texte n'a plus à
+  écrire « de moins que la semaine passée » — 38 caractères qui se coupaient.
+  Il ne garde que l'écart et la période : « 9 031 L · sem. passée ».
+- **Le texte du seuil descend dans l'infobulle.** Il est long, il ne se lisait
+  qu'en alerte, et le rouge de la carte dit déjà qu'il est franchi. Le moment
+  tient la dernière ligne à toute heure — c'est lui qui dit de quand parle le
+  chiffre.
+- L'infobulle, elle, dit tout : le sens de l'écart en toutes lettres, la
+  période comparée, le seuil.
+
+**Vérifié à 1280 px : aucune troncature, nulle part.**
+
+**Le tableau de bord n'a pas à servir sur téléphone** (métier, 10 septembre
+2026) : il garde son repli en colonnes pour ne pas casser, mais l'étroitesse
+d'un téléphone n'est plus une contrainte de conception. Le terrain a son
+propre accueil, `/telephone`, avec ses widgets et ses raccourcis.
+
 ### Les pastilles, second passage : six, sans courbe (10 septembre 2026)
 
 Quatre demandes du métier après le premier jet, toutes appliquées :

@@ -126,7 +126,7 @@ export const PASTILLES: DefinitionPastille[] = [
   {
     id: "p-hors-service",
     axe: "D",
-    libelle: "Hors service maintenant",
+    libelle: "Hors service",
     moment: "instant",
     reference: "hier",
     seuil: { sens: "inf", defaut: 5, texte: desLePremier("véhicules") },
@@ -137,7 +137,7 @@ export const PASTILLES: DefinitionPastille[] = [
   {
     id: "p-prets",
     axe: "D",
-    libelle: "Prêts à charger ce matin",
+    libelle: "Prêts à charger",
     moment: "instant",
     reference: "hier",
     seuil: { sens: "sup", defaut: 30, texte: sous("véhicules prêts") },
@@ -148,7 +148,7 @@ export const PASTILLES: DefinitionPastille[] = [
   {
     id: "p-immobilises-7",
     axe: "D",
-    libelle: "Immobilisés depuis plus de 7 jours",
+    libelle: "Immobilisés > 7 jours",
     moment: "instant",
     reference: "semaine-passee",
     seuil: { sens: "inf", defaut: 0, texte: desLePremier("véhicules") },
@@ -158,7 +158,7 @@ export const PASTILLES: DefinitionPastille[] = [
   {
     id: "p-pannes-semaine",
     axe: "D",
-    libelle: "Pannes de la semaine",
+    libelle: "Pannes",
     moment: "semaine",
     reference: "semaine-passee",
     seuil: { sens: "inf", defaut: 3, texte: desLePremier("pannes par semaine") },
@@ -179,7 +179,7 @@ export const PASTILLES: DefinitionPastille[] = [
   {
     id: "p-accidents-semaine",
     axe: "S",
-    libelle: "Accidents de la semaine",
+    libelle: "Accidents",
     moment: "semaine",
     reference: "semaine-passee",
     seuil: { sens: "inf", defaut: 0, texte: desLePremier("accidents par semaine") },
@@ -189,7 +189,7 @@ export const PASTILLES: DefinitionPastille[] = [
   {
     id: "p-echeances-7",
     axe: "Q",
-    libelle: "Échéances dans les 7 jours",
+    libelle: "Échéances",
     moment: "7-jours",
     reference: "semaine-passee",
     seuilTexte: "Rouge dès qu'une échéance est passée",
@@ -226,7 +226,7 @@ export const PASTILLES: DefinitionPastille[] = [
   {
     id: "p-carburant-semaine",
     axe: "C",
-    libelle: "Carburant de la semaine",
+    libelle: "Carburant",
     moment: "semaine",
     unite: "L",
     reference: "semaine-passee",
@@ -266,7 +266,7 @@ export const PASTILLES: DefinitionPastille[] = [
   {
     id: "p-depenses-semaine",
     axe: "C",
-    libelle: "Dépenses de la semaine",
+    libelle: "Dépenses",
     moment: "semaine",
     unite: "kF",
     reference: "semaine-passee",
@@ -277,7 +277,7 @@ export const PASTILLES: DefinitionPastille[] = [
   {
     id: "p-chauffeurs-indisponibles",
     axe: "M",
-    libelle: "Chauffeurs indisponibles aujourd'hui",
+    libelle: "Chauffeurs indisponibles",
     moment: "instant",
     reference: "hier",
     seuil: { sens: "inf", defaut: 3, texte: desLePremier("chauffeurs") },
@@ -402,9 +402,13 @@ export function evaluerPastille(p: DefinitionPastille, jours: SituationJournalie
   if (p.reference !== "aucune" && valeur !== null && reference !== null) {
     const decimales = p.decimales ?? 0;
     const diff = Number((valeur - reference).toFixed(decimales));
-    const quoi = p.reference === "hier" ? "hier" : "la semaine passée";
     const unite = p.unite ? ` ${p.unite}` : "";
-    referenceTexte = diff === 0 ? `comme ${quoi}` : `${Math.abs(diff).toLocaleString("fr-FR", { maximumFractionDigits: decimales })}${unite} de ${diff > 0 ? "plus" : "moins"} qu${quoi === "hier" ? "'hier" : "e la semaine passée"}`;
+    /* La flèche de la pastille dit déjà le sens : le texte n'a plus à écrire
+       « de moins que la semaine passée » (38 caractères, qui se coupaient sur
+       une carte de 151 px). Il ne garde que l'écart et la période. La phrase
+       entière vit dans l'infobulle de la carte, où la place ne manque pas. */
+    const ecart = `${Math.abs(diff).toLocaleString("fr-FR", { maximumFractionDigits: decimales })}${unite}`;
+    referenceTexte = p.reference === "hier" ? (diff === 0 ? "comme hier" : `${ecart} · hier`) : diff === 0 ? "comme la semaine passée" : `${ecart} · sem. passée`;
   } else if (p.reference !== "aucune") referenceTexte = "pas de référence";
   const alerte = p.alerte && ctx ? p.alerte(ctx, seuil) : seuilFranchi(p, valeur, seuil);
   return { definition: p, valeur, complement: ctx && p.complement ? p.complement(ctx) : null, reference, referenceTexte, seuil, seuilTexte: texteSeuil(p, seuil), alerte };
