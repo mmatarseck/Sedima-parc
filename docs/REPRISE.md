@@ -53,6 +53,14 @@ seul pour s'attribuer un véhicule. Section « Les accès, audités et fermés
 avant les données réelles » plus bas. **À jouer avant de charger la moindre
 donnée réelle.**
 
+**⚠ Le jeu de départ passe de 6 à 9 parties** (10 septembre 2026) : le parc
+lourd est complété (151 véhicules, 36 chauffeurs, 17 sites), et deux défauts
+réveillés par cet agrandissement faisaient disparaître **toutes les demandes**
+du seed sans un mot — un `insert` coupé entre deux fichiers, et une heure
+« 13:61 » composée à la main. Corrigés, avec le banc `tester-seed.mts` qui
+veille désormais. **Les neuf parties sont à rejouer** ; le seed ne réécrit pas
+ce qui existe, la ligne `DK 6875 DF` déjà en base se supprime à la main.
+
 **Le passage aux données réelles est cadré** : `docs/DONNEES-REELLES.md` —
 ce que « démonstration » recouvre vraiment (le référentiel réel *et* des
 transactions tirées au sort), la chaîne d'extraction des classeurs du dossier

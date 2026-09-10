@@ -92,6 +92,53 @@ une :
 fausses pour autant — une moto n'est que dans la feuille des motos — mais
 aucune ne devrait entrer en base sans être confirmée.
 
+## Le parc lourd, complété (10 septembre 2026)
+
+Les dix-sept unités opérationnelles qui manquaient sont entrées, avec leurs
+attelages, leurs chauffeurs et leurs sites, depuis `SITUATION PARC SEDIMA
+LOURDS` et `AFFECTATION LOURDS`. Au passage :
+
+- **`DK 6875 DF` était une plaque fausse** — toutes les listes disent
+  `DK 6875 BF`. Corrigée, et le véhicule repasse opérationnel à l'UAB.
+- **`DK 2347 BD` a quitté la flotte de transport** : il y figurait en double,
+  c'est un véhicule léger.
+- **Les statuts des seize lourds déjà connus sont alignés** sur la situation
+  2026, qui les dit tous opérationnels. Ce qui vivait ici — « hors service »,
+  « en restauration », « en mutation » — venait du jeu de démonstration et
+  contredisait le dossier. Les quatre frigos rejoignent les Abattoirs.
+- **Trois noms de chauffeurs** suivent désormais l'affectation 2026 :
+  Ablaye Diop sur AA 768 JV, Ass Guèye sur AA 633 JL, Bathie Kandji sur
+  AA 285 PT.
+- **Huit sites** sont nés de ces véhicules : Minoterie, Dépôt Touba, Dépôt
+  Ziguinchor, Karaouni 1, Couvoir Notto, Ndiakhirate, Fermes, Garage Djily
+  Dalifort.
+
+Les véhicules ajoutés **ne portent ni kilométrage ni coût** : le dossier n'en
+donne pas, et un compteur se relève — il ne se devine pas.
+
+Le jeu de départ passe de 6 à **9 parties**, avec 151 véhicules, 36 chauffeurs
+et 17 sites.
+
+### Deux défauts que cet agrandissement a réveillés
+
+Les deux faisaient **disparaître toutes les demandes du seed sans un mot**,
+parce que tous les chargeurs du projet avalent leurs erreurs — commode pour
+rejouer un seed sur une base déjà remplie, aveugle pour tout le reste.
+
+1. **`generer-seed.mts` coupait ses parties à n'importe quelle ligne**, pas
+   aux frontières d'instruction, malgré ce que son commentaire promettait. Un
+   `insert` de plusieurs milliers de lignes s'est retrouvé partagé entre deux
+   fichiers : la première moitié sans son point-virgule, la seconde sans son
+   en-tête, les deux refusées. Le défaut dormait tant que le parc était petit.
+2. **`demandes-demo.ts` composait une heure à la main** — `07:${10 + i * 3}`,
+   qui a donné « 13:61 » dès qu'il y a eu assez de titulaires. Une date se
+   calcule, elle ne se concatène pas.
+
+**Le banc `scripts/tester-seed.mts`** est né de là : il charge le seed en
+disant tout haut ce qui est refusé, vérifie que chaque partie est close sur
+elle-même, que les tables du référentiel ne sont pas vides, qu'aucune plaque
+n'est en double et qu'aucune n'est hors forme.
+
 ## Ce qui reste à décider (métier)
 
 Ces points bloquent le chargement, ils ne se devinent pas :
@@ -106,11 +153,10 @@ Ces points bloquent le chargement, ils ne se devinent pas :
 
 ## Ce qui reste à faire (application), dans l'ordre
 
-1. **Compléter le référentiel** : les 17 unités opérationnelles absentes avec
-   leurs attelages, les 16 non opérationnelles sous leur statut, la correction
-   `DK 6875 DF` → `DK 6875 BF`, l'alignement des statuts des 16 lourds connus
-   sur la situation 2026, le retrait de `DK 2347 BD` de la flotte de
-   transport, et les chauffeurs de l'affectation qui manquent.
+1. ~~**Compléter le référentiel**~~ — fait le 10 septembre 2026 pour les 17
+   unités opérationnelles, la plaque corrigée, les statuts alignés et le
+   doublon retiré (section ci-dessus). **Restent les 16 non opérationnelles**
+   (pannes, réparations, à réformer), à entrer sous leur statut.
 2. **Purger les transactions fabriquées** de la base, en gardant le
    référentiel : une migration qui vide relevés, pleins, dépenses,
    interventions, incidents, mouvements de caisse et de cuve, relevés de

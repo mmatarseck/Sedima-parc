@@ -14,6 +14,17 @@ function plusJours(jour: string, n: number): string {
   return new Date(Date.parse(`${jour}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 }
 
+/**
+ * Une heure de réponse, à `minutes` minutes du début de la matinée. Composer
+ * l'horodatage à la main coûtait cher : `07:${10 + i * 3}` a donné « 13:61 »
+ * dès que le parc a compté assez de titulaires, et la base a refusé
+ * l'insertion entière — les demandes ont disparu du seed sans un mot
+ * (10 septembre 2026). Une date se calcule, elle ne se concatène pas.
+ */
+function heureDeReponse(jour: string, minutes: number): string {
+  return new Date(Date.parse(`${jour}T07:00:00Z`) + minutes * 60_000).toISOString();
+}
+
 let CACHE: Demande[] | null = null;
 
 export function demandesDemo(): Demande[] {
@@ -42,7 +53,7 @@ export function demandesDemo(): Demande[] {
       emiseLe: `${avantHier}T07:30:00.000Z`,
       emisePar: "M. Seck",
       echeance: `${avantHier}T18:00:00.000Z`,
-      reponse: sansReponse ? null : { le: `${avantHier}T${String(8 + (i % 6)).padStart(2, "0")}:${String(10 + i * 3).padStart(2, "0")}:00.000Z`, valeur: km + 40 + i * 9, texte: null, photo: `compteur-${v.immatriculation}.jpg`, commentaire: i % 4 === 0 ? "Compteur photographié moteur tournant." : null },
+      reponse: sansReponse ? null : { le: heureDeReponse(avantHier, 70 + i * 3), valeur: km + 40 + i * 9, texte: null, photo: `compteur-${v.immatriculation}.jpg`, commentaire: i % 4 === 0 ? "Compteur photographié moteur tournant." : null },
       annuleeLe: null,
     });
   });
@@ -65,7 +76,7 @@ export function demandesDemo(): Demande[] {
         emiseLe: `${DATE_REFERENCE}T06:30:00.000Z`,
         emisePar: "Responsable Carburant",
         echeance: `${DATE_REFERENCE}T09:00:00.000Z`,
-        reponse: i < 2 ? { le: `${DATE_REFERENCE}T07:${String(5 + i * 12).padStart(2, "0")}:00.000Z`, valeur: null, texte: i === 1 ? "Feu de gabarit arrière droit hors service" : "ok", photo: `controle-${v.immatriculation}.jpg`, commentaire: null } : null,
+        reponse: i < 2 ? { le: heureDeReponse(DATE_REFERENCE, 5 + i * 12), valeur: null, texte: i === 1 ? "Feu de gabarit arrière droit hors service" : "ok", photo: `controle-${v.immatriculation}.jpg`, commentaire: null } : null,
         annuleeLe: null,
       });
     });

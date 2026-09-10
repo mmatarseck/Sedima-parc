@@ -481,13 +481,26 @@ console.log(`supabase/seed.sql — ${total} lignes sur ${lignes.filter((l) => l.
 const TAILLE_PARTIE = 300_000;
 const parties: string[][] = [[]];
 let taille = 0;
+/* La coupe ne tombe qu'entre deux instructions. Le compte se faisait ligne à
+   ligne, si bien qu'un `insert` de plusieurs milliers de lignes pouvait se
+   trouver coupé en deux fichiers : la première moitié sans son point-virgule,
+   la seconde sans son en-tête, et les deux refusées en silence par un chargeur
+   qui avale les erreurs. Le défaut a dormi tant que le parc était petit ; il
+   s'est réveillé le 10 septembre 2026, quand la flotte a doublé — les demandes
+   avaient disparu du seed sans un mot. */
+let instruction: string[] = [];
 for (let i = 0; i < lignes.length; i++) {
   const bloc = lignes[i].startsWith("\n-- ") ? `${lignes[i]}\n${lignes[++i]}` : lignes[i];
-  const octets = Buffer.byteLength(bloc, "utf8");
+  instruction.push(bloc);
+  /* Tant que le point-virgule n'est pas là, l'instruction continue. */
+  if (!/;\s*$/.test(bloc)) continue;
+  const octets = Buffer.byteLength(instruction.join("\n"), "utf8");
   if (taille > 0 && taille + octets > TAILLE_PARTIE) { parties.push([]); taille = 0; }
-  parties[parties.length - 1].push(bloc);
+  parties[parties.length - 1].push(...instruction);
   taille += octets;
+  instruction = [];
 }
+if (instruction.length > 0) parties[parties.length - 1].push(...instruction);
 rmSync("supabase/seed-parties", { recursive: true, force: true });
 mkdirSync("supabase/seed-parties", { recursive: true });
 parties.forEach((blocs, i) => {

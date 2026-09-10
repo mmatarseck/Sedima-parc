@@ -1,12 +1,24 @@
 /* ============================================================================
- * Données de démonstration.
+ * Le référentiel du parc de transport — **une vraie donnée d'entreprise**,
+ * malgré le suffixe « -demo » que ce fichier porte encore.
  *
- * Les véhicules, marques, chauffeurs et sites sont réels : ils viennent de
- * « Parc Automobiles Sedima - Inventaire.xlsx » et de « SITUATION PARC SEDIMA
- * LOURDS.xlsx ». Les échéances, coûts et kilométrages manquants sont en
- * revanche illustratifs — l'inventaire de référence n'est pas encore figé.
+ * Ne pas s'y tromper : ce fichier ne disparaîtra pas quand Supabase sera
+ * branché, **il est la source du seed** (`npm run generer-seed` →
+ * `supabase/seed-parties/*.sql`). Le supprimer viderait la base. Le suffixe
+ * vient de l'époque où tout était décor ; le partage des rôles est écrit dans
+ * `docs/DONNEES-REELLES.md`.
  *
- * Ce fichier disparaît dès que Supabase est branché.
+ * Ce qui est réel : les véhicules, leurs plaques, marques, catégories, sites,
+ * statuts et chauffeurs. Ils viennent des listes 2026 du dossier DO —
+ * `SITUATION PARC SEDIMA LOURDS` (genre, âge, site, activité, état) et
+ * `AFFECTATION LOURDS` (chauffeur), toutes deux du 3 septembre 2026 —
+ * recoupées le 7 septembre (`docs/RAPPROCHEMENT-PARC.md`) et complétées le
+ * 10 septembre : les dix-sept unités opérationnelles qui manquaient, la
+ * plaque DK 6875 BF corrigée, les statuts alignés sur la situation.
+ *
+ * Ce qui reste illustratif, faute de source : les kilométrages, les coûts et
+ * les jours d'échéance des véhicules déjà présents. Les véhicules ajoutés le
+ * 10 septembre n'en portent pas — un compteur se relève, il ne se devine pas.
  * ==========================================================================*/
 
 import type {
@@ -39,6 +51,19 @@ export const SITES: Site[] = [
   { id: "s-gormack", code: "GORMACK", libelle: "Garage Gormack Rufisque", region: "Dakar", type: "garage" },
   { id: "s-pikine", code: "PIKINE", libelle: "TATA Pikine", region: "Dakar", type: "garage" },
   { id: "s-anec", code: "ANEC", libelle: "ANEC Pikine", region: "Dakar", type: "garage" },
+  /* Les sites du parc lourd, ajoutés le 10 septembre 2026 avec les 17 unités
+     qui manquaient : ils viennent des colonnes « SITES » de
+     `SITUATION PARC SEDIMA LOURDS` et `AFFECTATION LOURDS` (3 septembre 2026). */
+  { id: "s-minoterie", code: "MINOT", libelle: "Minoterie", region: "Dakar", type: "usine" },
+  { id: "s-touba", code: "TOUBA", libelle: "Dépôt Touba", region: "Diourbel", type: "depot" },
+  { id: "s-zig", code: "ZIG", libelle: "Dépôt Ziguinchor", region: "Ziguinchor", type: "depot" },
+  { id: "s-karaouni", code: "KARA1", libelle: "Karaouni 1", region: "Dakar", type: "ferme" },
+  /* Le couvoir n'a pas de type à lui dans le référentiel : « ferme » est le
+     plus proche, et le libellé dit ce qu'il est. */
+  { id: "s-notto", code: "NOTTO", libelle: "Couvoir Notto", region: "Thiès", type: "ferme" },
+  { id: "s-ndiakhirate", code: "NDIAK", libelle: "Ndiakhirate", region: "Dakar", type: "ferme" },
+  { id: "s-fermes", code: "FERMES", libelle: "Fermes", region: "Thiès", type: "ferme" },
+  { id: "s-djily", code: "DJILY", libelle: "Garage Djily Dalifort", region: "Dakar", type: "garage" },
 ];
 
 const siteParId = new Map(SITES.map((s) => [s.id, s]));
@@ -69,25 +94,72 @@ const BRUT: Brut[] = [
   { immat: "AA985MR", marque: "TATA", appellation: "LPT1618TC", categorie: "camion", bu: "aliment", site: "s-km", statut: "en-service", chauffeur: "Babacar Ndiaye", conformite: { type: "assurance", jours: 118 }, entretienKm: 4200, cout: 6_200_000 },
   { immat: "AA977MR", marque: "RENAULT", appellation: "Ridelle 20T", categorie: "camion", bu: "aliment", site: "s-km", statut: "en-service", chauffeur: "Talla Diène", km: 357_899, conformite: { type: "visite-technique", jours: 96 }, entretienKm: 900, cout: 9_400_000 },
   { immat: "AA236MR", marque: "RENAULT", appellation: "Magnum 520", categorie: "camion", bu: "aliment", site: "s-km", statut: "en-service", chauffeur: "Cheikh Sarr", km: 492_050, conformite: { type: "visite-technique", jours: 8 }, entretienKm: 6100, cout: 11_800_000 },
-  { immat: "AA285PT", marque: "RENAULT", appellation: "Kerax", categorie: "camion", bu: "aliment", site: "s-km", statut: "en-service", chauffeur: "Badji Kadji", conformite: { type: "assurance", jours: 61 }, entretienKm: 8400, cout: 8_700_000 },
+  { immat: "AA285PT", marque: "RENAULT", appellation: "Kerax", categorie: "camion", bu: "aliment", site: "s-km", statut: "en-service", chauffeur: "Bathie Kandji", conformite: { type: "assurance", jours: 61 }, entretienKm: 8400, cout: 8_700_000 },
   { immat: "AA105VA", marque: "RENAULT", appellation: "Kerax 12T", categorie: "camion", bu: "aliment", site: "s-km", statut: "en-service", chauffeur: "Djibril Ndoye", conformite: { type: "assurance", jours: 74 }, entretienKm: 3300, cout: 7_300_000 },
-  { immat: "AA768JV", marque: "IVECO", appellation: "AT260 vrac 18T", categorie: "camion", special: true, bu: "aliment", site: "s-km", statut: "en-service", chauffeur: "Birago Wane", km: 234_789, conformite: { type: "visite-technique", jours: 52 }, entretienKm: 5700, cout: 6_800_000 },
-  { immat: "AA633JL", marque: "RENAULT", appellation: "Premium 43T", categorie: "tracteur", special: true, bu: "aliment", site: "s-km", statut: "en-service", chauffeur: "Libasse Diop", suppleants: 1, conformite: { type: "assurance", jours: 44 }, entretienKm: 7900, cout: 8_100_000 },
-  { immat: "AB932EF", marque: "FAW", appellation: "CA4250 vrac 30T", categorie: "tracteur", special: true, bu: "aliment", site: "s-uab", statut: "en-restauration", conformite: { type: "licence-transport", jours: -3 }, cout: 0, commentaire: "Revêtement alimentaire en cours" },
-  { immat: "AB551HS", marque: "JAC", appellation: "HFC9640ZXC 34,5T", categorie: "semi-remorque", special: true, bu: "aliment", site: "s-uab", statut: "en-restauration", conformite: { type: "visite-technique", jours: -12 }, cout: 0, commentaire: "Revêtement alimentaire en cours" },
-  { immat: "AA737ZW", marque: "RENAULT", appellation: "Premium plateau 35T", categorie: "tracteur", bu: "aliment", site: "s-gormack", statut: "hors-service", chauffeur: "Boubacar Dieng", conformite: { type: "visite-technique", jours: -21 }, cout: 7_600_000, commentaire: "En réparation pour visite technique" },
-  { immat: "AA180CQ", marque: "TATA", appellation: "Premium frigo 19T", categorie: "camion", special: true, bu: "abattoir", site: "s-anec", statut: "hors-service", chauffeur: "Mamadou Diop", km: 685_099, conformite: { type: "assurance", jours: -12 }, cout: 14_200_000, commentaire: "Groupe froid en réparation" },
-  { immat: "AA565GA", marque: "TATA", appellation: "LPT1618TC", categorie: "camion", bu: "minoterie", site: "s-pikine", statut: "en-reparation", chauffeur: "Mory Djitte", km: 245_675, conformite: { type: "assurance", jours: 83 }, cout: 7_100_000, commentaire: "Boîte de vitesses" },
-  { immat: "AA568GA", marque: "TATA", appellation: "LPT1618TC", categorie: "camion", bu: "minoterie", site: "s-siege", statut: "en-mutation", chauffeur: "Serigne Mbaye Fall", km: 104_135, conformite: { type: "assurance", jours: 129 }, entretienKm: 5900, cout: 3_400_000 },
-  { immat: "AA093VA", marque: "TATA", appellation: "LPT1618TC", categorie: "camion", bu: "abattoir", site: "s-abat", statut: "en-service", chauffeur: "Maguette Samb", km: 230_750, conformite: { type: "visite-technique", jours: 41 }, entretienKm: 2100, cout: 5_200_000 },
+  { immat: "AA768JV", marque: "IVECO", appellation: "AT260 vrac 18T", categorie: "camion", special: true, bu: "aliment", site: "s-uab", statut: "en-service", chauffeur: "Ablaye Diop", km: 234_789, conformite: { type: "visite-technique", jours: 52 }, entretienKm: 5700, cout: 6_800_000 },
+  { immat: "AA633JL", marque: "RENAULT", appellation: "Premium 43T", categorie: "tracteur", special: true, bu: "aliment", site: "s-km", statut: "en-service", chauffeur: "Ass Guèye", suppleants: 1, conformite: { type: "assurance", jours: 44 }, entretienKm: 7900, cout: 8_100_000 },
+  /* Statuts et sites alignés sur la situation 2026 le 10 septembre : elle les
+     dit tous opérationnels, et les quatre frigos aux Abattoirs. Ce qui vivait
+     ici — « hors service », « en restauration », « en mutation » — venait du
+     jeu de démonstration et contredisait le dossier. Les mentions du
+     classeur passent en commentaire, à leur juste place. */
+  { immat: "AB932EF", marque: "FAW", appellation: "CA4250 vrac 30T", categorie: "tracteur", special: true, bu: "aliment", site: "s-uab", statut: "en-service", chauffeur: "Ass Guèye", suppleants: 2, conformite: { type: "licence-transport", jours: -3 }, cout: 0 },
+  { immat: "AB551HS", marque: "JAC", appellation: "HFC9640ZXC 34,5T", categorie: "semi-remorque", special: true, bu: "aliment", site: "s-uab", statut: "en-service", conformite: { type: "visite-technique", jours: -12 }, cout: 0 },
+  { immat: "AA737ZW", marque: "RENAULT", appellation: "Premium plateau 35T", categorie: "tracteur", bu: "aliment", site: "s-uab", statut: "en-service", chauffeur: "Boubacar Dieng", suppleants: 1, conformite: { type: "visite-technique", jours: -21 }, cout: 7_600_000 },
+  { immat: "AA180CQ", marque: "TATA", appellation: "Premium frigo 19T", categorie: "camion", special: true, bu: "abattoir", site: "s-abat", statut: "en-service", chauffeur: "Mamadou Diop", km: 685_099, conformite: { type: "assurance", jours: -12 }, cout: 14_200_000 },
+  { immat: "AA565GA", marque: "TATA", appellation: "LPT1618TC", categorie: "camion", bu: "abattoir", site: "s-abat", statut: "en-service", chauffeur: "Mory Djitte", km: 245_675, conformite: { type: "assurance", jours: 83 }, cout: 7_100_000, commentaire: "Mutation en cours (situation 2026)" },
+  { immat: "AA568GA", marque: "TATA", appellation: "LPT1618TC", categorie: "camion", bu: "abattoir", site: "s-abat", statut: "en-service", chauffeur: "Serigne Mbaye Fall", km: 104_135, conformite: { type: "assurance", jours: 129 }, entretienKm: 5900, cout: 3_400_000 },
+  { immat: "AA093VA", marque: "TATA", appellation: "LPT1618TC", categorie: "camion", special: true, bu: "abattoir", site: "s-abat", statut: "en-service", chauffeur: "Maguette Samb", km: 230_750, conformite: { type: "visite-technique", jours: 41 }, entretienKm: 2100, cout: 5_200_000, commentaire: "Moteur du groupe froid (situation 2026)" },
   { immat: "AA032EA", marque: "MITSUBISHI", appellation: "L200 SC", categorie: "camionnette", bu: "commercial", site: "s-thies", statut: "en-service", chauffeur: "Moustapha Diaw", vin: "MMBJNKL30MH021847", km: 343_500, conformite: { type: "visite-technique", jours: 26 }, entretienKm: 6500, cout: 4_800_000 },
   { immat: "AA990DZ", marque: "MITSUBISHI", appellation: "L200 SC", categorie: "camionnette", bu: "commercial", site: "s-siege", statut: "en-backup", chauffeur: "Khalifa Ndiaye", km: 186_554, conformite: { type: "assurance", jours: 152 }, entretienKm: 4800, cout: 2_900_000 },
-  { immat: "DK6875DF", marque: "MITSUBISHI", appellation: "L200 SC", categorie: "camionnette", bu: "commercial", site: "s-thies", statut: "en-reparation", chauffeur: "Amadou Baldé", km: 267_900, conformite: { type: "assurance", jours: 67 }, cout: 5_900_000, commentaire: "Réparation moteur, 61 jours d'immobilisation" },
+  /* La plaque était fausse : toutes les listes 2026 — situation, affectation,
+     suivi administratif, assurance, attestation, puce carburant — disent
+     DK 6875 BF. Corrigée le 10 septembre 2026. La situation le dit
+     opérationnel, à l'UAB et à la minoterie, avec Amadou Baldé et Cheikh
+     Thiaw. */
+  { immat: "DK6875BF", marque: "MITSUBISHI", appellation: "L200 SC", categorie: "camionnette", bu: "aliment", site: "s-uab", statut: "en-service", chauffeur: "Amadou Baldé", suppleants: 1, km: 267_900, conformite: { type: "assurance", jours: 67 }, cout: 5_900_000 },
   /* Le parc ne roule pas tout entier : le chariot élévateur de l'UAB travaille
      en heures, pas en kilomètres. Hors périmètre de disponibilité (engage:
      faux), il a bien un plan d'entretien, et c'est le seul à compteur horaire. */
   { immat: "AA412UB", marque: "TOYOTA", appellation: "Chariot élévateur 8FBE20", categorie: "engin", energie: "electrique", engage: false, bu: "aliment", site: "s-uab", statut: "en-service", cout: 1_850_000, commentaire: "Chariot électrique, manutention des sacs à l'UAB" },
-  { immat: "DK2347BD", marque: "MITSUBISHI", appellation: "L200 DC", categorie: "camionnette", engage: false, bu: "commercial", site: "s-thies", statut: "retrait-en-cours", conformite: { type: "visite-technique", jours: -5 }, cout: 3_100_000, commentaire: "Moteur à changer" },
+  /* DK 2347 BD a quitté la flotte de transport le 10 septembre 2026 : il y
+     figurait en double, et le plan d'affectation le donne à Sidy Ndao — c'est
+     un véhicule léger, il vit dans `parc-leger-demo.ts`. */
+
+  /* -- Les dix-sept unités opérationnelles qui manquaient (10 septembre 2026)
+   *
+   * Elles viennent de `SITUATION PARC SEDIMA LOURDS` (genre, âge, site,
+   * activité) et de `AFFECTATION LOURDS` (chauffeur), toutes deux du
+   * 3 septembre 2026. Le rapprochement du 7 septembre les avait listées ; le
+   * dossier ne portant ni kilométrage ni coût pour elles, ces champs restent
+   * absents plutôt qu'inventés — un compteur se relèvera, il ne se devine pas.
+   *
+   * L'unité de business pour « ŒUFS » (Karaouni) est posée à `fermes` faute
+   * de mieux : **à confirmer avec le métier.**
+   * ---------------------------------------------------------------------- */
+
+  { immat: "AA927CA", marque: "RENAULT", appellation: "Tracteur vrac 27T", categorie: "tracteur", special: true, bu: "aliment", site: "s-uab", statut: "en-service", chauffeur: "Birago Wane", suppleants: 2 },
+  { immat: "AA053AP", marque: "CUBAS SEGRES", appellation: "Citerne vrac 27T", categorie: "semi-remorque", special: true, bu: "aliment", site: "s-uab", statut: "en-service" },
+  { immat: "AA713VE", marque: "LECITRAILER", appellation: "Plateau nu 35T", categorie: "semi-remorque", bu: "aliment", site: "s-uab", statut: "en-service" },
+  { immat: "AB681HE", marque: "SEDIMA", appellation: "Camion 10T neuf", categorie: "camion", bu: "minoterie", site: "s-minoterie", statut: "en-service", chauffeur: "Omar Cissé", commentaire: "Neuf, pas encore assuré au 3 septembre 2026" },
+  { immat: "AA291PT", marque: "TATA", appellation: "Ridelle 10T", categorie: "camion", bu: "aliment", site: "s-touba", statut: "en-service", chauffeur: "Demba Sy" },
+  { immat: "AA281PT", marque: "TATA", appellation: "Ridelle 10T", categorie: "camion", bu: "aliment", site: "s-thies", statut: "en-service", chauffeur: "Gora Diop" },
+  { immat: "AA920VA", marque: "TATA", appellation: "Ridelle 5T", categorie: "camion", bu: "couvoir", site: "s-touba", statut: "en-service", chauffeur: "Abdou Lakhat Thiam", commentaire: "Entretien chez TATA" },
+  { immat: "AA605TR", marque: "TATA", appellation: "Ridelle 5T", categorie: "camion", bu: "aliment", site: "s-uab", statut: "en-service", chauffeur: "Abdourahim Djité" },
+  { immat: "AA359AH", marque: "TATA", appellation: "Frigo 5T", categorie: "camion", special: true, bu: "abattoir", site: "s-abat", statut: "en-service", chauffeur: "Samba Thioub" },
+  { immat: "AA186CQ", marque: "RENAULT", appellation: "Frigo 5T", categorie: "camion", special: true, bu: "abattoir", site: "s-abat", statut: "en-reparation", chauffeur: "Cheikh Ba", commentaire: "En cours de réparation" },
+  { immat: "AA783BN", marque: "TATA", appellation: "Frigo 5T", categorie: "camion", special: true, bu: "abattoir", site: "s-zig", statut: "en-service", chauffeur: "Aly Touré" },
+  { immat: "AA226SX", marque: "TATA", appellation: "Fourgon 10T", categorie: "camion", bu: "fermes", site: "s-karaouni", statut: "en-service", chauffeur: "Ndiaga Guèye" },
+  { immat: "AA433AJ", marque: "PEUGEOT", appellation: "Boxer", categorie: "camionnette", bu: "fermes", site: "s-karaouni", statut: "en-reparation", commentaire: "Changement de moteur en cours — la situation le porte à la fois en opérationnel et en panne, à trancher" },
+  { immat: "AA235MR", marque: "RENAULT", appellation: "Frigo 5T", categorie: "camion", special: true, bu: "fermes", site: "s-karaouni", statut: "en-reparation", chauffeur: "Ousmane Diarra", commentaire: "En cours de réparation" },
+  { immat: "AA300PT", marque: "RENAULT", appellation: "Aubineau 40 000 poussins", categorie: "camion", special: true, bu: "couvoir", site: "s-notto", statut: "en-service", chauffeur: "Bakary Diatta", suppleants: 2 },
+  { immat: "AA898PZ", marque: "TATA", appellation: "Fourgon 5T", categorie: "camion", bu: "couvoir", site: "s-notto", statut: "en-service", chauffeur: "Bougouma Diop" },
+  { immat: "AA277PT", marque: "TATA", appellation: "Ridelle 5T", categorie: "camion", bu: "couvoir", site: "s-ndiakhirate", statut: "en-service", chauffeur: "Abdourahim Djité" },
+  { immat: "AA905CW", marque: "RENAULT", appellation: "Tracteur plateau 35T", categorie: "tracteur", bu: "abattoir", site: "s-abat", statut: "en-service", chauffeur: "Saliou Ngom" },
+  { immat: "AA214XK", marque: "TRAILOR", appellation: "Plateau 35T", categorie: "semi-remorque", bu: "abattoir", site: "s-abat", statut: "en-service" },
+  { immat: "AA350JN", marque: "RENAULT", appellation: "Kerax tracteur citerne", categorie: "tracteur", bu: "fermes", site: "s-fermes", statut: "en-service", chauffeur: "Fallou Ndiaye" },
+  { immat: "AA909CW", marque: "CODER", appellation: "Citerne à eau", categorie: "semi-remorque", bu: "fermes", site: "s-fermes", statut: "en-service" },
+  { immat: "DK9839BK", marque: "MITSUBISHI", appellation: "L200 pick-up", categorie: "camionnette", bu: "siege", site: "s-siege", statut: "en-service", commentaire: "Opérationnel au suivi administratif, sans chauffeur nommé" },
 ];
 
 /**
