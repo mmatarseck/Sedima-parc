@@ -420,7 +420,11 @@ export function EcranTableauBord({
         { cle: "prestations", libelle: "Prestations", valeur: tiers.reduce((s, f) => s + f.coutPrestations, 0), teinte: "var(--color-attenue-2)", href: "/transporteurs?vue=prestations" },
       );
     }
-    const retenues = parts.filter((x) => x.valeur > 0);
+    /* Du plus cher au moins cher (métier, 10 septembre 2026). L'ordre de
+       déclaration mettait la maintenance en tête quoi qu'elle pèse, si bien
+       que la liste sautait de 165,9 M à 485,4 M puis à 11,6 M : on ne voyait
+       plus où passe l'argent, qui est pourtant la question de la carte. */
+    const retenues = parts.filter((x) => x.valeur > 0).sort((a, b) => b.valeur - a.valeur);
     return { parts: retenues, total: retenues.reduce((s, x) => s + x.valeur, 0) };
   }, [moisExercice, faits, flotte, retenus, filtreVehicule]);
 

@@ -173,10 +173,14 @@ export function Assistant() {
         aria-expanded={ouvert}
         aria-label="Poser une question sur le parc"
         title="Poser une question sur le parc — Ctrl + J"
-        className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-2.5 transition-colors ${ouvert ? "bg-accent-fond text-accent-fonce" : "text-texte-2 hover:bg-surface-3 hover:text-texte"}`}
+        className={`grid size-9 shrink-0 place-items-center rounded-full transition-colors ${ouvert ? "bg-accent-fond text-accent-fonce" : "text-texte-2 hover:bg-surface-3 hover:text-texte"}`}
       >
+        {/* Le mot « Demander » a été retiré le 10 septembre 2026 : la barre
+            porte désormais trois icônes de même taille — assistant, demandes,
+            notifications — et un seul mot au milieu déséquilibrait la file.
+            L'infobulle et le texte pour lecteur d'écran disent ce qu'il fait. */}
         <Sparkles className="size-[18px]" strokeWidth={1.7} />
-        <span className="hidden text-[13px] font-medium lg:block">Demander</span>
+        <span className="sr-only">Demander à l&apos;assistant</span>
       </button>
 
       {ouvert ? (

@@ -1,22 +1,4 @@
-import {
-  BarChart3,
-  CalendarRange,
-  ClipboardList,
-  Fuel,
-  Handshake,
-  Inbox,
-  LayoutGrid,
-  Package,
-  PiggyBank,
-  Settings,
-  ShieldCheck,
-  Store,
-  TriangleAlert,
-  Truck,
-  Users,
-  Wallet,
-  Wrench,
-} from "lucide-react";
+import { BarChart3, CalendarRange, ClipboardList, Fuel, Handshake, LayoutGrid, Package, PiggyBank, Settings, ShieldCheck, Store, TriangleAlert, Truck, Users, Wallet, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Module } from "@/domaine/acces";
 
@@ -89,7 +71,11 @@ export const NAVIGATION: GroupeNavigation[] = [
       { module: "maintenance", href: "/pieces", libelle: "Pièces de rechange", icone: Package, livre: true },
       { module: "incidents", href: "/incidents", libelle: "Incidents & sinistres", icone: TriangleAlert, livre: true },
       { module: "releves", href: "/carburant", libelle: "Carburant", icone: Fuel, livre: true },
-      { module: "demandes", href: "/demandes", libelle: "Demandes", icone: Inbox, livre: true },
+      /* Les demandes ont quitté le rail le 10 septembre 2026 : ce n'est pas un
+         référentiel où l'on entre pour chercher, c'est une corbeille qui se
+         regarde en passant. Elle vit dans la barre du haut, à côté de la
+         cloche, avec le nombre de celles qui attendent (`LienDemandes`). La
+         route `/demandes` reste, et le téléphone garde la sienne. */
       { module: "couts", href: "/caisse", libelle: "Caisse & achats", icone: Wallet, livre: true },
       { module: "transporteurs", href: "/prestataires", libelle: "Prestataires", icone: Store, livre: true },
     ],
