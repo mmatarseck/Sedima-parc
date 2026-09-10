@@ -47,16 +47,40 @@ function initialesDe(nom: string): string {
     .join("");
 }
 
+/** Le compteur à une date, sur des points croissants : le dernier avant, sinon le premier après. */
+function kmVers(points: { date: string; km: number }[], date: string): number | null {
+  let avant: number | null = null;
+  for (const p of points) {
+    if (p.date <= date) avant = p.km;
+    else return avant ?? p.km;
+  }
+  return avant;
+}
+
 /** Les affectations de chaque véhicule, depuis le parc déjà lu : la forme de la fiche, par immatriculation. */
 export function affectationsDepuisLeParc(parc: ParcBrut): Map<string, AffectationFiche[]> {
   const vehicules = new Map(parc.vehicules.map((v) => [v.id, v]));
   const resultat = new Map<string, AffectationFiche[]>();
+  /* Les relevés de chaque véhicule, du plus ancien au plus récent : chaque
+     période reçoit ainsi ses kilomètres, comme le fait la fiche véhicule. Sans
+     eux, la colonne « Km du titulaire » du rapport des affectations affichait
+     « 0 km » pour tout le parc — un chiffre inventé, pas une absence. */
+  const relevesPar = new Map<string, { date: string; km: number }[]>();
+  for (const r of parc.releves) {
+    const liste = relevesPar.get(r.vehicule_id);
+    if (liste) liste.push({ date: r.date, km: r.km });
+    else relevesPar.set(r.vehicule_id, [{ date: r.date, km: r.km }]);
+  }
+  for (const liste of relevesPar.values()) liste.sort((x, y) => x.date.localeCompare(y.date));
   for (const a of parc.affectations) {
     const v = vehicules.get(a.vehicule_id);
     if (!v) continue;
     const c = parc.chauffeurs.get(a.chauffeur_id) ?? null;
     const nom = c ? nomComplet(c) : null;
     const site = v.site_id ? (parc.sites.get(v.site_id)?.libelle ?? "—") : "—";
+    const points = relevesPar.get(a.vehicule_id) ?? [];
+    const kmDebut = kmVers(points, a.debut);
+    const kmFin = kmVers(points, a.fin ?? parc.aujourdhui);
     const liste = resultat.get(v.immatriculation) ?? [];
     liste.push({
       numero: a.numero ?? "",
@@ -67,7 +91,7 @@ export function affectationsDepuisLeParc(parc: ParcBrut): Map<string, Affectatio
       debut: a.debut,
       fin: a.fin,
       buSite: `${v.business_unit ? BUSINESS_UNIT[v.business_unit] : "—"} · ${site}`,
-      kmParcourus: 0,
+      kmParcourus: kmDebut !== null && kmFin !== null && kmFin > kmDebut ? kmFin - kmDebut : 0,
       motif: a.motif ?? "",
     });
     resultat.set(v.immatriculation, liste);

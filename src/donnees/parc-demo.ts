@@ -170,7 +170,7 @@ function ligne(b: Brut): LigneFlotte {
       ? { type: b.conformite.type, echeance: "", joursRestants: b.conformite.jours }
       : null,
     prochaineEcheanceEntretien: b.entretienKm
-      ? { libelle: "Vidange", kmRestants: b.entretienKm, joursRestants: null }
+      ? { libelle: "Vidange", kmRestants: b.entretienKm, joursRestants: null, kmParJour: null }
       : null,
     coutDouzeMois: b.cout ?? null,
     attelageCourant: null,

@@ -116,7 +116,10 @@ export function echeancesDepuisLaBase(lignes: LigneFlotte[], uuidParImmat: Map<s
     }
     const p = l.prochaineEcheanceEntretien;
     if (p && (p.joursRestants !== null || p.kmRestants !== null)) {
-      const jours = p.joursRestants ?? (p.kmRestants !== null ? Math.max(0, Math.round(p.kmRestants / 100)) : null);
+      /* Des kilomètres restants ne font des jours qu'au rythme du véhicule.
+         Faute de l'avoir mesuré, on garde l'ordre de grandeur d'avant. */
+      const rythme = p.kmParJour ?? 100;
+      const jours = p.joursRestants ?? (p.kmRestants !== null ? Math.max(0, Math.round(p.kmRestants / rythme)) : null);
       echeances.push({ ...commun, cle: `v-${v.id}-entretien`, numero: null, sujetHref: `/flotte/${v.immatriculation}?onglet=entretien`, type: "entretien", libelle: p.libelle, numeroPiece: null, emetteur: null, echeance: null, joursRestants: jours, niveau: niveauPour(jours, false), repere: p.kmRestants !== null ? `dans ${fmtKm(Math.max(0, p.kmRestants))} km` : null });
     }
   }

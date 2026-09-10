@@ -46,6 +46,15 @@ Un module de démonstration importé par un composant client (l'assistant lit
 démonstration ont leurs fichiers (`flotte-demo.ts`, `conformite-demo.ts`,
 `visites-demo.ts`).
 
+**Deux autres chiffres inventés ont été trouvés et corrigés** (10 septembre
+2026, section « Les chiffres inventés du mode base, cherchés exprès ») : les
+kilomètres d'une affectation valaient zéro pour tout le parc alors que les
+relevés étaient là (652 505 km retrouvés au banc), et la Conformité tirait
+ses jours d'entretien d'un forfait de 100 km/jour alors que le rythme réel de
+chaque véhicule était calculé puis jeté. Quatre autres candidats ont été
+écartés après vérification, et la note dit pourquoi, pour qu'on ne les
+rouvre pas.
+
 **Un coût inconnu se dit** (10 septembre 2026) : en base, la fiche du
 chauffeur annonçait « 0 F » de coût d'incidents, faute de pouvoir rattacher
 une dépense à une déclaration — une affirmation fausse, là où il fallait
@@ -1234,6 +1243,61 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   Vérifié dans le navigateur : sept fausses vignettes portées à 2,1 Mo, une
   photo de plus, la plus ancienne effacée, le total revenu à 1,8 Mo, la
   nouvelle affichée.
+
+### Les chiffres inventés du mode base, cherchés exprès (10 septembre 2026)
+
+Le `cout: 0` de la fiche chauffeur ayant montré qu'un lecteur peut affirmer
+ce qu'il ignore, les 26 lecteurs de `src/donnees/` et les 6 assembleurs ont
+été passés en revue pour trouver la même famille : un champ que le chemin
+base remplit d'une valeur inventée là où la démonstration porte une vraie
+donnée. Douze candidats, **deux défauts réels**, le reste écarté après
+vérification — la vérification comptait autant que la recherche.
+
+**1. Les kilomètres d'une affectation valaient zéro pour tout le parc.**
+`affectationsDepuisLeParc` (`src/donnees/rapports.ts`) posait
+`kmParcourus: 0` alors que `parc.releves` était sous sa main et que la fiche
+véhicule fait le calcul depuis toujours. La colonne « Km du titulaire » du
+rapport des affectations annonçait donc « 0 km » partout — un chiffre
+inventé, pas une absence. Les relevés de chaque véhicule sont désormais
+rangés par date et chaque période reçoit ses kilomètres, comme sur la fiche.
+Banc : **16 périodes sur 17 en portent, 652 505 km au total**, contre zéro
+partout avant (`tester-rapports.mts`, assertion ajoutée pour que le zéro ne
+puisse pas revenir sans être vu).
+
+**2. La Conformité comptait 100 km/jour pour tout le parc.**
+`conformite.ts` tirait des jours des kilomètres restants d'un entretien en
+divisant par 100 — un poids lourd à 300 km/jour était donc annoncé trois
+fois trop tard, et ces jours-là pilotent la couleur et le rang de tri de
+l'échéance. Le rythme réel était pourtant calculé juste avant, dans
+`flotte.ts`, puis **jeté** : `prochaineEcheanceEntretien` n'en gardait rien.
+Il le porte maintenant (`kmParJour`), mesuré une fois par véhicule et passé
+de main en main pour ne pas relire tous les relevés du parc. `rythmeMesure()`
+rend `null` quand les relevés ne disent rien, au lieu de rendre 100 sous le
+nom d'une mesure ; le repli reste 100 là où l'on ne sait pas, nommé
+`RYTHME_PAR_DEFAUT`.
+
+**Écartés après vérification** — à ne pas rouvrir :
+
+- **`roulant` deviné par expression régulière** (`incidents.ts`) : ce n'est
+  pas une devinette mais une **convention symétrique**. L'écriture range la
+  mention dans la description (`transactions-colonnes.ts`, cas « incident »)
+  et le seed fait de même (`generer-seed.mts`) ; la lecture la relit. La
+  table n'a pas la colonne, l'aller-retour la remplace.
+- **`kmMotifRejet: null` sur les pleins** (`carburant.ts`) : la table
+  `plein` **n'a pas** de colonne `km_motif_rejet` (la table `depense`, si).
+  Le lecteur ne peut pas lire ce qui n'existe pas ; la valeur nulle est
+  juste. Ajouter le contrôle des relevés aux pleins demanderait une
+  migration, donc une décision.
+- **`demandeurRole ?? "gestionnaire-parc"`** (`achats.ts`) : l'écriture pose
+  toujours le rôle de l'auteur (`transactions-actions.ts`), la valeur
+  n'atteint aucun écran, et elle ne sert qu'à choisir qui prévenir d'une
+  décision. Un repli raisonnable, pas une affirmation fausse.
+- **`region ?? "Dakar"`** : les deux modes font le même repli. Défaut
+  partagé, pas une divergence base/démonstration.
+
+**Vérifié** : les seize bancs passent, et `instantane-rapports.mts <dossier>
+comparer` dit « aucun écart » sur les 48 rapports de démonstration — les deux
+corrections ne touchent donc que le mode base, là où le chiffre était inventé.
 
 ### Un coût inconnu se dit (10 septembre 2026)
 

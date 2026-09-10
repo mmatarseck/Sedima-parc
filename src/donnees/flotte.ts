@@ -412,29 +412,34 @@ function dernierCompteur(uuid: string, parc: ParcBrut): { km: number; date: stri
   return meilleur;
 }
 
-/** Le rythme du véhicule, en kilomètres par jour, lu sur ses relevés de l'année. */
-function kmParJour(uuid: string, parc: ParcBrut): number {
+/** Faute de deux points assez écartés, ce rythme par défaut — un ordre de grandeur, pas une mesure. */
+const RYTHME_PAR_DEFAUT = 100;
+
+/** Le rythme du véhicule, en kilomètres par jour, lu sur ses relevés de l'année ; `null` quand ils ne le disent pas. */
+function rythmeMesure(uuid: string, parc: ParcBrut): number | null {
   const points = [
     ...parc.releves.filter((r) => r.vehicule_id === uuid).map((r) => ({ date: r.date, km: r.km })),
     ...parc.depenses.filter((d) => d.vehicule_id === uuid && d.km !== null && d.km_motif_rejet === null).map((d) => ({ date: d.date, km: d.km! })),
     ...parc.pleins.filter((p) => p.vehicule_id === uuid && p.km !== null).map((p) => ({ date: p.date, km: p.km! })),
   ].sort((a, b) => a.date.localeCompare(b.date));
-  if (points.length < 2) return 100;
+  if (points.length < 2) return null;
   const premier = points[0]!;
   const dernier = points[points.length - 1]!;
   const jours = (Date.parse(`${dernier.date}T00:00:00Z`) - Date.parse(`${premier.date}T00:00:00Z`)) / 86_400_000;
-  if (jours < 7 || dernier.km <= premier.km) return 100;
+  if (jours < 7 || dernier.km <= premier.km) return null;
   return Math.max(1, Math.round((dernier.km - premier.km) / jours));
 }
 
 /** Toutes les échéances du plan d'entretien d'un véhicule, confrontées à ses interventions en base ; la liste en garde la première, la Maintenance celles qui appellent une action. */
-export function echeancesEntretienDeLaBase(v: Vehicule, uuid: string, compteur: { km: number; date: string } | null, parc: ParcBrut): EcheanceEntretien[] {
+export function echeancesEntretienDeLaBase(v: Vehicule, uuid: string, compteur: { km: number; date: string } | null, parc: ParcBrut, rythme?: number | null): EcheanceEntretien[] {
   const programme = programmeParDefaut(v.categorie);
   const interventions = parc.interventions.filter((i) => i.vehicule_id === uuid).map((i) => ({ numero: i.numero, date: i.date, objet: i.objet, km: i.km }));
   const compteurs: CompteursVehicule = {
     km: compteur?.km ?? null,
     heures: null,
-    kmParJour: kmParJour(uuid, parc),
+    /* Le rythme se mesure une fois par véhicule et se passe de main en main :
+       le relire ici coûterait un parcours de tous les relevés du parc. */
+    kmParJour: (rythme === undefined ? rythmeMesure(uuid, parc) : rythme) ?? RYTHME_PAR_DEFAUT,
     heuresParJour: 0.5,
     miseEnService: v.premiereMiseEnCirculation,
   };
@@ -442,9 +447,12 @@ export function echeancesEntretienDeLaBase(v: Vehicule, uuid: string, compteur: 
 }
 
 function prochaineEcheanceEntretien(v: Vehicule, uuid: string, compteur: { km: number; date: string } | null, parc: ParcBrut): LigneFlotte["prochaineEcheanceEntretien"] {
-  const echeances = echeancesEntretienDeLaBase(v, uuid, compteur, parc);
+  const rythme = rythmeMesure(uuid, parc);
+  const echeances = echeancesEntretienDeLaBase(v, uuid, compteur, parc, rythme);
   const premiere = echeances.find((e) => e.kmRestants !== null || e.joursRestants !== null) ?? null;
-  return premiere ? { libelle: premiere.libelle, kmRestants: premiere.kmRestants, joursRestants: premiere.joursRestants } : null;
+  /* Le rythme suit l'échéance : la Conformité en tire des jours à partir des
+     kilomètres restants, et doit le faire au rythme du véhicule, pas au sien. */
+  return premiere ? { libelle: premiere.libelle, kmRestants: premiere.kmRestants, joursRestants: premiere.joursRestants, kmParJour: rythme } : null;
 }
 
 /** La ligne de la liste, dérivée des lignes brutes. */

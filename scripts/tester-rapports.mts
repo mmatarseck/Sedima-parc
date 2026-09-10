@@ -102,6 +102,13 @@ const enCoursDemo = [...affectationsDemo.values()].flat().filter((a) => a.fin ==
 /* lire_parc() ne rend que les affectations en cours : les rapports d'affectation et de disponibilité n'en lisent pas d'autres. */
 attendu(`les affectations du parc : ${nbBase} en base (${enCours} en cours) contre ${nbDemo} en démonstration (${enCoursDemo} en cours) ; chacune nomme son chauffeur`, enCours > 0 && [...affectations.values()].flat().every((a) => a.chauffeur && a.chauffeurId));
 
+/* Les kilomètres de chaque période se lisent sur les relevés du véhicule. Ils
+   valaient zéro pour tout le parc : la colonne « Km du titulaire » du rapport
+   des affectations annonçait « 0 km » partout, un chiffre inventé. */
+const avecKm = [...affectations.values()].flat().filter((a) => a.kmParcourus > 0);
+const totalKm = avecKm.reduce((t, a) => t + a.kmParcourus, 0);
+attendu(`les kilomètres des affectations : ${avecKm.length} période(s) sur ${nbBase} en portent, ${totalKm.toLocaleString("fr-FR")} km au total — plus aucun zéro d'office`, avecKm.length > 0 && totalKm > 0);
+
 /* ---- 2. La source mixte et les rapports ---- */
 const sansFiches: Omit<SourceRapports, "resumesFiche"> = { ...demo, aujourdhui, lignes, affectations, couts, pleins, interventions, incidents };
 const resumes = resumesFicheDepuisLaSource(sansFiches);

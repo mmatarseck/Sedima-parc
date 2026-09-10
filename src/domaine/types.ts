@@ -470,7 +470,13 @@ export interface LigneFlotte {
   kilometrage: number | null;
   dateKilometrage: string | null;
   prochaineEcheanceConformite: EcheanceVehicule | null;
-  prochaineEcheanceEntretien: { libelle: string; kmRestants: number | null; joursRestants: number | null } | null;
+  /**
+   * `kmParJour` est le rythme du véhicule, lu sur ses relevés : sans lui, qui
+   * veut des jours à partir de kilomètres restants en invente (la Conformité
+   * comptait 100 km/jour pour tout le parc, et annonçait donc un poids lourd
+   * à 300 km/jour trois fois trop tard). Nul quand on ne l'a pas mesuré.
+   */
+  prochaineEcheanceEntretien: { libelle: string; kmRestants: number | null; joursRestants: number | null; kmParJour: number | null } | null;
   coutDouzeMois: number | null;
   /** L'autre moitié de l'attelage en cours, s'il y en a un. */
   attelageCourant: { immatriculation: string; immatriculationAffichee: string; role: "tracteur" | "remorque" } | null;
