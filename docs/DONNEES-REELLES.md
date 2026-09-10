@@ -139,17 +139,61 @@ disant tout haut ce qui est refusé, vérifie que chaque partie est close sur
 elle-même, que les tables du référentiel ne sont pas vides, qu'aucune plaque
 n'est en double et qu'aucune n'est hors forme.
 
+## L'assurance 2026, chargée pour de vrai (10 septembre 2026)
+
+L'application **inventait** l'échéance d'assurance de chaque véhicule (un
+tirage entre 20 et 300 jours). Elle lit désormais la police :
+`src/donnees/assurance-2026.ts` porte les **139 immatriculations couvertes**
+(117 SEDIMA SA, 22 Abattoirs) et la fin de période, tirées du classeur de
+renouvellement — qui écrit en tête « Du 1er Janvier 2026 au 31 Décembre
+2026 ». Quarante-quatre de ces plaques sont dans la flotte de transport.
+
+**Un véhicule absent de la police n'est pas assuré**, et le document se porte
+manquant plutôt que d'être inventé. C'est un fait, pas une lacune : la
+situation note elle-même le camion neuf `AB 681 HE` comme « pas encore
+assuré ». L'écran Conformité le dit maintenant.
+
+### Pourquoi la colonne du suivi administratif n'a pas été retenue
+
+Le suivi administratif porte une colonne « Expiration Assurance ». Elle dit
+**31 décembre 2025 pour les 98 véhicules qu'elle couvre** — sans une
+exception. C'est la police *précédente* : la colonne n'a pas été reprise après
+le renouvellement. La lire telle quelle aurait déclaré tout le parc non
+assuré, du jour au lendemain, sur une donnée périmée d'un an.
+
+### ⚠ La visite technique pose la même question, sans la même réponse
+
+La même feuille porte « Expiration Visite Technique », et là les dates
+**varient** — 77 valeurs distinctes sur 98, de septembre 2025 à novembre 2026.
+Mais **85 sur 98 sont déjà passées**. Deux lectures, et le dossier ne tranche
+pas :
+
+- soit le parc a réellement 85 visites techniques échues, ce qui est une
+  alerte majeure et sa place est dans l'application ;
+- soit cette colonne est en retard d'un cycle, comme sa voisine l'assurance,
+  et la charger inventerait une crise.
+
+Le seul autre classeur dédié (`Visite Technique.xlsx`, dossier MALICK) date de
+**décembre 2023** : il ne tranche pas non plus. **Rien n'a donc été chargé
+pour la visite technique** — l'application continue de la tirer au sort, ce
+qui est faux mais visiblement faux, là où une fausse alerte de masse serait
+crue. **À trancher par l'équipe parc.**
+
 ## Ce qui reste à décider (métier)
 
 Ces points bloquent le chargement, ils ne se devinent pas :
 
-1. **AA 433 AJ** : opérationnel ou en panne ? Le classeur se contredit.
-2. Les **trois plaques à un caractère près** : la carte grise tranche.
-3. Les **onze véhicules hors SEDIMA** assurés et entretenus par le parc
+1. **La visite technique** : 85 échéances passées sur 98 dans le suivi
+   administratif. Crise réelle, ou colonne en retard d'un cycle comme
+   l'assurance ? Rien n'est chargé tant que ce n'est pas dit (section
+   ci-dessus).
+2. **AA 433 AJ** : opérationnel ou en panne ? Le classeur se contredit.
+3. Les **trois plaques à un caractère près** : la carte grise tranche.
+4. Les **onze véhicules hors SEDIMA** assurés et entretenus par le parc
    (Almadies, Président, autocar AB 820 EL, motos) : dedans ou dehors, et sous
    quel régime — la liste est au §1 de `RAPPROCHEMENT-PARC.md`.
-4. Le **chariot AA 412 UB**, dans l'application et dans aucune liste.
-5. **DK 4942 AK**, sur la liste de vente 2025 : vendu ou non.
+5. Le **chariot AA 412 UB**, dans l'application et dans aucune liste.
+6. **DK 4942 AK**, sur la liste de vente 2025 : vendu ou non.
 
 ## Ce qui reste à faire (application), dans l'ordre
 

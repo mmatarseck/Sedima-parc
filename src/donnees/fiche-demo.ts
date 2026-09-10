@@ -33,6 +33,7 @@ import { exigeDocument, immobilisationAdministrative } from "@/domaine/documents
 import { PARAMETRES_DEFAUT, empreinteParametres, libelleDocumentCourant, prixEnergie, type Parametres } from "@/domaine/parametres";
 import { normaliser } from "@/domaine/immatriculation";
 import { idChauffeur } from "@/domaine/chauffeur";
+import { FIN_POLICE_2026, assureEn2026 } from "./assurance-2026";
 import type { LigneFlotte, ObservationVisite, TypeDocument, Vehicule, VisiteTechnique } from "@/domaine/types";
 import { BUSINESS_UNIT } from "@/domaine/libelles";
 import { ATTELAGES, FLOTTE, LICENCES } from "./parc-demo";
@@ -236,8 +237,15 @@ function construire(l: LigneFlotte, parametres: Parametres): FicheVehicule {
     };
   }
 
+  /* L'assurance ne s'invente plus : la police 2026 dit qui est couvert et
+     jusqu'à quand (`assurance-2026.ts`, tirée du classeur de renouvellement).
+     Un véhicule absent de la police n'est pas assuré — la situation note par
+     exemple le camion neuf AB 681 HE comme « pas encore assuré » —, et le
+     document se porte manquant, ce que la Conformité sait déjà dire. */
+  const couvert = assureEn2026(v.immatriculation);
+  const jAssurance = couvert ? Math.round((Date.parse(`${FIN_POLICE_2026}T00:00:00Z`) - AUJOURDHUI.getTime()) / 86_400_000) : jAss;
   const documents: DocumentFiche[] = [
-    doc("assurance", `AXA-2026-${entre(alea, 1000, 9999)}`, "AXA Sénégal", jAss - 365, jAss, lourd ? entre(alea, 900, 1600) * 1000 : 412_000),
+    doc("assurance", "Police flotte 2026", "SEDIMA — flotte automobile", jAssurance - 365, jAssurance, lourd ? entre(alea, 900, 1600) * 1000 : 412_000, { manquant: !couvert }),
     doc("carte-grise", `CG-${String(anneeMec).slice(2)}-${entre(alea, 100_000, 999_999)}`, "DTT", null, null, null, { permanent: true }),
   ];
   /* La visite technique n'est portée que si les paramètres l'exigent de ce
