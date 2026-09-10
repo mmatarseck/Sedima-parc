@@ -390,8 +390,12 @@ export function EcranTableauBord({
       <div className="flex shrink-0 flex-wrap items-end justify-between gap-3">
         <TitreEcran titre="Tableau de bord" sousTitre={`Vue équipe parc · ${contexte} · au ${formaterDate(aujourdhui)} · ${cumul.vehicules} véhicule${cumul.vehicules > 1 ? "s" : ""}, ${cumul.engages} engagé${cumul.engages > 1 ? "s" : ""}`} />
         {/* Le bouton de choix reste collé à droite, même quand les filtres passent
-            sur deux lignes : c'est l'action de la rangée, pas un filtre de plus. */}
-        <div className="flex flex-wrap items-center justify-end gap-2">
+            sur deux lignes : c'est l'action de la rangée, pas un filtre de plus.
+            Le `grow` est ce qui le permet — sans lui, ce bloc n'occupe que la
+            largeur de son contenu, et son `justify-end` n'a rien à repousser :
+            une fois la rangée passée à la ligne, elle se recale à gauche et le
+            bouton avec elle. */}
+        <div className="flex grow flex-wrap items-center justify-end gap-2">
           <Segments valeur={periode} onChange={setPeriode} />
           <FiltreChoix etiquette="BU" valeur={bu} options={bus.map((b) => ({ cle: b as string, libelle: BUSINESS_UNIT[b] }))} onChange={setBu} />
           <FiltreChoix etiquette="Catégorie" valeur={categorie} options={categories.map((c) => ({ cle: c as string, libelle: CATEGORIE_FLOTTE[c] }))} onChange={setCategorie} />
@@ -505,8 +509,13 @@ export function EcranTableauBord({
               cible
             </span>
           </span>
-          {/* Même bouton que « Choisir les indicateurs », à droite : un seul geste pour composer la page. */}
-          <button type="button" onClick={() => setPanneau("courbes")} aria-expanded={panneau === "courbes"} className="bouton-principal h-7 gap-1.5 px-3 text-[12.5px]">
+          {/* Même bouton que « Choisir les indicateurs », à droite : un seul
+              geste pour composer la page. Il porte son propre `ml-auto` en
+              plus de celui de la légende : le premier ne vaut que pour la
+              ligne où il se trouve, et quand la rangée passe à la ligne le
+              bouton repartait à gauche, à quatre cent soixante-six pixels du
+              bord. */}
+          <button type="button" onClick={() => setPanneau("courbes")} aria-expanded={panneau === "courbes"} className="bouton-principal ml-auto h-7 gap-1.5 px-3 text-[12.5px]">
             <SlidersHorizontal className="size-3.5" strokeWidth={2} />
             Choisir les courbes
             <span className="rounded-full bg-white/25 px-1.5 text-[11px]">
