@@ -1278,6 +1278,32 @@ marque y est écrite MITSUBISHI, MITSIBUSHI et MITSIBUHSI.
   photo de plus, la plus ancienne effacée, le total revenu à 1,8 Mo, la
   nouvelle affichée.
 
+### Les pastilles, second passage : six, sans courbe (10 septembre 2026)
+
+Quatre demandes du métier après le premier jet, toutes appliquées :
+
+- **La mini-courbe des quatorze jours est retirée.** Elle occupait le pied de
+  chaque carte pour un signal que la flèche donne en un caractère. Le
+  composant `Etincelle` est supprimé, et le champ `quatorze` avec lui : du
+  code mort ne se garde pas « au cas où ». Les courbes gardent leur place en
+  dessous, sur douze mois — la pastille dit l'état du moment, pas la tendance.
+- **Une flèche de progression** remplace le triangle : ↗ ↘ →, plus grande, et
+  sa couleur suit le **sens voulu** — moins de véhicules hors service est une
+  bonne nouvelle, moins de véhicules prêts n'en est pas une.
+- **Le chiffre passe de 30 à 38 px** : toute la place libérée par la courbe
+  lui revient.
+- **Six pastilles au lieu de cinq** (`MAX_PASTILLES`). La sixième par défaut
+  est « Chauffeurs indisponibles aujourd'hui » : les cinq d'avant couvraient
+  D, D, Q, C, S, il manquait **M**.
+
+**Une conséquence à traiter** : à six de front sur 1280 px, la carte tombe à
+151 px. Le complément (« / 47 engagés ») posé sur la même ligne qu'un chiffre
+de 38 px se coupait ; il est descendu sous le chiffre. Il ne reste que deux
+troncatures, deux textes de seuil, entiers dans l'infobulle.
+
+**Vérifié** : six cartes de front à 1280 px, deux colonnes à 375 px, aucun
+débordement horizontal dans les deux cas.
+
 ### Les pastilles redessinées, d'après une maquette (10 septembre 2026)
 
 Le métier a fourni une maquette de tableau de bord (cartes claires, badge rond

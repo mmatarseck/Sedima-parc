@@ -121,39 +121,11 @@ function PuceAxe({ axe, petite, ronde }: { axe: string; petite?: boolean; ronde?
   );
 }
 
-/**
- * La courbe de pied de pastille : douze mois, la cible en pointillé, le
- * dernier point marqué. Rouge seulement quand la dernière valeur manque la
- * cible ; gris sinon.
- */
-function Etincelle({ valeurs, cible, horsCible }: { valeurs: (number | null)[]; cible: number | null; horsCible: boolean }) {
-  const connus = valeurs.filter((v): v is number => v !== null);
-  if (connus.length < 2) return <div className="h-7" />;
-  const bornes = [...connus, ...(cible !== null ? [cible] : [])];
-  const min = Math.min(...bornes);
-  const max = Math.max(...bornes);
-  const W = 200;
-  const H = 40;
-  const x = (i: number) => 4 + (i * (W - 8)) / (valeurs.length - 1);
-  const y = (v: number) => H - 4 - ((v - min) / (max - min || 1)) * (H - 8);
-  let trace = "";
-  let dernierIndex = 0;
-  valeurs.forEach((v, i) => {
-    if (v === null) return;
-    trace += `${trace ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)} `;
-    dernierIndex = i;
-  });
-  const teinte = horsCible ? "var(--color-defavorable)" : "var(--color-attenue)";
-  const fond = horsCible ? "var(--color-defavorable-fond)" : "var(--color-surface-3)";
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block h-7 w-full overflow-visible" aria-hidden="true">
-      {cible !== null ? <line x1="4" x2={W - 4} y1={y(cible).toFixed(1)} y2={y(cible).toFixed(1)} stroke="var(--color-attenue-2)" strokeDasharray="3 3" /> : null}
-      <path d={`${trace}L${x(dernierIndex).toFixed(1)},${H - 4} L4,${H - 4} Z`} fill={fond} />
-      <path d={trace} fill="none" stroke={teinte} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={x(dernierIndex).toFixed(1)} cy={y(valeurs[dernierIndex]!).toFixed(1)} r="3.2" fill={teinte} stroke="var(--color-surface)" strokeWidth="1.5" />
-    </svg>
-  );
-}
+/* La courbe de pied de pastille — quatorze jours, cible en pointillé — a été
+   retirée le 10 septembre 2026 à la demande du métier : elle occupait le bas
+   de chaque carte pour un signal que la flèche de progression donne en un
+   caractère. Les courbes gardent leur place, en dessous, sur douze mois : la
+   pastille dit l'état du moment, pas la tendance. */
 
 export function EcranTableauBord({
   mois,
@@ -440,7 +412,7 @@ export function EcranTableauBord({
           <p className="meta">Aucune pastille retenue. Ouvrez « Choisir les indicateurs » pour composer votre rangée.</p>
         </div>
       ) : (
-        <div className="grid shrink-0 grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <div className="grid shrink-0 grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           {pastilles.map((p) => {
             const d = p.definition;
             const diff = p.valeur !== null && p.reference !== null ? p.valeur - p.reference : null;
@@ -451,7 +423,7 @@ export function EcranTableauBord({
                 key={d.id}
                 href={d.href}
                 title={[d.libelle, MOMENT[d.moment].toLowerCase(), p.seuilTexte, "ouvrir l'écran qui explique le chiffre"].filter(Boolean).join(" — ")}
-                className={`carte relative flex min-h-[152px] flex-col gap-2 overflow-hidden px-4 pt-3 pb-2.5 transition-colors hover:bg-surface-2 ${p.alerte ? "border-defavorable-bordure" : ""}`}
+                className={`carte relative flex min-h-[140px] flex-col gap-2 overflow-hidden px-4 pt-3 pb-3 transition-colors hover:bg-surface-2 ${p.alerte ? "border-defavorable-bordure" : ""}`}
               >
                 {p.alerte ? <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px] bg-defavorable" /> : null}
                 {/* La ligne de titre : le libellé tient la largeur, la puce de
@@ -462,19 +434,33 @@ export function EcranTableauBord({
                   <span className="line-clamp-2 min-h-[32px] flex-1 text-[12.5px] leading-[1.3] font-semibold text-texte">{d.libelle}</span>
                   <PuceAxe axe={d.axe} ronde />
                 </span>
-                <span className={`flex min-w-0 items-baseline gap-1.5 text-[30px] leading-none font-bold tracking-[-0.03em] tabular-nums ${p.valeur === null ? "text-attenue-2" : p.alerte ? "text-defavorable" : "text-texte"}`}>
-                  {p.valeur === null ? "—" : nombre(p.valeur, d.decimales ?? 0)}
-                  {p.valeur !== null && d.unite ? <small className="text-[13px] font-medium tracking-normal text-texte-2">{d.unite}</small> : null}
-                  {p.complement ? <small className="truncate text-[12px] font-medium tracking-normal text-texte-2">{p.complement}</small> : null}
+                {/* Le chiffre porte la carte : la mini-courbe des quatorze
+                    jours a quitté le pied (demande du métier, 10 septembre
+                    2026), et toute la place qu'elle prenait revient à lui. */}
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className={`flex min-w-0 items-baseline gap-1.5 text-[38px] leading-none font-bold tracking-[-0.035em] tabular-nums ${p.valeur === null ? "text-attenue-2" : p.alerte ? "text-defavorable" : "text-texte"}`}>
+                    {p.valeur === null ? "—" : nombre(p.valeur, d.decimales ?? 0)}
+                    {p.valeur !== null && d.unite ? <small className="text-[14px] font-medium tracking-normal text-texte-2">{d.unite}</small> : null}
+                  </span>
+                  {/* Le complément descend sous le chiffre : à six pastilles de
+                      front la carte fait cent cinquante pixels, et « / 47
+                      engagés » posé sur la même ligne qu'un chiffre de
+                      trente-huit se coupait. */}
+                  {p.complement ? <span className="truncate text-[12px] font-medium text-texte-2">{p.complement}</span> : null}
                 </span>
                 <span className="mt-auto flex min-w-0 flex-col gap-1">
-                  {/* La légende passe à la ligne plutôt que de se couper : nos
-                      références sont des phrases françaises — « 6 484 L de
-                      moins que la semaine passée » — et une phrase tronquée à
-                      « 6 484 L de m… » ne dit plus rien. */}
+                  {/* La flèche de progression dit le sens d'un coup d'œil, et
+                      c'est elle qui remplace la courbe : montée, descente, ou
+                      la barre du surplace. Sa couleur suit le sens *voulu* —
+                      moins de véhicules hors service est une bonne nouvelle,
+                      moins de véhicules prêts n'en est pas une. */}
                   <span className="flex min-w-0 items-start gap-1.5 text-[11.5px] leading-[1.35] text-texte-2">
-                    {diff !== null ? <span className={`shrink-0 font-semibold ${diff === 0 ? "" : bonSens === false && p.alerte ? "text-defavorable" : bonSens ? "text-favorable" : ""}`}>{diff === 0 ? "=" : diff > 0 ? "▲" : "▼"}</span> : null}
-                    <span className="line-clamp-2">{p.referenceTexte || (p.valeur === null ? "sans donnée" : "")}</span>
+                    {diff !== null ? (
+                      <span aria-hidden="true" className={`shrink-0 text-[15px] leading-[1.1] font-semibold ${diff === 0 ? "text-attenue" : bonSens === false && p.alerte ? "text-defavorable" : bonSens ? "text-favorable" : "text-texte-2"}`}>
+                        {diff === 0 ? "→" : diff > 0 ? "↗" : "↘"}
+                      </span>
+                    ) : null}
+                    <span className="line-clamp-2 pt-0.5">{p.referenceTexte || (p.valeur === null ? "sans donnée" : "")}</span>
                   </span>
                   {/* Le seuil n'explique que le rouge : il ne s'affiche donc
                       qu'avec lui. Hors alerte, « Rouge au-dessus de cinq
@@ -483,13 +469,6 @@ export function EcranTableauBord({
                   <span className={`truncate text-[11px] ${p.alerte ? "text-defavorable" : "text-attenue"}`}>
                     {p.alerte && p.seuilTexte ? p.seuilTexte : <span className="font-semibold tracking-[0.06em] uppercase">{MOMENT[d.moment]}</span>}
                   </span>
-                </span>
-                {/* Les quatorze jours en pied, sur toute la largeur mais courts :
-                    à dix unités de haut ils pesaient plus que le chiffre ; à
-                    sept ils redeviennent une note en marge, et le chiffre comme
-                    la légende gardent la largeur entière. */}
-                <span className="-mx-1 -mb-1 block">
-                  <Etincelle valeurs={p.quatorze} cible={p.seuil} horsCible={p.alerte} />
                 </span>
               </Link>
             );

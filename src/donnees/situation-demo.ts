@@ -2,7 +2,9 @@
  * Les situations journalières de la démonstration — ce que chaque véhicule et
  * la flotte présentaient à la fin de chaque jour des quatre dernières
  * semaines. C'est la matière des pastilles du tableau de bord (état du
- * moment, référence d'hier ou de la semaine passée, quatorze jours en pied).
+ * moment, référence d'hier ou de la semaine passée). Les quatre semaines
+ * restent lues : la référence en a besoin, même depuis que le pied de
+ * pastille ne porte plus de courbe (10 septembre 2026).
  *
  * Tout se déduit des fiches : périodes de statut, documents, affectations,
  * relevés, pleins, dépenses ; des incidents ; des indisponibilités des

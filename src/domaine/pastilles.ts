@@ -329,10 +329,15 @@ export function texteSeuil(p: DefinitionPastille, seuil: number | null): string 
   return p.seuilTexte ?? "";
 }
 
-export const MAX_PASTILLES = 5;
+export const MAX_PASTILLES = 6;
 
-/** Le défaut retenu le 8 septembre 2026 : hors service, prêts, échéances, carburant, jours sans accident. */
-export const PASTILLES_DEFAUT = ["p-hors-service", "p-prets", "p-echeances-7", "p-carburant-semaine", "p-jours-sans-accident"];
+/**
+ * Le défaut retenu le 8 septembre 2026, porté à six le 10 septembre à la
+ * demande du métier. Le sixième complète les cinq axes : D, D, Q, C, S — il
+ * manquait **M**, et les chauffeurs indisponibles sont l'état du moment qui
+ * s'y rattache le plus directement.
+ */
+export const PASTILLES_DEFAUT = ["p-hors-service", "p-prets", "p-echeances-7", "p-carburant-semaine", "p-jours-sans-accident", "p-chauffeurs-indisponibles"];
 
 /** Une sélection relue du stockage, bornée à la rangée. Les anciens identifiants d'indicateurs de période sont ignorés. */
 export function limiterPastilles(selection: string[]): string[] {
@@ -369,8 +374,6 @@ export interface ValeurPastille {
   seuilTexte: string;
   /** Vrai quand le seuil est franchi. */
   alerte: boolean;
-  /** Les quatorze derniers jours, pour la mini-courbe. */
-  quatorze: (number | null)[];
 }
 
 /**
@@ -383,7 +386,7 @@ export function seuilFranchi(p: DefinitionPastille, valeur: number | null, seuil
   return p.seuil.sens === "inf" ? valeur > seuil : valeur < seuil;
 }
 
-/** Évalue une pastille au dernier jour de la série, avec sa référence, son seuil réglé et ses quatorze jours. */
+/** Évalue une pastille au dernier jour de la série, avec sa référence et son seuil réglé. */
 export function evaluerPastille(p: DefinitionPastille, jours: SituationJournaliere[], seuils: Record<string, number> = SEUILS_DEFAUT): ValeurPastille {
   const seuil = seuilDe(p, seuils);
   const dernier = jours.length - 1;
@@ -395,7 +398,6 @@ export function evaluerPastille(p: DefinitionPastille, jours: SituationJournalie
   const valeur = ctx ? p.calcul(ctx) : null;
   const decalage = p.reference === "hier" ? 1 : p.reference === "semaine-passee" ? 7 : 0;
   const reference = decalage ? a(dernier - decalage) : null;
-  const quatorze = Array.from({ length: 14 }, (_, k) => a(dernier - 13 + k));
   let referenceTexte = "";
   if (p.reference !== "aucune" && valeur !== null && reference !== null) {
     const decimales = p.decimales ?? 0;
@@ -405,5 +407,5 @@ export function evaluerPastille(p: DefinitionPastille, jours: SituationJournalie
     referenceTexte = diff === 0 ? `comme ${quoi}` : `${Math.abs(diff).toLocaleString("fr-FR", { maximumFractionDigits: decimales })}${unite} de ${diff > 0 ? "plus" : "moins"} qu${quoi === "hier" ? "'hier" : "e la semaine passée"}`;
   } else if (p.reference !== "aucune") referenceTexte = "pas de référence";
   const alerte = p.alerte && ctx ? p.alerte(ctx, seuil) : seuilFranchi(p, valeur, seuil);
-  return { definition: p, valeur, complement: ctx && p.complement ? p.complement(ctx) : null, reference, referenceTexte, seuil, seuilTexte: texteSeuil(p, seuil), alerte, quatorze };
+  return { definition: p, valeur, complement: ctx && p.complement ? p.complement(ctx) : null, reference, referenceTexte, seuil, seuilTexte: texteSeuil(p, seuil), alerte };
 }
