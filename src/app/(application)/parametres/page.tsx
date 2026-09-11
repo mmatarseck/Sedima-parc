@@ -38,7 +38,7 @@ export default function PageParametres() {
   return (
     <div className="defilement-discret flex flex-col gap-5 px-8 py-7 lg:h-full lg:overflow-y-auto">
       <TitreEcran titre="Paramètres" sousTitre="Ce qui règle l'application — douze sections : neuf où l'on saisit, trois qui montrent et disent pourquoi" />
-      <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <ul className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {SECTIONS.map((s) => {
           const Icone = s.icone;
           const contenu = (
@@ -57,11 +57,11 @@ export default function PageParametres() {
           return (
             <li key={s.href}>
               {s.livre ? (
-                <Link href={s.href} className="carte flex items-start gap-4 px-5 py-4 transition-colors hover:bg-surface-2">
+                <Link href={s.href} className="carte flex h-full items-start gap-4 px-5 py-4 transition-colors hover:bg-surface-2">
                   {contenu}
                 </Link>
               ) : (
-                <div className="carte flex items-start gap-4 px-5 py-4 opacity-80" title="Prévu au cadrage, pas encore livré">
+                <div className="carte flex h-full items-start gap-4 px-5 py-4 opacity-80" title="Prévu au cadrage, pas encore livré">
                   {contenu}
                 </div>
               )}
