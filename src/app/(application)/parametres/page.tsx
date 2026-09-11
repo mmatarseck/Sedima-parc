@@ -8,10 +8,11 @@ export const metadata = { title: titrePage("Paramètres") };
 /**
  * Paramètres — ce qui règle l'application plutôt que le parc.
  *
- * Les douze sections sont livrées. Trois d'entre elles **montrent sans laisser
- * modifier**, et c'est délibéré : les référentiels sont les clés des
- * enregistrements, les rôles ne se décident jamais dans le navigateur, et un
- * barème de prime ne se change pas en cours de période. Chacune dit pourquoi,
+ * Les quatorze sections sont livrées. Quatre d'entre elles **montrent sans
+ * laisser modifier**, et c'est délibéré : les référentiels sont les clés des
+ * enregistrements, un barème de prime ne se change pas en cours de période,
+ * les gabarits d'entretien attendent de savoir qui en a la main, et le
+ * diagnostic est une lecture. Chacune dit pourquoi,
  * et ce qui viendra avec la base.
  */
 const SECTIONS = [
@@ -37,7 +38,7 @@ const SECTIONS = [
 export default function PageParametres() {
   return (
     <div className="defilement-discret flex flex-col gap-5 px-8 py-7 lg:h-full lg:overflow-y-auto">
-      <TitreEcran titre="Paramètres" sousTitre="Ce qui règle l'application — douze sections : neuf où l'on saisit, trois qui montrent et disent pourquoi" />
+      <TitreEcran titre="Paramètres" sousTitre="Ce qui règle l'application — quatorze sections : dix où l'on saisit, quatre qui montrent et disent pourquoi" />
       <ul className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {SECTIONS.map((s) => {
           const Icone = s.icone;
