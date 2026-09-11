@@ -300,6 +300,8 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
     cycleAchatJours,
     vehiculesSpeciaux,
     vehiculesSpeciauxConformes,
+    /* Un registre vide sur la profondeur du tableau n'est pas tenu : ses zéros ne sont pas des mesures. */
+    registres: { incidents: j.incidents.length > 0, contraventions: j.depenses.some((x) => x.poste === "contravention"), indisponibilites: j.indisponibilites.length > 0 },
   };
 
   alertes.sort((x, y) => (x.niveau === y.niveau ? 0 : x.niveau === "critique" ? -1 : 1));

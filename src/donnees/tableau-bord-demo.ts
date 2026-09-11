@@ -407,6 +407,8 @@ export function donneesTableau(): DonneesTableau {
     cycleAchatJours,
     vehiculesSpeciaux,
     vehiculesSpeciauxConformes,
+    /* La démonstration tient ses registres. */
+    registres: { incidents: true, contraventions: true, indisponibilites: true },
   };
 
   /* Les alertes les plus urgentes d'abord : les échues avant celles qui arrivent. */

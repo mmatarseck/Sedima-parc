@@ -198,6 +198,9 @@ export function situationsJournalieres(aujourdhui: string = DATE_REFERENCE, prof
       demandesSansReponse: demandes.filter((d) => !d.annuleeLe && d.echeance.slice(0, 10) <= jour && (!d.reponse || d.reponse.le.slice(0, 10) > jour)).length,
       dernierPlein,
       dernierReleveTransport,
+      /* La démonstration tient ses registres. */
+      registreIncidents: true,
+      registreIndisponibilites: true,
       ...faitsDesTiers(jour),
     };
     return { jour, vehicules, flotte };

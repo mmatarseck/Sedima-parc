@@ -87,6 +87,14 @@ export interface FaitsFlotteJour {
    * semaine sans tonne après le dernier voyage n'est pas une semaine à zéro.
    */
   dernierReleveTransport: string | null;
+  /**
+   * Le registre des incidents est-il tenu ? Faux quand il ne porte aucune ligne,
+   * toutes dates confondues (0042) : zéro panne et zéro accident ne sont alors pas
+   * des mesures. Nul pour une base restée en deçà.
+   */
+  registreIncidents: boolean | null;
+  /** Même règle pour les indisponibilités des chauffeurs. */
+  registreIndisponibilites: boolean | null;
 
   /* -- Le parc des prestataires (métier, 10 septembre 2026) -----------------
    *
@@ -231,7 +239,9 @@ export const PASTILLES: DefinitionPastille[] = [
     reference: "semaine-passee",
     seuil: { sens: "inf", defaut: 3, texte: desLePremier("pannes par semaine") },
     href: "/incidents",
-    calcul: (c) => somme(c.depuisLundi, (v) => v.pannes),
+    /* Un registre vide ne dit pas « aucune panne » : il dit qu'on ne les note pas encore (0042). */
+    calcul: (c) => (c.jour.flotte.registreIncidents === false ? null : somme(c.depuisLundi, (v) => v.pannes)),
+    complement: (c) => (c.jour.flotte.registreIncidents === false ? "aucun incident enregistré" : null),
   },
   {
     id: "p-jours-sans-accident",
@@ -252,7 +262,8 @@ export const PASTILLES: DefinitionPastille[] = [
     reference: "semaine-passee",
     seuil: { sens: "inf", defaut: 0, texte: desLePremier("accidents par semaine") },
     href: "/incidents",
-    calcul: (c) => somme(c.depuisLundi, (v) => v.accidents),
+    calcul: (c) => (c.jour.flotte.registreIncidents === false ? null : somme(c.depuisLundi, (v) => v.accidents)),
+    complement: (c) => (c.jour.flotte.registreIncidents === false ? "aucun incident enregistré" : null),
   },
   {
     id: "p-echeances-7",
@@ -377,7 +388,7 @@ export const PASTILLES: DefinitionPastille[] = [
     reference: "hier",
     seuil: { sens: "inf", defaut: 3, texte: desLePremier("chauffeurs") },
     href: "/chauffeurs",
-    calcul: (c) => c.jour.flotte.chauffeursIndisponibles,
+    calcul: (c) => (c.jour.flotte.registreIndisponibilites === false ? null : c.jour.flotte.chauffeursIndisponibles),
     complement: (c) => `/ ${c.jour.flotte.chauffeurs}`,
   },
   {

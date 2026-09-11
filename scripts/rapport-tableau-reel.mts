@@ -181,6 +181,8 @@ const situations: SituationJournaliere[] = brutes.map((s) => ({
     demandesSansReponse: nombreOuNul(s.flotte.demandes_sans_reponse),
     dernierPlein: (s.flotte.dernier_plein as string | null) ?? null,
     dernierReleveTransport: (s.flotte.dernier_releve_transport as string | null) ?? null,
+    registreIncidents: (s.flotte.registre_incidents as boolean | null) ?? null,
+    registreIndisponibilites: (s.flotte.registre_indisponibilites as boolean | null) ?? null,
     tiersCamions: nombreOuNul(s.flotte.tiers_camions),
     tiersMad: nombreOuNul(s.flotte.tiers_mad),
     tiersMadPanne: nombreOuNul(s.flotte.tiers_mad_panne),

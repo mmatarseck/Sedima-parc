@@ -150,6 +150,12 @@ export interface SituationJour {
   /** Véhicules de transport spécial et ceux dont le certificat de salubrité est valide. */
   vehiculesSpeciaux: number;
   vehiculesSpeciauxConformes: number;
+  /**
+   * Les registres tenus. Un registre sans aucune ligne n'est pas encore tenu, et
+   * ses comptes ne sont pas des zéros : les courbes qui en vivent disent « — »
+   * (11 septembre 2026, même règle que la carte grise).
+   */
+  registres: { incidents: boolean; contraventions: boolean; indisponibilites: boolean };
 }
 
 /** Les faits d'une période, tous véhicules retenus confondus. */
@@ -320,7 +326,7 @@ const pct = (n: number, d: number): number | null => (d > 0 ? Math.round((n / d)
  */
 export const INDICATEURS: DefinitionIndicateur[] = [
   /* ---- S — Sécurité ---- */
-  { id: "s1", axe: "S", libelle: "Accidents de circulation", forme: "barres", cibleTexte: "Cible 0", cible: { sens: "inf", valeur: 0 }, href: "/incidents", calcul: (c) => c.accidents },
+  { id: "s1", axe: "S", libelle: "Accidents de circulation", forme: "barres", cibleTexte: "Cible 0", cible: { sens: "inf", valeur: 0 }, href: "/incidents", calcul: (c) => (c.jour.registres.incidents ? c.accidents : null) },
   {
     id: "s2",
     axe: "S",
@@ -330,16 +336,16 @@ export const INDICATEURS: DefinitionIndicateur[] = [
     cible: { sens: "inf", valeur: 1 },
     decimales: 1,
     href: "/incidents",
-    calcul: (c) => (c.km > 0 ? Math.round((c.accidents / c.km) * 100_000 * 10) / 10 : null),
+    calcul: (c) => (c.km > 0 && c.jour.registres.incidents ? Math.round((c.accidents / c.km) * 100_000 * 10) / 10 : null),
   },
-  { id: "s3", axe: "S", libelle: "Contraventions", forme: "barres", cibleTexte: "Cible ≤ 5 par mois", cible: { sens: "inf", valeur: 5 }, parMois: true, href: "/couts?vue=postes", calcul: (c) => c.contraventions },
+  { id: "s3", axe: "S", libelle: "Contraventions", forme: "barres", cibleTexte: "Cible ≤ 5 par mois", cible: { sens: "inf", valeur: 5 }, parMois: true, href: "/couts?vue=postes", calcul: (c) => (c.jour.registres.contraventions ? c.contraventions : null) },
   { id: "s4", axe: "S", libelle: "Score de conduite télématique", unite: "/100", cibleTexte: "Cible ≥ 80 · source Teltonika", cible: { sens: "sup", valeur: 80 }, href: "/", aVenir: "Télématique Teltonika — lot 3" },
   { id: "s5", axe: "S", libelle: "Véhicules non conformes en circulation", forme: "barres", cibleTexte: "Cible 0 · VT ou assurance échue", cible: { sens: "inf", valeur: 0 }, decimales: 1, href: "/conformite", calcul: (c) => c.nonConformes },
   { id: "s6", axe: "S", libelle: "Jours sans accident", unite: "j", cibleTexte: "Le plus haut possible", instantane: true, href: "/incidents", calcul: (c) => c.jour.joursSansAccident },
 
   /* ---- Q — Qualité ---- */
   { id: "q1", axe: "Q", libelle: "Livraisons sans incident qualité", unite: "%", cibleTexte: "Cible ≥ 98 %", cible: { sens: "sup", valeur: 98 }, href: "/", aVenir: "Livraisons SediLiv — lot 3" },
-  { id: "q2", axe: "Q", libelle: "Incidents produit à la livraison", forme: "barres", cibleTexte: "Casse, manquant, écart quantité", cible: { sens: "inf", valeur: 0 }, href: "/incidents", calcul: (c) => c.avariesChargement },
+  { id: "q2", axe: "Q", libelle: "Incidents produit à la livraison", forme: "barres", cibleTexte: "Casse, manquant, écart quantité", cible: { sens: "inf", valeur: 0 }, href: "/incidents", calcul: (c) => (c.jour.registres.incidents ? c.avariesChargement : null) },
   { id: "q3", axe: "Q", libelle: "Écarts de pesée hors tolérance", unite: "%", cibleTexte: "Cible ≤ 1 % · pont bascule", cible: { sens: "inf", valeur: 1 }, href: "/", aVenir: "Pont bascule — non branché" },
   { id: "q4", axe: "Q", libelle: "Ruptures de chaîne du froid", cibleTexte: "Cible 0 · camions frigo", cible: { sens: "inf", valeur: 0 }, href: "/", aVenir: "Télématique frigorifique — lot 3" },
   {
@@ -384,7 +390,7 @@ export const INDICATEURS: DefinitionIndicateur[] = [
     href: "/maintenance?vue=ordres",
     calcul: (c) => (c.curativesSansDureeSpeciaux > 0 || c.immobilisationsSansDebutSpeciaux > 0 ? null : c.joursImmobilisesSpeciaux * 24),
   },
-  { id: "d3", axe: "D", code: "D_NPVEL", libelle: "Pannes de véhicules en ligne", forme: "barres", cibleTexte: "Cible ≤ 5 par mois · en mission", cible: { sens: "inf", valeur: 5 }, parMois: true, href: "/incidents", calcul: (c) => c.pannesEnMission },
+  { id: "d3", axe: "D", code: "D_NPVEL", libelle: "Pannes de véhicules en ligne", forme: "barres", cibleTexte: "Cible ≤ 5 par mois · en mission", cible: { sens: "inf", valeur: 5 }, parMois: true, href: "/incidents", calcul: (c) => (c.jour.registres.incidents ? c.pannesEnMission : null) },
   { id: "d4", axe: "D", libelle: "Taux de service OTIF", unite: "%", cibleTexte: "Cible ≥ 95 % · réalisé vs plan", cible: { sens: "sup", valeur: 95 }, href: "/", aVenir: "Plan de livraison SediLiv — lot 3" },
   { id: "d5", axe: "D", libelle: "Taux de remplissage des camions", unite: "%", cibleTexte: "Cible ≥ 85 %", cible: { sens: "sup", valeur: 85 }, href: "/", aVenir: "Tonnages SediLiv — lot 3" },
   {
@@ -540,7 +546,7 @@ export const INDICATEURS: DefinitionIndicateur[] = [
     cible: { sens: "inf", valeur: 4 },
     decimales: 1,
     href: "/chauffeurs",
-    calcul: (c) => pct(c.joursIndisponibiliteChauffeurs, c.joursChauffeurs),
+    calcul: (c) => (c.jour.registres.indisponibilites ? pct(c.joursIndisponibiliteChauffeurs, c.joursChauffeurs) : null),
   },
 ];
 

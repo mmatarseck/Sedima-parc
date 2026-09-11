@@ -59,7 +59,17 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
-**⚠ Migration 0041 à jouer : « immobilisé depuis un jour » cesse de mentir**
+**⚠ Migration 0042 à jouer : « zéro panne, zéro accident » cesse de mentir**
+(11 septembre 2026). Les registres des incidents et des indisponibilités n'ont
+aucune ligne depuis la purge, ni les contraventions dans les dépenses : aucune
+source n'a été chargée. Un registre sans aucune ligne n'est pas tenu, et ses
+comptes ne sont pas des zéros — la règle de la carte grise. La situation
+journalière dit les registres tenus ; les pastilles Pannes, Accidents et
+Chauffeurs indisponibles disent « — », les courbes des accidents, du taux de
+fréquence, des contraventions, des incidents produit, des pannes en ligne et de
+l'absentéisme aussi (`SituationJour.registres`). Banc `tester-registres.mts`.
+
+**Migration 0041 jouée : « immobilisé depuis un jour » cesse de mentir**
 (11 septembre 2026). Le tableau affichait 18 hors service et zéro immobilisé
 depuis plus de sept jours : sans trace de statut ni réparation, la situation
 journalière datait la panne à l'enregistrement de la fiche, c'est-à-dire au
@@ -146,7 +156,7 @@ attrapé une fois de plus.
 viennent les lignes, pourquoi le prix est le tarif officiel de la date, et ce
 qui n'est pas chargé.
 
-**Migrations : 0001 à 0040 jouées** (0037 à 0040 et leurs chargements confirmés le 11 septembre 2026) ; **0041 en attente**.
+**Migrations : 0001 à 0041 jouées** (0037 à 0041 et leurs chargements confirmés le 11 septembre 2026) ; **0042 en attente**.
 
 **Le chargement des données réelles est fait** (10 septembre 2026) : les douze
 parties du seed, `aligner-referentiel.sql`, `purge-demonstration.sql` et

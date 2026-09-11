@@ -152,9 +152,17 @@ Tant que 0037 n'est pas jouée, l'application ne tombe pas : faute de
 
   293 opérations sur 307 n'ont pas de passage relevé, et 46 véhicules n'ont pas
   de compteur récent. Le rapport imprime ce décompte sous « PLAN D'ENTRETIEN ».
-- **Accidents, pannes, contraventions et absentéisme à 0.** Aucune source n'a
-  été chargée. L'état des véhicules en panne du dossier DO ne porte aucune
-  date.
+- **Accidents, pannes, contraventions et absentéisme à 0** — *corrigé le
+  11 septembre 2026 (migration 0042).* Aucune source n'a été chargée : les
+  registres des incidents et des indisponibilités n'ont aucune ligne, ni les
+  contraventions dans les dépenses. Un registre sans aucune ligne n'est pas
+  tenu, et ses comptes ne sont pas des zéros, comme pour la carte grise. Les
+  pastilles Pannes et Accidents disent « — » et « aucun incident enregistré »,
+  Chauffeurs indisponibles « — ». Les courbes des accidents, du taux de
+  fréquence, des contraventions, des incidents produit, des pannes en ligne et
+  de l'absentéisme sortent « — ». Dès la première ligne déclarée, les zéros
+  redeviennent des mesures. L'état des véhicules en panne du dossier DO ne
+  porte toujours aucune date, et ne peut donc pas alimenter le registre.
 - **Coût du transport à la tonne.** Le relevé de tonnage est chargé depuis le
   11 septembre 2026, du 15 juin au 3 septembre ; seuls les mois qu'il couvre en
   entier portent une valeur, et le coût à la tonne des tiers reste à prendre
