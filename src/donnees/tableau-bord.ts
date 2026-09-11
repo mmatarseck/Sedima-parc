@@ -166,7 +166,9 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
     for (let i = 0; i < trace.length; i++) periodes.push({ statut: trace[i]!.apres as StatutVehicule, debut: trace[i]!.le.slice(0, 10), fin: trace[i + 1] ? trace[i + 1]!.le.slice(0, 10) : null });
     for (const i of (interventionsPar.get(v.id) ?? []).filter((x) => x.type === "curatif" && (x.immobilisation_jours ?? 0) > 0)) periodes.push({ statut: "en-reparation", debut: i.date, fin: plusJours(i.date, i.immobilisation_jours ?? 0) });
     const situation = situationPar.get(v.id) ?? null;
-    if (periodes.length === 0 && IMMOBILISANTS.includes(v.statut)) periodes.push({ statut: v.statut, debut: plusJours(aujourdhui, -Math.max(0, (situation?.immobiliseDepuisJours ?? 1) - 1)), fin: null });
+    /* Sans trace ni réparation, la situation ne sait pas depuis quand le véhicule est arrêté (0041) : aucune période n'est posée, et la disponibilité se dira inconnue. */
+    const debutInconnu = periodes.length === 0 && IMMOBILISANTS.includes(v.statut) && situation !== null && situation.immobiliseDepuisJours === null;
+    if (periodes.length === 0 && IMMOBILISANTS.includes(v.statut) && !debutInconnu) periodes.push({ statut: v.statut, debut: plusJours(aujourdhui, -Math.max(0, (situation?.immobiliseDepuisJours ?? 1) - 1)), fin: null });
 
     const profil = { categorie: v.categorie, transportSpecial: v.transport_special, statut: v.statut };
     const documents = (documentsPar.get(v.id) ?? []).map((d) => ({ type: d.type_document_id as TypeDocument, numero: d.numero, dateEffet: d.date_effet, echeance: d.echeance }));
@@ -208,6 +210,8 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
         immobilisationInterventions: interventions.reduce((s, i) => s + (i.immobilisation_jours ?? 0), 0),
         nombreInterventions: interventions.filter((i) => i.immobilisation_jours !== null).length,
         curativesSansDuree: interventions.filter((i) => i.type === "curatif" && i.immobilisation_jours === null).length,
+        /* Arrêté depuis une date inconnue : il a pu l'être pendant n'importe quelle période. */
+        immobilisationsSansDebut: debutInconnu ? 1 : 0,
         cout: depenses.reduce((s, d) => s + n(d.montant), 0),
         coutMaintenance: depenses.filter((d) => groupeDuPoste(d.poste) === "maintenance").reduce((s, d) => s + n(d.montant), 0),
         coutCuratif: depenses.filter((d) => d.poste === "maintenance-curative").reduce((s, d) => s + n(d.montant), 0),
@@ -232,7 +236,8 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
       if (j0 < 0) alertes.push({ immatriculation: v.immatriculation, immatriculationAffichee, libelle: `${TYPE_DOCUMENT[d.type]} échue`, echeance: `échue de ${Math.abs(j0)} j`, niveau: "critique", href: `/flotte/${v.immatriculation}?onglet=conformite&ref=${d.numero}` });
       else if (j0 <= 30) alertes.push({ immatriculation: v.immatriculation, immatriculationAffichee, libelle: TYPE_DOCUMENT[d.type], echeance: `dans ${j0} j`, niveau: "vigilance", href: `/flotte/${v.immatriculation}?onglet=conformite&ref=${d.numero}` });
     }
-    const immobiliseDepuis = situation && IMMOBILISANTS.includes(situation.statut) ? situation.immobiliseDepuisJours : 0;
+    /* Une immobilisation de durée inconnue ne déclenche pas l'alerte « prolongée » : elle ne se chiffre pas. */
+    const immobiliseDepuis = situation && IMMOBILISANTS.includes(situation.statut) ? (situation.immobiliseDepuisJours ?? 0) : 0;
     if (immobiliseDepuis >= 21) alertes.push({ immatriculation: v.immatriculation, immatriculationAffichee, libelle: "Immobilisation prolongée", echeance: `${immobiliseDepuis} j au garage`, niveau: immobiliseDepuis >= 45 ? "critique" : "vigilance", href: `/flotte/${v.immatriculation}?onglet=journal` });
   }
 

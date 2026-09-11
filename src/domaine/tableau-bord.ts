@@ -83,6 +83,8 @@ export interface FaitsVehiculeMois {
   nombreInterventions: number;
   /** Interventions curatives dont la durée d'immobilisation n'est pas connue : tant qu'il en reste, la disponibilité ne se calcule pas. */
   curativesSansDuree: number;
+  /** Véhicules immobilisés depuis une date inconnue : la disponibilité ne se calcule pas non plus (0041). */
+  immobilisationsSansDebut: number;
   cout: number;
   coutMaintenance: number;
   coutCuratif: number;
@@ -185,12 +187,15 @@ export interface Cumul {
   nombreInterventions: number;
   /** Interventions curatives dont la durée d'immobilisation n'est pas connue : tant qu'il en reste, la disponibilité ne se calcule pas. */
   curativesSansDuree: number;
+  /** Véhicules immobilisés depuis une date inconnue : la disponibilité ne se calcule pas non plus (0041). */
+  immobilisationsSansDebut: number;
   cout: number;
   coutMaintenance: number;
   coutCuratif: number;
   /** Jours d'immobilisation des seuls véhicules de transport spécial. */
   joursImmobilisesSpeciaux: number;
   curativesSansDureeSpeciaux: number;
+  immobilisationsSansDebutSpeciaux: number;
   joursIndisponibiliteChauffeurs: number;
   joursChauffeurs: number;
   /** Coût du transport tiers sur la période — module Transporteurs. */
@@ -236,11 +241,13 @@ export function cumuler(faits: FaitsVehiculeMois[], flotte: FaitsFlotteMois[], j
     immobilisationInterventions: somme((f) => f.immobilisationInterventions),
     nombreInterventions: somme((f) => f.nombreInterventions),
     curativesSansDuree: somme((f) => (f.engage ? f.curativesSansDuree : 0)),
+    immobilisationsSansDebut: somme((f) => (f.engage ? f.immobilisationsSansDebut : 0)),
     cout: somme((f) => f.cout),
     coutMaintenance: somme((f) => f.coutMaintenance),
     coutCuratif: somme((f) => f.coutCuratif),
     joursImmobilisesSpeciaux: somme((f) => (f.transportSpecial ? f.joursImmobilises : 0)),
     curativesSansDureeSpeciaux: somme((f) => (f.transportSpecial ? f.curativesSansDuree : 0)),
+    immobilisationsSansDebutSpeciaux: somme((f) => (f.transportSpecial ? f.immobilisationsSansDebut : 0)),
     joursIndisponibiliteChauffeurs: flotte.reduce((s, f) => s + f.joursIndisponibiliteChauffeurs, 0),
     joursChauffeurs: flotte.reduce((s, f) => s + f.joursChauffeurs, 0),
     coutTransportTiers: flotte.reduce((s, f) => s + f.coutTransportTiers, 0),
@@ -361,7 +368,7 @@ export const INDICATEURS: DefinitionIndicateur[] = [
     decimales: 1,
     href: "/disponibilite",
     /* Une panne dont la durée n'est pas relevée ne compte pour aucun jour : le taux sortirait à 100 %. Tant qu'il en reste sur la période, on ne sait pas. */
-    calcul: (c) => (c.curativesSansDuree > 0 || c.joursVehicules <= 0 ? null : Math.round((1 - c.joursImmobilises / c.joursVehicules) * 1000) / 10),
+    calcul: (c) => (c.curativesSansDuree > 0 || c.immobilisationsSansDebut > 0 || c.joursVehicules <= 0 ? null : Math.round((1 - c.joursImmobilises / c.joursVehicules) * 1000) / 10),
   },
   {
     id: "d2",
@@ -375,7 +382,7 @@ export const INDICATEURS: DefinitionIndicateur[] = [
     cible: { sens: "inf", valeur: 250 },
     parMois: true,
     href: "/maintenance?vue=ordres",
-    calcul: (c) => (c.curativesSansDureeSpeciaux > 0 ? null : c.joursImmobilisesSpeciaux * 24),
+    calcul: (c) => (c.curativesSansDureeSpeciaux > 0 || c.immobilisationsSansDebutSpeciaux > 0 ? null : c.joursImmobilisesSpeciaux * 24),
   },
   { id: "d3", axe: "D", code: "D_NPVEL", libelle: "Pannes de véhicules en ligne", forme: "barres", cibleTexte: "Cible ≤ 5 par mois · en mission", cible: { sens: "inf", valeur: 5 }, parMois: true, href: "/incidents", calcul: (c) => c.pannesEnMission },
   { id: "d4", axe: "D", libelle: "Taux de service OTIF", unite: "%", cibleTexte: "Cible ≥ 95 % · réalisé vs plan", cible: { sens: "sup", valeur: 95 }, href: "/", aVenir: "Plan de livraison SediLiv — lot 3" },

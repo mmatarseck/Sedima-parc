@@ -59,6 +59,15 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
+**⚠ Migration 0041 à jouer : « immobilisé depuis un jour » cesse de mentir**
+(11 septembre 2026). Le tableau affichait 18 hors service et zéro immobilisé
+depuis plus de sept jours : sans trace de statut ni réparation, la situation
+journalière datait la panne à l'enregistrement de la fiche, c'est-à-dire au
+chargement de la veille. Le champ `immobilise_depuis_jours` sort désormais nul ;
+la pastille dit « — » et « 11 immobilisés depuis une date inconnue » ; la
+disponibilité ne se calcule pas tant qu'il en reste (`immobilisationsSansDebut`).
+Banc `tester-immobilisation-inconnue.mts`.
+
 **« Respect du plan préventif 100 % » cesse de mentir** (11 septembre 2026,
 sans migration). L'indicateur ne regardait que les kilomètres restants de la
 première échéance, et appliquait l'état du jour à tous les mois passés. L'état
@@ -137,7 +146,7 @@ attrapé une fois de plus.
 viennent les lignes, pourquoi le prix est le tarif officiel de la date, et ce
 qui n'est pas chargé.
 
-**Migrations : 0001 à 0040 jouées** (0037 à 0040 et leurs chargements confirmés le 11 septembre 2026). Rien en attente dans le SQL Editor.
+**Migrations : 0001 à 0040 jouées** (0037 à 0040 et leurs chargements confirmés le 11 septembre 2026) ; **0041 en attente**.
 
 **Le chargement des données réelles est fait** (10 septembre 2026) : les douze
 parties du seed, `aligner-referentiel.sql`, `purge-demonstration.sql` et

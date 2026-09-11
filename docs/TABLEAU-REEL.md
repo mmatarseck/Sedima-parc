@@ -121,6 +121,16 @@ Tant que 0037 n'est pas jouée, l'application ne tombe pas : faute de
   réparation curative du mois n'a pas de durée. La durée moyenne au garage ne
   porte que sur les durées connues. De janvier à août 2026, les deux
   indicateurs disent « — » : c'est la vérité, le parc ne sait pas.
+- **18 hors service, mais aucun immobilisé depuis plus de sept jours** —
+  *corrigé le 11 septembre 2026 (migration 0041).* La durée d'immobilisation
+  se datait à la dernière trace de statut ou à la réparation en cours. Faute
+  des deux, elle reprenait la date d'enregistrement de la fiche. Le référentiel
+  réel a été chargé la veille, sans historique : chaque véhicule en panne
+  paraissait l'être depuis un jour. Sans trace ni réparation, le champ sort
+  désormais nul. La pastille dit « — » et « 11 immobilisés depuis une date
+  inconnue ». La disponibilité ne se calcule pas tant qu'il en reste, et
+  l'alerte « immobilisation prolongée » ne se déclenche pas sur une durée
+  inconnue. La première trace de changement de statut saisie redonne une date.
 - **Respect du plan préventif à 100 %** — *corrigé le 11 septembre 2026, sans
   migration.* L'indicateur ne regardait que les kilomètres restants de la
   première échéance : sans compteur, rien n'était jamais en retard. Il

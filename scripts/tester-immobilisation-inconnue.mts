@@ -52,6 +52,7 @@ const fait = (x: Partial<FaitsVehiculeMois>): FaitsVehiculeMois => ({
   immobilisationInterventions: 0,
   nombreInterventions: 0,
   curativesSansDuree: 0,
+  immobilisationsSansDebut: 0,
   cout: 0,
   coutMaintenance: 0,
   coutCuratif: 0,
@@ -73,6 +74,9 @@ attendu(`véhicules spéciaux : ${valeur("d2", speciaux)} h connues, inconnues d
 /* Un troisième véhicule ajoute ses jours au dénominateur : 3 jours sur 93. */
 const avecPreventive = valeur("d1", [...connus, fait({ vehiculeId: "P", interventionsPreventives: 1 })]);
 attendu(`une préventive sans durée ne bloque pas la disponibilité (${avecPreventive} %)`, avecPreventive === 96.8);
+
+const sansDebut = [...connus, fait({ vehiculeId: "H", immobilisationsSansDebut: 1 })];
+attendu(`un véhicule immobilisé depuis une date inconnue rend la disponibilité inconnue (${valeur("d1", sansDebut)})`, valeur("d1", sansDebut) === null);
 
 /* Le respect du plan préventif, même règle : un véhicule dont on ignore l'état ne compte pas pour à jour. */
 const aJour = [fait({ vehiculeId: "A" }), fait({ vehiculeId: "B" })];
@@ -152,6 +156,15 @@ await pg.exec(m0040);
 const encore = await un<{ nuls: number }>(`select count(*)::int as nuls from intervention where numero like 'INT-R-%' and immobilisation_jours is null`);
 attendu("0040 est rejouable", encore.nuls === apres.nuls);
 attendu(`le jeu de départ garde ses durées (${seed.n} interventions, ${seed.nuls} sans durée)`, seed.n > 0 && seed.nuls === 0);
+
+/* 0041 : sans trace de statut ni réparation, un véhicule arrêté l'est depuis une date inconnue — pas depuis l'enregistrement de sa fiche. */
+const arretes = await un<{ inconnus: number; dates: number }>(
+  `select count(*) filter (where v->'immobilise_depuis_jours' = 'null'::jsonb)::int as inconnus,
+          count(*) filter (where v->'immobilise_depuis_jours' <> 'null'::jsonb)::int as dates
+     from jsonb_array_elements(situation_journaliere(current_date, current_date)->0->'vehicules') v
+    where v->>'statut' not in ('en-service', 'en-backup')`,
+);
+attendu(`véhicules arrêtés sans trace : ${arretes.inconnus} depuis une date inconnue, ${arretes.dates} datés par une réparation`, arretes.inconnus > 0);
 
 const situation = await un<{ n: number }>(`select jsonb_array_length(situation_journaliere('2026-07-01', '2026-07-31'))::int as n`);
 attendu(`la situation journalière tient avec des durées nulles (${situation.n} jours)`, situation.n === 31);

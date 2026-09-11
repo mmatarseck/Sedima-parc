@@ -156,7 +156,7 @@ const situations: SituationJournaliere[] = brutes.map((s) => ({
     engage: Boolean(v.engage),
     statut: v.statut as never,
     immobiliseAdmin: Boolean(v.immobilise_admin),
-    immobiliseDepuisJours: nombre(v.immobilise_depuis_jours),
+    immobiliseDepuisJours: nombreOuNul(v.immobilise_depuis_jours),
     echeances7: nombre(v.echeances7),
     echues: nombre(v.echues),
     sansReleve7: Boolean(v.sans_releve7),

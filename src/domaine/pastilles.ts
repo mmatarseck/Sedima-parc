@@ -26,8 +26,12 @@ export interface FaitsVehiculeJour {
   statut: StatutVehicule;
   /** Un document critique manquant ou échu ce jour-là. */
   immobiliseAdmin: boolean;
-  /** Jours d'immobilisation continue à cette date ; 0 si le véhicule roule. */
-  immobiliseDepuisJours: number;
+  /**
+   * Jours d'immobilisation continue à cette date ; 0 si le véhicule roule.
+   * **Nul quand on ne sait pas depuis quand** : ni trace de statut ni réparation
+   * ne date la panne (0041). La date d'enregistrement de la fiche n'en est pas une.
+   */
+  immobiliseDepuisJours: number | null;
   /** Documents et visites qui expirent dans les sept jours suivants. */
   echeances7: number;
   /** Documents dont l'échéance est passée à cette date. */
@@ -212,7 +216,12 @@ export const PASTILLES: DefinitionPastille[] = [
     reference: "semaine-passee",
     seuil: { sens: "inf", defaut: 0, texte: desLePremier("véhicules") },
     href: "/maintenance",
-    calcul: (c) => engagesDu(c.jour).filter((v) => v.immobiliseDepuisJours > 7).length,
+    /* Un véhicule immobilisé dont on ignore depuis quand ne peut pas être dit « moins de sept jours » : tant qu'il en reste, on ne compte pas (0041). */
+    calcul: (c) => (engagesDu(c.jour).some((v) => v.immobiliseDepuisJours === null) ? null : engagesDu(c.jour).filter((v) => (v.immobiliseDepuisJours ?? 0) > 7).length),
+    complement: (c) => {
+      const inconnus = engagesDu(c.jour).filter((v) => v.immobiliseDepuisJours === null).length;
+      return inconnus > 0 ? `${inconnus} immobilisé${inconnus > 1 ? "s" : ""} depuis une date inconnue` : null;
+    },
   },
   {
     id: "p-pannes-semaine",

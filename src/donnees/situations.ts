@@ -24,7 +24,7 @@ interface VehiculeJson {
   engage: boolean;
   statut: StatutVehicule;
   immobilise_admin: boolean;
-  immobilise_depuis_jours: number;
+  immobilise_depuis_jours: number | null;
   echeances7: number;
   echues: number;
   sans_releve7: boolean;
