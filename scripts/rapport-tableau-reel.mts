@@ -80,7 +80,7 @@ for (const dossier of ["carburant-parties", "maintenance-parties", "transport-pa
   if (!existsSync(d)) continue;
   for (const f of readdirSync(d).filter((x) => x.endsWith(".sql")).sort()) await jouer(join(d, f));
 }
-for (const f of ["kilometrages.sql", "conformite.sql", "ca-location-aout-2026.sql"]) if (existsSync(join(projet, "supabase", f))) await jouer(join(projet, "supabase", f));
+for (const f of ["correctif-prestataires.sql", "kilometrages.sql", "conformite.sql", "ca-location-aout-2026.sql", "correctif-audit-parc-2026.sql"]) if (existsSync(join(projet, "supabase", f))) await jouer(join(projet, "supabase", f));
 
 const aujourdhui = ((await pg.query(`select current_date::text as j`)).rows[0] as { j: string }).j;
 

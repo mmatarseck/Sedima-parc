@@ -59,6 +59,17 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
+**⚠ Correctif à jouer : ce que l'audit interne du parc fait entrer dans la base**
+(11 septembre 2026) — `supabase/correctif-audit-parc-2026.sql`. Rapport d'audit
+provisoire (janvier 2025 – juillet 2026) et compte rendu de la réunion de synthèse
+du 2 septembre. Les fournisseurs en double sont fondus : Alioune Ndiaye ×2 et GIE
+Ndiaye et Frères, Gormack ×2. Abdou Kane passe sous contrat. Le constat entre au
+commentaire des six véhicules au garage et des deux véhicules sans balise. ADEX
+d'août passe en mises à disposition (contrat 6 jours / 7 confirmé par l'audit), et
+avril entre avec ses jours roulés : l'application dit les 11, 9 et 10 jours payés
+non roulés de l'audit. Voir `docs/AUDIT-PARC-2026.md` (constat par constat, et le
+plan d'actions) et le banc `tester-audit-parc.mts`.
+
 **⚠ Migration 0042 à jouer : « zéro panne, zéro accident » cesse de mentir**
 (11 septembre 2026). Les registres des incidents et des indisponibilités n'ont
 aucune ligne depuis la purge, ni les contraventions dans les dépenses : aucune

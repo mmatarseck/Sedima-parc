@@ -77,6 +77,26 @@ montant d'une facture — une remise négociée ou une livraison en gros s'en
 relevé. Hors des périodes établies, `prixOfficiel()` rend `null` et la ligne ne
 se charge pas.
 
+## Ce que l'audit interne dit de ces données (11 septembre 2026)
+
+L'audit de la gestion du parc (rapport provisoire, voir
+`docs/AUDIT-PARC-2026.md`) n'a pas pu fiabiliser la consommation. Trois raisons
+touchent directement ce chargement :
+
+- **Le registre de la pompe n'est pas exhaustif.** Selon l'agent chargé de la
+  distribution, les prises de nuit et de week-end manquent. Les litres chargés
+  sont donc un minimum, pas un total.
+- **PROFLEET est hors service depuis plusieurs mois**, à cause d'un câble. Son
+  rapport de distribution, qui aurait servi de contrôle, ne peut pas être
+  extrait.
+- **Géoris et la pompe ne disent pas la même quantité.** Sur douze prises de
+  février 2026 comparées par l'audit, les écarts vont de −189,7 l (AA 768 JV,
+  200 l à la pompe contre 389,7 l sur Géoris) à +99,3 l (AA 633 JL). Les
+  véhicules ADEX, qui se servent à la pompe SEDIMA, ne sont pas suivis sur
+  Géoris.
+
+Une consommation aux 100 km tirée de ces pleins reste un ordre de grandeur.
+
 ## Ce qui n'est pas chargé
 
 **7 261 lignes portent une plaque absente du parc** — 105 plaques. Ce n'est
