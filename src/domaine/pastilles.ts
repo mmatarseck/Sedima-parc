@@ -76,6 +76,13 @@ export interface FaitsFlotteJour {
    * quand le second est une absence de mesure.
    */
   dernierPlein: string | null;
+  /**
+   * Le **dernier voyage relevé**, toutes dates confondues ; nul si le relevé
+   * est vide, ou pour qui ne lit pas le module Transporteurs (migration 0038).
+   * Même rôle que le dernier plein, pour la part confiée aux tiers : une
+   * semaine sans tonne après le dernier voyage n'est pas une semaine à zéro.
+   */
+  dernierReleveTransport: string | null;
 
   /* -- Le parc des prestataires (métier, 10 septembre 2026) -----------------
    *
@@ -462,7 +469,14 @@ export const PASTILLES: DefinitionPastille[] = [
     },
     complement: (c) => {
       const t = c.jour.flotte.tiersTonnage7;
-      return t === null ? null : `${Math.round(t).toLocaleString("fr-FR")} t sur 7 j`;
+      if (t === null) return null;
+      /* Même règle que le carburant (0038) : sept jours sans une tonne, tous
+         postérieurs au dernier voyage relevé, ne font pas « 0 t » — ils font
+         une source qui s'est tue, et le complément dit depuis quand. */
+      const dernier = c.jour.flotte.dernierReleveTransport;
+      const debut = new Date(Date.parse(`${c.jour.jour}T00:00:00Z`) - 6 * 86_400_000).toISOString().slice(0, 10);
+      if ((c.jour.flotte.tonnage7 ?? 0) <= 0 && (dernier === null || dernier < debut)) return dernier === null ? null : `dernier relevé le ${dernier.slice(8, 10)}/${dernier.slice(5, 7)}`;
+      return `${Math.round(t).toLocaleString("fr-FR")} t sur 7 j`;
     },
   },
   {

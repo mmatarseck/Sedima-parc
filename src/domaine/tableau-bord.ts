@@ -112,10 +112,14 @@ export interface FaitsFlotteMois {
   coutAffretements: number;
   coutMisesADisposition: number;
   coutPrestations: number;
-  /** Tonnes confiées à des tiers — relevé de transport. */
-  tonnesTiers: number;
-  /** Tonnes portées par le parc sur le mois — relevé de transport. */
-  tonnesInternes: number;
+  /**
+   * Tonnes confiées à des tiers — relevé de transport. **Nulles quand le relevé
+   * ne couvre pas toute la période** : un demi-mois de tonnes rapporté à un mois
+   * de coûts doublerait le coût à la tonne (voir `releveCouvre`).
+   */
+  tonnesTiers: number | null;
+  /** Tonnes portées par le parc sur le mois — relevé de transport ; nulles de même. */
+  tonnesInternes: number | null;
 }
 
 /** Ce qui se lit au jour dit, et non sur une période. */
@@ -178,9 +182,10 @@ export interface Cumul {
   joursChauffeurs: number;
   /** Coût du transport tiers sur la période — module Transporteurs. */
   coutTransportTiers: number;
-  tonnesTiers: number;
+  /** Nulles dès qu'un mois de la période n'est pas couvert par le relevé. */
+  tonnesTiers: number | null;
   /** Tonnes portées par le parc, relevé de transport à l'appui. */
-  tonnesInternes: number;
+  tonnesInternes: number | null;
   jour: SituationJour;
 }
 
@@ -222,8 +227,9 @@ export function cumuler(faits: FaitsVehiculeMois[], flotte: FaitsFlotteMois[], j
     joursIndisponibiliteChauffeurs: flotte.reduce((s, f) => s + f.joursIndisponibiliteChauffeurs, 0),
     joursChauffeurs: flotte.reduce((s, f) => s + f.joursChauffeurs, 0),
     coutTransportTiers: flotte.reduce((s, f) => s + f.coutTransportTiers, 0),
-    tonnesTiers: flotte.reduce((s, f) => s + f.tonnesTiers, 0),
-    tonnesInternes: flotte.reduce((s, f) => s + f.tonnesInternes, 0),
+    /* Un mois sans tonnes rend le cumul inconnu : le compléter par zéro fausserait tout ratio. */
+    tonnesTiers: flotte.some((f) => f.tonnesTiers === null) ? null : flotte.reduce((s, f) => s + (f.tonnesTiers ?? 0), 0),
+    tonnesInternes: flotte.some((f) => f.tonnesInternes === null) ? null : flotte.reduce((s, f) => s + (f.tonnesInternes ?? 0), 0),
     jour,
   };
 }
@@ -404,7 +410,7 @@ export const INDICATEURS: DefinitionIndicateur[] = [
     href: "/releve",
     /* Un coût nul sur un mois à peine commencé n'est pas « le transport est
        gratuit » : c'est « on n'a pas encore mesuré ». On n'affiche rien. */
-    calcul: (c) => (c.tonnesInternes > 0 && c.cout > 0 ? Math.round(c.cout / c.tonnesInternes) : null),
+    calcul: (c) => (c.tonnesInternes !== null && c.tonnesInternes > 0 && c.cout > 0 ? Math.round(c.cout / c.tonnesInternes) : null),
   },
   {
     id: "c2",
@@ -415,7 +421,7 @@ export const INDICATEURS: DefinitionIndicateur[] = [
     cibleTexte: "Cible ≤ 16 000 · coût net rapporté aux tonnes confiées",
     cible: { sens: "inf", valeur: 16_000 },
     href: "/releve",
-    calcul: (c) => (c.tonnesTiers > 0 && c.coutTransportTiers > 0 ? Math.round(c.coutTransportTiers / c.tonnesTiers) : null),
+    calcul: (c) => (c.tonnesTiers !== null && c.tonnesTiers > 0 && c.coutTransportTiers > 0 ? Math.round(c.coutTransportTiers / c.tonnesTiers) : null),
   },
   /*
    * Alimenté depuis le module Transporteurs (4 septembre 2026).
@@ -443,8 +449,7 @@ export const INDICATEURS: DefinitionIndicateur[] = [
     href: "/transporteurs",
     calcul: (c) => {
       /* La base juste : les tonnes, dès qu'elles sont relevées des deux côtés. */
-      const tonnes = c.tonnesInternes + c.tonnesTiers;
-      if (tonnes > 0) return Math.round((c.tonnesTiers / tonnes) * 1000) / 10;
+      if (c.tonnesInternes !== null && c.tonnesTiers !== null && c.tonnesInternes + c.tonnesTiers > 0) return Math.round((c.tonnesTiers / (c.tonnesInternes + c.tonnesTiers)) * 1000) / 10;
       /* À défaut, le coût. Un taux a besoin de ses deux termes : sur les premiers
          jours d'un mois, la location des véhicules tiers court déjà quand le parc
          n'a pas encore enregistré de dépense, et le rapport vaudrait 100 % par

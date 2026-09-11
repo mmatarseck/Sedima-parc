@@ -121,8 +121,10 @@ Tant que 0037 n'est pas jouée, l'application ne tombe pas : faute de
 - **Accidents, pannes, contraventions et absentéisme à 0.** Aucune source n'a
   été chargée. L'état des véhicules en panne du dossier DO ne porte aucune
   date.
-- **Coût du transport à la tonne « — ».** Aucun relevé de tonnage n'a été
-  chargé.
+- **Coût du transport à la tonne.** Le relevé de tonnage est chargé depuis le
+  11 septembre 2026, du 15 juin au 3 septembre ; seuls les mois qu'il couvre en
+  entier portent une valeur, et le coût à la tonne des tiers reste à prendre
+  avec précaution. Voir `docs/RELEVE-TRANSPORT-REEL.md`.
 - **Indisponibilité des véhicules spéciaux à 144 en septembre.** Elle suit les
   statuts du jour, sans historique avant la reprise : le chiffre porte sur les
   seuls jours écoulés depuis.

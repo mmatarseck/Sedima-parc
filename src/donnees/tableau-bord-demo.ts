@@ -25,7 +25,7 @@ import { listeIncidents } from "./incidents-demo";
 import { FLOTTE } from "./parc-demo";
 import { coutMiseADisposition, coutPrestation, coutAffretement, prestationFaite } from "@/domaine/transporteurs";
 import { affretements, misesADisposition, prestations } from "./transporteurs-demo";
-import { tonnagesPar } from "@/domaine/releve-transport";
+import { bornesDuReleve, releveCouvre, tonnagesPar } from "@/domaine/releve-transport";
 import { relevesTransport } from "./releve-demo";
 
 /** Profondeur servie : deux ans, pour comparer une période à la précédente. */
@@ -337,7 +337,7 @@ export function donneesTableau(): DonneesTableau {
   const flotte: FaitsFlotteMois[] = mois.map((x) => {
     const debutMois = `${x}-01`;
     if (debutMois > DATE_REFERENCE)
-      return { mois: x, joursIndisponibiliteChauffeurs: 0, joursChauffeurs: 0, coutTransportTiers: 0, coutAffretements: 0, coutMisesADisposition: 0, coutPrestations: 0, tonnesTiers: 0, tonnesInternes: 0 };
+      return { mois: x, joursIndisponibiliteChauffeurs: 0, joursChauffeurs: 0, coutTransportTiers: 0, coutAffretements: 0, coutMisesADisposition: 0, coutPrestations: 0, tonnesTiers: null, tonnesInternes: null };
     const finMois = finDe(x);
     const jours = joursDuMois.get(x) ?? 0;
     let indisponibles = 0;
@@ -369,8 +369,8 @@ export function donneesTableau(): DonneesTableau {
       /* Les tonnes viennent du **relevé de transport** : c'est lui qui porte
          les deux termes du taux d'externalisation, et c'est ce qui résout la
          question 71 — la base juste est la tonne, non le coût. */
-      tonnesTiers: tonnesDuMois(x).externe,
-      tonnesInternes: tonnesDuMois(x).interne,
+      tonnesTiers: releveCouvre(bornesDuReleve(relevesTransport()), debutMois, finMois) ? tonnesDuMois(x).externe : null,
+      tonnesInternes: releveCouvre(bornesDuReleve(relevesTransport()), debutMois, finMois) ? tonnesDuMois(x).interne : null,
     };
   });
 
@@ -437,8 +437,8 @@ export function donneesTableau(): DonneesTableau {
         coutAffretements: tiersSemaine.reduce((s, a) => s + coutAffretement(a), 0),
         coutMisesADisposition: Math.round(prorata),
         coutPrestations: prestationsSemaine.reduce((s, p) => s + coutPrestation(p), 0),
-        tonnesTiers: tonnesDeLaSemaine.externe,
-      tonnesInternes: tonnesDeLaSemaine.interne,
+        tonnesTiers: releveCouvre(bornesDuReleve(relevesTransport()), debutSemaine, DATE_REFERENCE) ? tonnesDeLaSemaine.externe : null,
+        tonnesInternes: releveCouvre(bornesDuReleve(relevesTransport()), debutSemaine, DATE_REFERENCE) ? tonnesDeLaSemaine.interne : null,
       };
     })(),
   ];

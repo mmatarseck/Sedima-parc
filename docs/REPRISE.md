@@ -1,4 +1,4 @@
-# Reprise du projet — état au 10 septembre 2026
+# Reprise du projet — état au 11 septembre 2026
 
 Note de passage de relais : à lire en premier dans une nouvelle session.
 Elle dit où en est le projet, ce qui a été décidé, et ce qui reste à faire.
@@ -59,6 +59,18 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
+**⚠ Le relevé de transport réel est prêt à jouer** (11 septembre 2026) : la
+migration `0038_dernier_releve_transport.sql`, puis les quatre fichiers de
+`supabase/releve-parties/`, dans l'ordre. 1 079 voyages, 24 810 t, du 15 juin
+au 3 septembre 2026, tirés du relevé de tonnage hebdomadaire de la DO ; onze
+camions de transporteurs ajoutés au référentiel. Les tiers portent 91 % des
+tonnes. 0038 évite que la part confiée aux tiers dise « 0 t sur 7 j » après le
+dernier relevé, et les courbes au tonnage ne portent plus que des mois
+entièrement relevés (`releveCouvre`). Le total journalier de la feuille ne fait
+pas foi : il est tapé à la main jusqu'à fin juillet, et c'est un `SUM` qui
+ignore les « 40T » tapés en texte ensuite. Voir `docs/RELEVE-TRANSPORT-REEL.md`
+et le banc `tester-releve-reel.mts`.
+
 **⚠ Migration 0037 et un correctif à jouer, dans cet ordre** (10 septembre
 2026) : `supabase/migrations/0037_zeros_sans_mesure.sql`, puis
 `supabase/correctif-reglement-transport.sql`. Le rapport
@@ -90,7 +102,7 @@ attrapé une fois de plus.
 viennent les lignes, pourquoi le prix est le tarif officiel de la date, et ce
 qui n'est pas chargé.
 
-**Migrations : 0001 à 0036 jouées ; 0037 en attente.**
+**Migrations : 0001 à 0036 jouées ; 0037 et 0038 en attente.**
 
 **Le chargement des données réelles est fait** (10 septembre 2026) : les douze
 parties du seed, `aligner-referentiel.sql`, `purge-demonstration.sql` et

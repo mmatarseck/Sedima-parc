@@ -161,6 +161,37 @@ export function tonnagesPar(lignes: LigneReleve[]): TonnagePeriode {
   return { interne: arrondi(t.interne), externe: arrondi(t.externe), enlevees: arrondi(t.enlevees), total: arrondi(t.total) };
 }
 
+/** Le premier et le dernier jour relevés ; nul pour un relevé vide. */
+export function bornesDuReleve(lignes: { date: string }[]): { premier: string; dernier: string } | null {
+  if (lignes.length === 0) return null;
+  let premier = lignes[0]!.date;
+  let dernier = premier;
+  for (const l of lignes) {
+    if (l.date < premier) premier = l.date;
+    if (l.date > dernier) dernier = l.date;
+  }
+  return { premier, dernier };
+}
+
+/**
+ * Le relevé couvre-t-il **toute** la période ? (11 septembre 2026)
+ *
+ * Le relevé réel commence le 15 juin 2026 et s'arrête au 3 septembre. Rapporter
+ * les coûts d'un mois entier aux tonnes d'un demi-mois doublait le coût à la
+ * tonne de juin ; le mois en cours, dont le coût court jusqu'à aujourd'hui,
+ * n'a de tonnes que jusqu'au dernier voyage relevé. Une période n'a donc de
+ * tonnes que si le relevé commence avant elle et finit après elle, à quelques
+ * jours près — un week-end en début ou en fin de mois ne porte pas de voyage.
+ *
+ * Ce contrôle ne voit pas les trous **au milieu** d'une période : une semaine
+ * restée presque vide dans la feuille compte comme relevée.
+ */
+export function releveCouvre(bornes: { premier: string; dernier: string } | null, debut: string, fin: string, margeJours = 3): boolean {
+  if (!bornes) return false;
+  const decaler = (jour: string, k: number) => new Date(Date.parse(`${jour}T00:00:00Z`) + k * 86_400_000).toISOString().slice(0, 10);
+  return bornes.premier <= decaler(debut, margeJours) && bornes.dernier >= decaler(fin, -margeJours);
+}
+
 /**
  * Le taux d'externalisation **en tonnes**, enfin.
  *

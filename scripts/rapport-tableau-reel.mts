@@ -73,7 +73,7 @@ async function jouer(chemin: string): Promise<void> {
 }
 /* Les fichiers corrigés, sur une base neuve : c'est le même état que la
    production après ses correctifs — vérifié au litre et au franc le jour même. */
-for (const dossier of ["carburant-parties", "maintenance-parties", "transport-parties"]) {
+for (const dossier of ["carburant-parties", "maintenance-parties", "transport-parties", "releve-parties"]) {
   const d = join(projet, "supabase", dossier);
   if (!existsSync(d)) continue;
   for (const f of readdirSync(d).filter((x) => x.endsWith(".sql")).sort()) await jouer(join(d, f));
@@ -178,6 +178,7 @@ const situations: SituationJournaliere[] = brutes.map((s) => ({
     joursSansAccident: nombreOuNul(s.flotte.jours_sans_accident),
     demandesSansReponse: nombreOuNul(s.flotte.demandes_sans_reponse),
     dernierPlein: (s.flotte.dernier_plein as string | null) ?? null,
+    dernierReleveTransport: (s.flotte.dernier_releve_transport as string | null) ?? null,
     tiersCamions: nombreOuNul(s.flotte.tiers_camions),
     tiersMad: nombreOuNul(s.flotte.tiers_mad),
     tiersMadPanne: nombreOuNul(s.flotte.tiers_mad_panne),

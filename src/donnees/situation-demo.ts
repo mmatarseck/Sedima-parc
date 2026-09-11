@@ -67,6 +67,8 @@ export function situationsJournalieres(aujourdhui: string = DATE_REFERENCE, prof
      jour évalué. Il sert à distinguer « la flotte n'a rien consommé » de
      « rien n'a été relevé » — voir la pastille Carburant. */
   const dernierPlein = pleinsFlotte().map((x) => x.date).sort().at(-1) ?? null;
+  /* Le dernier voyage relevé, pour la même raison — voir la part confiée aux tiers. */
+  const dernierReleveTransport = relevesTransport().map((x) => x.date).sort().at(-1) ?? null;
 
   /* -- Le parc des prestataires (10 septembre 2026) -------------------------
    *
@@ -195,6 +197,7 @@ export function situationsJournalieres(aujourdhui: string = DATE_REFERENCE, prof
       joursSansAccident: dernierAccident ? joursEntre(dernierAccident, jour) : null,
       demandesSansReponse: demandes.filter((d) => !d.annuleeLe && d.echeance.slice(0, 10) <= jour && (!d.reponse || d.reponse.le.slice(0, 10) > jour)).length,
       dernierPlein,
+      dernierReleveTransport,
       ...faitsDesTiers(jour),
     };
     return { jour, vehicules, flotte };

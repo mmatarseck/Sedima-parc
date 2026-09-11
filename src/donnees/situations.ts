@@ -49,6 +49,8 @@ interface FlotteJson {
   demandes_sans_reponse?: number | null;
   /** Le dernier plein connu du parc (0036) ; absent d'une base restée en deçà. */
   dernier_plein?: string | null;
+  /** Le dernier voyage relevé (0038) ; absent d'une base restée en deçà. */
+  dernier_releve_transport?: string | null;
   /* Le parc des prestataires (0035). Absents d'une base restée en deçà, nuls
      pour qui ne lit pas le module Transporteurs — dans les deux cas la
      pastille dit « — » plutôt qu'un zéro qui mentirait. */
@@ -109,6 +111,7 @@ function situationDepuisJson(s: SituationJson): SituationJournaliere {
     joursSansAccident: f.jours_sans_accident,
     demandesSansReponse: f.demandes_sans_reponse ?? null,
     dernierPlein: f.dernier_plein ?? null,
+    dernierReleveTransport: f.dernier_releve_transport ?? null,
     tiersCamions: f.tiers_camions ?? null,
     tiersMad: f.tiers_mad ?? null,
     tiersMadPanne: f.tiers_mad_panne ?? null,

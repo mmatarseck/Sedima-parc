@@ -21,7 +21,7 @@ import { afficher } from "@/domaine/immatriculation";
 import { TYPE_DOCUMENT, groupeDuPoste } from "@/domaine/libelles";
 import type { Parametres } from "@/domaine/parametres";
 import type { SituationJournaliere } from "@/domaine/pastilles";
-import { tonnagesPar, type LigneReleve } from "@/domaine/releve-transport";
+import { bornesDuReleve, releveCouvre, tonnagesPar, type LigneReleve } from "@/domaine/releve-transport";
 import type { FaitsFlotteMois, FaitsVehiculeMois, SituationJour, VehiculeTableau } from "@/domaine/tableau-bord";
 import { coutAffretement, coutMiseADisposition, coutPrestation, prestationFaite, type Affretement, type MiseADisposition, type Prestation } from "@/domaine/transporteurs";
 import type { BusinessUnit, CategorieFlotte, CategorieVehicule, LigneFlotte, PosteDepense, StatutVehicule, TypeDocument } from "@/domaine/types";
@@ -239,11 +239,13 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
   const prestations = j.prestations.map((p) => ({ date: p.date, statut: p.statut, quantite: n(p.quantite), prixUnitaire: p.prix_unitaire, convention: p.convention, montantFacture: p.montant_facture === null ? null : n(p.montant_facture) }));
   /* Le relevé de transport ne sert qu'aux tonnes : mode, produit et tonnages suffisent aux règles. */
   const relevesTransport = j.releves_transport.map((t) => ({ date: t.date, mode: t.mode, produit: t.produit, tonnage: n(t.tonnage), tonnagePese: t.tonnage_pese === null ? null : n(t.tonnage_pese) }) as unknown as LigneReleve & { date: string });
+  /* Un mois n'a de tonnes que si le relevé le couvre en entier : voir `releveCouvre`. */
+  const bornes = bornesDuReleve(relevesTransport);
   const actifsAu = (jour: string) => j.chauffeurs.filter((c) => (!c.date_embauche || c.date_embauche <= jour) && (!c.date_sortie || c.date_sortie > jour)).length;
   const indisponiblesSur = (debut: string, fin: string) => j.indisponibilites.reduce((s, i) => s + joursDans(i.debut, i.fin, debut, fin), 0);
 
   const flotte: FaitsFlotteMois[] = mois.map((x) => {
-    if (`${x}-01` > aujourdhui) return { mois: x, joursIndisponibiliteChauffeurs: 0, joursChauffeurs: 0, coutTransportTiers: 0, coutAffretements: 0, coutMisesADisposition: 0, coutPrestations: 0, tonnesTiers: 0, tonnesInternes: 0 };
+    if (`${x}-01` > aujourdhui) return { mois: x, joursIndisponibiliteChauffeurs: 0, joursChauffeurs: 0, coutTransportTiers: 0, coutAffretements: 0, coutMisesADisposition: 0, coutPrestations: 0, tonnesTiers: null, tonnesInternes: null };
     const debut = `${x}-01`;
     const fin = finDe(x);
     const jours = joursDuMois.get(x) ?? 0;
@@ -255,7 +257,8 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
     const coutMad = Math.round(madMois.reduce((s, m) => s + coutMiseADisposition(m).total, 0) * partDuMois);
     const coutPres = pres.reduce((s, p) => s + coutPrestation(p), 0);
     const tonnes = tonnagesPar(relevesTransport.filter((l) => l.date >= debut && l.date <= fin));
-    return { mois: x, joursIndisponibiliteChauffeurs: indisponiblesSur(debut, fin), joursChauffeurs: actifsAu(fin) * jours, coutTransportTiers: coutAff + coutMad + coutPres, coutAffretements: coutAff, coutMisesADisposition: coutMad, coutPrestations: coutPres, tonnesTiers: tonnes.externe, tonnesInternes: tonnes.interne };
+    const couvert = releveCouvre(bornes, debut, fin);
+    return { mois: x, joursIndisponibiliteChauffeurs: indisponiblesSur(debut, fin), joursChauffeurs: actifsAu(fin) * jours, coutTransportTiers: coutAff + coutMad + coutPres, coutAffretements: coutAff, coutMisesADisposition: coutMad, coutPrestations: coutPres, tonnesTiers: couvert ? tonnes.externe : null, tonnesInternes: couvert ? tonnes.interne : null };
   });
   const flotteSemaine: FaitsFlotteMois[] = [
     (() => {
@@ -265,7 +268,8 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
       const coutMad = Math.round(mads.filter((m) => m.mois === moisCourant).reduce((s, m) => s + (coutMiseADisposition(m).total * joursSemaine) / m.joursCalendaires, 0));
       const coutPres = prestations.filter((p) => p.date >= debutSemaine && p.date <= aujourdhui).reduce((s, p) => s + coutPrestation(p), 0);
       const tonnes = tonnagesPar(relevesTransport.filter((l) => l.date >= debutSemaine && l.date <= aujourdhui));
-      return { mois: "semaine", joursIndisponibiliteChauffeurs: indisponiblesSur(debutSemaine, aujourdhui), joursChauffeurs: actifsAu(aujourdhui) * joursSemaine, coutTransportTiers: coutAff + coutMad + coutPres, coutAffretements: coutAff, coutMisesADisposition: coutMad, coutPrestations: coutPres, tonnesTiers: tonnes.externe, tonnesInternes: tonnes.interne };
+      const couvert = releveCouvre(bornes, debutSemaine, aujourdhui);
+      return { mois: "semaine", joursIndisponibiliteChauffeurs: indisponiblesSur(debutSemaine, aujourdhui), joursChauffeurs: actifsAu(aujourdhui) * joursSemaine, coutTransportTiers: coutAff + coutMad + coutPres, coutAffretements: coutAff, coutMisesADisposition: coutMad, coutPrestations: coutPres, tonnesTiers: couvert ? tonnes.externe : null, tonnesInternes: couvert ? tonnes.interne : null };
     })(),
   ];
 
