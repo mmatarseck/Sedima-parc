@@ -276,6 +276,8 @@ export interface FicheVehicule {
   visitesTechniques: VisiteTechnique[];
   /** Les défauts relevés par le centre, suivis comme actions correctives. */
   observationsVisite: ObservationVisite[];
+  /** Les bons de livraison que le véhicule a portés, du plus récent au plus ancien. */
+  livraisons: import("./livraisons").LivraisonFiche[];
   /** Nulle quand tous les documents critiques sont en règle. Voir src/domaine/documents.ts. */
   immobilisationAdministrative: import("./documents").ImmobilisationAdministrative | null;
   planEntretien: PlanEntretienFiche;

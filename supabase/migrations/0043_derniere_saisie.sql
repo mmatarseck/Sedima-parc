@@ -44,7 +44,7 @@ begin
          'affectation', 'affretement', 'ajustement_entretien', 'attributaire', 'attribution_legere', 'avance_prestataire',
          'camion_tiers', 'chauffeur', 'chauffeur_tiers', 'cloture_mois', 'demande_achat', 'depense',
          'document', 'enveloppe', 'forfait_carburant', 'incident', 'indisponibilite', 'intervention',
-         'licence_transport', 'licence_vehicule', 'mise_a_disposition', 'modification', 'mouvement_caisse', 'mouvement_cuve',
+         'licence_transport', 'licence_vehicule', 'livraison', 'mise_a_disposition', 'modification', 'mouvement_caisse', 'mouvement_cuve',
          'observation_visite', 'operation_entretien', 'ordre_travail', 'parametre', 'plan_vehicule', 'plein',
          'pneu', 'prestataire', 'prestation', 'profil_transporteur', 'programme_entretien', 'releve_kilometrique',
          'releve_transport', 'sanction', 'site', 'tarif_journalier', 'type_document', 'vehicule',

@@ -10,6 +10,7 @@
 import { cache } from "react";
 import { assemblerFiche, FAITS_VIDES, type FaitsFiche } from "@/domaine/assembler-fiche";
 import type { FicheVehicule } from "@/domaine/fiche";
+import type { LivraisonFiche } from "@/domaine/livraisons";
 import { normaliser } from "@/domaine/immatriculation";
 import type { Parametres } from "@/domaine/parametres";
 import type { CategorieObservation, PosteDepense, TypeDocument } from "@/domaine/types";
@@ -48,6 +49,33 @@ export function faitsDepuisJson(j: FicheJson): FaitsFiche {
   };
 }
 
+interface LivraisonBase {
+  numero: string;
+  date: string;
+  site: string;
+  client: string | null;
+  produits: string | null;
+  poids_kg: number | string | null;
+  quantites: Record<string, number> | null;
+  lignes: number;
+  transporteur_libelle: string | null;
+  chauffeur: string | null;
+  source: string;
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Les bons de livraison du véhicule (0044). Table pas encore jouée, ou véhicule à recevoir sans identifiant : aucun bon, pas d'erreur. */
+async function livraisonsDuVehicule(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<LivraisonFiche[]> {
+  if (!UUID.test(vehiculeId)) return [];
+  const lecture = await client.from("livraison").select("numero, date, site, client, produits, poids_kg, quantites, lignes, transporteur_libelle, chauffeur, source").eq("vehicule_id", vehiculeId).order("date", { ascending: false }).limit(5000).returns<LivraisonBase[]>();
+  if (lecture.error) {
+    console.warn(`Livraisons ${vehiculeId} : lecture impossible (${lecture.error.message}).`);
+    return [];
+  }
+  return lecture.data.map((l) => ({ numero: l.numero, date: l.date, site: l.site, client: l.client, produits: l.produits, poidsKg: l.poids_kg === null ? null : Number(l.poids_kg), quantites: l.quantites ?? {}, lignes: l.lignes, transporteur: l.transporteur_libelle, chauffeur: l.chauffeur, source: l.source }));
+}
+
 /**
  * La fiche de **tout** véhicule de la base — transport, service ou fonction —, par
  * immatriculation sous n'importe quelle écriture ; nulle hors périmètre.
@@ -72,7 +100,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
     return assemblerFiche(ligne, FAITS_VIDES, parametres, DATE_REFERENCE, { programme: programmeParDefaut(d.categorie), plan: planDuVehicule(d.id, d.categorie), passages: passagesReleves });
   }
   const client = await clientServeur();
-  const lecture = await client.rpc("lire_fiche", { immat: canonique }).maybeSingle<FicheJson | null>();
+  const [lecture, livraisons] = await Promise.all([client.rpc("lire_fiche", { immat: canonique }).maybeSingle<FicheJson | null>(), livraisonsDuVehicule(client, ligne.vehicule.id)]);
   /* Fonction pas encore jouée : la fiche se dresse sur la ligne seule, sans historique — pas d'erreur. */
   if (lecture.error) console.warn(`Fiche ${canonique} : lire_fiche() indisponible (${lecture.error.message}), fiche dressée sans historique.`);
   const aujourdhui = new Date().toISOString().slice(0, 10);
@@ -81,10 +109,10 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
   /* Une donnée fautive dans l'historique ne doit pas fermer la fiche : elle
      s'ouvre alors sans historique, et le journal du serveur dit pourquoi. */
   try {
-    return assemblerFiche(ligne, !lecture.error && lecture.data ? faitsDepuisJson(lecture.data) : FAITS_VIDES, parametres, aujourdhui, plan);
+    return assemblerFiche(ligne, { ...(!lecture.error && lecture.data ? faitsDepuisJson(lecture.data) : FAITS_VIDES), livraisons }, parametres, aujourdhui, plan);
   } catch (e) {
     console.error(`Fiche ${canonique} : assemblage impossible sur l'historique lu — ${e instanceof Error ? e.stack ?? e.message : String(e)}`);
-    return assemblerFiche(ligne, FAITS_VIDES, parametres, aujourdhui, plan);
+    return assemblerFiche(ligne, { ...FAITS_VIDES, livraisons }, parametres, aujourdhui, plan);
   }
 }
 

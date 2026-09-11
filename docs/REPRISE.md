@@ -59,6 +59,27 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
+**⚠ Migration 0044 et chargements à jouer : les livraisons par véhicule, les demandes d'achat réelles**
+(11 septembre 2026). Le métier : « toutes les DA sur plusieurs mois, préparer et charger ; préparer
+aussi les données de livraison et associer aux différents véhicules ». Dans l'ordre :
+
+1. `supabase/migrations/0044_livraisons.sql` — la table `livraison`, un bon Sage X3 par ligne, rattaché
+   au véhicule du parc ou au camion tiers qui l'a porté ; sous RLS (module relevés).
+2. `supabase/livraison-parties/livraisons-01` à `06` — 16 771 bons, novembre 2025 → août 2026 (YLIV
+   2026, états X3 de nov.-déc. 2025, état UAB d'août). 4 504 bons sur 48 véhicules du parc, 7 571 sur
+   42 camions tiers. L'extraction YLIV compte en sacs : ×50, ×40, ×1 selon l'aliment, contrôlé à 100 % et
+   99 % contre les états de janvier et mai. Voir `docs/LIVRAISONS-REELLES.md`.
+3. `supabase/achats-parties/achats-01` puis `02` — 679 demandes, une par bon de commande (réglées ; origine
+   retrouvée en base par le numéro du bon : 298 interventions, 196 prestations, 25 frais), et les 6 factures
+   de transporteurs du registre de septembre (facturées). Voir `docs/ACHATS-REELS.md`.
+
+La fiche véhicule gagne l'onglet **Livraisons** (par mois : bons, jours, tonnage, clients ; puis les
+bons). Le relevé de transport reste la source des tonnes du tableau de bord. Bancs `tester-livraisons.mts`
+et `tester-achats-reels.mts`. À trancher : les six camions « MK/ » que le référentiel rattache à
+PRE-2026-00025 alors que les bons les donnent à Moussa Kane ; les trois fiches « Deme » ; Wakeur Serigne
+Fallou qui facture janvier-juin 2026, chargés réglés.
+
+
 **⚠ Migration 0043 à jouer : le tableau de bord ne se recalcule plus à chaque ouverture**
 (11 septembre 2026). Le métier : « le tableau de bord est toujours lent à charger ; rafraîchir les
 données qu'à la connexion ou sur appui d'un bouton, visible si elles ne sont pas à jour ». La page
@@ -193,7 +214,7 @@ attrapé une fois de plus.
 viennent les lignes, pourquoi le prix est le tarif officiel de la date, et ce
 qui n'est pas chargé.
 
-**Migrations : 0001 à 0041 jouées** (0037 à 0041 et leurs chargements confirmés le 11 septembre 2026) ; **0042 et 0043 en attente**.
+**Migrations : 0001 à 0041 jouées** (0037 à 0041 et leurs chargements confirmés le 11 septembre 2026) ; **0042, 0043 et 0044 en attente** (0043 compte désormais aussi la table `livraison`).
 
 **Le chargement des données réelles est fait** (10 septembre 2026) : les douze
 parties du seed, `aligner-referentiel.sql`, `purge-demonstration.sql` et

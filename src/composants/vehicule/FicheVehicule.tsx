@@ -40,6 +40,7 @@ import {
   OngletJournal,
   OngletKilometrage,
 } from "./onglets";
+import { OngletLivraisons } from "./OngletLivraisons";
 
 const LIBELLE_ORIGINE_RELEVE: Record<Fiche["releves"][number]["origine"], string> = {
   saisie: "saisie manuelle",
@@ -59,6 +60,7 @@ type Onglet =
   | "carburant"
   | "autres"
   | "kilometrage"
+  | "livraisons"
   | "journal";
 
 /**
@@ -76,6 +78,7 @@ const ONGLETS: { cle: Onglet; libelle: string }[] = [
   { cle: "carburant", libelle: "Carburant" },
   { cle: "autres", libelle: "Autres dépenses" },
   { cle: "kilometrage", libelle: "Kilométrages" },
+  { cle: "livraisons", libelle: "Livraisons" },
   { cle: "journal", libelle: "Journal" },
 ];
 
@@ -412,6 +415,7 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
         {onglet === "carburant" && <OngletCarburant fiche={fiche} cible={cible} />}
         {onglet === "autres" && <OngletAutresDepenses fiche={fiche} cible={cible} />}
         {onglet === "kilometrage" && <OngletKilometrage fiche={fiche} cible={cible} />}
+        {onglet === "livraisons" && <OngletLivraisons fiche={fiche} cible={cible} />}
         {onglet === "journal" && <OngletJournal fiche={fiche} />}
       </div>
 
