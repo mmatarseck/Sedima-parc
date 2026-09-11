@@ -145,8 +145,8 @@ export function donneesTableau(): DonneesTableau {
     const incidentsDuVehicule = incidents.filter((i) => i.vehiculeId === v.id);
     /* L'échéance du plan d'entretien : dépassée quand il ne reste plus de
        kilomètres avant la prochaine. La fiche ne donne que l'échéance courante,
-       donc la lecture vaut pour aujourd'hui et vaut approximation pour les mois
-       passés — limite du jeu de démonstration, levée au branchement. */
+       donc la lecture ne vaut que pour la période en cours : les mois passés
+       sortent nuls, comme en base. */
     const entretienEnRetard = (f.prochaineIntervention?.kmRestants ?? 1) < 0;
 
     for (const x of mois) {
@@ -185,7 +185,7 @@ export function donneesTableau(): DonneesTableau {
         litresReference: (km * f.referenceL100) / 100,
         joursImmobilises: Math.min(joursImmobilises, jours),
         nonConforme,
-        entretienEnRetard,
+        entretienEnRetard: finMois < DATE_REFERENCE ? null : entretienEnRetard,
         accidents: incidentsMois.filter((i) => i.nature === "accident").length,
         accidentsCorporels: incidentsMois.filter((i) => i.nature === "accident" && i.blesses).length,
         pannesEnMission: incidentsMois.filter((i) => i.nature === "incident" && i.mission !== null && i.mission !== "hors-mission").length,

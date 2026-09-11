@@ -74,6 +74,15 @@ attendu(`véhicules spéciaux : ${valeur("d2", speciaux)} h connues, inconnues d
 const avecPreventive = valeur("d1", [...connus, fait({ vehiculeId: "P", interventionsPreventives: 1 })]);
 attendu(`une préventive sans durée ne bloque pas la disponibilité (${avecPreventive} %)`, avecPreventive === 96.8);
 
+/* Le respect du plan préventif, même règle : un véhicule dont on ignore l'état ne compte pas pour à jour. */
+const aJour = [fait({ vehiculeId: "A" }), fait({ vehiculeId: "B" })];
+attendu(`plan préventif, deux véhicules à jour : ${valeur("d6", aJour)} %`, valeur("d6", aJour) === 100);
+attendu(`un véhicule en retard sur deux : ${valeur("d6", [aJour[0]!, fait({ vehiculeId: "B", entretienEnRetard: true })])} %`, valeur("d6", [aJour[0]!, fait({ vehiculeId: "B", entretienEnRetard: true })]) === 50);
+attendu(
+  `un véhicule d'état inconnu rend le taux inconnu (${valeur("d6", [...aJour, fait({ vehiculeId: "C", entretienEnRetard: null })])})`,
+  valeur("d6", [...aJour, fait({ vehiculeId: "C", entretienEnRetard: null })]) === null,
+);
+
 /* -- 2. La base ---------------------------------------------------------------- */
 
 const bac = process.env.PGLITE_DIR ?? "";

@@ -170,7 +170,8 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
 
     const profil = { categorie: v.categorie, transportSpecial: v.transport_special, statut: v.statut };
     const documents = (documentsPar.get(v.id) ?? []).map((d) => ({ type: d.type_document_id as TypeDocument, numero: d.numero, dateEffet: d.date_effet, echeance: d.echeance }));
-    const entretienEnRetard = (ligne.prochaineEcheanceEntretien?.kmRestants ?? 1) < 0;
+    /* L'état du plan ne vaut que pour aujourd'hui : il ne se lit que sur une période qui contient ce jour. */
+    const etatPlan = ligne.etatPlanEntretien ?? "inconnu";
     const refL100 = REFERENCE_L100[v.categorie] ?? 20;
 
     const faitsSur = (cle: string, debut: string, fin: string, jours: number): FaitsVehiculeMois => {
@@ -194,7 +195,7 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
         litresReference: (km * refL100) / 100,
         joursImmobilises: Math.min(joursImmobilises, jours),
         nonConforme: immobilisationAdministrative(profil, documents.map((d) => ({ type: d.type, etat: etatALaDate(d, fin) })), parametresVehicule) !== null,
-        entretienEnRetard,
+        entretienEnRetard: fin < aujourdhui || etatPlan === "inconnu" ? null : etatPlan === "en-retard",
         accidents: incidents.filter((i) => i.nature === "accident").length,
         accidentsCorporels: incidents.filter((i) => i.nature === "accident" && i.blesses).length,
         pannesEnMission: incidents.filter((i) => i.nature === "incident" && i.mission !== null && i.mission !== "hors-mission").length,

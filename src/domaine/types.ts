@@ -477,6 +477,13 @@ export interface LigneFlotte {
    * à 300 km/jour trois fois trop tard). Nul quand on ne l'a pas mesuré.
    */
   prochaineEcheanceEntretien: { libelle: string; kmRestants: number | null; joursRestants: number | null; kmParJour: number | null } | null;
+  /**
+   * L'état du plan d'entretien, toutes opérations confondues : en retard dès
+   * qu'une opération l'est ; à jour quand chaque opération a un passage relevé
+   * et qu'aucune n'est dépassée ; inconnu sinon. Nul hors exploitation ; absent
+   * quand la source ne le calcule pas.
+   */
+  etatPlanEntretien?: "en-retard" | "a-jour" | "inconnu" | null;
   coutDouzeMois: number | null;
   /** L'autre moitié de l'attelage en cours, s'il y en a un. */
   attelageCourant: { immatriculation: string; immatriculationAffichee: string; role: "tracteur" | "remorque" } | null;

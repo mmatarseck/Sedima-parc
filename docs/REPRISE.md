@@ -59,6 +59,16 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
+**« Respect du plan préventif 100 % » cesse de mentir** (11 septembre 2026,
+sans migration). L'indicateur ne regardait que les kilomètres restants de la
+première échéance, et appliquait l'état du jour à tous les mois passés. L'état
+d'un véhicule se juge maintenant sur toutes ses opérations — en retard dès
+qu'une l'est, à jour seulement si chacune a un passage relevé, inconnu sinon
+(`etatPlanEntretien` sur la ligne du parc) —, ne se lit que sur la période en
+cours, et le taux sort « — » tant qu'un véhicule engagé est d'état inconnu. Sur
+les données réelles : 10 véhicules en retard, 2 partiellement connus, 35 sans
+aucun passage relevé. Le rapport `rapport-tableau-reel.mts` imprime ce décompte.
+
 **Migration 0040 jouée : « disponibilité 100 % » cesse de mentir** (11
 septembre 2026). Les 298 interventions reprises des bons ne disent pas combien
 de jours le véhicule est resté au garage, et le chargement avait écrit zéro :

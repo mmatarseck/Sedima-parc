@@ -26,7 +26,7 @@ import { join } from "node:path";
 import { fusionnerParametres } from "../src/domaine/parametres";
 import { PASTILLES, evaluerPastille, type SituationJournaliere } from "../src/domaine/pastilles";
 import { INDICATEURS_COURBE, cumuler } from "../src/domaine/tableau-bord";
-import { ligneDepuisLaBase, type ParcBrut } from "../src/donnees/flotte";
+import { echeancesEntretienDeLaBase, ligneDepuisLaBase, type ParcBrut } from "../src/donnees/flotte";
 import { donneesDepuisLaBase, moisDuTableau, type TableauJson } from "../src/donnees/tableau-bord";
 
 const bac = process.env.PGLITE_DIR ?? "";
@@ -193,6 +193,30 @@ const situations: SituationJournaliere[] = brutes.map((s) => ({
 }));
 
 const d = donneesDepuisLaBase(j, lignes, situations, [], parametres, aujourdhui);
+
+/* -- 3 bis. Le plan d'entretien des véhicules engagés ---------------------- */
+
+/* Ce que « Respect du plan préventif » peut vraiment dire. Une opération sans
+   passage relevé est « sans référence » : on ne sait pas si elle est en retard. */
+const plan = { enRetard: 0, connu: 0, partiel: 0, inconnu: 0, sansCompteur: 0, operations: 0, sansReference: 0 };
+parc.vehicules.forEach((brut, i) => {
+  const l = lignes[i]!;
+  if (!l.vehicule.engage || (l.vehicule.regime ?? "exploitation") !== "exploitation") return;
+  if (l.kilometrage === null) plan.sansCompteur++;
+  const compteur = l.kilometrage !== null && l.dateKilometrage ? { km: l.kilometrage, date: l.dateKilometrage } : null;
+  const ech = echeancesEntretienDeLaBase(l.vehicule, String(brut.id), compteur, parc);
+  plan.operations += ech.length;
+  const sans = ech.filter((e) => e.etat === "sans-reference").length;
+  plan.sansReference += sans;
+  if (ech.some((e) => e.etat === "en-retard")) plan.enRetard++;
+  else if (sans === 0) plan.connu++;
+  else if (sans < ech.length) plan.partiel++;
+  else plan.inconnu++;
+});
+console.log(`
+PLAN D'ENTRETIEN — véhicules engagés d'exploitation`);
+console.log(`  ${plan.enRetard} en retard · ${plan.connu} à jour, toutes opérations connues · ${plan.partiel} sans retard connu mais avec des opérations sans passage · ${plan.inconnu} sans aucun passage relevé`);
+console.log(`  ${plan.sansReference} opérations sans passage sur ${plan.operations} · ${plan.sansCompteur} véhicules sans compteur`);
 
 /* -- 4. Les pastilles ------------------------------------------------------- */
 

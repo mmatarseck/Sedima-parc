@@ -121,9 +121,27 @@ Tant que 0037 n'est pas jouée, l'application ne tombe pas : faute de
   réparation curative du mois n'a pas de durée. La durée moyenne au garage ne
   porte que sur les durées connues. De janvier à août 2026, les deux
   indicateurs disent « — » : c'est la vérité, le parc ne sait pas.
-- **Respect du plan préventif à 100 %.** Un véhicule sans kilométrage restant
-  connu ne compte pas en retard. Or peu de véhicules ont un compteur récent.
-  C'est le même défaut, pas encore traité.
+- **Respect du plan préventif à 100 %** — *corrigé le 11 septembre 2026, sans
+  migration.* L'indicateur ne regardait que les kilomètres restants de la
+  première échéance : sans compteur, rien n'était jamais en retard. Il
+  appliquait en plus l'état du jour à tous les mois passés, dont le plan ne
+  garde pas l'historique. Désormais, l'état d'un véhicule se juge sur toutes
+  ses opérations :
+  - **en retard** dès qu'une opération l'est ;
+  - **à jour** seulement si chaque opération a un passage relevé ;
+  - **inconnu** sinon.
+
+  Il ne se lit que sur la période en cours, et le taux sort « — » tant qu'un
+  véhicule engagé est d'état inconnu. Sur les données réelles :
+
+  | Véhicules engagés | Nombre |
+  | --- | ---: |
+  | En retard | 10 |
+  | Sans retard connu, mais avec des opérations sans passage | 2 |
+  | Sans aucun passage relevé | 35 |
+
+  293 opérations sur 307 n'ont pas de passage relevé, et 46 véhicules n'ont pas
+  de compteur récent. Le rapport imprime ce décompte sous « PLAN D'ENTRETIEN ».
 - **Accidents, pannes, contraventions et absentéisme à 0.** Aucune source n'a
   été chargée. L'état des véhicules en panne du dossier DO ne porte aucune
   date.

@@ -446,13 +446,16 @@ export function echeancesEntretienDeLaBase(v: Vehicule, uuid: string, compteur: 
   return echeancesDuPlan(programme, { vehiculeId: v.id, programmeCode: programme.code, ajustements: [] }, passagesReleves(programme, interventions, 0, null, parc.aujourdhui), compteurs, parc.aujourdhui);
 }
 
-function prochaineEcheanceEntretien(v: Vehicule, uuid: string, compteur: { km: number; date: string } | null, parc: ParcBrut): LigneFlotte["prochaineEcheanceEntretien"] {
+function planEntretienDeLaBase(v: Vehicule, uuid: string, compteur: { km: number; date: string } | null, parc: ParcBrut): { prochaine: LigneFlotte["prochaineEcheanceEntretien"]; etat: "en-retard" | "a-jour" | "inconnu" } {
   const rythme = rythmeMesure(uuid, parc);
   const echeances = echeancesEntretienDeLaBase(v, uuid, compteur, parc, rythme);
   const premiere = echeances.find((e) => e.kmRestants !== null || e.joursRestants !== null) ?? null;
   /* Le rythme suit l'échéance : la Conformité en tire des jours à partir des
      kilomètres restants, et doit le faire au rythme du véhicule, pas au sien. */
-  return premiere ? { libelle: premiere.libelle, kmRestants: premiere.kmRestants, joursRestants: premiere.joursRestants, kmParJour: rythme } : null;
+  const prochaine = premiere ? { libelle: premiere.libelle, kmRestants: premiere.kmRestants, joursRestants: premiere.joursRestants, kmParJour: rythme } : null;
+  /* L'état se juge sur toutes les opérations. Un retard connu est un fait ; mais une opération sans passage relevé ne dit pas qu'elle est à jour — une échéance comptée depuis la mise en service inventerait un retard, une absence de relevé inventerait une conformité. */
+  const etat = echeances.some((e) => e.etat === "en-retard") ? "en-retard" : echeances.length > 0 && echeances.every((e) => e.etat !== "sans-reference") ? "a-jour" : "inconnu";
+  return { prochaine, etat };
 }
 
 /** La ligne de la liste, dérivée des lignes brutes. */
@@ -464,6 +467,7 @@ export function ligneDepuisLaBase(brut: LigneVehicule, parc: ParcBrut, parametre
   const nomTitulaire = chauffeur ? `${chauffeur.prenom} ${chauffeur.nom}` : null;
 
   const compteur = dernierCompteur(brut.id, parc);
+  const planEntretien = v.regime === "exploitation" ? planEntretienDeLaBase(v, brut.id, compteur, parc) : null;
   /* Les documents et le plan d'entretien des véhicules de service et de
      fonction ne sont pas encore tenus dans la base : les déclarer manquants
      immobiliserait tout le parc léger d'un coup, à tort. Ils se jugent sur
@@ -492,7 +496,8 @@ export function ligneDepuisLaBase(brut: LigneVehicule, parc: ParcBrut, parametre
     kilometrage: compteur?.km ?? null,
     dateKilometrage: compteur?.date ?? null,
     prochaineEcheanceConformite: conformite,
-    prochaineEcheanceEntretien: exploitation ? prochaineEcheanceEntretien(v, brut.id, compteur, parc) : null,
+    prochaineEcheanceEntretien: planEntretien?.prochaine ?? null,
+    etatPlanEntretien: planEntretien?.etat ?? null,
     coutDouzeMois: cout > 0 ? cout : null,
     attelageCourant: null,
     statutEffectif: immobilisation?.statut ?? v.statut,

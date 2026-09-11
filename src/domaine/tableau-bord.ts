@@ -65,8 +65,12 @@ export interface FaitsVehiculeMois {
   joursImmobilises: number;
   /** Vrai si un document critique échu immobilisait le véhicule à la fin du mois. */
   nonConforme: boolean;
-  /** Vrai si l'échéance du plan d'entretien était dépassée à la fin du mois. */
-  entretienEnRetard: boolean;
+  /**
+   * Vrai si une opération du plan d'entretien est dépassée, faux si toutes sont
+   * à jour. **Nul quand on ne sait pas** : une opération sans passage relevé, ou
+   * une période passée — le plan ne garde pas l'historique de son état.
+   */
+  entretienEnRetard: boolean | null;
   accidents: number;
   accidentsCorporels: number;
   pannesEnMission: number;
@@ -167,6 +171,8 @@ export interface Cumul {
   nonConformes: number;
   /** Moyenne mensuelle des véhicules dont l'entretien est en retard. */
   entretienEnRetard: number;
+  /** Véhicules engagés dont on ne sait pas si l'entretien est à jour. */
+  planInconnus: number;
   accidents: number;
   accidentsCorporels: number;
   pannesEnMission: number;
@@ -218,6 +224,7 @@ export function cumuler(faits: FaitsVehiculeMois[], flotte: FaitsFlotteMois[], j
     joursImmobilises: somme((f) => (f.engage ? f.joursImmobilises : 0)),
     nonConformes: Math.round((faits.filter((f) => f.engage && f.nonConforme).length / nombreMois) * 10) / 10,
     entretienEnRetard: Math.round((faits.filter((f) => f.engage && f.entretienEnRetard).length / nombreMois) * 10) / 10,
+    planInconnus: Math.round((faits.filter((f) => f.engage && f.entretienEnRetard === null).length / nombreMois) * 10) / 10,
     accidents: somme((f) => f.accidents),
     accidentsCorporels: somme((f) => f.accidentsCorporels),
     pannesEnMission: somme((f) => f.pannesEnMission),
@@ -382,7 +389,8 @@ export const INDICATEURS: DefinitionIndicateur[] = [
     cible: { sens: "sup", valeur: 90 },
     decimales: 1,
     href: "/maintenance?vue=afaire",
-    calcul: (c) => (c.engages > 0 ? Math.round((1 - c.entretienEnRetard / c.engages) * 1000) / 10 : null),
+    /* Un véhicule dont on ignore l'état ne compte pas pour à jour : tant qu'il en reste, le taux ne se calcule pas. */
+    calcul: (c) => (c.planInconnus > 0 || c.engages <= 0 ? null : Math.round((1 - c.entretienEnRetard / c.engages) * 1000) / 10),
   },
   {
     id: "d7",
