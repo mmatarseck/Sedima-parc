@@ -59,7 +59,7 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
-**⚠ Migration 0040 à jouer : « disponibilité 100 % » cesse de mentir** (11
+**Migration 0040 jouée : « disponibilité 100 % » cesse de mentir** (11
 septembre 2026). Les 298 interventions reprises des bons ne disent pas combien
 de jours le véhicule est resté au garage, et le chargement avait écrit zéro :
 le taux de disponibilité du parc — indicateur du référentiel DO, affiché par
@@ -72,8 +72,8 @@ durées connues ; les écrans disent « — » au lieu de « 0 j ». Banc
 `tester-immobilisation-inconnue.mts`. Même défaut, pas encore traité : le
 respect du plan préventif à 100 % faute de compteurs.
 
-**⚠ Le régime fiscal des transporteurs et le coût d'août 2026 sont prêts à
-jouer** (11 septembre 2026) : la migration `0039_regime_fiscal.sql`, puis
+**Le régime fiscal des transporteurs et le coût d'août 2026 sont en base** (11
+septembre 2026, joués le jour même) : la migration `0039_regime_fiscal.sql`, puis
 `supabase/ca-location-aout-2026.sql`. À la demande du métier, chaque
 transporteur porte son régime fiscal : **TVA 18 %** (A. Dieng, Sokhna Diop, ADEX),
 **retenue 5 %** (Dème, Mouhamed Sy, Dame Ndoye, Aïssata Gaye) ou à confirmer. Le
@@ -84,7 +84,7 @@ compris. Coût tiers à la tonne d'août : 5 767 F/t HT au lieu de 1 259. Le mot
 d'affrètement devient facultatif. Voir `docs/CA-LOCATION-AOUT-2026.md` et le banc
 `tester-regime-fiscal.mts`.
 
-**⚠ Le relevé de transport réel est prêt à jouer** (11 septembre 2026) : la
+**Le relevé de transport réel est en base** (11 septembre 2026, joué le jour même) : la
 migration `0038_dernier_releve_transport.sql`, puis les quatre fichiers de
 `supabase/releve-parties/`, dans l'ordre. 1 079 voyages, 24 810 t, du 15 juin
 au 3 septembre 2026, tirés du relevé de tonnage hebdomadaire de la DO ; onze
@@ -96,7 +96,7 @@ pas foi : il est tapé à la main jusqu'à fin juillet, et c'est un `SUM` qui
 ignore les « 40T » tapés en texte ensuite. Voir `docs/RELEVE-TRANSPORT-REEL.md`
 et le banc `tester-releve-reel.mts`.
 
-**⚠ Migration 0037 et un correctif à jouer, dans cet ordre** (10 septembre
+**Migration 0037 et son correctif joués** (préparés le 10 septembre, joués le 11
 2026) : `supabase/migrations/0037_zeros_sans_mesure.sql`, puis
 `supabase/correctif-reglement-transport.sql`. Le rapport
 `scripts/rapport-tableau-reel.mts`, qui montre le tableau de bord sur la base
@@ -127,7 +127,7 @@ attrapé une fois de plus.
 viennent les lignes, pourquoi le prix est le tarif officiel de la date, et ce
 qui n'est pas chargé.
 
-**Migrations : 0001 à 0036 jouées ; 0037 à 0040 en attente.**
+**Migrations : 0001 à 0040 jouées** (0037 à 0040 et leurs chargements confirmés le 11 septembre 2026). Rien en attente dans le SQL Editor.
 
 **Le chargement des données réelles est fait** (10 septembre 2026) : les douze
 parties du seed, `aligner-referentiel.sql`, `purge-demonstration.sql` et
