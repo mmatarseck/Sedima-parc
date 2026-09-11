@@ -59,6 +59,22 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
+**⚠ Chargements à jouer : les véhicules manquants et les caractéristiques des cartes grises**
+(11 septembre 2026). Source : `MALICK/FICHE COMPLET VEHICULES PARC LIVRAISONS ET PERSONNELS.xlsx`.
+Le métier : « créer les véhicules manquants » ; « la taxe de 18 % est de la TVA ». Dans l'ordre :
+
+1. `supabase/vehicules-manquants.sql` — 17 véhicules créés (5 L200 KT neufs avec attributaire ou pool, lots
+   2 - 06, 11 et 13 reçus ; 4 Sinotruk ; tracteur et semi benne de Djilakh ; Howo ; 4 légers du siège ; un
+   scooter), AB 930 BB corrigé en AB 930 BV. Décisions écrites dans `scripts/charger-vehicules-manquants.mts`.
+2. `supabase/caracteristiques-vehicules.sql` — dates, type, puissance, cylindrée, masses pour 152 véhicules
+   (un champ rempli n'est pas écrasé, sauf la date « 1er janvier » de l'alignement ; un zéro reste inconnu),
+   32 kilométrages du 8 juillet 2026.
+3. `supabase/correctif-dr-wade-tva.sql` — Dr Wade au régime TVA ; sa DA de septembre dit 297 360 F TTC.
+
+Bancs `tester-caracteristiques.mts`, `tester-vehicules-manquants.mts`. Voir `docs/CARACTERISTIQUES-VEHICULES.md`.
+À trancher : AB 077 FP (carte grise AB 077 BP, référentiel AA 077 FP) ; AB 066/056 KT ; AA 372 WJ/YJ ; l'attributaire
+du Prado du DG ; les lots 2 - 07 et 2 - 09 sans doute déjà servis.
+
 **⚠ Migration 0044 et chargements à jouer : les livraisons par véhicule, les demandes d'achat réelles**
 (11 septembre 2026). Le métier : « toutes les DA sur plusieurs mois, préparer et charger ; préparer
 aussi les données de livraison et associer aux différents véhicules ». Dans l'ordre :

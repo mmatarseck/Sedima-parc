@@ -108,5 +108,15 @@ const wade = factures.find((f) => f.numero_demande_x3 === "DA200-2609134");
 attendu(`Dr Wade : la date du registre (10/01) cède au numéro de la DA (${wade?.date})`, wade?.date === "2026-09-10" && wade.prestataire === "PRE-2026-00027");
 attendu("« DEM » reste sans fiche, les cinq autres ont leur transporteur", factures.filter((f) => f.prestataire === null).length === 1 && factures.find((f) => f.numero_demande_x3 === "DA200-2609129")?.prestataire === null);
 
+/* Le métier, le 11 septembre 2026 : la taxe de 18 % de Dr Wade est de la TVA. */
+await jouer(join(projet, "supabase/correctif-dr-wade-tva.sql"));
+await jouer(join(projet, "supabase/correctif-dr-wade-tva.sql"));
+const tva = await un<{ regime: string | null; commentaire: string }>(
+  `select (select pt.regime_fiscal::text from profil_transporteur pt join prestataire p on p.id = pt.prestataire_id where p.numero = 'PRE-2026-00027') as regime,
+          (select commentaire_decision from demande_achat where numero = 'DAC-R-90004') as commentaire`,
+);
+const mentions = tva.commentaire.split("TVA de 18 % confirmée").length - 1;
+attendu(`Dr Wade au régime TVA (${tva.regime}), sa DA dit 297 360 F TTC, une seule fois après deux passages`, (tva.regime === null || tva.regime === "tva") && tva.commentaire.includes("297 360 F TTC") && mentions === 1);
+
 console.log(echecs === 0 ? "\ntout passe" : `\n${echecs} contrôle(s) en échec`);
 process.exit(echecs === 0 ? 0 : 1);

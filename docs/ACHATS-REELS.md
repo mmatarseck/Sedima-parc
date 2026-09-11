@@ -82,9 +82,11 @@ devient une dette envers le transporteur.
 | DA200-2609136 | K2SBT | 1 020 000 |
 | DA200-2609139 | Wakeur Serigne Fallou | 7 142 100 |
 
-- **Colonne « TVA » du registre** : c'est une retenue retranchée du HT. Elle vaut
-  5 % (BRS) pour quatre transporteurs, mais 18 % pour Dr Wade. Les trois montants
-  du registre sont recopiés dans le commentaire.
+- **Colonne « TVA » du registre** : pour quatre transporteurs, c'est la retenue de
+  5 % (BRS), retranchée du HT. Pour Dr Wade, c'est une **TVA de 18 %** (confirmé
+  par le métier le 11 septembre 2026) : elle s'ajoute au HT, soit 297 360 F TTC à
+  payer, et non les 206 640 F du registre. `correctif-dr-wade-tva.sql` passe son
+  profil au régime TVA et l'écrit sur la demande.
 - **Dr Wade** : le registre date sa DA du 10 janvier 2026. Son numéro
   (DA200-**2609**134) la place en septembre, et c'est cette date qui est retenue.
 
@@ -96,5 +98,3 @@ devient une dette envers le transporteur.
 - **Wakeur Serigne Fallou facture janvier à juin 2026**, alors que les bons de
   location de la période sont chargés « réglés » (règle ci-dessus). Si ces mois
   n'étaient pas payés, la règle est fausse pour lui.
-- **Dr Wade** : retenue de 18 % ou TVA ? Son régime au référentiel dira comment
-  lire le coût.
