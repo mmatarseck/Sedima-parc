@@ -8,7 +8,7 @@ import { Echeance, Pastille } from "@/composants/interface/Pastille";
 import { FORME_TRANSPORTEUR, MODE_REMUNERATION, type CamionTiers, type ChauffeurTiers } from "@/domaine/flotte-tierce";
 import { DIMENSION, NIVEAU_TRANSPORTEUR, niveauDuScore } from "@/domaine/notation-transporteur";
 import { CATEGORIE_VEHICULE } from "@/domaine/libelles";
-import { SOURCE_TARIF, STATUT_AFFRETEMENT, TAUX_BRS, TON_STATUT_AFFRETEMENT, UNITE_TARIF, coutAffretement, ecartFacturation, tonEcart, type LigneTarif } from "@/domaine/transporteurs";
+import { REGIME_FISCAL, SOURCE_TARIF, STATUT_AFFRETEMENT, TAUX_BRS, TON_STATUT_AFFRETEMENT, UNITE_TARIF, coutAffretement, coutMiseADisposition, ecartFacturation, tonEcart, ventiler, type LigneTarif } from "@/domaine/transporteurs";
 import type { FicheTransporteur as Fiche } from "@/donnees/fiche-transporteur-demo";
 import { date as formaterDate, montant, montantCourt, nombre, pourcentage } from "@/lib/format";
 import { Plus } from "lucide-react";
@@ -324,13 +324,16 @@ export function FicheTransporteur({ fiche, ongletInitial }: { fiche: Fiche; ongl
               elements={[
                 { libelle: "Raison sociale", valeur: prestataire.raisonSociale },
                 { libelle: "Forme", valeur: FORME_TRANSPORTEUR[profil.forme].libelle },
+                { libelle: "Régime fiscal", valeur: profil.regimeFiscal === "a-confirmer" ? <Echeance ton="vigilance">{REGIME_FISCAL[profil.regimeFiscal].libelle}</Echeance> : REGIME_FISCAL[profil.regimeFiscal].libelle },
                 { libelle: "Ville", valeur: prestataire.ville ?? "—" },
                 { libelle: "Contact", valeur: prestataire.contact ?? "—" },
                 { libelle: "Téléphone", valeur: prestataire.telephone ?? "—" },
                 { libelle: "NINEA", valeur: prestataire.ninea ?? <span className="text-attenue-2">non renseigné</span> },
               ]}
             />
-            <p className="meta mt-3 border-t border-bordure pt-3">{FORME_TRANSPORTEUR[profil.forme].precision}</p>
+            <p className="meta mt-3 border-t border-bordure pt-3">
+              {FORME_TRANSPORTEUR[profil.forme].precision} {REGIME_FISCAL[profil.regimeFiscal].precision}.
+            </p>
           </Carte>
 
           <Carte titre="Contrat et rémunération" precision="Ce qui décide de ce qu'on peut lui opposer">
@@ -558,7 +561,8 @@ export function FicheTransporteur({ fiche, ongletInitial }: { fiche: Fiche; ongl
                 { cle: "trajet", libelle: "Trajet", rendu: (a) => <span className="block truncate">{a.origine} → {a.destination}</span> },
                 { cle: "tonnage", libelle: "Tonnage", alignee: "droite", rendu: (a) => <span className="code">{nombre(a.tonnageLivre ?? a.tonnagePrevu)} t</span> },
                 { cle: "du", libelle: "Dû net", alignee: "droite", rendu: (a) => (a.attendu === null ? <span className="text-attenue">—</span> : <span className="code">{montant(a.attendu)}</span>) },
-                { cle: "cout", libelle: "Coût TTC", alignee: "droite", rendu: (a) => <span className="code font-medium">{montant(coutAffretement(a))}</span> },
+                { cle: "cout", libelle: "Coût HT", alignee: "droite", rendu: (a) => <span className="code font-medium">{montant(coutAffretement(a))}</span> },
+                { cle: "ttc", libelle: "TTC", alignee: "droite", rendu: (a) => <span className="code">{montant(ventiler(coutAffretement(a), a.regime).ttc)}</span> },
                 {
                   cle: "ecart",
                   libelle: "Écart",
@@ -594,7 +598,8 @@ export function FicheTransporteur({ fiche, ongletInitial }: { fiche: Fiche; ongl
                   { cle: "jours", libelle: "Jours dus", alignee: "droite", rendu: (m) => <span className="code">{m.joursCalendaires - m.joursPanne}</span> },
                   { cle: "roules", libelle: "Jours roulés", alignee: "droite", rendu: (m) => <span className="code">{m.joursRoules ?? "—"}</span> },
                   { cle: "tonnes", libelle: "Tonnes", alignee: "droite", rendu: (m) => (m.tonnesTransportees !== null ? <span className="code">{nombre(m.tonnesTransportees)}</span> : <span className="text-attenue">—</span>) },
-                  { cle: "cout", libelle: "Coût", alignee: "droite", rendu: (m) => <span className="code font-medium">{montant(m.montantFacture ?? 0)}</span> },
+                  { cle: "cout", libelle: "Location HT", alignee: "droite", rendu: (m) => <span className="code font-medium">{montant(coutMiseADisposition(m).location)}</span> },
+                  { cle: "ttc", libelle: "TTC", alignee: "droite", rendu: (m) => <span className="code">{montant(ventiler(coutMiseADisposition(m).location, m.regime).ttc)}</span> },
                 ]}
               />
             </Carte>

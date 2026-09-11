@@ -162,7 +162,8 @@ export interface Affretement {
   /** Nul tant que la mission n'est pas livrée. */
   tonnageLivre: number | null;
   distanceKm: number;
-  motif: MotifAffretement;
+  /** Nul quand la mission est reprise d'une pièce qui ne le dit pas. */
+  motif: MotifAffretement | null;
   /** Le véhicule du parc que l'affrètement remplace, quand il y en a un. */
   vehiculeRemplaceId: string | null;
   statut: StatutAffretement;
@@ -188,6 +189,8 @@ export interface Affretement {
   demandeur: string;
   commentaire: string | null;
   creee: boolean;
+  /** Le régime fiscal du transporteur, porté à la lecture ; absent, il est à confirmer. */
+  regime?: RegimeFiscal;
 }
 
 /* -- La retenue à la source (BRS) -------------------------------------------------
@@ -196,6 +199,48 @@ export interface Affretement {
    la facture majore d'autant — le transporteur touche le prix convenu. */
 
 export const TAUX_BRS = 0.05;
+
+/* -- Le régime fiscal du transporteur (11 septembre 2026) ------------------------
+   Deux régimes coexistent, et la même somme n'y veut pas dire la même chose.
+   - **TVA 18 %** : le transporteur facture le hors-taxe et y ajoute la TVA, que
+     SEDIMA récupère. La charge vraie est le hors-taxe ; le TTC est ce qui sort
+     de la trésorerie. C'est le cas d'A. Dieng, Sokhna Diop et ADEX (CA
+     provisoire d'août 2026).
+   - **BRS 5 %** : pas de TVA ; SEDIMA retient 5 % de la facture et les reverse
+     au Trésor. La charge est la facture entière — hors taxe et TTC se
+     confondent —, et le transporteur en touche 95 %. C'est le cas de Dème, Dame
+     Ndoye, Mouhamed Sy et Aïssata Gaye (factures et demandes d'achat 2026).
+   « À confirmer » garde la lecture d'avant — celle de la retenue — et le dit. */
+
+export type RegimeFiscal = "tva" | "brs" | "a-confirmer";
+
+export const TAUX_TVA = 0.18;
+
+export const REGIME_FISCAL: Record<RegimeFiscal, { libelle: string; court: string; precision: string; ton: Ton }> = {
+  tva: { libelle: "TVA 18 %", court: "TVA", precision: "Facture hors taxe majorée de 18 % de TVA, récupérable : la charge est le hors-taxe", ton: "neutre" },
+  brs: { libelle: "Retenue à la source 5 %", court: "BRS", precision: "Pas de TVA : SEDIMA retient 5 % de la facture et les reverse au Trésor — hors taxe et TTC se confondent", ton: "neutre" },
+  "a-confirmer": { libelle: "Régime à confirmer", court: "à confirmer", precision: "Aucune pièce ne dit encore si ce transporteur facture la TVA ou subit la retenue : lu comme une retenue jusqu'à preuve du contraire", ton: "vigilance" },
+};
+
+export interface MontantsFiscaux {
+  /** La base hors taxe : ce que la mission coûte au parc. */
+  ht: number;
+  /** La TVA ajoutée à la facture ; nulle hors régime TVA. */
+  tva: number;
+  /** Ce qui sort de la trésorerie de SEDIMA. */
+  ttc: number;
+  /** La retenue à la source reversée au Trésor ; nulle sous TVA. */
+  retenue: number;
+  /** Ce que le transporteur reçoit. */
+  verse: number;
+}
+
+/** Une charge hors taxe, ventilée selon le régime du transporteur. */
+export function ventiler(ht: number, regime: RegimeFiscal = "a-confirmer"): MontantsFiscaux {
+  const tva = regime === "tva" ? Math.round(ht * TAUX_TVA) : 0;
+  const retenue = regime === "tva" ? 0 : Math.round(ht * TAUX_BRS);
+  return { ht, tva, ttc: ht + tva, retenue, verse: ht + tva - retenue };
+}
 
 export interface MontantsAffretement {
   /** Ce que la grille dit que le transporteur doit toucher. */
@@ -338,8 +383,10 @@ export function tonEcart(e: EcartFacturation | null): Ton {
 }
 
 /** Le coût retenu d'une mission : le facturé s'il existe, le convenu sinon. */
-export function coutAffretement(a: Pick<Affretement, "montantConvenu" | "montantFacture" | "statut">): number {
+export function coutAffretement(a: Pick<Affretement, "montantConvenu" | "montantFacture" | "statut"> & { regime?: RegimeFiscal }): number {
   if (a.statut === "annule") return 0;
+  /* Sous TVA, le prix convenu et la facture s'entendent hors taxe : aucune majoration de retenue. */
+  if (a.regime === "tva") return a.montantFacture ?? a.montantConvenu;
   /* Le coût du parc est le montant **facturé**, retenue comprise : les 5 %
      sortent de la trésorerie de SEDIMA, même s'ils vont au Trésor et non au
      transporteur. Retenir le net minorerait le coût de transport de 5 %. */
@@ -494,6 +541,7 @@ export interface MiseADisposition {
   referenceFacture: string | null;
   numeroDemandeX3: string | null;
   commentaire: string | null;
+  regime?: RegimeFiscal;
 }
 
 /** Les jours dus : six sur sept, la panne déduite. */
@@ -528,9 +576,9 @@ export interface CoutMad {
  * la location ; le carburant, servi à la cuve, en représente encore un sixième,
  * et c'est ce qui sépare le prix affiché de ce que le véhicule coûte au parc.
  */
-export function coutMiseADisposition(m: Pick<MiseADisposition, "joursCalendaires" | "joursPanne" | "prixJour" | "convention" | "montantFacture" | "statut" | "carburantMontant">): CoutMad {
+export function coutMiseADisposition(m: Pick<MiseADisposition, "joursCalendaires" | "joursPanne" | "prixJour" | "convention" | "montantFacture" | "statut" | "carburantMontant"> & { regime?: RegimeFiscal }): CoutMad {
   if (m.statut === "annule") return { location: 0, carburant: 0, total: 0 };
-  const location = m.montantFacture ?? factureSelonConvention(joursDus(m) * m.prixJour, m.convention);
+  const location = m.montantFacture ?? (m.regime === "tva" ? joursDus(m) * m.prixJour : factureSelonConvention(joursDus(m) * m.prixJour, m.convention));
   return { location, carburant: m.carburantMontant, total: location + m.carburantMontant };
 }
 
@@ -588,6 +636,7 @@ export interface Prestation {
   referenceFacture: string | null;
   numeroDemandeX3: string | null;
   commentaire: string | null;
+  regime?: RegimeFiscal;
 }
 
 export interface MontantsPrestation {
@@ -615,8 +664,9 @@ export function montantsPrestation(p: Pick<Prestation, "quantite" | "prixUnitair
 }
 
 /** Le coût d'une prestation pour le parc : le facturé s'il existe, l'attendu sinon. */
-export function coutPrestation(p: Pick<Prestation, "quantite" | "prixUnitaire" | "convention" | "montantFacture" | "statut">): number {
+export function coutPrestation(p: Pick<Prestation, "quantite" | "prixUnitaire" | "convention" | "montantFacture" | "statut"> & { regime?: RegimeFiscal }): number {
   if (p.statut === "annule") return 0;
+  if (p.regime === "tva") return p.montantFacture ?? Math.round(p.quantite * p.prixUnitaire);
   const m = montantsPrestation(p);
   return m.factureTtc ?? m.attenduTtc;
 }

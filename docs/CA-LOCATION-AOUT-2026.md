@@ -78,13 +78,82 @@ tracteurs à 130 000 F le jour ne comptent que 4 à 7 voyages au relevé d'août
 Une ligne « BENNE » (31 jours à 80 000 F) n'a pas de plaque. « AA 072 BP » est
 inconnu du référentiel, et facturé 21 jours à 0 F.
 
-## Les décisions attendues
+## Ce que le métier a décidé (11 septembre 2026)
 
-1. **La base du coût** : hors taxe ou TTC ?
-2. **Les quatre pesées en double** : les écarter, ou les charger telles quelles
-   en attendant la facture définitive ?
-3. **Le périmètre** : le détail seul (A. Dieng, Sokhna Diop, ADEX), ou aussi les
-   montants du récapitulatif pour les transporteurs sans détail ?
-4. **Le statut** : un CA provisoire est un service rendu, non encore facturé.
-   Faut-il le charger comme « livré », qui apparaîtra comme dû au compte du
-   transporteur, ou attendre les factures définitives ?
+1. **La base du coût** : « ajuster l'app en rendant clair la TVA de 18 % ou le
+   BRS de 5 %, ce qui nous permettra de voir les charges HT ou TTC ». Voir plus
+   bas.
+2. **Les quatre pesées en double** : chargées telles quelles. Chacune le dit dans
+   son commentaire.
+3. **Le périmètre** : le détail seulement, c'est-à-dire A. Dieng, Sokhna Diop et
+   ADEX.
+4. **Le statut** : livré, à facturer.
+
+## Le régime fiscal, rendu clair (migration 0039)
+
+Chaque transporteur porte désormais son **régime fiscal** sur son profil :
+
+| Régime | Ce que la facture fait | Hors taxe | TTC | Le transporteur touche |
+| --- | --- | --- | --- | --- |
+| TVA 18 % | ajoute 18 % au hors-taxe | la charge du parc | HT + 18 % | le TTC |
+| Retenue 5 % | pas de TVA ; SEDIMA retient 5 % | la facture | = HT | 95 % |
+| À confirmer | lu comme une retenue, comme avant | | | |
+
+Le régime n'est posé que là où une pièce le prouve :
+
+- **TVA** pour A. Dieng, Sokhna Diop et ADEX, d'après ce CA provisoire ;
+- **retenue** pour Dème, Mouhamed Sy, Dame Ndoye et Aïssata Gaye, d'après leurs
+  factures et les demandes d'achat de septembre 2026 ;
+- **à confirmer** pour les six autres, dont Dr Wade : sa demande d'achat retire
+  18 % au lieu d'en ajouter, ce qui ne prouve rien.
+
+Ce qui change à l'écran :
+
+- **Fiche transporteur** : le régime, avec sa règle, dans l'identité ; les
+  affrètements et les mises à disposition en coût **HT** et **TTC**.
+- **Tableau de bord** : un choix **HT / TTC** à côté des filtres. Il porte sur
+  les coûts des transporteurs : coût tiers, coût à la tonne des tiers, taux
+  d'externalisation en coût. Les coûts du parc ne changent pas.
+- **Le calcul** : sous TVA, le prix convenu s'entend hors taxe. Il ne subit plus
+  la majoration de la retenue, qui aurait gonflé le coût de 5 %.
+
+Au passage, **le motif d'affrètement devient facultatif**. Le CA provisoire ne
+dit pas pourquoi le parc a confié la tonne, et un motif inventé fausserait le
+rapport des affrètements subis.
+
+## Ce qui est chargé
+
+`supabase/ca-location-aout-2026.sql`, montants **hors taxe** :
+
+| | Lignes | HT | TTC recalculé | Feuille TTC |
+| --- | ---: | ---: | ---: | ---: |
+| A. Dieng | 43 affrètements | 7 541 170 | 8 898 581 | 8 898 580,6 |
+| Sokhna Diop | 22 affrètements | 3 960 000 | 4 672 800 | 4 672 800 |
+| ADEX | 7 prestations au jour | 14 370 000 | 16 956 600 | 16 956 600 |
+
+- **Un voyage est un affrètement** : le camion, le client livré, le poids net pesé
+  en tonnage, le montant hors taxe en prix convenu, le statut « livré ». La
+  pesée complète et le tarif sont dans le commentaire. Sokhna Diop y porte aussi
+  « facturé sur 40 t forfaitaires ».
+- **ADEX entre en prestation au jour**, et non en mise à disposition. Ses jours
+  facturés ne suivent pas le contrat modélisé (six jours sur sept, panne
+  déduite). Une mise à disposition les aurait recalculés, ou il aurait fallu
+  inventer des jours de panne pour retomber sur la somme. Les trois lignes à
+  zéro franc (AA 269 NW, la camionnette AA 658 JS, AA 072 BP) ne sont pas
+  chargées.
+- **Rien ne compte dans « Factures tiers à régler »** : il n'y a pas encore de
+  facture.
+
+**Effet sur le tableau de bord.** Le coût du transport tiers d'août passe à
+33,1 M F HT, et le coût à la tonne des tiers à **5 767 F/t HT**, contre 1 259
+avant. Il reste sous-estimé : A. Kane, qui porte le plus de tonnes au relevé,
+n'a qu'une ligne au récapitulatif (19,5 M F TTC), sans détail, et n'est donc pas
+chargé.
+
+## À jouer en production
+
+1. `supabase/migrations/0039_regime_fiscal.sql`
+2. `supabase/ca-location-aout-2026.sql`, après 0039 et après
+   `releve-parties/releve-01-camions.sql`, qui ajoute trois des camions cités.
+
+Banc : `tester-regime-fiscal.mts`.

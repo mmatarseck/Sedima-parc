@@ -104,11 +104,12 @@ Le chargement suit donc le détail des cellules, pas les totaux.
 
 ## Les limites connues
 
-- **Le coût à la tonne des tiers n'est pas encore fiable** : 606 F/t en
-  juillet, 1 259 F/t en août, contre des tarifs de 2 500 à 3 500 F/t. Son
-  numérateur vient des bons de commande, datés à leur émission, souvent un mois
-  ou plus après le service. Le mois du coût et le mois des tonnes ne se
-  recouvrent pas.
+- **Le coût à la tonne des tiers n'est pas encore fiable.** Il valait 606 F/t en
+  juillet, contre des tarifs de 2 500 à 3 500 F/t. Aucun bon de commande chargé
+  ne concerne les quatre transporteurs qui portent l'essentiel des tonnes. Pour
+  août, le CA provisoire d'A. Dieng, Sokhna Diop et ADEX est chargé : le coût
+  passe à 5 767 F/t HT. A. Kane, sans détail, y manque encore. Voir
+  `docs/CA-LOCATION-AOUT-2026.md`.
 - **Le coût à la tonne du parc** rapporte les charges de toute la flotte,
   véhicules légers compris, aux seules tonnes des camions du relevé. Et le
   carburant d'août manque (la source s'arrête au 31 juillet).

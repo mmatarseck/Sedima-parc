@@ -112,6 +112,8 @@ export interface FaitsFlotteMois {
   coutAffretements: number;
   coutMisesADisposition: number;
   coutPrestations: number;
+  /** La TVA que portent ces coûts, pour les lire TTC ; nulle sous retenue à la source. */
+  taxeTransportTiers: number;
   /**
    * Tonnes confiées à des tiers — relevé de transport. **Nulles quand le relevé
    * ne couvre pas toute la période** : un demi-mois de tonnes rapporté à un mois
@@ -182,6 +184,7 @@ export interface Cumul {
   joursChauffeurs: number;
   /** Coût du transport tiers sur la période — module Transporteurs. */
   coutTransportTiers: number;
+  taxeTransportTiers: number;
   /** Nulles dès qu'un mois de la période n'est pas couvert par le relevé. */
   tonnesTiers: number | null;
   /** Tonnes portées par le parc, relevé de transport à l'appui. */
@@ -227,6 +230,7 @@ export function cumuler(faits: FaitsVehiculeMois[], flotte: FaitsFlotteMois[], j
     joursIndisponibiliteChauffeurs: flotte.reduce((s, f) => s + f.joursIndisponibiliteChauffeurs, 0),
     joursChauffeurs: flotte.reduce((s, f) => s + f.joursChauffeurs, 0),
     coutTransportTiers: flotte.reduce((s, f) => s + f.coutTransportTiers, 0),
+    taxeTransportTiers: flotte.reduce((s, f) => s + f.taxeTransportTiers, 0),
     /* Un mois sans tonnes rend le cumul inconnu : le compléter par zéro fausserait tout ratio. */
     tonnesTiers: flotte.some((f) => f.tonnesTiers === null) ? null : flotte.reduce((s, f) => s + (f.tonnesTiers ?? 0), 0),
     tonnesInternes: flotte.some((f) => f.tonnesInternes === null) ? null : flotte.reduce((s, f) => s + (f.tonnesInternes ?? 0), 0),

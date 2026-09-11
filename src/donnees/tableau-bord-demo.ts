@@ -337,7 +337,7 @@ export function donneesTableau(): DonneesTableau {
   const flotte: FaitsFlotteMois[] = mois.map((x) => {
     const debutMois = `${x}-01`;
     if (debutMois > DATE_REFERENCE)
-      return { mois: x, joursIndisponibiliteChauffeurs: 0, joursChauffeurs: 0, coutTransportTiers: 0, coutAffretements: 0, coutMisesADisposition: 0, coutPrestations: 0, tonnesTiers: null, tonnesInternes: null };
+      return { mois: x, joursIndisponibiliteChauffeurs: 0, joursChauffeurs: 0, coutTransportTiers: 0, coutAffretements: 0, coutMisesADisposition: 0, coutPrestations: 0, taxeTransportTiers: 0, tonnesTiers: null, tonnesInternes: null };
     const finMois = finDe(x);
     const jours = joursDuMois.get(x) ?? 0;
     let indisponibles = 0;
@@ -366,6 +366,8 @@ export function donneesTableau(): DonneesTableau {
       coutAffretements: t.affretements,
       coutMisesADisposition: t.mad,
       coutPrestations: t.prestations,
+      /* La démonstration ne porte pas de régime fiscal : ses coûts se lisent tels quels. */
+      taxeTransportTiers: 0,
       /* Les tonnes viennent du **relevé de transport** : c'est lui qui porte
          les deux termes du taux d'externalisation, et c'est ce qui résout la
          question 71 — la base juste est la tonne, non le coût. */
@@ -437,6 +439,7 @@ export function donneesTableau(): DonneesTableau {
         coutAffretements: tiersSemaine.reduce((s, a) => s + coutAffretement(a), 0),
         coutMisesADisposition: Math.round(prorata),
         coutPrestations: prestationsSemaine.reduce((s, p) => s + coutPrestation(p), 0),
+        taxeTransportTiers: 0,
         tonnesTiers: releveCouvre(bornesDuReleve(relevesTransport()), debutSemaine, DATE_REFERENCE) ? tonnesDeLaSemaine.externe : null,
         tonnesInternes: releveCouvre(bornesDuReleve(relevesTransport()), debutSemaine, DATE_REFERENCE) ? tonnesDeLaSemaine.interne : null,
       };

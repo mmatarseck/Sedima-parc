@@ -59,6 +59,18 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
+**⚠ Le régime fiscal des transporteurs et le coût d'août 2026 sont prêts à
+jouer** (11 septembre 2026) : la migration `0039_regime_fiscal.sql`, puis
+`supabase/ca-location-aout-2026.sql`. À la demande du métier, chaque
+transporteur porte son régime fiscal : **TVA 18 %** (A. Dieng, Sokhna Diop, ADEX),
+**retenue 5 %** (Dème, Mouhamed Sy, Dame Ndoye, Aïssata Gaye) ou à confirmer. Le
+tableau de bord gagne un choix HT / TTC pour les coûts des transporteurs, et la
+fiche transporteur montre les deux. Le CA provisoire d'août (dossier BIRAHIME
+FALL) entre dans le périmètre retenu : le détail seul, livré à facturer, doublons
+compris. Coût tiers à la tonne d'août : 5 767 F/t HT au lieu de 1 259. Le motif
+d'affrètement devient facultatif. Voir `docs/CA-LOCATION-AOUT-2026.md` et le banc
+`tester-regime-fiscal.mts`.
+
 **⚠ Le relevé de transport réel est prêt à jouer** (11 septembre 2026) : la
 migration `0038_dernier_releve_transport.sql`, puis les quatre fichiers de
 `supabase/releve-parties/`, dans l'ordre. 1 079 voyages, 24 810 t, du 15 juin
@@ -102,7 +114,7 @@ attrapé une fois de plus.
 viennent les lignes, pourquoi le prix est le tarif officiel de la date, et ce
 qui n'est pas chargé.
 
-**Migrations : 0001 à 0036 jouées ; 0037 et 0038 en attente.**
+**Migrations : 0001 à 0036 jouées ; 0037, 0038 et 0039 en attente.**
 
 **Le chargement des données réelles est fait** (10 septembre 2026) : les douze
 parties du seed, `aligner-referentiel.sql`, `purge-demonstration.sql` et

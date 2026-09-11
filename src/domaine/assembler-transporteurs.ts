@@ -45,7 +45,7 @@ export interface SourceTransporteurs {
 
 /** Ce qu'un transporteur sans profil enregistré est censé être : un particulier payé à la tonne, sans écrit. */
 export function profilParDefaut(numero: string): ProfilTransporteur {
-  return { numero, forme: "particulier", sousContrat: false, referenceContrat: null, debutContrat: null, finContrat: null, modes: ["tonne"], camionsEngages: null, commentaire: null };
+  return { numero, forme: "particulier", sousContrat: false, referenceContrat: null, debutContrat: null, finContrat: null, modes: ["tonne"], camionsEngages: null, regimeFiscal: "a-confirmer", commentaire: null };
 }
 
 export interface ActiviteTransporteur {

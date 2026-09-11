@@ -23,7 +23,7 @@ import type { Parametres } from "@/domaine/parametres";
 import type { SituationJournaliere } from "@/domaine/pastilles";
 import { bornesDuReleve, releveCouvre, tonnagesPar, type LigneReleve } from "@/domaine/releve-transport";
 import type { FaitsFlotteMois, FaitsVehiculeMois, SituationJour, VehiculeTableau } from "@/domaine/tableau-bord";
-import { coutAffretement, coutMiseADisposition, coutPrestation, prestationFaite, type Affretement, type MiseADisposition, type Prestation } from "@/domaine/transporteurs";
+import { coutAffretement, coutMiseADisposition, coutPrestation, prestationFaite, type Affretement, type MiseADisposition, type Prestation, type RegimeFiscal, ventiler } from "@/domaine/transporteurs";
 import type { BusinessUnit, CategorieFlotte, CategorieVehicule, LigneFlotte, PosteDepense, StatutVehicule, TypeDocument } from "@/domaine/types";
 import { joursRestants } from "@/lib/format";
 import { authentificationReelle } from "@/lib/session-demo";
@@ -46,9 +46,9 @@ export interface TableauJson {
   statuts: { immatriculation: string; avant: string | null; apres: string | null; le: string }[];
   chauffeurs: { id: string; date_embauche: string | null; date_sortie: string | null }[];
   indisponibilites: { chauffeur_id: string; debut: string; fin: string | null }[];
-  affretements: { date: string; statut: Affretement["statut"]; montant_convenu: number; montant_facture: number | null; tonnage_prevu: number | string; tonnage_livre: number | string | null }[];
-  mises_a_disposition: { mois: string; statut: MiseADisposition["statut"]; jours_calendaires: number; jours_panne: number; prix_jour: number; convention: MiseADisposition["convention"]; montant_facture: number | null; carburant_montant: number; tonnes_transportees: number | string | null }[];
-  prestations: { date: string; statut: Prestation["statut"]; quantite: number | string; prix_unitaire: number; convention: Prestation["convention"]; montant_facture: number | null }[];
+  affretements: { date: string; statut: Affretement["statut"]; montant_convenu: number; montant_facture: number | null; tonnage_prevu: number | string; tonnage_livre: number | string | null; regime?: RegimeFiscal }[];
+  mises_a_disposition: { mois: string; statut: MiseADisposition["statut"]; jours_calendaires: number; jours_panne: number; prix_jour: number; convention: MiseADisposition["convention"]; montant_facture: number | null; carburant_montant: number; tonnes_transportees: number | string | null; regime?: RegimeFiscal }[];
+  prestations: { date: string; statut: Prestation["statut"]; quantite: number | string; prix_unitaire: number; convention: Prestation["convention"]; montant_facture: number | null; regime?: RegimeFiscal }[];
   releves_transport: { date: string; mode: LigneReleve["mode"]; produit: LigneReleve["produit"]; tonnage: number | string; tonnage_pese: number | string | null }[];
 }
 
@@ -234,9 +234,9 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
   }
 
   /* ---- La flotte, mois par mois : l'absentéisme et le transport confié à des tiers ---- */
-  const affretements = j.affretements.map((a) => ({ date: a.date, statut: a.statut, montantConvenu: n(a.montant_convenu), montantFacture: a.montant_facture === null ? null : n(a.montant_facture), tonnes: prestationFaite(a.statut) ? n(a.tonnage_livre ?? a.tonnage_prevu) : 0 }));
-  const mads = j.mises_a_disposition.map((m) => ({ mois: m.mois, statut: m.statut, joursCalendaires: m.jours_calendaires, joursPanne: m.jours_panne, prixJour: m.prix_jour, convention: m.convention, montantFacture: m.montant_facture === null ? null : n(m.montant_facture), carburantMontant: n(m.carburant_montant), tonnes: n(m.tonnes_transportees) }));
-  const prestations = j.prestations.map((p) => ({ date: p.date, statut: p.statut, quantite: n(p.quantite), prixUnitaire: p.prix_unitaire, convention: p.convention, montantFacture: p.montant_facture === null ? null : n(p.montant_facture) }));
+  const affretements = j.affretements.map((a) => ({ date: a.date, statut: a.statut, montantConvenu: n(a.montant_convenu), montantFacture: a.montant_facture === null ? null : n(a.montant_facture), tonnes: prestationFaite(a.statut) ? n(a.tonnage_livre ?? a.tonnage_prevu) : 0, regime: a.regime ?? "a-confirmer" }));
+  const mads = j.mises_a_disposition.map((m) => ({ mois: m.mois, statut: m.statut, joursCalendaires: m.jours_calendaires, joursPanne: m.jours_panne, prixJour: m.prix_jour, convention: m.convention, montantFacture: m.montant_facture === null ? null : n(m.montant_facture), carburantMontant: n(m.carburant_montant), tonnes: n(m.tonnes_transportees), regime: m.regime ?? "a-confirmer" }));
+  const prestations = j.prestations.map((p) => ({ date: p.date, statut: p.statut, quantite: n(p.quantite), prixUnitaire: p.prix_unitaire, convention: p.convention, montantFacture: p.montant_facture === null ? null : n(p.montant_facture), regime: p.regime ?? "a-confirmer" }));
   /* Le relevé de transport ne sert qu'aux tonnes : mode, produit et tonnages suffisent aux règles. */
   const relevesTransport = j.releves_transport.map((t) => ({ date: t.date, mode: t.mode, produit: t.produit, tonnage: n(t.tonnage), tonnagePese: t.tonnage_pese === null ? null : n(t.tonnage_pese) }) as unknown as LigneReleve & { date: string });
   /* Un mois n'a de tonnes que si le relevé le couvre en entier : voir `releveCouvre`. */
@@ -245,7 +245,7 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
   const indisponiblesSur = (debut: string, fin: string) => j.indisponibilites.reduce((s, i) => s + joursDans(i.debut, i.fin, debut, fin), 0);
 
   const flotte: FaitsFlotteMois[] = mois.map((x) => {
-    if (`${x}-01` > aujourdhui) return { mois: x, joursIndisponibiliteChauffeurs: 0, joursChauffeurs: 0, coutTransportTiers: 0, coutAffretements: 0, coutMisesADisposition: 0, coutPrestations: 0, tonnesTiers: null, tonnesInternes: null };
+    if (`${x}-01` > aujourdhui) return { mois: x, joursIndisponibiliteChauffeurs: 0, joursChauffeurs: 0, coutTransportTiers: 0, coutAffretements: 0, coutMisesADisposition: 0, coutPrestations: 0, taxeTransportTiers: 0, tonnesTiers: null, tonnesInternes: null };
     const debut = `${x}-01`;
     const fin = finDe(x);
     const jours = joursDuMois.get(x) ?? 0;
@@ -256,9 +256,11 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
     const coutAff = aff.reduce((s, a) => s + coutAffretement(a), 0);
     const coutMad = Math.round(madMois.reduce((s, m) => s + coutMiseADisposition(m).total, 0) * partDuMois);
     const coutPres = pres.reduce((s, p) => s + coutPrestation(p), 0);
+    /* La TVA de ces coûts, pour qui les lit TTC : la location d'une mise à disposition la porte, pas son carburant. */
+    const taxe = aff.reduce((s, a) => s + ventiler(coutAffretement(a), a.regime).tva, 0) + Math.round(madMois.reduce((s, m) => s + ventiler(coutMiseADisposition(m).location, m.regime).tva, 0) * partDuMois) + pres.reduce((s, p) => s + ventiler(coutPrestation(p), p.regime).tva, 0);
     const tonnes = tonnagesPar(relevesTransport.filter((l) => l.date >= debut && l.date <= fin));
     const couvert = releveCouvre(bornes, debut, fin);
-    return { mois: x, joursIndisponibiliteChauffeurs: indisponiblesSur(debut, fin), joursChauffeurs: actifsAu(fin) * jours, coutTransportTiers: coutAff + coutMad + coutPres, coutAffretements: coutAff, coutMisesADisposition: coutMad, coutPrestations: coutPres, tonnesTiers: couvert ? tonnes.externe : null, tonnesInternes: couvert ? tonnes.interne : null };
+    return { mois: x, joursIndisponibiliteChauffeurs: indisponiblesSur(debut, fin), joursChauffeurs: actifsAu(fin) * jours, coutTransportTiers: coutAff + coutMad + coutPres, coutAffretements: coutAff, coutMisesADisposition: coutMad, coutPrestations: coutPres, taxeTransportTiers: taxe, tonnesTiers: couvert ? tonnes.externe : null, tonnesInternes: couvert ? tonnes.interne : null };
   });
   const flotteSemaine: FaitsFlotteMois[] = [
     (() => {
@@ -267,9 +269,10 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
       const coutAff = aff.reduce((s, a) => s + coutAffretement(a), 0);
       const coutMad = Math.round(mads.filter((m) => m.mois === moisCourant).reduce((s, m) => s + (coutMiseADisposition(m).total * joursSemaine) / m.joursCalendaires, 0));
       const coutPres = prestations.filter((p) => p.date >= debutSemaine && p.date <= aujourdhui).reduce((s, p) => s + coutPrestation(p), 0);
+      const taxe = aff.reduce((s, a) => s + ventiler(coutAffretement(a), a.regime).tva, 0) + Math.round(mads.filter((m) => m.mois === moisCourant).reduce((s, m) => s + (ventiler(coutMiseADisposition(m).location, m.regime).tva * joursSemaine) / m.joursCalendaires, 0)) + prestations.filter((p) => p.date >= debutSemaine && p.date <= aujourdhui).reduce((s, p) => s + ventiler(coutPrestation(p), p.regime).tva, 0);
       const tonnes = tonnagesPar(relevesTransport.filter((l) => l.date >= debutSemaine && l.date <= aujourdhui));
       const couvert = releveCouvre(bornes, debutSemaine, aujourdhui);
-      return { mois: "semaine", joursIndisponibiliteChauffeurs: indisponiblesSur(debutSemaine, aujourdhui), joursChauffeurs: actifsAu(aujourdhui) * joursSemaine, coutTransportTiers: coutAff + coutMad + coutPres, coutAffretements: coutAff, coutMisesADisposition: coutMad, coutPrestations: coutPres, tonnesTiers: couvert ? tonnes.externe : null, tonnesInternes: couvert ? tonnes.interne : null };
+      return { mois: "semaine", joursIndisponibiliteChauffeurs: indisponiblesSur(debutSemaine, aujourdhui), joursChauffeurs: actifsAu(aujourdhui) * joursSemaine, coutTransportTiers: coutAff + coutMad + coutPres, coutAffretements: coutAff, coutMisesADisposition: coutMad, coutPrestations: coutPres, taxeTransportTiers: taxe, tonnesTiers: couvert ? tonnes.externe : null, tonnesInternes: couvert ? tonnes.interne : null };
     })(),
   ];
 

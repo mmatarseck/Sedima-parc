@@ -44,6 +44,8 @@ export interface TransporteursJson {
       modes: ModeRemuneration[];
       camions_engages: number | null;
       commentaire: string | null;
+      /** Absent d'une base restée en deçà de 0039. */
+      regime_fiscal?: ProfilTransporteur["regimeFiscal"];
     } | null;
   })[];
   chauffeurs_tiers: { id: string; prestataire_id: string; nom: string; telephone: string | null; actif: boolean }[];
@@ -64,7 +66,7 @@ export interface TransporteursJson {
     tonnage_prevu: number | string;
     tonnage_livre: number | string | null;
     distance_km: number;
-    motif: MotifAffretement;
+    motif: MotifAffretement | null;
     vehicule_remplace: string | null;
     statut: StatutAffretement;
     montant_convenu: number | string;
@@ -182,12 +184,15 @@ export function sourceDepuisJson(j: TransporteursJson, aujourdhui: string): Sour
         finContrat: t.profil.fin_contrat,
         modes: t.profil.modes,
         camionsEngages: t.profil.camions_engages,
+        regimeFiscal: t.profil.regime_fiscal ?? "a-confirmer",
         commentaire: t.profil.commentaire,
       });
     }
   }
   const numero = (id: string | null): string => (id ? (numeroParId.get(id) ?? "") : "");
   const nom = (id: string | null): string => (id ? (nomParId.get(id) ?? "") : "");
+  /* Le régime vit sur le profil du transporteur ; chaque mission le porte, pour que ses coûts se lisent hors taxe ou TTC. */
+  const regimeDe = (id: string | null): ProfilTransporteur["regimeFiscal"] => profils.get(numero(id))?.regimeFiscal ?? "a-confirmer";
 
   const chauffeurs: ChauffeurTiers[] = j.chauffeurs_tiers.map((c) => ({ id: c.id, nom: c.nom, telephone: c.telephone, transporteurNumero: numero(c.prestataire_id), actif: c.actif }));
   const camions: CamionTiers[] = j.camions_tiers.map((c) => ({
@@ -248,6 +253,7 @@ export function sourceDepuisJson(j: TransporteursJson, aujourdhui: string): Sour
     demandeur: a.demandeur,
     commentaire: a.commentaire,
     creee: false,
+    regime: regimeDe(a.prestataire_id),
   }));
   const misesADisposition: MiseADisposition[] = j.mises_a_disposition.map((m) => ({
     numero: m.numero,
@@ -272,6 +278,7 @@ export function sourceDepuisJson(j: TransporteursJson, aujourdhui: string): Sour
     referenceFacture: m.reference_facture,
     numeroDemandeX3: m.numero_demande_x3,
     commentaire: m.commentaire,
+    regime: regimeDe(m.prestataire_id),
   }));
   const prestations: Prestation[] = j.prestations.map((p) => ({
     numero: p.numero,
@@ -291,6 +298,7 @@ export function sourceDepuisJson(j: TransporteursJson, aujourdhui: string): Sour
     referenceFacture: p.reference_facture,
     numeroDemandeX3: p.numero_demande_x3,
     commentaire: p.commentaire,
+    regime: regimeDe(p.prestataire_id),
   }));
   const livraisons: LigneReleve[] = j.releves_transport.map((t) => {
     const libre = t.mode === "enlevement-client" || t.mode === "prestataire-ponctuel";

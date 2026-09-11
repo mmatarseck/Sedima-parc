@@ -191,6 +191,8 @@ export function EcranTableauBord({
   const [bu, setBu] = useState<string>("tous");
   const [categorie, setCategorie] = useState<string>("tous");
   const [site, setSite] = useState<string>("tous");
+  /* Les coûts des transporteurs, hors taxe par défaut : c'est la charge vraie quand la TVA se récupère. */
+  const [montants, setMontants] = useState<"ht" | "ttc">("ht");
   const [panneau, setPanneau] = useState<"pastilles" | "courbes" | null>(null);
   /* Un clic sur une courbe l'ouvre en grand, avec le détail mois par mois. */
   const [zoom, setZoom] = useState<string | null>(null);
@@ -288,11 +290,11 @@ export function EcranTableauBord({
       (fenetre: string[]): Cumul =>
         cumuler(
           faits.filter((f) => retenus.has(f.vehiculeId) && fenetre.includes(f.mois)),
-          flotte.filter((f) => fenetre.includes(f.mois)),
+          flotte.filter((f) => fenetre.includes(f.mois)).map((f) => (montants === "ttc" ? { ...f, coutTransportTiers: f.coutTransportTiers + f.taxeTransportTiers } : f)),
           jour,
           fenetre.length > 1 ? 365 : 30.44,
         ),
-    [faits, flotte, retenus, jour],
+    [faits, flotte, retenus, jour, montants],
   );
 
   /* Le parc tel qu'il est, pour le sous-titre : combien de véhicules, combien
@@ -455,6 +457,21 @@ export function EcranTableauBord({
           <FiltreChoix etiquette="BU" valeur={bu} options={bus.map((b) => ({ cle: b as string, libelle: BUSINESS_UNIT[b] }))} onChange={setBu} />
           <FiltreChoix etiquette="Catégorie" valeur={categorie} options={categories.map((c) => ({ cle: c as string, libelle: CATEGORIE_FLOTTE[c] }))} onChange={setCategorie} />
           <FiltreChoix etiquette="Site" valeur={site} options={sites.map((s) => ({ cle: s, libelle: s }))} onChange={setSite} />
+          {/* Les coûts des transporteurs se lisent hors taxe ou TTC : la TVA de 18 % se récupère, la retenue de 5 % ne s'ajoute pas (11 septembre 2026). */}
+          <div role="group" aria-label="Coûts des transporteurs" className="inline-flex h-7 items-center rounded-full border border-bordure bg-surface p-0.5 text-[12px]">
+            {(["ht", "ttc"] as const).map((b) => (
+              <button
+                key={b}
+                type="button"
+                onClick={() => setMontants(b)}
+                aria-pressed={montants === b}
+                title={b === "ht" ? "Coûts des transporteurs hors taxe" : "Coûts des transporteurs TVA comprise"}
+                className={`h-6 rounded-full px-2.5 font-medium transition-colors ${montants === b ? "bg-accent-fond text-accent-tres-fonce" : "text-texte-2 hover:text-accent-fonce"}`}
+              >
+                {b === "ht" ? "HT" : "TTC"}
+              </button>
+            ))}
+          </div>
           <button type="button" onClick={() => setPanneau("pastilles")} aria-expanded={panneau === "pastilles"} className="bouton-principal ml-auto h-7 gap-1.5 px-3 text-[12.5px]">
             <SlidersHorizontal className="size-3.5" strokeWidth={2} />
             Choisir les indicateurs

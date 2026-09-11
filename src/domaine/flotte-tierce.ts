@@ -26,6 +26,7 @@
  * ==========================================================================*/
 
 import type { Ton } from "./libelles";
+import type { RegimeFiscal } from "./transporteurs";
 import type { CategorieVehicule } from "./types";
 
 /* -- Ce qu'est un transporteur ---------------------------------------------- */
@@ -85,6 +86,8 @@ export interface ProfilTransporteur {
   modes: ModeRemuneration[];
   /** Ce qu'il s'engage à mettre à disposition, quand c'est écrit. */
   camionsEngages: number | null;
+  /** TVA 18 % ou retenue à la source 5 % : ce qui dit si une charge se lit hors taxe ou TTC. */
+  regimeFiscal: RegimeFiscal;
   commentaire: string | null;
 }
 
