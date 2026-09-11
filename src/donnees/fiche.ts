@@ -15,6 +15,7 @@ import type { Parametres } from "@/domaine/parametres";
 import type { CategorieObservation, PosteDepense, TypeDocument } from "@/domaine/types";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
+import { DATE_REFERENCE } from "./chauffeurs-demo";
 import { passagesReleves, planDuVehicule, programmeParDefaut } from "./entretien-demo";
 import { fichePourImmatriculation } from "./fiche-demo";
 import { lignesFlotte } from "./flotte";
@@ -47,13 +48,29 @@ export function faitsDepuisJson(j: FicheJson): FaitsFiche {
   };
 }
 
-/** La fiche d'un véhicule d'exploitation, par immatriculation sous n'importe quelle écriture ; nulle hors périmètre ou pour un léger. */
+/**
+ * La fiche de **tout** véhicule de la base — transport, service ou fonction —, par
+ * immatriculation sous n'importe quelle écriture ; nulle hors périmètre.
+ *
+ * Les véhicules de service et de fonction en étaient exclus : ils ouvraient la
+ * fiche réduite du parc léger, qui dit « ce véhicule n'est pas encore dans la
+ * base » — faux pour AA 019 EA et les autres, qui y sont avec leurs documents,
+ * leurs interventions et leurs dépenses (11 septembre 2026).
+ */
 async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<FicheVehicule | null> {
-  if (!authentificationReelle()) return fichePourImmatriculation(brut, parametres);
+  const demonstration = !authentificationReelle();
+  /* La démonstration tient ses fiches de transport toutes faites. */
+  const faite = demonstration ? fichePourImmatriculation(brut, parametres) : null;
+  if (faite) return faite;
   const canonique = normaliser(brut);
   const lignes = await lignesFlotte(parametres);
-  const ligne = lignes.find((l) => l.vehicule.immatriculation === canonique) ?? null;
-  if (!ligne || (ligne.vehicule.regime && ligne.vehicule.regime !== "exploitation")) return null;
+  /* Par immatriculation, ou par numéro de lot pour un véhicule à recevoir : sans plaque encore, il a sa fiche complète comme les autres — c'est la seule fiche de l'application. */
+  const ligne = lignes.find((l) => l.vehicule.immatriculation === canonique || l.vehicule.id === brut.toLowerCase()) ?? null;
+  if (!ligne) return null;
+  if (demonstration) {
+    const d = ligne.vehicule;
+    return assemblerFiche(ligne, FAITS_VIDES, parametres, DATE_REFERENCE, { programme: programmeParDefaut(d.categorie), plan: planDuVehicule(d.id, d.categorie), passages: passagesReleves });
+  }
   const client = await clientServeur();
   const lecture = await client.rpc("lire_fiche", { immat: canonique }).maybeSingle<FicheJson | null>();
   /* Fonction pas encore jouée : la fiche se dresse sur la ligne seule, sans historique — pas d'erreur. */

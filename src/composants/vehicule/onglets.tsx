@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { ENERGIE } from "@/domaine/libelles";
 import { STATUT_TRANSFERT, libellePartie, statutTransfert, type Transfert } from "@/domaine/transferts";
@@ -300,7 +301,7 @@ export function OngletApercu({ fiche }: { fiche: FicheVehicule }) {
 /* Caractéristiques — référentiel du véhicule                                 */
 /* ========================================================================== */
 
-export function OngletCaracteristiques({ fiche }: { fiche: FicheVehicule }) {
+export function OngletCaracteristiques({ fiche, detenteur }: { fiche: FicheVehicule; detenteur?: ReactNode }) {
   const { surcharger } = useEdition();
   /* Véhicule et identité partagent le numéro de la fiche : une modification de
      « Modifier » recouvre les deux. */
@@ -361,7 +362,8 @@ export function OngletCaracteristiques({ fiche }: { fiche: FicheVehicule }) {
        * transport n'en a pas, il a un chauffeur titulaire, qui se lit dans
        * l'onglet Affectations.
        * ------------------------------------------------------------------- */}
-      {fiche.ligne.attributaire ? (
+      {/* Le dossier du parc léger, quand la page le fournit, dit plus que la ligne : forfait, plan car, devenir. */}
+      {detenteur ?? (fiche.ligne.attributaire ? (
         <Carte titre="Détenteur" precision="Le véhicule est attribué, non affecté à un chauffeur">
           <Definitions
             elements={[
@@ -372,7 +374,7 @@ export function OngletCaracteristiques({ fiche }: { fiche: FicheVehicule }) {
             ]}
           />
         </Carte>
-      ) : null}
+      ) : null)}
 
       <Carte titre="Rattachement">
         <Definitions

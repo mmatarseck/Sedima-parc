@@ -5,7 +5,7 @@ import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
 import { lireParametres } from "@/lib/parametres-demo";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { ChevronLeft, Link2, Lock, MapPin, Pencil, Radio, UserRound } from "lucide-react";
 import { BoutonDiscussion, PanneauDiscussion } from "@/composants/discussion/PanneauDiscussion";
 import { BandeauKpi } from "@/composants/interface/BandeauKpi";
@@ -91,7 +91,7 @@ function estOnglet(valeur: string | undefined): valeur is Onglet {
  * le dernier enfant prend le reste et porte le défilement ; aucun `sticky`,
  * donc aucun décalage à compenser.
  */
-export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInitial, discussionInitiale = false, cible }: { fiche: Fiche; transferts?: Transfert[]; /** Les comptes que la discussion peut citer ; ceux de la démonstration à défaut. */ utilisateurs?: Personne[]; ongletInitial?: string; discussionInitiale?: boolean; cible?: string }) {
+export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInitial, discussionInitiale = false, cible, detenteur }: { fiche: Fiche; transferts?: Transfert[]; /** Les comptes que la discussion peut citer ; ceux de la démonstration à défaut. */ utilisateurs?: Personne[]; ongletInitial?: string; discussionInitiale?: boolean; cible?: string; /** Le dossier du parc léger d'un véhicule de service ou de fonction : détenteur, forfait, plan car. */ detenteur?: ReactNode }) {
   const [onglet, setOnglet] = useState<Onglet>(estOnglet(ongletInitial) ? ongletInitial : "apercu");
   useCible(cible, onglet);
   const [discussionOuverte, setDiscussionOuverte] = useState(discussionInitiale);
@@ -404,7 +404,7 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
       {/* ---- Contenu de l'onglet : la seule zone qui défile ---- */}
       <div role="tabpanel" className="defilement-discret min-h-0 flex-1 px-8 py-6 lg:overflow-y-auto">
         {onglet === "apercu" && <OngletApercu fiche={fiche} />}
-        {onglet === "caracteristiques" && <OngletCaracteristiques fiche={fiche} />}
+        {onglet === "caracteristiques" && <OngletCaracteristiques fiche={fiche} detenteur={detenteur} />}
         {onglet === "affectations" && <OngletAffectations fiche={fiche} transferts={transferts} cible={cible} />}
         {onglet === "conformite" && <OngletConformite fiche={fiche} cible={cible} />}
         {onglet === "incidents" && <OngletIncidents fiche={fiche} cible={cible} />}

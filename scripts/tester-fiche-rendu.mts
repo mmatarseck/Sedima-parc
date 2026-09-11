@@ -13,7 +13,7 @@ import { FicheVehicule } from "../src/composants/vehicule/FicheVehicule";
 import { assemblerFiche, FAITS_VIDES, type FaitsFiche } from "../src/domaine/assembler-fiche";
 import { PARAMETRES_DEFAUT } from "../src/domaine/parametres";
 import { passagesReleves, planDuVehicule, programmeParDefaut } from "../src/donnees/entretien-demo";
-import { ligneDepuisLaBase, type ParcBrut } from "../src/donnees/flotte";
+import { ligneDepuisLaBase, lignesARecevoir, type ParcBrut } from "../src/donnees/flotte";
 
 const bac = process.env.PGLITE_DIR ?? "";
 const require = createRequire(join(bac, "package.json"));
@@ -60,17 +60,22 @@ const versFaits = (f: any): FaitsFiche => ({
   statuts: f.statuts,
 });
 let n = 0;
+let legers = 0;
+const rendues = new Set<string>();
 let echecs = 0;
 for (const brut of parc.vehicules) {
   let etape = "ligne";
   try {
     const ligne = ligneDepuisLaBase(brut, parc, PARAMETRES_DEFAUT);
-    if (ligne.vehicule.regime !== "exploitation") continue;
+    /* Tous les véhicules, sans exception : les légers en étaient exclus, et c'est ainsi qu'AA 019 EA n'avait pas de fiche complète. */
+    const leger = Boolean(ligne.vehicule.regime && ligne.vehicule.regime !== "exploitation");
     etape = "lire_fiche";
     const f = (await pg.query(`select lire_fiche($1) as j`, [brut.immatriculation])).rows[0].j;
     etape = "assembler";
     const v = ligne.vehicule;
     const fiche = assemblerFiche(ligne, f ? versFaits(f) : FAITS_VIDES, PARAMETRES_DEFAUT, aujourdhui, { programme: programmeParDefaut(v.categorie), plan: planDuVehicule(v.id, v.categorie), passages: passagesReleves });
+    etape = "pieces";
+    if (leger && (fiche.documents.some((d) => d.etat === "manquant") || fiche.immobilisationAdministrative)) throw new Error("un véhicule de service ou de fonction se voit reprocher des pièces que le parc ne tient pas");
     etape = "serialiser";
     JSON.stringify(fiche);
     etape = "rendre";
@@ -80,10 +85,36 @@ for (const brut of parc.vehicules) {
     );
     if (html.length < 1000) throw new Error(`rendu trop court (${html.length})`);
     n++;
+    if (leger) legers++;
+    rendues.add(v.immatriculation);
   } catch (e) {
     echecs++;
     console.log(`ÉCHEC ${brut.immatriculation} à l'étape ${etape} : ${(e as Error).stack?.split("\n").slice(0, 4).join(" | ")}`);
   }
 }
-console.log(`${n} fiches rendues${echecs ? `, ${echecs} échec(s)` : ", tout passe"}`);
+/* Les véhicules à recevoir ouvrent eux aussi la fiche complète, sans historique : c'est la seule fiche de l'application. */
+let aRecevoir = 0;
+for (const ligne of lignesARecevoir(parc)) {
+  try {
+    const v = ligne.vehicule;
+    const fiche = assemblerFiche(ligne, FAITS_VIDES, PARAMETRES_DEFAUT, aujourdhui, { programme: programmeParDefaut(v.categorie), plan: planDuVehicule(v.id, v.categorie), passages: passagesReleves });
+    if (fiche.documents.some((d) => d.etat === "manquant") || fiche.immobilisationAdministrative) throw new Error("un véhicule à recevoir se voit reprocher des pièces");
+    const html = renderToString(
+      React.createElement(FournisseurEdition, { sujet: `vehicule:${v.immatriculation}`, href: `/flotte/${v.id}` } as any,
+        React.createElement(FicheVehicule, { fiche, ongletInitial: undefined, discussionInitiale: false, cible: undefined } as any)),
+    );
+    if (html.length < 1000) throw new Error(`rendu trop court (${html.length})`);
+    n++;
+    aRecevoir++;
+  } catch (e) {
+    echecs++;
+    console.log(`ÉCHEC ${ligne.vehicule.immatriculationAffichee} (à recevoir) : ${(e as Error).message}`);
+  }
+}
+console.log(`${aRecevoir} véhicules à recevoir rendus en fiche complète`);
+if (!rendues.has("AA019EA")) {
+  echecs++;
+  console.log("ÉCHEC AA 019 EA n'a pas sa fiche complète");
+}
+console.log(`${n} fiches rendues, dont ${legers} de service ou de fonction${echecs ? `, ${echecs} échec(s)` : ", tout passe"}`);
 process.exit(echecs ? 1 : 0);

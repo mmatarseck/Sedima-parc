@@ -59,6 +59,17 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
+**Une seule fiche véhicule, complète, pour tous** (11 septembre 2026, sans migration).
+Le métier : « tous les véhicules sans exception ont une fiche détaillée (exemple : AA 019 EA) »,
+puis « même les véhicules pas encore reçus — ce doit être le seul standard ». La fiche allégée du
+parc léger (`FicheVehiculeLeger`) est supprimée : un véhicule de service ou de fonction, et un
+véhicule à recevoir, ouvrent la même `FicheVehicule` que le parc lourd. Le lecteur `ficheServeur`
+retrouve toute ligne de la flotte, par immatriculation ou par identifiant (lot à recevoir), et
+l'assemble ; l'onglet Caractéristiques porte pour les légers la carte du détenteur ou du pool
+(`CartesDossierLeger`). Hors exploitation, la fiche ne réclame ni les documents de transport ni
+l'immobilisation administrative. Banc `tester-fiche-rendu.mts` : 172 fiches rendues, dont 109 de
+service ou de fonction et 5 à recevoir, AA 019 EA compris.
+
 **⚠ Correctif à jouer : ce que l'audit interne du parc fait entrer dans la base**
 (11 septembre 2026) — `supabase/correctif-audit-parc-2026.sql`. Rapport d'audit
 provisoire (janvier 2025 – juillet 2026) et compte rendu de la réunion de synthèse

@@ -36,7 +36,7 @@ export default async function PageFicheRapide({ params }: Props) {
       </div>
     );
   }
-  const fiche = ligne.vehicule.regime && ligne.vehicule.regime !== "exploitation" ? null : await ficheServeur(canonique, parametres);
+  const fiche = await ficheServeur(brut, parametres);
   const dernier = <T extends { date: string }>(liste: T[] | undefined) => (liste && liste.length ? [...liste].sort((a, b) => b.date.localeCompare(a.date))[0]! : null);
   const plein = dernier(fiche?.pleins);
   const intervention = dernier(fiche?.interventions);

@@ -120,7 +120,9 @@ export function assemblerFiche(l: LigneFlotte, faits: FaitsFiche, parametres: Pa
     documents.push({ numero: licence.numero, type: "licence-transport", portee: licence.perimetre === "flotte" ? "Toute la flotte" : `${licence.vehicules} véhicules — ${licence.libelle.toLowerCase()}`, numeroPiece: licence.numeroPiece, emetteur: licence.emetteur, dateEffet: licence.dateEffet, echeance: licence.echeance, montant: null, justificatif: true, etat: etatDocument(j, false, false), joursRestants: j });
   }
   let sequence = 99_000;
-  for (const def of parametres.documents.types) {
+  /* Les pièces d'un véhicule de service ou de fonction ne sont pas encore tenues dans la base : les déclarer manquantes, ou en tirer une immobilisation, dirait le contraire de la liste du parc. Celles qui existent se montrent. */
+  const exploitation = !v.regime || v.regime === "exploitation";
+  for (const def of exploitation ? parametres.documents.types : []) {
     if (def.porteur === "chauffeur" || !exigeDocument(def.id, v, parametres)) continue;
     if (documents.some((d) => d.type === def.id)) continue;
     documents.push({ numero: formerNumero("document", aujourdhui, ++sequence), type: def.id, numeroPiece: null, emetteur: null, dateEffet: null, echeance: null, montant: null, justificatif: false, etat: "manquant", joursRestants: null });
@@ -128,7 +130,7 @@ export function assemblerFiche(l: LigneFlotte, faits: FaitsFiche, parametres: Pa
   /* Le dernier document de chaque type fait foi pour l'immobilisation : un document renouvelé n'est pas échu parce que l'ancien l'est. */
   const derniersParType = new Map<TypeDocument, DocumentFiche>();
   for (const d of [...documents].sort((a, b) => (a.echeance ?? "").localeCompare(b.echeance ?? ""))) derniersParType.set(d.type, d);
-  const immobilisation = immobilisationAdministrative(v, [...derniersParType.values()], parametres);
+  const immobilisation = exploitation ? immobilisationAdministrative(v, [...derniersParType.values()], parametres) : null;
 
   /* ---- Interventions ---- */
   const interventions: Intervention[] = faits.interventions.map((i) => ({ numero: i.numero, date: i.date, type: i.type, objet: i.objet, garage: i.garage ?? "—", km: i.km, immobilisationJours: i.immobilisationJours, montant: i.montant, reference: i.reference ?? "" })).sort((a, b) => b.date.localeCompare(a.date));
