@@ -121,7 +121,7 @@ export function ordresDeTravail(): LigneOrdre[] {
         montantEstime: Math.round(i.montant / 5_000) * 5_000,
         statut: "clos",
         dateDebut: i.date,
-        dateCloture: decaler(i.date, Math.max(0, i.immobilisationJours - 1)),
+        dateCloture: decaler(i.date, Math.max(0, (i.immobilisationJours ?? 0) - 1)),
         interventionNumero: i.numero,
         commentaire: "Corrigée avant la contre-visite.",
         demandeur: "Responsable maintenance",

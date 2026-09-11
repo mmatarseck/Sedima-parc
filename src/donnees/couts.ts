@@ -87,7 +87,7 @@ export function donneesCoutsDepuisLaBase(lignes: LigneFlotte[], depenses: LigneD
     if (!retenu.has(m)) continue;
     const x = de(i.vehiculeId, m);
     if (i.type === "curatif") x.curatifs += 1;
-    x.immobilisationJours += i.immobilisationJours;
+    x.immobilisationJours = x.immobilisationJours === null || i.immobilisationJours === null ? null : x.immobilisationJours + i.immobilisationJours;
   }
   const resultat: DonneesVehicule[] = [];
   for (const l of lignes) {

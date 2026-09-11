@@ -33,7 +33,7 @@ import { transporteursServeur } from "./transporteurs";
 
 export interface PrestatairesJson {
   prestataires: (LignePrestataire & { id: string })[];
-  interventions: { numero: string; prestataire_id: string; date: string; type: "preventif" | "curatif"; objet: string; montant: number | string; immobilisation_jours: number; reference: string | null; immatriculation: string | null }[];
+  interventions: { numero: string; prestataire_id: string; date: string; type: "preventif" | "curatif"; objet: string; montant: number | string; immobilisation_jours: number | null; reference: string | null; immatriculation: string | null }[];
   pleins: { numero: string; prestataire_id: string | null; source: string; date: string; litres: number | string; prix_litre: number; montant: number | string; immatriculation: string | null }[];
   depenses: (LigneDepenseCaisseBase & { prestataire_id: string | null; poste: PosteDepense })[];
   documents: { numero: string; type_document_id: string; date_effet: string | null; echeance: string | null; emetteur: string; numero_piece: string | null; montant: number | string | null; immatriculation: string | null }[];
@@ -63,7 +63,7 @@ export function sourceDepuisJson(j: PrestatairesJson, achats: SourcePrestataires
   for (const i of j.interventions) {
     const numero = numeroDe(i.prestataire_id, null);
     if (!numero) continue;
-    interventions.push({ prestataireNumero: numero, numero: i.numero, date: i.date, type: i.type, objet: i.objet, montant: nb(i.montant), immobilisationJours: nb(i.immobilisation_jours), reference: i.reference ?? "", ...porteur(i.immatriculation) });
+    interventions.push({ prestataireNumero: numero, numero: i.numero, date: i.date, type: i.type, objet: i.objet, montant: nb(i.montant), immobilisationJours: i.immobilisation_jours === null ? null : nb(i.immobilisation_jours), reference: i.reference ?? "", ...porteur(i.immatriculation) });
   }
   const pleins: SourcePrestataires["pleins"] = [];
   for (const x of j.pleins) {

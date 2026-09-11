@@ -72,7 +72,7 @@ export function fabriquerDepense(c: Creation): DepenseFiche {
 
 export function fabriquerIntervention(c: Creation): Intervention {
   const v = c.valeurs;
-  return { numero: c.numero, date: s(v.date) ?? c.date.slice(0, 10), type: (s(v.type) as Intervention["type"]) ?? "curatif", objet: s(v.objet) ?? "", garage: s(v.garage) ?? "—", km: n(v.km), immobilisationJours: n(v.immobilisationJours) ?? 0, montant: n(v.montant) ?? 0, reference: s(v.reference) ?? "" };
+  return { numero: c.numero, date: s(v.date) ?? c.date.slice(0, 10), type: (s(v.type) as Intervention["type"]) ?? "curatif", objet: s(v.objet) ?? "", garage: s(v.garage) ?? "—", km: n(v.km), immobilisationJours: n(v.immobilisationJours), montant: n(v.montant) ?? 0, reference: s(v.reference) ?? "" };
 }
 
 export function fabriquerDocument(c: Creation, categorie?: CategorieVehicule): DocumentFiche {

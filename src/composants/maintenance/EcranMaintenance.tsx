@@ -363,7 +363,7 @@ function Interieur({ travaux, ordres, interventions, aujourdhui, vueInitiale, ci
       { cle: "objet", libelle: "Objet", parDefaut: true, largeur: 260, rendu: (i) => <span className="block truncate font-medium">{i.objet}</span> },
       { cle: "garage", libelle: "Garage", parDefaut: true, largeur: 200, rendu: (i) => <span className="block truncate">{i.garage}</span> },
       { cle: "km", libelle: "Km relevé", parDefaut: false, largeur: 120, alignee: "droite", tri: (i) => i.km, rendu: (i) => <span className="code">{kilometrage(i.km)}</span> },
-      { cle: "immob", libelle: "Immob.", parDefaut: true, largeur: 95, alignee: "droite", tri: (i) => i.immobilisationJours, rendu: (i) => <span className="code">{i.immobilisationJours} j</span> },
+      { cle: "immob", libelle: "Immob.", parDefaut: true, largeur: 95, alignee: "droite", tri: (i) => i.immobilisationJours, rendu: (i) => (i.immobilisationJours === null ? <span className="text-attenue" title="Durée non relevée sur la pièce">—</span> : <span className="code">{i.immobilisationJours} j</span>) },
       { cle: "montant", libelle: "Montant", parDefaut: true, largeur: 125, alignee: "droite", tri: (i) => i.montant, rendu: (i) => <span className="code font-medium">{montant(i.montant)}</span> },
       { cle: "piece", libelle: "Pièce", parDefaut: true, largeur: 110, rendu: (i) => <span className="code text-[12px]">{i.reference || "—"}</span> },
       { cle: "site", libelle: "Site", parDefaut: false, largeur: 150, rendu: (i) => i.site ?? "—" },

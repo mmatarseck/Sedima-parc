@@ -40,7 +40,7 @@ export interface TableauJson {
   releves: { vehicule_id: string; date: string; km: number }[];
   pleins: { vehicule_id: string; date: string; litres: number | string; montant: number; km: number | null }[];
   depenses: { vehicule_id: string; date: string; poste: PosteDepense; montant: number }[];
-  interventions: { vehicule_id: string; date: string; type: "preventif" | "curatif"; immobilisation_jours: number }[];
+  interventions: { vehicule_id: string; date: string; type: "preventif" | "curatif"; immobilisation_jours: number | null }[];
   incidents: { vehicule_id: string; date_heure: string; nature: "incident" | "accident"; type: string; mission: string | null; blesses: boolean }[];
   documents: { vehicule_id: string; numero: string; type_document_id: string; date_effet: string | null; echeance: string | null }[];
   statuts: { immatriculation: string; avant: string | null; apres: string | null; le: string }[];
@@ -164,7 +164,7 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
     const periodes: PeriodeStatut[] = [];
     const trace = (statutsPar.get(v.immatriculation) ?? []).filter((s) => s.apres);
     for (let i = 0; i < trace.length; i++) periodes.push({ statut: trace[i]!.apres as StatutVehicule, debut: trace[i]!.le.slice(0, 10), fin: trace[i + 1] ? trace[i + 1]!.le.slice(0, 10) : null });
-    for (const i of (interventionsPar.get(v.id) ?? []).filter((x) => x.type === "curatif" && x.immobilisation_jours > 0)) periodes.push({ statut: "en-reparation", debut: i.date, fin: plusJours(i.date, i.immobilisation_jours) });
+    for (const i of (interventionsPar.get(v.id) ?? []).filter((x) => x.type === "curatif" && (x.immobilisation_jours ?? 0) > 0)) periodes.push({ statut: "en-reparation", debut: i.date, fin: plusJours(i.date, i.immobilisation_jours ?? 0) });
     const situation = situationPar.get(v.id) ?? null;
     if (periodes.length === 0 && IMMOBILISANTS.includes(v.statut)) periodes.push({ statut: v.statut, debut: plusJours(aujourdhui, -Math.max(0, (situation?.immobiliseDepuisJours ?? 1) - 1)), fin: null });
 
@@ -203,8 +203,10 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
         montantContraventions: contraventions.reduce((s, d) => s + n(d.montant), 0),
         interventionsPreventives: interventions.filter((i) => i.type === "preventif").length,
         interventionsCuratives: interventions.filter((i) => i.type === "curatif").length,
-        immobilisationInterventions: interventions.reduce((s, i) => s + i.immobilisation_jours, 0),
-        nombreInterventions: interventions.length,
+        /* La durée moyenne au garage ne porte que sur les interventions dont la durée est connue. */
+        immobilisationInterventions: interventions.reduce((s, i) => s + (i.immobilisation_jours ?? 0), 0),
+        nombreInterventions: interventions.filter((i) => i.immobilisation_jours !== null).length,
+        curativesSansDuree: interventions.filter((i) => i.type === "curatif" && i.immobilisation_jours === null).length,
         cout: depenses.reduce((s, d) => s + n(d.montant), 0),
         coutMaintenance: depenses.filter((d) => groupeDuPoste(d.poste) === "maintenance").reduce((s, d) => s + n(d.montant), 0),
         coutCuratif: depenses.filter((d) => d.poste === "maintenance-curative").reduce((s, d) => s + n(d.montant), 0),

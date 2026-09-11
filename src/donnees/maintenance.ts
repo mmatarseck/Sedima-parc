@@ -38,7 +38,7 @@ export interface LigneInterventionBase {
   type: "preventif" | "curatif";
   objet: string;
   montant: number;
-  immobilisation_jours: number;
+  immobilisation_jours: number | null;
   km: number | null;
   reference: string | null;
   vehicule: { immatriculation: string; marque: string; appellation: string; business_unit: BusinessUnit | null; site: { libelle: string } | null } | null;

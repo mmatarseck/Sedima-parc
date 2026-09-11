@@ -389,7 +389,7 @@ function construireTout(): Construit[] {
           immatriculationAffichee: v.immatriculationAffichee,
           vehicule: `${v.marque} ${v.appellation}`,
           cout: i.montant,
-          immobilisationJours: i.immobilisationJours,
+          immobilisationJours: i.immobilisationJours ?? 0,
         });
       }
     }

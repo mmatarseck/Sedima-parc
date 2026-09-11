@@ -712,7 +712,7 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
             { cle: "objet", libelle: "Objet", rendu: (i) => <span className="font-medium">{i.objet}</span> },
             { cle: "garage", libelle: "Garage", rendu: (i) => i.garage },
             { cle: "km", libelle: "Km relevé", alignee: "droite", rendu: (i) => kilometrage(i.km) },
-            { cle: "immob", libelle: "Immob.", alignee: "droite", rendu: (i) => `${i.immobilisationJours} j` },
+            { cle: "immob", libelle: "Immob.", alignee: "droite", rendu: (i) => (i.immobilisationJours === null ? <span className="text-attenue" title="Durée non relevée sur la pièce">—</span> : `${i.immobilisationJours} j`) },
             { cle: "montant", libelle: "Montant", alignee: "droite", rendu: (i) => <span className="font-medium">{montant(i.montant)}</span> },
             { cle: "ref", libelle: "Pièce", rendu: (i) => <span className="code whitespace-nowrap text-accent-fonce">{i.reference}</span> },
           ]}

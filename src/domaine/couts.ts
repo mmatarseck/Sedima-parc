@@ -49,7 +49,8 @@ export interface MoisVehicule {
   parPoste: Partial<Record<PosteDepense, number>>;
   /** Interventions curatives du mois : le signal d'un véhicule qui fatigue. */
   curatifs: number;
-  immobilisationJours: number;
+  /** Nul dès qu'une intervention du mois n'a pas de durée connue. */
+  immobilisationJours: number | null;
 }
 
 export interface DonneesVehicule {
@@ -118,7 +119,7 @@ export interface BilanVehicule {
   /** Écart de la consommation à la référence de la catégorie, en pourcentage. */
   ecartL100Pct: number | null;
   curatifs: number;
-  immobilisationJours: number;
+  immobilisationJours: number | null;
   /** Trois derniers mois contre les trois précédents, en pourcentage ; nul sous six mois. */
   tendancePct: number | null;
   /** Écart du coût au kilomètre à la médiane de la catégorie ; posé par `qualifier`. */
@@ -136,12 +137,13 @@ export function bilanVehicule(d: DonneesVehicule, moisRetenus: string[], perimet
   let km = 0;
   let litres = 0;
   let curatifs = 0;
-  let immobilisationJours = 0;
+  let immobilisationJours: number | null = 0;
   for (const m of mois) {
     km += m.km;
     litres += m.litres;
     curatifs += m.curatifs;
-    immobilisationJours += m.immobilisationJours;
+    /* Un mois dont une durée manque rend la somme inconnue : la compléter par zéro dirait un véhicule jamais immobilisé. */
+    immobilisationJours = immobilisationJours === null || m.immobilisationJours === null ? null : immobilisationJours + m.immobilisationJours;
     for (const [p, v] of Object.entries(m.parPoste) as [PosteDepense, number][]) {
       if (!posteRetenu(p, perimetre)) continue;
       parPoste[p] = (parPoste[p] ?? 0) + v;

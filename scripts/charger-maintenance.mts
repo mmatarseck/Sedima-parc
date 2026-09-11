@@ -219,7 +219,7 @@ bons.forEach((b, i) => {
   const prestataire = `(select id from prestataire where upper(regexp_replace(raison_sociale, '[^A-Za-z0-9]', '', 'g')) = '${cle(b.fournisseur)}' limit 1)`;
   const note = b.multi ? " · bon couvrant plusieurs véhicules" : "";
   lignesIntervention.push(
-    `  ('INT-R-${n}', ${vehicule}, ${prestataire}, '${b.date}', '${c.type}', '${echappe(b.objet)}', ${b.montant}, 0, null, '${echappe(b.numero)}${note}')`,
+    `  ('INT-R-${n}', ${vehicule}, ${prestataire}, '${b.date}', '${c.type}', '${echappe(b.objet)}', ${b.montant}, null, null, '${echappe(b.numero)}${note}')`,
   );
   lignesDepense.push(
     `  ('DEP-R-${n}', ${vehicule}, ${prestataire}, '${b.date}', '${c.poste}', '${echappe(b.objet)}', ${b.montant}, 'bon-de-commande', true, '${echappe(b.numero)}${note}')`,

@@ -59,6 +59,19 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
+**⚠ Migration 0040 à jouer : « disponibilité 100 % » cesse de mentir** (11
+septembre 2026). Les 298 interventions reprises des bons ne disent pas combien
+de jours le véhicule est resté au garage, et le chargement avait écrit zéro :
+le taux de disponibilité du parc — indicateur du référentiel DO, affiché par
+défaut — sortait à 100 % tous les mois. `intervention.immobilisation_jours`
+accepte désormais l'inconnu (nul, sans défaut), 0040 passe ces zéros à nul, et
+le générateur de la maintenance écrit nul. La disponibilité et l'indisponibilité
+des véhicules spéciaux sortent « — » tant qu'une réparation curative de la
+période n'a pas de durée ; la durée moyenne au garage ne porte que sur les
+durées connues ; les écrans disent « — » au lieu de « 0 j ». Banc
+`tester-immobilisation-inconnue.mts`. Même défaut, pas encore traité : le
+respect du plan préventif à 100 % faute de compteurs.
+
 **⚠ Le régime fiscal des transporteurs et le coût d'août 2026 sont prêts à
 jouer** (11 septembre 2026) : la migration `0039_regime_fiscal.sql`, puis
 `supabase/ca-location-aout-2026.sql`. À la demande du métier, chaque
@@ -114,7 +127,7 @@ attrapé une fois de plus.
 viennent les lignes, pourquoi le prix est le tarif officiel de la date, et ce
 qui n'est pas chargé.
 
-**Migrations : 0001 à 0036 jouées ; 0037, 0038 et 0039 en attente.**
+**Migrations : 0001 à 0036 jouées ; 0037 à 0040 en attente.**
 
 **Le chargement des données réelles est fait** (10 septembre 2026) : les douze
 parties du seed, `aligner-referentiel.sql`, `purge-demonstration.sql` et

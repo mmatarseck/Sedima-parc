@@ -449,7 +449,7 @@ export function FichePrestataire({ fiche, compte: compteServeur, ongletInitial, 
                 { cle: "vehicule", libelle: "Véhicule", rendu: (i) => <Vehicule immatriculation={i.immatriculation} affichee={i.immatriculationAffichee} /> },
                 { cle: "type", libelle: "Nature", rendu: (i) => <Pastille ton={i.type === "preventif" ? "favorable" : "vigilance"}>{i.type === "preventif" ? "Préventive" : "Curative"}</Pastille> },
                 { cle: "objet", libelle: "Objet", rendu: (i) => <span className="block max-w-[320px] truncate">{i.objet}</span> },
-                { cle: "immobilisation", libelle: "Immobilisation", alignee: "droite", rendu: (i) => <span className="code">{i.immobilisationJours} j</span> },
+                { cle: "immobilisation", libelle: "Immobilisation", alignee: "droite", rendu: (i) => (i.immobilisationJours === null ? <span className="text-attenue" title="Durée non relevée sur la pièce">—</span> : <span className="code">{i.immobilisationJours} j</span>) },
                 { cle: "montant", libelle: "Montant", alignee: "droite", rendu: (i) => <span className="code font-medium">{montant(i.montant)}</span> },
                 { cle: "piece", libelle: "Pièce", rendu: (i) => <span className="code text-[12px]">{i.reference}</span>, parDefaut: false },
               ]}

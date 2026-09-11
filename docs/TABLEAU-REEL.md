@@ -113,11 +113,17 @@ Tant que 0037 n'est pas jouée, l'application ne tombe pas : faute de
 
 ## Les limites connues, que le tableau ne peut pas encore dire
 
-- **Disponibilité à 100 %, immobilisation moyenne à 0.** La colonne
-  `intervention.immobilisation_jours` est obligatoire, avec zéro par défaut ;
-  les factures ne donnent pas la durée d'immobilisation, et le chargement a
-  laissé zéro. C'est encore un zéro qui ment, mais le corriger demande de
-  rendre la colonne facultative : une décision de modèle, pas un correctif.
+- **Disponibilité à 100 %, immobilisation moyenne à 0** — *corrigé le
+  11 septembre 2026 (migration 0040).* Les 298 interventions reprises des bons
+  ne disent pas combien de jours le véhicule est resté au garage, et le
+  chargement avait écrit zéro. La colonne accepte désormais l'inconnu, et ces
+  zéros passent à nul. La disponibilité d'un mois sort « — » tant qu'une
+  réparation curative du mois n'a pas de durée. La durée moyenne au garage ne
+  porte que sur les durées connues. De janvier à août 2026, les deux
+  indicateurs disent « — » : c'est la vérité, le parc ne sait pas.
+- **Respect du plan préventif à 100 %.** Un véhicule sans kilométrage restant
+  connu ne compte pas en retard. Or peu de véhicules ont un compteur récent.
+  C'est le même défaut, pas encore traité.
 - **Accidents, pannes, contraventions et absentéisme à 0.** Aucune source n'a
   été chargée. L'état des véhicules en panne du dossier DO ne porte aucune
   date.

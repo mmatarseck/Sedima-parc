@@ -44,7 +44,7 @@ export interface FaitsFiche {
   releves: { numero: string; date: string; km: number; origine: string; motifRejet: string | null }[];
   pleins: { numero: string; date: string; litres: number; prixLitre: number; montant: number; km: number | null; source: string; reference: string | null }[];
   depenses: { numero: string; date: string; poste: PosteDepense; libelle: string; montant: number; beneficiaire: string | null; reference: string | null; origine: "caisse" | "bon-de-commande" | "facture"; justificatif: boolean; km: number | null; kmMotifRejet: string | null }[];
-  interventions: { numero: string; date: string; type: "preventif" | "curatif"; objet: string; garage: string | null; montant: number; immobilisationJours: number; km: number | null; reference: string | null }[];
+  interventions: { numero: string; date: string; type: "preventif" | "curatif"; objet: string; garage: string | null; montant: number; immobilisationJours: number | null; km: number | null; reference: string | null }[];
   /** La trace des statuts, du plus ancien au plus récent. */
   statuts: { le: string; avant: string | null; apres: string | null; motif: string }[];
   /** Les visites techniques (0023), de la plus récente à la plus ancienne. */
@@ -206,8 +206,8 @@ export function assemblerFiche(l: LigneFlotte, faits: FaitsFiche, parametres: Pa
     const debut = aujourdhui;
     periodesStatut.push({ statut: v.statut, motif: v.statut === "en-reparation" ? "panne" : null, debut, fin: null, jours: joursEntre(debut, aujourdhui) });
   }
-  for (const i of interventions.filter((x) => x.type === "curatif" && x.immobilisationJours > 0)) {
-    periodesStatut.push({ statut: "en-reparation", motif: "panne", debut: i.date, fin: plusJours(i.date, i.immobilisationJours), jours: i.immobilisationJours });
+  for (const i of interventions.filter((x) => x.type === "curatif" && (x.immobilisationJours ?? 0) > 0)) {
+    periodesStatut.push({ statut: "en-reparation", motif: "panne", debut: i.date, fin: plusJours(i.date, i.immobilisationJours ?? 0), jours: i.immobilisationJours ?? 0 });
   }
   if (v.premiereMiseEnCirculation) periodesStatut.push({ statut: "en-service", motif: null, debut: v.premiereMiseEnCirculation, fin: null, jours: 0 });
   periodesStatut.sort((a, b) => b.debut.localeCompare(a.debut));

@@ -88,7 +88,8 @@ export interface Intervention {
   objet: string;
   garage: string;
   km: number | null;
-  immobilisationJours: number;
+  /** Jours d'immobilisation ; nul quand la pièce ne le dit pas — ce n'est pas zéro jour. */
+  immobilisationJours: number | null;
   montant: number;
   reference: string;
 }

@@ -92,7 +92,7 @@ export function donneesCouts(): DonneesVehicule[] {
       if (!retenu.has(mois)) continue;
       const x = de(mois);
       if (i.type === "curatif") x.curatifs += 1;
-      x.immobilisationJours += i.immobilisationJours;
+      x.immobilisationJours = x.immobilisationJours === null || i.immobilisationJours === null ? null : x.immobilisationJours + i.immobilisationJours;
     }
     const miseEnCirculation = v.premiereMiseEnCirculation ?? null;
     return [

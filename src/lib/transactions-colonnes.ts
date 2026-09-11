@@ -185,7 +185,7 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
     case "intervention": {
       if (!r.vehiculeId) return { refus: "intervention sans véhicule" };
       if (!texte(v.objet)) return { refus: "intervention sans objet" };
-      return { ligne: { numero, vehicule_id: r.vehiculeId, prestataire_id: r.prestataireId, date: texte(v.date), type: texte(v.type) ?? "curatif", objet: texte(v.objet), montant: Math.round(nombre(v.montant) ?? 0), immobilisation_jours: Math.round(nombre(v.immobilisationJours) ?? 0), km: nombre(v.km), reference: texte(v.reference) } };
+      return { ligne: { numero, vehicule_id: r.vehiculeId, prestataire_id: r.prestataireId, date: texte(v.date), type: texte(v.type) ?? "curatif", objet: texte(v.objet), montant: Math.round(nombre(v.montant) ?? 0), immobilisation_jours: nombre(v.immobilisationJours) === null ? null : Math.round(nombre(v.immobilisationJours) ?? 0), km: nombre(v.km), reference: texte(v.reference) } };
     }
     case "indisponibilite": {
       if (!r.chauffeurId) return { refus: "indisponibilité sans chauffeur" };

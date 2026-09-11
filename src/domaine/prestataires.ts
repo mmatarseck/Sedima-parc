@@ -84,7 +84,8 @@ export interface InterventionPrestataire extends PorteurVehicule {
   type: "preventif" | "curatif";
   objet: string;
   montant: number;
-  immobilisationJours: number;
+  /** Nul quand la pièce ne dit pas combien de jours le véhicule est resté au garage. */
+  immobilisationJours: number | null;
   reference: string;
 }
 

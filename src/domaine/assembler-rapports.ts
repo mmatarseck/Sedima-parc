@@ -257,7 +257,7 @@ function indicateursDe(couts: DonneesVehicule[], vehiculeId: string, aujourdhui:
   const d = couts.find((x) => x.vehiculeId === vehiculeId);
   if (!d) return null;
   const b = bilanVehicule(d, moisDePeriode(aujourdhui, 12), "complet");
-  return { coutParKm: b.coutParKm, consommationL100: b.litresAux100, disponibilitePct: Math.max(0, Math.min(100, Math.round((1 - b.immobilisationJours / 365) * 100))) };
+  return { coutParKm: b.coutParKm, consommationL100: b.litresAux100, disponibilitePct: b.immobilisationJours === null ? null : Math.max(0, Math.min(100, Math.round((1 - b.immobilisationJours / 365) * 100))) };
 }
 
 /**
@@ -574,7 +574,7 @@ function coutsParBusinessUnit(s: SourceRapports, c: ContexteRapport): LigneRappo
         litres: Math.round(litres),
         l100: km > 0 ? arrondir((litres / km) * 100) : null,
         curatifs: bs.reduce((t, b) => t + b.curatifs, 0),
-        immobilisation: bs.reduce((t, b) => t + b.immobilisationJours, 0),
+        immobilisation: bs.some((b) => b.immobilisationJours === null) ? null : bs.reduce((t, b) => t + (b.immobilisationJours ?? 0), 0),
         parVehicule: bs.length > 0 ? Math.round(somme / bs.length) : null,
       };
     })
@@ -608,7 +608,7 @@ function coutsParCategorie(s: SourceRapports, c: ContexteRapport): LigneRapport[
         l100: km > 0 ? arrondir((litres / km) * 100) : null,
         referenceL100: bs[0]?.donnees.referenceL100 ?? null,
         aArbitrer: median === null ? 0 : bs.filter((b) => b.coutParKm !== null && b.coutParKm > median).length,
-        immobilisation: bs.reduce((t, b) => t + b.immobilisationJours, 0),
+        immobilisation: bs.some((b) => b.immobilisationJours === null) ? null : bs.reduce((t, b) => t + (b.immobilisationJours ?? 0), 0),
       };
     })
     .sort((a, b) => (b.total as number) - (a.total as number));
@@ -733,7 +733,7 @@ function interventions(s: SourceRapports, c: ContexteRapport): LigneRapport[] {
       km: i.km,
       cout: i.montant,
       immobilisation: i.immobilisationJours,
-      coutParJour: i.immobilisationJours > 0 ? Math.round(i.montant / i.immobilisationJours) : null,
+      coutParJour: i.immobilisationJours !== null && i.immobilisationJours > 0 ? Math.round(i.montant / i.immobilisationJours) : null,
       reference: i.reference,
       numero: i.numero,
       creee: i.creee,

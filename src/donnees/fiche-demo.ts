@@ -853,7 +853,7 @@ function construire(l: LigneFlotte, parametres: Parametres): FicheVehicule {
     });
   }
   for (const i of interventions.filter((x) => x.type === "curatif")) {
-    periodesStatut.push({ statut: "en-reparation", motif: "panne", debut: i.date, fin: decaler(i.immobilisationJours, new Date(i.date)), jours: i.immobilisationJours });
+    periodesStatut.push({ statut: "en-reparation", motif: "panne", debut: i.date, fin: decaler(i.immobilisationJours ?? 0, new Date(i.date)), jours: i.immobilisationJours ?? 0 });
   }
   periodesStatut.push({ statut: "en-service", motif: null, debut: mec, fin: null, jours: 0 });
 
@@ -906,7 +906,7 @@ function construire(l: LigneFlotte, parametres: Parametres): FicheVehicule {
     });
     if (i.type === "curatif") {
       journal.push({ date: i.date, auteur: "M. Seck", initiales: "MS", categorie: "statut", texte: `Statut passé à « En réparation » — panne signalée par le chauffeur.` });
-      journal.push({ date: decaler(i.immobilisationJours, new Date(i.date)), auteur: "M. Seck", initiales: "MS", categorie: "statut", texte: `Retour « En service » après ${i.immobilisationJours} jour${i.immobilisationJours > 1 ? "s" : ""} d'immobilisation.` });
+      journal.push({ date: decaler(i.immobilisationJours ?? 0, new Date(i.date)), auteur: "M. Seck", initiales: "MS", categorie: "statut", texte: `Retour « En service » après ${i.immobilisationJours ?? 0} jour${(i.immobilisationJours ?? 0) > 1 ? "s" : ""} d'immobilisation.` });
     }
   }
   for (const a of affectations.filter((x) => x.chauffeur)) {
