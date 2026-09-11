@@ -59,6 +59,21 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
+**⚠ Migration 0043 à jouer : le tableau de bord ne se recalcule plus à chaque ouverture**
+(11 septembre 2026). Le métier : « le tableau de bord est toujours lent à charger ; rafraîchir les
+données qu'à la connexion ou sur appui d'un bouton, visible si elles ne sont pas à jour ». La page
+ne calcule plus rien : le calcul (deux ans de faits, vingt-huit jours de situations) vit dans
+`/api/tableau-bord`, et l'écran s'ouvre sur le dernier calcul gardé dans le navigateur, par compte
+(IndexedDB, `src/lib/instantanes.ts`). Il recalcule seul quand rien n'est gardé, pour un autre
+compte, ou après une connexion. Sinon une ligne sous le titre dit « Données du jeu. 11 sept. à
+08:42 · Actualiser » ; elle devient un bandeau quand de nouvelles saisies ont eu lieu depuis, ou
+que le calcul date d'un autre jour. La fraîcheur se vérifie à l'ouverture et au retour sur l'onglet,
+par `/api/tableau-bord/fraicheur`, qui lit `derniere_saisie()` (0043) : la plus récente date
+`cree_le` ou `modifie_le` des tables que lit le tableau, sous les droits de l'appelant. Tant que
+0043 n'est pas jouée, seuls le changement de jour et la connexion sont signalés. Les suppressions
+et les tables sans ces colonnes ne se voient pas : le bouton reste là pour elles. La déconnexion
+efface ce qui est gardé. Règle : `src/domaine/fraicheur.ts` ; banc `tester-fraicheur.mts`.
+
 **Une seule fiche véhicule, complète, pour tous** (11 septembre 2026, sans migration).
 Le métier : « tous les véhicules sans exception ont une fiche détaillée (exemple : AA 019 EA) »,
 puis « même les véhicules pas encore reçus — ce doit être le seul standard ». La fiche allégée du
@@ -178,7 +193,7 @@ attrapé une fois de plus.
 viennent les lignes, pourquoi le prix est le tarif officiel de la date, et ce
 qui n'est pas chargé.
 
-**Migrations : 0001 à 0041 jouées** (0037 à 0041 et leurs chargements confirmés le 11 septembre 2026) ; **0042 en attente**.
+**Migrations : 0001 à 0041 jouées** (0037 à 0041 et leurs chargements confirmés le 11 septembre 2026) ; **0042 et 0043 en attente**.
 
 **Le chargement des données réelles est fait** (10 septembre 2026) : les douze
 parties du seed, `aligner-referentiel.sql`, `purge-demonstration.sql` et

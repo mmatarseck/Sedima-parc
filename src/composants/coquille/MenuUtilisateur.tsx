@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Bell, ChevronDown, KeyRound, LogOut, UserRound } from "lucide-react";
 import { trouverRole, type DefinitionRole } from "@/domaine/roles";
 import { authentificationReelle, fermerSession, initiales, lireIdentite, lireRole } from "@/lib/session-demo";
+import { effacerInstantanes } from "@/lib/instantanes";
 import { clientNavigateur } from "@/lib/supabase";
 
 interface Entree {
@@ -60,6 +61,8 @@ export function MenuUtilisateur() {
     /* Réelle : Supabase efface ses cookies, puis le proxy garde la porte. */
     if (authentificationReelle()) await clientNavigateur().auth.signOut();
     fermerSession();
+    /* Sur un poste partagé, les chiffres gardés d'un compte ne restent pas pour le suivant. */
+    effacerInstantanes();
     router.push("/connexion");
     router.refresh();
   }

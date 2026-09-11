@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { ROLES } from "@/domaine/roles";
 import { authentificationReelle, fermerSession, ouvrirSession } from "@/lib/session-demo";
+import { effacerInstantanes, marquerConnexion } from "@/lib/instantanes";
 import { clientNavigateur } from "@/lib/supabase";
 import { ACCROCHE_APPLICATION, NOM_APPLICATION, PRECISION_APPLICATION } from "@/domaine/marque";
 
@@ -79,6 +80,7 @@ export function FormulaireConnexion() {
     setErreur(MOTIFS[motif] ?? null);
     if (reelle) void clientNavigateur().auth.signOut();
     fermerSession();
+    effacerInstantanes();
   }, [motif, reelle]);
 
   async function soumettre(evenement: React.FormEvent) {
@@ -102,6 +104,8 @@ export function FormulaireConnexion() {
       );
       return;
     }
+    /* La connexion rafraîchit le tableau de bord gardé : c'est le moment que le métier a choisi. */
+    marquerConnexion();
     /* La session est dans les cookies : le serveur la lira au prochain rendu.
        Une page demandée avant la connexion — un QR code scanné — reprend. */
     const suite = parametres.get("suite");
@@ -123,6 +127,7 @@ export function FormulaireConnexion() {
 
   function entrer(role: (typeof ROLES)[number]) {
     ouvrirSession(role.role);
+    marquerConnexion();
     const suite = parametres.get("suite");
     router.push(suite && suite.startsWith("/") && !suite.startsWith("//") ? suite : "/flotte");
   }

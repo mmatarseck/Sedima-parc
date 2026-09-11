@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Banknote, CalendarClock, ChevronDown, ChevronUp, CircleCheck, CircleOff, ClipboardList, Clock, Droplet, FileWarning, Fuel, Gauge, Inbox, RotateCcw, ShieldCheck, SlidersHorizontal, TriangleAlert, UserX, Wallet, Wrench, X, type LucideIcon } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { Carte } from "@/composants/interface/Carte";
@@ -175,6 +175,7 @@ export function EcranTableauBord({
   aujourdhui,
   situations,
   seuils,
+  bandeau,
 }: {
   mois: string[];
   vehicules: VehiculeTableau[];
@@ -187,6 +188,8 @@ export function EcranTableauBord({
   situations: SituationJournaliere[];
   /** Les seuils réglés dans Paramètres › Pastilles, par identifiant de pastille. */
   seuils: Record<string, number>;
+  /** La ligne qui dit de quand datent les données, et propose de les actualiser. */
+  bandeau?: ReactNode;
 }) {
   const [bu, setBu] = useState<string>("tous");
   const [categorie, setCategorie] = useState<string>("tous");
@@ -481,6 +484,8 @@ export function EcranTableauBord({
           </button>
         </div>
       </div>
+
+      {bandeau}
 
       {/* ---- Rangée 1 : les pastilles du moment ---- */}
       <Separateur libelle="Maintenant" precision="l'état du parc à cet instant, ou de la dernière période close" />
