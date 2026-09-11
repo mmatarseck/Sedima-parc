@@ -1,5 +1,6 @@
 "use client";
 
+import { afficher, normaliser } from "@/domaine/immatriculation";
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, ChevronLeft, FileWarning, Info, Pencil, Phone, Truck, Users } from "lucide-react";
@@ -494,7 +495,7 @@ export function FicheTransporteur({ fiche, ongletInitial }: { fiche: Fiche; ongl
               colonnes={[
                 { cle: "date", libelle: "Date", rendu: (l) => <span className="code">{formaterDate(l.date)}</span> },
                 { cle: "semaine", libelle: "Semaine", parDefaut: false, rendu: (l) => <span className="code">{l.semaine}</span> },
-                { cle: "camion", libelle: "Camion", rendu: (l) => <span className="code">{l.camionTiersImmatriculation ?? l.immatriculationLibre ?? "—"}</span> },
+                { cle: "camion", libelle: "Camion", rendu: (l) => <span className="code">{l.camionTiersImmatriculation ?? l.immatriculationLibre ? afficher(normaliser(l.camionTiersImmatriculation ?? l.immatriculationLibre ?? "")) : "—"}</span> },
                 { cle: "chauffeur", libelle: "Chauffeur", rendu: (l) => <span className="block truncate">{l.chauffeur ?? "—"}</span> },
                 { cle: "destination", libelle: "Destination", rendu: (l) => <span className="block truncate font-medium text-texte">{l.destination}</span> },
                 {
@@ -579,7 +580,7 @@ export function FicheTransporteur({ fiche, ongletInitial }: { fiche: Fiche; ongl
                   },
                 },
                 { cle: "statut", libelle: "Étape", rendu: (a) => <Echeance ton={TON_STATUT_AFFRETEMENT[a.statut]}>{STATUT_AFFRETEMENT[a.statut]}</Echeance> },
-                { cle: "camion", libelle: "Camion du tiers", parDefaut: false, rendu: (a) => <span className="code">{a.immatriculationExterne ?? "—"}</span> },
+                { cle: "camion", libelle: "Camion du tiers", parDefaut: false, rendu: (a) => <span className="code">{a.immatriculationExterne ? afficher(normaliser(a.immatriculationExterne)) : "—"}</span> },
                 { cle: "chauffeur", libelle: "Chauffeur", parDefaut: false, rendu: (a) => a.chauffeurExterne ?? "—" },
               ]}
             />

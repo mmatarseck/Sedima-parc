@@ -59,6 +59,17 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
+**⚠ Migration 0045 à jouer : les plaques s'écrivent avec des tirets** (11 septembre 2026). Le métier :
+« les nouveaux matricules sont formatés XX-YYY-ZZ, les anciens XX-YYYY-ZZ ; mettre à jour toute la base ».
+L'affichage passe partout au tiret — `afficher()` du domaine (AB-060-KT, DK-4923-BB, TH-8174-K), et
+`plaque_affichee()` en base pour les notifications. Deux doublons à espaces (`donnees/demandes.ts`,
+`donnees/transferts.ts`) sont supprimés, la fiche transporteur et « véhicule introuvable » formatent leurs
+plaques, 105 littéraux de la démonstration et des chargeurs passent au tiret. La clé ne change pas :
+`vehicule.immatriculation` reste sans séparateur (AB060KT), et toute saisie s'y ramène. 0045 passe au tiret
+les textes écrits par l'application (sujets de notification, plaque libre du relevé, commentaires des véhicules,
+des attributions et des lots) ; les libellés des documents sources gardent leur écriture. **À jouer après
+les chargements des véhicules manquants et des caractéristiques.** Banc `tester-format-plaque.mts`.
+
 **⚠ Chargements à jouer : les véhicules manquants et les caractéristiques des cartes grises**
 (11 septembre 2026). Source : `MALICK/FICHE COMPLET VEHICULES PARC LIVRAISONS ET PERSONNELS.xlsx`.
 Le métier : « créer les véhicules manquants » ; « la taxe de 18 % est de la TVA ». Dans l'ordre :
@@ -230,7 +241,7 @@ attrapé une fois de plus.
 viennent les lignes, pourquoi le prix est le tarif officiel de la date, et ce
 qui n'est pas chargé.
 
-**Migrations : 0001 à 0041 jouées** (0037 à 0041 et leurs chargements confirmés le 11 septembre 2026) ; **0042, 0043 et 0044 en attente** (0043 compte désormais aussi la table `livraison`).
+**Migrations : 0001 à 0041 jouées** (0037 à 0041 et leurs chargements confirmés le 11 septembre 2026) ; **0042 à 0045 en attente** (0043 compte désormais aussi la table `livraison`).
 
 **Le chargement des données réelles est fait** (10 septembre 2026) : les douze
 parties du seed, `aligner-referentiel.sql`, `purge-demonstration.sql` et

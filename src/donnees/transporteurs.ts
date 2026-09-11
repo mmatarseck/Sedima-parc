@@ -11,7 +11,7 @@
  * activité : le module se lit, il ne compte rien.
  *
  * Les plaques : la base tient la forme canonique (« AA312CT »), les écrans
- * la forme lisible (« AA 312 CT ») ; on reconstruit l'affichage à la lecture,
+ * la forme lisible (« AA-312-CT ») ; on reconstruit l'affichage à la lecture,
  * comme pour le parc.
  * ==========================================================================*/
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, CarFront } from "lucide-react";
 import { FicheVehicule } from "./FicheVehicule";
 import { fabriquerLigneFlotte } from "@/composants/transactions/fabriques";
-import { normaliser } from "@/domaine/immatriculation";
+import { afficher, normaliser } from "@/domaine/immatriculation";
 import type { FicheVehicule as Fiche } from "@/domaine/fiche";
 import { ficheVierge } from "@/donnees/fiche-demo";
 import { lireToutesCreations } from "@/lib/clotures-demo";
@@ -47,7 +47,7 @@ export function FicheVehiculeCreee({ immatriculation, ongletInitial, discussionI
         </span>
         <h1 className="titre-bloc mt-4">Véhicule introuvable</h1>
         <p className="mt-2 text-[13px] leading-relaxed text-texte-2">
-          Aucun véhicule immatriculé <span className="code text-texte">{immatriculation}</span> dans le parc, ni parmi les véhicules saisis dans cette application.
+          Aucun véhicule immatriculé <span className="code text-texte">{afficher(normaliser(immatriculation))}</span> dans le parc, ni parmi les véhicules saisis dans cette application.
         </p>
         <Link href="/flotte" className="bouton-secondaire mt-5">
           <ArrowLeft className="size-4" strokeWidth={1.8} />

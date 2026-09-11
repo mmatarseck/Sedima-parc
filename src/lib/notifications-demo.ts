@@ -20,7 +20,7 @@ export interface Notification {
   date: string;
   auteur: string;
   initiales: string;
-  /** « AA 032 EA », « Babacar Ndiaye ». */
+  /** « AA-032-EA », « Babacar Ndiaye ». */
   sujetLibelle: string;
   /** Début du message, pour situer sans ouvrir. */
   extrait: string;

@@ -551,7 +551,7 @@ export const assistantDemo: Assistant = {
       return immatriculation
         ? fiche(immatriculation)
         : {
-            texte: "De quel véhicule s'agit-il ? Citez son immatriculation — « Où en est AA 032 EA ? ».",
+            texte: "De quel véhicule s'agit-il ? Citez son immatriculation — « Où en est AA-032-EA ? ».",
             lignes: FLOTTE.slice(0, 6).map((l) => ({ titre: l.vehicule.immatriculationAffichee, precision: `${l.vehicule.marque} ${l.vehicule.appellation}`, href: `/flotte/${l.vehicule.immatriculation}` })),
             sources: [{ libelle: "Flotte", href: "/flotte" }],
           };

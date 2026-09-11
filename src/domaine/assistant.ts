@@ -48,7 +48,7 @@ export interface ChiffreReponse {
 }
 
 export interface LigneReponse {
-  /** « AA 032 EA », « Moustapha Diaw ». */
+  /** « AA-032-EA », « Moustapha Diaw ». */
   titre: string;
   precision?: string;
   /** La valeur qui motive la présence de la ligne : « 432 F/km ». */
@@ -287,6 +287,6 @@ export const INTENTIONS: Intention[] = [
     cle: "vehicule",
     libelle: "La situation d'un véhicule précis, par son immatriculation",
     groupes: [["ou en est", "situation", "etat", "fiche", "parle moi", "resume", "point sur"]],
-    exemple: "Où en est AA 032 EA ?",
+    exemple: "Où en est AA-032-EA ?",
   },
 ];

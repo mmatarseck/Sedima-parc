@@ -82,7 +82,7 @@ async function livraisonsDuVehicule(client: Awaited<ReturnType<typeof clientServ
  *
  * Les véhicules de service et de fonction en étaient exclus : ils ouvraient la
  * fiche réduite du parc léger, qui dit « ce véhicule n'est pas encore dans la
- * base » — faux pour AA 019 EA et les autres, qui y sont avec leurs documents,
+ * base » — faux pour AA-019-EA et les autres, qui y sont avec leurs documents,
  * leurs interventions et leurs dépenses (11 septembre 2026).
  */
 async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<FicheVehicule | null> {

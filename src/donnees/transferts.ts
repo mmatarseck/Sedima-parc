@@ -7,6 +7,7 @@
  * ==========================================================================*/
 
 import { cache } from "react";
+import { afficher } from "@/domaine/immatriculation";
 import type { EquipementTransfert, ReserveTransfert, Signature, Transfert } from "@/domaine/transferts";
 import type { TypeDocument } from "@/domaine/types";
 import { authentificationReelle } from "@/lib/session-demo";
@@ -40,11 +41,6 @@ interface LigneTransfert {
   cree_le: string;
   cree_par_nom: string | null;
   vehicule: { immatriculation: string; marque: string; appellation: string; site_id: string | null } | null;
-}
-
-function afficher(immatriculation: string): string {
-  const m = immatriculation.match(/^([A-Z]{2})(\d{3,4})([A-Z]{2})$/);
-  return m ? `${m[1]} ${m[2]} ${m[3]}` : immatriculation;
 }
 
 function transfertDepuisLigne(l: LigneTransfert): Transfert {

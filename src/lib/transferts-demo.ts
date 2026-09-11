@@ -10,6 +10,7 @@
  * ==========================================================================*/
 
 import { champsCreation } from "@/composants/transactions/champs";
+import { normaliser } from "@/domaine/immatriculation";
 import { affectationSuivante, normaliserTransfert, statutTransfert, type Signature, type Transfert } from "@/domaine/transferts";
 import { transfertsDemo } from "@/donnees/transferts-demo";
 import { enregistrerCreation } from "@/lib/clotures-demo";
@@ -44,7 +45,7 @@ function appliquerEnDemo(t: Transfert): Transfert {
   const a = affectationSuivante(t);
   if (a) {
     enregistrerCreation({
-      sujet: `vehicule:${t.vehicule.immatriculation.replace(/\s/g, "")}`,
+      sujet: `vehicule:${normaliser(t.vehicule.immatriculation)}`,
       type: "affectation",
       champs: champsCreation("affectation", { pour: "vehicule" }),
       valeurs: { chauffeurId: a.chauffeurId, role: "titulaire", debut: a.debut, fin: null, motif: a.motif },

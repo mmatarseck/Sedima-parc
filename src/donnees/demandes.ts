@@ -8,6 +8,7 @@
 
 import { cache } from "react";
 import type { Demande, TypeDemande } from "@/domaine/demandes";
+import { afficher } from "@/domaine/immatriculation";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 import { demandesDemo } from "./demandes-demo";
@@ -32,11 +33,6 @@ interface LigneDemande {
   reponse_commentaire: string | null;
   annulee_le: string | null;
   vehicule: { immatriculation: string; marque: string; appellation: string; site_id: string | null } | null;
-}
-
-function afficher(immatriculation: string): string {
-  const m = immatriculation.match(/^([A-Z]{2})(\d{3,4})([A-Z]{2})$/);
-  return m ? `${m[1]} ${m[2]} ${m[3]}` : immatriculation;
 }
 
 function demandeDepuisLigne(l: LigneDemande): Demande {

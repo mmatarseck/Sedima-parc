@@ -73,7 +73,7 @@ export function PanneauDiscussion({
 }: {
   /** « vehicule:AA032EA » — la clé du fil. */
   sujet: string;
-  /** Ce dont on parle, pour le titre : « AA 032 EA ». */
+  /** Ce dont on parle, pour le titre : « AA-032-EA ». */
   libelle: string;
   /** Adresse de la fiche, pour que la notification y ramène, discussion ouverte. */
   href: string;

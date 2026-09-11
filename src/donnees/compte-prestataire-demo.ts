@@ -105,12 +105,12 @@ export function avances(): Avance[] {
  * cas le plus fréquent au démarrage, et l'écran doit savoir le dire.
  */
 const EVALUATIONS: { prestataire: string; date: string; piece: string; libelle: string; qualite: number; delai: number; prix: number; commentaire: string | null; auteur: string }[] = [
-  { prestataire: "La Sénégalaise de l'Automobile", date: "2026-06-16", piece: "INT-2026-01012", libelle: "Vidange et filtres — AA 032 EA", qualite: 5, delai: 4, prix: 4, commentaire: "Travail propre, véhicule rendu le jour même.", auteur: "Gestionnaire de parc" },
-  { prestataire: "La Sénégalaise de l'Automobile", date: "2026-04-08", piece: "INT-2026-01008", libelle: "Freinage — AA 236 MR", qualite: 4, delai: 5, prix: 4, commentaire: null, auteur: "Gestionnaire de parc" },
-  { prestataire: "La Sénégalaise de l'Automobile", date: "2026-02-19", piece: "INT-2026-01003", libelle: "Suspension — AA 285 PT", qualite: 4, delai: 4, prix: 3, commentaire: "Devis dépassé de 12 % sans prévenir.", auteur: "Responsable atelier" },
-  { prestataire: "First Garage", date: "2026-04-02", piece: "INT-2026-01004", libelle: "Boîte de vitesses — AA 565 GA", qualite: 2, delai: 1, prix: 3, commentaire: "Trois semaines d'immobilisation au lieu d'une, et la boîte a dû être reprise.", auteur: "Responsable atelier" },
-  { prestataire: "First Garage", date: "2026-05-27", piece: "INT-2026-01009", libelle: "Reprise boîte — AA 565 GA", qualite: 3, delai: 3, prix: 2, commentaire: "Reprise facturée, ce qui n'aurait pas dû l'être.", auteur: "Responsable atelier" },
-  { prestataire: "Garage SEDIMA", date: "2026-05-05", piece: "INT-2026-01007", libelle: "Batterie — AA 032 EA", qualite: 4, delai: 5, prix: 5, commentaire: null, auteur: "Gestionnaire de parc" },
+  { prestataire: "La Sénégalaise de l'Automobile", date: "2026-06-16", piece: "INT-2026-01012", libelle: "Vidange et filtres — AA-032-EA", qualite: 5, delai: 4, prix: 4, commentaire: "Travail propre, véhicule rendu le jour même.", auteur: "Gestionnaire de parc" },
+  { prestataire: "La Sénégalaise de l'Automobile", date: "2026-04-08", piece: "INT-2026-01008", libelle: "Freinage — AA-236-MR", qualite: 4, delai: 5, prix: 4, commentaire: null, auteur: "Gestionnaire de parc" },
+  { prestataire: "La Sénégalaise de l'Automobile", date: "2026-02-19", piece: "INT-2026-01003", libelle: "Suspension — AA-285-PT", qualite: 4, delai: 4, prix: 3, commentaire: "Devis dépassé de 12 % sans prévenir.", auteur: "Responsable atelier" },
+  { prestataire: "First Garage", date: "2026-04-02", piece: "INT-2026-01004", libelle: "Boîte de vitesses — AA-565-GA", qualite: 2, delai: 1, prix: 3, commentaire: "Trois semaines d'immobilisation au lieu d'une, et la boîte a dû être reprise.", auteur: "Responsable atelier" },
+  { prestataire: "First Garage", date: "2026-05-27", piece: "INT-2026-01009", libelle: "Reprise boîte — AA-565-GA", qualite: 3, delai: 3, prix: 2, commentaire: "Reprise facturée, ce qui n'aurait pas dû l'être.", auteur: "Responsable atelier" },
+  { prestataire: "Garage SEDIMA", date: "2026-05-05", piece: "INT-2026-01007", libelle: "Batterie — AA-032-EA", qualite: 4, delai: 5, prix: 5, commentaire: null, auteur: "Gestionnaire de parc" },
   { prestataire: "TATA Pikine", date: "2026-07-30", piece: "DA-2026-00052", libelle: "Pneumatiques 315/80 R22.5", qualite: 4, delai: 2, prix: 4, commentaire: "Six semaines de délai, annoncées à trois.", auteur: "Responsable carburant" },
   { prestataire: "ADEX Express", date: "2026-08-20", piece: "MAD-2026-00006", libelle: "Mise à disposition — juillet", qualite: 4, delai: 4, prix: 3, commentaire: "Service régulier ; le contrat à la journée reste inadapté.", auteur: "Direction des Opérations" },
 ];

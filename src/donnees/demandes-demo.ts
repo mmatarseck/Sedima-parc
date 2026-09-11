@@ -2,7 +2,7 @@
  * Les demandes de la démonstration : un lot de relevés de compteur parti
  * avant-hier à tous les titulaires, dont trois n'ont pas répondu ; un
  * contrôle du matin parti aujourd'hui aux camions de Keur Massar. Le
- * détenteur de démonstration (Moustapha Diaw, AA 032 EA, Thiès) a une
+ * détenteur de démonstration (Moustapha Diaw, AA-032-EA, Thiès) a une
  * demande à répondre : c'est ce que le téléphone montre.
  * ==========================================================================*/
 

@@ -95,7 +95,7 @@ export interface Vehicule {
   /** Absent : exploitation — c'est le cas de toute la flotte de transport. */
   regime?: RegimeUsage;
   immatriculation: Immatriculation;
-  /** Immatriculation telle qu'affichée : « AA 032 EA ». */
+  /** Immatriculation telle qu'affichée : « AA-032-EA ». */
   immatriculationAffichee: string;
   /** Numéro d'identification du véhicule (châssis), 17 caractères. Clé avec le constructeur et l'assureur. */
   vin: string | null;

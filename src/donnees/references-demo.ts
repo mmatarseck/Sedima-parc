@@ -27,7 +27,7 @@ export interface EntreeReference {
   type: TypeTransaction;
   /** « Plein · Gasoil cuve — 62,5 L ». */
   titre: string;
-  /** « 14/06/2026 · AA 032 EA · 39 375 F ». */
+  /** « 14/06/2026 · AA-032-EA · 39 375 F ». */
   precision: string;
   href: string;
 }

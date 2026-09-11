@@ -13,7 +13,7 @@ export interface Personne {
   id: string;
   nom: string;
   initiales: string;
-  /** « Gestionnaire de parc », « Chauffeur — AA 032 EA ». */
+  /** « Gestionnaire de parc », « Chauffeur — AA-032-EA ». */
   precision: string;
 }
 

@@ -78,7 +78,7 @@ const fiche = fichePosteDe(source, "carburant", budget)!;
 const ficheDemo = fichePosteDe(demo, "carburant", budgetDemo)!;
 attendu(`la fiche carburant : ${fiche.depenses.length} dépenses (démo ${ficheDemo.depenses.length}), ${fiche.engagements.length} engagements (démo ${ficheDemo.engagements.length}), ${fiche.parMois.length} mois, cumul ${fmt(fiche.parMois[fiche.parMois.length - 1]?.consomme ?? 0)} (démo ${fmt(ficheDemo.parMois[ficheDemo.parMois.length - 1]?.consomme ?? 0)})`,
   fiche.depenses.length === ficheDemo.depenses.length && fiche.engagements.length === ficheDemo.engagements.length && fiche.parMois.length === ficheDemo.parMois.length && fiche.parMois[fiche.parMois.length - 1]?.consomme === ficheDemo.parMois[ficheDemo.parMois.length - 1]?.consomme);
-attendu(`chaque dépense de la fiche cite son véhicule et sa business unit`, fiche.depenses.every((d) => d.immatriculation && d.immatriculationAffichee.includes(" ")));
+attendu(`chaque dépense de la fiche cite son véhicule et sa business unit`, fiche.depenses.every((d) => d.immatriculation && /^[A-Z]+-\d+(-[A-Z]+)?$/.test(d.immatriculationAffichee)));
 const pieces = fichePosteDe(source, "pieces", budget);
 attendu(`la fiche pièces porte ${pieces?.engagements.length ?? 0} engagements pour ${fmt(pieces?.suivi.cumul.engage ?? 0)} F`, (pieces?.engagements.length ?? 0) > 0 && (pieces?.engagements.reduce((t, g) => t + g.montant, 0) ?? 0) === (pieces?.suivi.cumul.engage ?? -1));
 attendu(`un poste inconnu est nul`, fichePosteDe(source, "inconnu", budget) === null);

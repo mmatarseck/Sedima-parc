@@ -13,13 +13,13 @@
  *     régime et leur statut sont décidés ci-dessous, un par un, avec leur
  *     raison. Leurs caractéristiques techniques viennent ensuite de
  *     `caracteristiques-vehicules.sql`, comme pour tous les autres.
- *   * **Une plaque est corrigée** : AB 930 BB est AB 930 BV — la carte grise,
+ *   * **Une plaque est corrigée** : AB-930-BB est AB-930-BV — la carte grise,
  *     l'assurance, l'attestation 2026 et la fiche le disent.
  *   * **Trois ne sont pas des véhicules manquants** mais des coquilles de la
- *     fiche : AA 783 SN est AA 783 BN (carte grise et licence), AA 078 JS est
- *     AB 078 JS (carte grise, même détenteur), DK 6875 DF est DK 6875 BF.
- *   * **Une reste à trancher** : AB 077 FP, un autocar Force Motors à Notto,
- *     que la carte grise écrit AB 077 BP et le référentiel AA 077 FP (Tata).
+ *     fiche : AA-783-SN est AA-783-BN (carte grise et licence), AA-078-JS est
+ *     AB-078-JS (carte grise, même détenteur), DK-6875-DF est DK-6875-BF.
+ *   * **Une reste à trancher** : AB-077-FP, un autocar Force Motors à Notto,
+ *     que la carte grise écrit AB-077-BP et le référentiel AA-077-FP (Tata).
  *     Rien n'est créé tant que la plaque n'est pas sûre.
  *
  * Les cinq L200 DC immatriculés le 1er septembre sont les véhicules neufs de
@@ -64,22 +64,22 @@ const SINOTRUK = { marque: "SINOTRUK", appellation: "ZZ1168", categorie: "camion
 
 const DECISIONS: Record<string, Decision> = {
   AB060KT: { ...L200_NEUF, bu: "siege", regime: "service", pourquoi: "Lot 2 neuf, Yacine Siby, Responsable Dépôts (Cascade vf)", attribution: { attributaire: YACINE_SIBY, nom: "Yacine Siby", debut: "2026-09-01" } },
-  AB062KT: { ...L200_NEUF, bu: "commercial", regime: "fonction", pourquoi: "Lot 2 neuf, Maimouna Gaye, Responsable Pôle Farine & Bétail ; remplace DK 5679 BL, à réformer (Cascade vf)", attribution: { attributaire: MAIMOUNA_GAYE, nom: "Maimouna Gaye", debut: "2026-09-01" } },
-  AB112KT: { ...L200_NEUF, bu: "commercial", regime: "service", pourquoi: "Lot 2 - 06 neuf, Amacodou Ndiaye ; libère AA 119 AH pour le futur Responsable Logistique (Cascade vf)", attribution: { attributaire: AMACODOU_NDIAYE, nom: "Amacodou Ndiaye", debut: "2026-09-01" }, lot: "Lot 2 - 06" },
+  AB062KT: { ...L200_NEUF, bu: "commercial", regime: "fonction", pourquoi: "Lot 2 neuf, Maimouna Gaye, Responsable Pôle Farine & Bétail ; remplace DK-5679-BL, à réformer (Cascade vf)", attribution: { attributaire: MAIMOUNA_GAYE, nom: "Maimouna Gaye", debut: "2026-09-01" } },
+  AB112KT: { ...L200_NEUF, bu: "commercial", regime: "service", pourquoi: "Lot 2 - 06 neuf, Amacodou Ndiaye ; libère AA-119-AH pour le futur Responsable Logistique (Cascade vf)", attribution: { attributaire: AMACODOU_NDIAYE, nom: "Amacodou Ndiaye", debut: "2026-09-01" }, lot: "Lot 2 - 06" },
   AB010KT: { ...L200_NEUF, bu: "commercial", regime: "service", pourquoi: "Lot 2 - 11 neuf, commercial Sud 2 en recrutement au 1er octobre 2026 (Cascade vf)", attribution: { pool: "Commercial — recrutement Sud 2" }, lot: "Lot 2 - 11" },
-  AB066KT: { ...L200_NEUF, bu: "commercial", regime: "service", pourquoi: "Lot 2 - 13 neuf, commercial Zone Nord 2 en recrutement au 1er octobre 2026. Le plan d'affectation écrit AB 056 KT, la fiche du parc AB 066 KT : plaque à confirmer sur la carte grise", attribution: { pool: "Commercial — recrutement Zone Nord 2" }, lot: "Lot 2 - 13" },
+  AB066KT: { ...L200_NEUF, bu: "commercial", regime: "service", pourquoi: "Lot 2 - 13 neuf, commercial Zone Nord 2 en recrutement au 1er octobre 2026. Le plan d'affectation écrit AB-056-KT, la fiche du parc AB-066-KT : plaque à confirmer sur la carte grise", attribution: { pool: "Commercial — recrutement Zone Nord 2" }, lot: "Lot 2 - 13" },
   AB178KR: { ...SINOTRUK, pourquoi: "Camion neuf immatriculé le 21/08/2026, livraison aliment, en mutation (fiche du parc)" },
   AB180KR: { ...SINOTRUK, pourquoi: "Camion neuf immatriculé le 21/08/2026, livraison aliment, en mutation (fiche du parc)" },
   AB181KR: { ...SINOTRUK, pourquoi: "Camion neuf immatriculé le 21/08/2026, livraison aliment, en mutation (fiche du parc)" },
   AB938KQ: { ...SINOTRUK, pourquoi: "Camion neuf immatriculé le 21/08/2026, livraison aliment, en mutation (fiche du parc)" },
   AA542BQ: { marque: "RENAULT", appellation: "Premium", categorie: "tracteur", usage: "tracteur", energie: "gasoil", bu: "fermes", regime: "exploitation", statut: "hors-service", engage: true, pourquoi: "Tracteur Renault Premium 2020 de la ferme de Djilakh, béton et sable, assuré 2026 ; panne moteur (fiche du parc, rapprochement)" },
-  AA507BQ: { marque: "SCHMITZ", appellation: "Semi-remorque benne", categorie: "semi-remorque", usage: "benne", energie: "gasoil", bu: "fermes", regime: "exploitation", statut: "en-service", engage: true, pourquoi: "Semi-remorque benne Schmitz attelée à AA 542 BQ, ferme de Djilakh, assurée 2026 (carte grise, rapprochement)" },
+  AA507BQ: { marque: "SCHMITZ", appellation: "Semi-remorque benne", categorie: "semi-remorque", usage: "benne", energie: "gasoil", bu: "fermes", regime: "exploitation", statut: "en-service", engage: true, pourquoi: "Semi-remorque benne Schmitz attelée à AA-542-BQ, ferme de Djilakh, assurée 2026 (carte grise, rapprochement)" },
   AB361JL: { marque: "HOWO", appellation: "ZZ3317N", categorie: "camion", usage: "benne", energie: "gasoil", bu: "fermes", regime: "exploitation", statut: "en-service", engage: true, pourquoi: "Camion Howo immatriculé le 05/06/2026, affecté aux fermes (carte grise, fiche du parc)" },
   AB364HK: { marque: "PEUGEOT", appellation: "5008", categorie: "vehicule-leger", usage: "utilitaire", energie: "gasoil", bu: "siege", regime: "service", statut: "en-service", engage: false, pourquoi: "Peugeot 5008 immatriculée le 07/04/2026, siège, non affectée (carte grise, fiche du parc)" },
   DK4923BB: { marque: "RENAULT", appellation: "Duster", categorie: "vehicule-leger", usage: "utilitaire", energie: "gasoil", bu: "siege", regime: "service", statut: "hors-service", engage: false, pourquoi: "Renault Duster 2016, siège ; panne moteur, organes et carrosserie (fiche du parc)" },
   DK0099BD: { marque: "HYUNDAI", appellation: "ix35", categorie: "vehicule-leger", usage: "utilitaire", energie: "gasoil", bu: "siege", regime: "service", statut: "hors-service", engage: false, pourquoi: "Hyundai ix35 2017, siège ; panne moteur, organes et carrosserie (fiche du parc)" },
   AA866YH: { marque: "TOYOTA", appellation: "Land Cruiser Prado", categorie: "vehicule-leger", usage: "utilitaire", energie: "gasoil", bu: "siege", regime: "fonction", statut: "en-service", engage: false, pourquoi: "Toyota Prado du Directeur général (fiche du parc : « DG Franck ») ; attributaire à créer au référentiel" },
-  AA372WJ: { marque: "SUZUKI", appellation: "Burgman", categorie: "moto", usage: "autre", energie: "essence", bu: "commercial", regime: "service", statut: "en-service", engage: false, pourquoi: "Scooter Suzuki Burgman 2025 du Teral Shop (fiche du parc). L'assurance écrit AA 372 YJ : plaque à confirmer sur la carte grise", attribution: { attributaire: BABACAR_TERAL_SHOP, nom: "Babacar (Teral Shop)" } },
+  AA372WJ: { marque: "SUZUKI", appellation: "Burgman", categorie: "moto", usage: "autre", energie: "essence", bu: "commercial", regime: "service", statut: "en-service", engage: false, pourquoi: "Scooter Suzuki Burgman 2025 du Teral Shop (fiche du parc). L'assurance écrit AA-372-YJ : plaque à confirmer sur la carte grise", attribution: { attributaire: BABACAR_TERAL_SHOP, nom: "Babacar (Teral Shop)" } },
 };
 
 /** Les plaques de la fiche qui ne sont pas des véhicules manquants. */
@@ -117,7 +117,7 @@ writeFileSync(
 -- SEDIMA Parc — les véhicules du parc que l'application ne connaissait pas.
 --
 -- **Ce n'est pas une migration.** ${lignes.length} véhicules créés, une plaque corrigée
--- (AB 930 BB → AB 930 BV), ${attributions.length} attributions, ${lots.length} lots « à recevoir » reçus.
+-- (AB-930-BB → AB-930-BV), ${attributions.length} attributions, ${lots.length} lots « à recevoir » reçus.
 -- Source : FICHE COMPLET VEHICULES PARC LIVRAISONS ET PERSONNELS.xlsx (10/09/2026),
 -- cartes grises, plan d'affectation des véhicules légers. Voir
 -- docs/CARACTERISTIQUES-VEHICULES.md.
@@ -129,9 +129,9 @@ writeFileSync(
 
 begin;
 
--- ---- La plaque corrigée : la carte grise dit AB 930 BV ----
+-- ---- La plaque corrigée : la carte grise dit AB-930-BV ----
 update vehicule set immatriculation = 'AB930BV',
-       commentaire = concat_ws(' ', commentaire, 'Plaque corrigée le 11 septembre 2026 : AB 930 BV selon la carte grise, l''assurance et l''attestation 2026 (l''application écrivait AB 930 BB).')
+       commentaire = concat_ws(' ', commentaire, 'Plaque corrigée le 11 septembre 2026 : AB-930-BV selon la carte grise, l''assurance et l''attestation 2026 (l''application écrivait AB-930-BB).')
  where immatriculation = 'AB930BB'
    and not exists (select 1 from vehicule where immatriculation = 'AB930BV');
 

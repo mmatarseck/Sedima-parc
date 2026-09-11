@@ -36,7 +36,7 @@ const RELEVE: { nomReleve: string; prestataire: string; camions: string[]; chauf
   {
     nomReleve: "A DIENG",
     prestataire: "Abdou Dieng",
-    camions: ["AA 312 CT", "AA 860 VN", "AA 383 GZ", "AA 317 CT", "AB 287 GR", "AA 314 CT", "AB 417 JW", "AB 495 JX", "AA 116 VN", "AB 273 GR"],
+    camions: ["AA-312-CT", "AA-860-VN", "AA-383-GZ", "AA-317-CT", "AB-287-GR", "AA-314-CT", "AB-417-JW", "AB-495-JX", "AA-116-VN", "AB-273-GR"],
     chauffeurs: [
       { nom: "Cheick Ibra", telephone: "774566779" },
       { nom: "Khadime", telephone: "773696797" },
@@ -51,7 +51,7 @@ const RELEVE: { nomReleve: string; prestataire: string; camions: string[]; chauf
   {
     nomReleve: "A KANE",
     prestataire: "Abdou Kane",
-    camions: ["AA 490 KS", "AB 380 SN", "AB 277 BL", "AA 624 JA", "AA 872 DY", "AA 579 ST", "AA 585 HQ"],
+    camions: ["AA-490-KS", "AB-380-SN", "AB-277-BL", "AA-624-JA", "AA-872-DY", "AA-579-ST", "AA-585-HQ"],
     chauffeurs: [
       { nom: "Serigne Diop", telephone: "761350565" },
       { nom: "Ousmane Ba", telephone: "773901523" },
@@ -66,11 +66,11 @@ const RELEVE: { nomReleve: string; prestataire: string; camions: string[]; chauf
     nomReleve: "ADEX",
     prestataire: "ADEX Express",
     /* Sept camions au relevé hebdomadaire, neuf sur les factures de mise à
-       disposition : les deux camions à œufs (AA 567 EC, AA 076 BP) ne passent
+       disposition : les deux camions à œufs (AA-567-EC, AA-076-BP) ne passent
        pas par le relevé de tonnage de l'aliment, mais ils roulent pour nous et
        se facturent au mois. Sans eux, cinq cents chargements et vingt-quatre mois
        de mise à disposition perdaient leur camion à l'entrée en base. */
-    camions: ["AA 569 EC", "AA 918 NT", "AA 658 JS", "AA 014 SR", "AA 571 EC", "AA 573 EC", "AA 269 NW", "AA 567 EC", "AA 076 BP"],
+    camions: ["AA-569-EC", "AA-918-NT", "AA-658-JS", "AA-014-SR", "AA-571-EC", "AA-573-EC", "AA-269-NW", "AA-567-EC", "AA-076-BP"],
     chauffeurs: [
       { nom: "Alpha", telephone: "772003138" },
       { nom: "Demba Ka", telephone: "773977508" },
@@ -84,7 +84,7 @@ const RELEVE: { nomReleve: string; prestataire: string; camions: string[]; chauf
   {
     nomReleve: "DR WADE",
     prestataire: "Dr Wade Transport",
-    camions: ["AA 839 SN", "AA 700 JG", "AB 700 JG"],
+    camions: ["AA-839-SN", "AA-700-JG", "AB-700-JG"],
     chauffeurs: [
       { nom: "Bathie Cissé", telephone: "775363472" },
       { nom: "Malick Ndour", telephone: "762231571" },
@@ -93,7 +93,7 @@ const RELEVE: { nomReleve: string; prestataire: string; camions: string[]; chauf
   {
     nomReleve: "SOKHNA DIOP",
     prestataire: "Sokhna Diop",
-    camions: ["AA 909 AZ", "AA 479 GX"],
+    camions: ["AA-909-AZ", "AA-479-GX"],
     chauffeurs: [
       { nom: "Elimaane", telephone: "774484678" },
       { nom: "Cheikh Sow", telephone: "775116054" },
@@ -106,7 +106,7 @@ const RELEVE: { nomReleve: string; prestataire: string; camions: string[]; chauf
        ensemble et non comme des cas isolés. */
     nomReleve: "AUTRES",
     prestataire: "Abdou K. Diop",
-    camions: ["AA 118 CB", "AA 772 AZ", "AA 271 LW", "AB 975 FC"],
+    camions: ["AA-118-CB", "AA-772-AZ", "AA-271-LW", "AB-975-FC"],
     chauffeurs: [
       { nom: "Pape Ndiaye", telephone: "775052044" },
       { nom: "Ibou Sarr", telephone: "773821078" },
@@ -116,17 +116,17 @@ const RELEVE: { nomReleve: string; prestataire: string; camions: string[]; chauf
 
 /** Capacité utile estimée d'après les tonnages portés au relevé, en tonnes. */
 const CAPACITE_ESTIMEE: Record<string, number> = {
-  "AA 872 DY": 40,
-  "AB 277 BL": 40,
-  "AA 624 JA": 40,
-  "AA 312 CT": 35,
-  "AA 569 EC": 35,
-  "AA 571 EC": 35,
-  "AA 573 EC": 35,
-  "AA 918 NT": 22,
-  "AA 490 KS": 12,
-  "AB 380 SN": 7.5,
-  "AA 658 JS": 3,
+  "AA-872-DY": 40,
+  "AB-277-BL": 40,
+  "AA-624-JA": 40,
+  "AA-312-CT": 35,
+  "AA-569-EC": 35,
+  "AA-571-EC": 35,
+  "AA-573-EC": 35,
+  "AA-918-NT": 22,
+  "AA-490-KS": 12,
+  "AB-380-SN": 7.5,
+  "AA-658-JS": 3,
 };
 
 let CACHE_CAMIONS: CamionTiers[] | null = null;

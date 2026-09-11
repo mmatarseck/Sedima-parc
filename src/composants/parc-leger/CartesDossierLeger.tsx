@@ -10,7 +10,7 @@ import { montant } from "@/lib/format";
  * Ces cartes vivaient dans la fiche réduite du parc léger, que les véhicules
  * de service et de fonction ouvraient **à la place** de la fiche complète —
  * alors que la base les porte tous, avec leurs documents, leurs interventions
- * et leurs dépenses (11 septembre 2026, AA 019 EA). La fiche complète s'ouvre
+ * et leurs dépenses (11 septembre 2026, AA-019-EA). La fiche complète s'ouvre
  * désormais pour eux aussi, et ces cartes y prennent la place du détenteur.
  */
 export function CartesDossierLeger({ vehicule, attributaire, forfait, regles, aujourdhui }: { vehicule: VehiculeLeger; attributaire: Attributaire | null; forfait: ForfaitCarburant | null; regles: ParametresParcLeger; aujourdhui: string }) {

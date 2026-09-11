@@ -57,9 +57,9 @@ export interface Echeance {
   numero: string | null;
   sujet: "vehicule" | "chauffeur";
   sujetId: string;
-  /** « AA 032 EA », « Babacar Ndiaye ». */
+  /** « AA-032-EA », « Babacar Ndiaye ». */
   sujetLibelle: string;
-  /** « MITSUBISHI L200 SC · Dépôt Thiès », « Titulaire de AA 032 EA ». */
+  /** « MITSUBISHI L200 SC · Dépôt Thiès », « Titulaire de AA-032-EA ». */
   sujetPrecision: string;
   sujetHref: string;
   type: TypeEcheance;

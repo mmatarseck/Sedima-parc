@@ -4,7 +4,9 @@
  * Les fichiers du parc portent trois écritures du même véhicule :
  * « AA 032 EA », « AA032EA » et « AA-032-EA ». C'est ce qui casse aujourd'hui
  * tout rapprochement entre l'inventaire, le carburant et la comptabilité.
- * La base ne stocke qu'une forme canonique ; l'affichage est reconstruit.
+ * La base ne stocke qu'une forme canonique, sans séparateur ; l'affichage est
+ * reconstruit au format des plaques : « AA-032-EA » (décision du métier du
+ * 11 septembre 2026).
  * ==========================================================================*/
 
 /** Forme canonique : majuscules, sans séparateur. « AA-032-ea » → « AA032EA ». */
@@ -16,15 +18,16 @@ export function normaliser(brut: string): string {
 }
 
 /**
- * Forme d'affichage sénégalaise : deux lettres, trois chiffres, deux lettres,
- * séparés par des espaces. « AA032EA » → « AA 032 EA ».
- * Les immatriculations qui ne suivent pas ce motif (anciennes plaques DK 6875 DF,
- * plaques à quatre chiffres) sont regroupées lettres / chiffres / lettres.
+ * Forme d'affichage des plaques, séparées par des tirets (métier, 11 septembre
+ * 2026) : les nouvelles plaques s'écrivent XX-YYY-ZZ, « AA032EA » →
+ * « AA-032-EA » ; les anciennes XX-YYYY-ZZ, « DK4923BB » → « DK-4923-BB ».
+ * Une plaque à une lettre finale suit le même découpage (« TH-8174-K ») ; ce
+ * qui n'est pas une plaque (« CHARIOT ») est rendu tel quel.
  */
 export function afficher(canonique: string): string {
   const m = /^([A-Z]+)(\d+)([A-Z]*)$/.exec(canonique);
   if (!m) return canonique;
-  return [m[1], m[2], m[3]].filter(Boolean).join(" ");
+  return [m[1], m[2], m[3]].filter(Boolean).join("-");
 }
 
 /** Vrai si les deux écritures désignent le même véhicule. */

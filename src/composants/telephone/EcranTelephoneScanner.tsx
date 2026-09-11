@@ -94,7 +94,7 @@ export function EcranTelephoneScanner() {
   function ouvrirPlaque() {
     const immat = immatriculationLue(plaque);
     if (!immat) {
-      setMessage("Une plaque s'écrit comme AA 032 EA.");
+      setMessage("Une plaque s'écrit comme AA-032-EA.");
       return;
     }
     router.push(`/telephone/vehicules/${immat}`);
@@ -128,7 +128,7 @@ export function EcranTelephoneScanner() {
             value={plaque}
             onChange={(e) => setPlaque(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && ouvrirPlaque()}
-            placeholder="AA 032 EA"
+            placeholder="AA-032-EA"
             autoCapitalize="characters"
             autoComplete="off"
             className="code h-11 min-w-0 flex-1 rounded-[12px] border border-bordure-champ bg-surface px-3.5 text-[16px] tracking-[0.06em] text-texte outline-none focus:border-accent"

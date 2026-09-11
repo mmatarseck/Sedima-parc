@@ -1,7 +1,7 @@
 /* ============================================================================
  * Les fiches de transfert de la démonstration : une remise complète le mois
- * dernier (AA 977 MR, du pool à Talla Diène) et une remise du jour qui
- * attend la signature du récipiendaire — AA 032 EA rendue à Moustapha Diaw
+ * dernier (AA-977-MR, du pool à Talla Diène) et une remise du jour qui
+ * attend la signature du récipiendaire — AA-032-EA rendue à Moustapha Diaw
  * par le correspondant de Thiès au retour d'atelier. C'est celle que le
  * détenteur de démonstration signe sur son téléphone.
  * ==========================================================================*/

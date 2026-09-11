@@ -75,7 +75,7 @@ function decaler(jours: number): string {
 
 function immatriculationInventee(alea: () => number): string {
   const lettre = () => String.fromCharCode(65 + Math.floor(alea() * 26));
-  return `DK ${1000 + Math.floor(alea() * 8999)} ${lettre()}${lettre()}`;
+  return `DK-${1000 + Math.floor(alea() * 8999)}-${lettre()}${lettre()}`;
 }
 
 /**

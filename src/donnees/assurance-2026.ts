@@ -16,7 +16,7 @@
  *
  * Ce que porte la liste : les immatriculations couvertes, normalisées. Un
  * véhicule absent n''est pas assuré au titre de 2026 — et c''est un fait, pas
- * une lacune : la situation note par exemple le camion neuf AB 681 HE comme
+ * une lacune : la situation note par exemple le camion neuf AB-681-HE comme
  * « pas encore assuré ».
  * ==========================================================================*/
 

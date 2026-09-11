@@ -14,7 +14,7 @@
  * `AFFECTATION LOURDS` (chauffeur), toutes deux du 3 septembre 2026 —
  * recoupées le 7 septembre (`docs/RAPPROCHEMENT-PARC.md`) et complétées le
  * 10 septembre : les dix-sept unités opérationnelles qui manquaient, la
- * plaque DK 6875 BF corrigée, les statuts alignés sur la situation.
+ * plaque DK-6875-BF corrigée, les statuts alignés sur la situation.
  *
  * Ce qui reste illustratif, faute de source : les kilométrages, les coûts et
  * les jours d'échéance des véhicules déjà présents. Les véhicules ajoutés le
@@ -114,7 +114,7 @@ const BRUT: Brut[] = [
   { immat: "AA990DZ", marque: "MITSUBISHI", appellation: "L200 SC", categorie: "camionnette", bu: "commercial", site: "s-siege", statut: "en-backup", chauffeur: "Khalifa Ndiaye", km: 186_554, conformite: { type: "assurance", jours: 152 }, entretienKm: 4800, cout: 2_900_000 },
   /* La plaque était fausse : toutes les listes 2026 — situation, affectation,
      suivi administratif, assurance, attestation, puce carburant — disent
-     DK 6875 BF. Corrigée le 10 septembre 2026. La situation le dit
+     DK-6875-BF. Corrigée le 10 septembre 2026. La situation le dit
      opérationnel, à l'UAB et à la minoterie, avec Amadou Baldé et Cheikh
      Thiaw. */
   { immat: "DK6875BF", marque: "MITSUBISHI", appellation: "L200 SC", categorie: "camionnette", bu: "aliment", site: "s-uab", statut: "en-service", chauffeur: "Amadou Baldé", suppleants: 1, km: 267_900, conformite: { type: "assurance", jours: 67 }, cout: 5_900_000 },
@@ -122,7 +122,7 @@ const BRUT: Brut[] = [
      en heures, pas en kilomètres. Hors périmètre de disponibilité (engage:
      faux), il a bien un plan d'entretien, et c'est le seul à compteur horaire. */
   { immat: "AA412UB", marque: "TOYOTA", appellation: "Chariot élévateur 8FBE20", categorie: "engin", energie: "electrique", engage: false, bu: "aliment", site: "s-uab", statut: "en-service", cout: 1_850_000, commentaire: "Chariot électrique, manutention des sacs à l'UAB" },
-  /* DK 2347 BD a quitté la flotte de transport le 10 septembre 2026 : il y
+  /* DK-2347-BD a quitté la flotte de transport le 10 septembre 2026 : il y
      figurait en double, et le plan d'affectation le donne à Sidy Ndao — c'est
      un véhicule léger, il vit dans `parc-leger-demo.ts`. */
 
@@ -169,14 +169,14 @@ const BRUT: Brut[] = [
    * précisément ce que la pastille « hors service maintenant » doit voir.
    *
    * Les véhicules **à réformer** sortent du périmètre de disponibilité
-   * (`engage: false`), comme DK 2347 BD avant eux : ils quittent la flotte,
+   * (`engage: false`), comme DK-2347-BD avant eux : ils quittent la flotte,
    * les compter parmi les engagés fausserait le taux.
    * ---------------------------------------------------------------------- */
 
   /* En panne — à Keur Massar sauf mention. */
-  { immat: "DK6874BF", marque: "MITSUBISHI", appellation: "L200 pick-up", categorie: "camionnette", bu: "aliment", site: "s-km", statut: "hors-service", commentaire: "En panne — réimmatriculé AA 335 HK d'après l'état des pannes, à confirmer" },
+  { immat: "DK6874BF", marque: "MITSUBISHI", appellation: "L200 pick-up", categorie: "camionnette", bu: "aliment", site: "s-km", statut: "hors-service", commentaire: "En panne — réimmatriculé AA-335-HK d'après l'état des pannes, à confirmer" },
   { immat: "AA761JV", marque: "IVECO", appellation: "Citerne vrac", categorie: "camion", special: true, bu: "aliment", site: "s-km", statut: "hors-service", commentaire: "En panne" },
-  { immat: "AA769JV", marque: "IVECO", appellation: "Citerne vrac", categorie: "semi-remorque", special: true, bu: "aliment", site: "s-km", statut: "hors-service", commentaire: "En panne — semi de AA 633 JL d'après les licences" },
+  { immat: "AA769JV", marque: "IVECO", appellation: "Citerne vrac", categorie: "semi-remorque", special: true, bu: "aliment", site: "s-km", statut: "hors-service", commentaire: "En panne — semi de AA-633-JL d'après les licences" },
   { immat: "AA217FF", marque: "RENAULT", appellation: "Camion vrac 20T", categorie: "camion", special: true, bu: "aliment", site: "s-siege", statut: "hors-service", commentaire: "En panne — décision de le transformer en 20 T" },
   { immat: "DK2507BD", marque: "MAN", appellation: "Frigo 10T", categorie: "camion", special: true, bu: "fermes", site: "s-km", statut: "hors-service", commentaire: "En panne — transport des œufs" },
 
@@ -191,7 +191,7 @@ const BRUT: Brut[] = [
   { immat: "DK3143BC", marque: "RENAULT", appellation: "Frigo", categorie: "camion", special: true, engage: false, bu: "abattoir", site: "s-djily", statut: "retrait-en-cours", commentaire: "À réformer — sur la liste de vente 2025" },
   { immat: "DK3142BC", marque: "RENAULT", appellation: "Frigo", categorie: "camion", special: true, engage: false, bu: "abattoir", site: "s-km", statut: "retrait-en-cours", commentaire: "À réformer — sur la liste de vente 2025" },
   { immat: "AA318AM", marque: "RENAULT", appellation: "Frigo", categorie: "camion", special: true, engage: false, bu: "abattoir", site: "s-km", statut: "retrait-en-cours", commentaire: "À réformer — sur la liste de vente 2025" },
-  { immat: "AA654AS", marque: "RENAULT", appellation: "Tracteur", categorie: "tracteur", engage: false, bu: "aliment", site: "s-km", statut: "retrait-en-cours", commentaire: "À réformer — ex TH 6065 S, sur la liste de vente 2025" },
+  { immat: "AA654AS", marque: "RENAULT", appellation: "Tracteur", categorie: "tracteur", engage: false, bu: "aliment", site: "s-km", statut: "retrait-en-cours", commentaire: "À réformer — ex TH-6065-S, sur la liste de vente 2025" },
   { immat: "DK7620BG", marque: "RENAULT", appellation: "Tracteur", categorie: "tracteur", engage: false, bu: "aliment", site: "s-djily", statut: "retrait-en-cours", commentaire: "À réformer" },
   { immat: "DK9619BB", marque: "RENAULT", appellation: "Tracteur", categorie: "tracteur", engage: false, bu: "aliment", site: "s-gormack", statut: "retrait-en-cours", commentaire: "À réformer — le dossier note une nouvelle plaque, à confirmer" },
 ];

@@ -1,7 +1,7 @@
 /* ============================================================================
  * Fiche véhicule 360° — données de démonstration.
  *
- * Le véhicule AA 032 EA reprend les valeurs de la maquette validée. Les autres
+ * Le véhicule AA-032-EA reprend les valeurs de la maquette validée. Les autres
  * fiches sont dérivées de leur ligne de flotte par un générateur déterministe :
  * même véhicule, même fiche, à chaque chargement. Tout ceci disparaît dès que
  * Supabase est branché — la forme des données, elle, reste celle de
@@ -240,7 +240,7 @@ function construire(l: LigneFlotte, parametres: Parametres): FicheVehicule {
   /* L'assurance ne s'invente plus : la police 2026 dit qui est couvert et
      jusqu'à quand (`assurance-2026.ts`, tirée du classeur de renouvellement).
      Un véhicule absent de la police n'est pas assuré — la situation note par
-     exemple le camion neuf AB 681 HE comme « pas encore assuré » —, et le
+     exemple le camion neuf AB-681-HE comme « pas encore assuré » —, et le
      document se porte manquant, ce que la Conformité sait déjà dire. */
   const couvert = assureEn2026(v.immatriculation);
   const jAssurance = couvert ? Math.round((Date.parse(`${FIN_POLICE_2026}T00:00:00Z`) - AUJOURDHUI.getTime()) / 86_400_000) : jAss;
