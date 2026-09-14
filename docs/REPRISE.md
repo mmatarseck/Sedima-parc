@@ -59,6 +59,16 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
+**⚠ Chargement à jouer : les pneus du parc, un par un** (14 septembre 2026). La table `pneu` (0029) était
+vide — l'écran Pièces annonçait « 0 monté ». `supabase/pneus-parties/pneus-01-montages.sql` porte **410 pneus
+montés sur 72 véhicules**, du 10 février 2024 au 8 août 2026, tirés de `SUIVI PNEUS ET MONTAGES 2025` et de
+`PNEUS RECEPTIONNES ET MONTAGES` (dossier DO). Une ligne « six pneus » devient six pneus, chacun citant son
+bon, sa demande d'achat, son fournisseur et son prix. Les écritures du métier (« 11R/ 22.5 », « 205/ R 16 C »)
+sont lues ; 46 pneus gardent « Dimension non relevée », faute de désignation au classeur. La position, le
+compteur à la pose et le numéro de série ne sont pas suivis : ils restent vides. **À jouer après**
+`vehicules-manquants.sql`. Banc `tester-pneus-reels.mts`, doc `docs/PNEUS-REELS.md`. À trancher : cinq plaques
+hors référentiel (DK 3674 AX, DK 7621 BG, DK 4280 AS, AB 098 JC, DK 6241 BM).
+
 **⚠ À jouer : le véhicule nommé dans le texte, et le registre des demandes d'achat à jour** (14 septembre
 2026). Le métier : « sur les dépenses de caisse et les DA, extraire l'immatriculation du texte si disponible,
 et codifier le véhicule affecté ».
