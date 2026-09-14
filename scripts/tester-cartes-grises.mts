@@ -152,5 +152,24 @@ attendu("rejouable : le fichier rejoué ne change rien", rejoue.vin === apres.vi
 const tata = await un<{ vin: string; ptac: number; charge_utile: number; type_modele: string }>(`select vin, ptac, charge_utile, type_modele from vehicule where immatriculation = 'AA359AH'`);
 attendu(`AA-359-AH porte ce que sa carte dit (${tata?.vin}, ${tata?.ptac} kg, ${tata?.type_modele})`, tata?.vin === "MAT386321K7L00277" && tata.ptac === 4400 && tata.charge_utile === 2500 && tata.type_modele === "386321FI");
 
+/* -- Le correctif d'AA 093 VA ---------------------------------------------- */
+/* Son scan est nommé « AA 093 VAA » — un A de trop — si bien que la lecture des
+   cartes l'a compté parmi les véhicules sans carte grise et lui a effacé son
+   VIN. Le correctif le lui rend ; le banc vérifie qu'il le rend bien, sans
+   défaire ce que le fichier principal a posé. */
+const avantCorrectif = await compter("vin");
+const sansVin = await un<{ vin: string | null }>(`select vin from vehicule where immatriculation = 'AA093VA'`);
+attendu("AA 093 VA est bien sans VIN avant le correctif (la faute de frappe le lui avait ôté)", sansVin !== null && sansVin.vin === null);
+await jouer("correctif-carte-grise-aa093va.sql");
+const apresCorrectif = await un<{ vin: string; premiere: string | null; immat: string | null }>(`select vin, premiere_mise_en_circulation::text as premiere, date_immatriculation::text as immat from vehicule where immatriculation = 'AA093VA'`);
+attendu(`AA 093 VA porte le VIN de sa carte (${apresCorrectif?.vin})`, apresCorrectif?.vin === "MAT449375K2L00007");
+attendu(`ses dates, déjà en base, n'ont pas bougé (${apresCorrectif?.premiere} → ${apresCorrectif?.immat})`, apresCorrectif?.premiere === "2019-05-24" && apresCorrectif?.immat === "2024-09-25");
+const apresUn = await compter("vin");
+attendu(`le correctif ajoute un VIN et un seul (${avantCorrectif} → ${apresUn})`, apresUn === avantCorrectif + 1);
+await jouer("correctif-carte-grise-aa093va.sql");
+attendu("rejouable : le correctif rejoué ne change rien", (await compter("vin")) === apresUn);
+const inventesApres = (await tousLesVin()).filter(fabrique);
+attendu(`aucun VIN fabriqué n'est revenu (${inventesApres.length})`, inventesApres.length === 0);
+
 console.log(echecs === 0 ? "\ntout passe" : `\n${echecs} contrôle(s) en échec`);
 process.exit(echecs === 0 ? 0 : 1);

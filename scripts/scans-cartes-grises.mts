@@ -144,6 +144,33 @@ export interface Carte {
   fichiers: string[];
 }
 
+/**
+ * Les noms de fichiers qui mentent, et ce que la carte dit vraiment.
+ *
+ * Le nom de fichier n'est pas une source : c'est ce que quelqu'un a tapé en
+ * scannant. Trois se sont révélés faux au dépôt du 14 septembre 2026, et les
+ * cartes ont été relues à l'écran pour trancher — la carte fait foi, pas le
+ * nom :
+ *
+ *   * `AA 093 VAA` porte **AA-093-VA** (un A de trop ; la licence du même
+ *     véhicule, au même dossier, l'écrit correctement). Le véhicule est au
+ *     parc, et c'est cette faute de frappe qui l'a privé de sa pièce — et de
+ *     ses caractéristiques lors de la lecture des cartes ;
+ *   * `AA 903 JW` porte **AB-903-JW** : un doublon du scan déjà nommé
+ *     correctement, et non un second véhicule ;
+ *   * `AB 077 BP` porte **AB-077-FP** — un autocar Force Motors de 24 places
+ *     qui n'est pas au référentiel. Il y entre par la corbeille « hors parc »
+ *     du compte rendu, pas en silence.
+ *
+ * La confusion AA/AB revient deux fois sur trois : les deux séries coexistent
+ * au Sénégal et se ressemblent à l'œil.
+ */
+const PLAQUES_CORRIGEES: Record<string, string> = {
+  AA093VAA: "AA093VA",
+  AA903JW: "AB903JW",
+  AB077BP: "AB077FP",
+};
+
 export function cartesDuDossier(): Carte[] {
   const parPlaque = new Map<string, Carte>();
   for (const f of readdirSync(DOSSIER).sort()) {
@@ -152,7 +179,8 @@ export function cartesDuDossier(): Carte[] {
        chargement est un autre travail. */
     const m = /^CARTE(?: GRISE)?\s+([A-Z]{2}\s*\d{3,4}\s*[A-Z]{1,3})/i.exec(f);
     if (!m) continue;
-    const plaque = normaliser(m[1]!);
+    const lue = normaliser(m[1]!);
+    const plaque = PLAQUES_CORRIGEES[lue] ?? lue;
     const connue = parPlaque.get(plaque) ?? { plaque, ecrite: afficher(plaque), fichiers: [] };
     connue.fichiers.push(f);
     parPlaque.set(plaque, connue);

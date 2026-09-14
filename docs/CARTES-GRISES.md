@@ -145,13 +145,60 @@ Le réemballage allège l'enveloppe mais **ne recompresse pas** : sans
 bibliothèque d'images, Node ne sait pas réencoder un JPEG. Un scan de 217 Ko
 sort à 217 Ko, un de 7 Mo sort à 7 Mo.
 
-État du dossier : **76 plaques, 157 pages, 75 PDF déposables** pour 23,9 Mo.
+État du dossier : **75 plaques, 157 pages, 74 PDF déposables** pour 23,9 Mo.
+
+Dépôt du 14 septembre 2026 : **71 documents créés**.
 
 - **AA-032-EA** sort à 7,1 Mo, au-delà des 5 Mo du seau. Il n'est ni tronqué ni
   déposé de force : il est nommé au compte rendu, à alléger puis à déposer à la
   main.
 - **AA-205-VH** est au dossier mais pas au parc (voir plus haut) : sa carte
   n'est rattachée à rien.
+
+### Trois noms de fichiers qui mentent
+
+Le nom d'un scan n'est pas une source : c'est ce que quelqu'un a tapé en le
+rangeant. Le dépôt en a démasqué trois, tranchés en relisant la carte à
+l'écran — la carte fait foi :
+
+| Nom du fichier | Ce que la carte porte | Ce qu'il fallait en faire |
+| --- | --- | --- |
+| `CARTE GRISE AA 093 VAA` | **AA-093-VA** | Un A de trop. Le véhicule est au parc ; sa pièce lui revient, et son VIN aussi — voir plus bas. |
+| `CARTE GRISE AA 903 JW` | **AB-903-JW** | Doublon du scan déjà nommé correctement, pas un second véhicule. |
+| `CARTE GRISE AB 077 BP` | **AB-077-FP** | Un autocar Force Motors absent du référentiel — question ouverte, voir plus bas. |
+
+La confusion AA/AB revient deux fois sur trois : les deux séries coexistent au
+Sénégal et se ressemblent à l'œil. La correspondance est écrite dans
+`scripts/scans-cartes-grises.mts`, pour qu'une réexécution les rattache.
+
+### Le VIN perdu d'AA 093 VA
+
+La faute de frappe a coûté deux choses à ce véhicule, pas une : sa pièce, et
+ses caractéristiques. La lecture des cartes ne l'a pas trouvé, l'a rangé parmi
+les cinquante véhicules sans carte grise, et lui a effacé son VIN fabriqué. Il
+en avait pourtant une : Tata LPT1618 frigorifique, VIN **MAT449375K2L00007**,
+première mise en circulation le 24/05/2019, ex-`DK 6241 BM`.
+
+```
+supabase/correctif-carte-grise-aa093va.sql
+```
+
+À jouer après `cartes-grises.sql`. La cylindrée de la carte (5886 cm3)
+**contredit** les 5883 déjà en base : l'écart est signalé, pas écrasé.
+
+### AB-077-FP, un véhicule qui n'est pas au parc
+
+Carte grise au nom de SEDIMA, première mise en circulation le 02/01/2026 :
+autocar **Force Motors Traveller Super T2**, 24 places, gazole, 3245 cm3,
+10 CV, PTAC 5750 kg, VIN `MC1E4FGD4SP023754`, immatriculé à Dakar.
+
+Le référentiel ne le connaît pas. Il porte en revanche un **AA-077-FP** —
+mêmes chiffres, même suffixe, préfixe différent — décrit comme « Tata Airforce,
+bus du personnel de Notto ». Vu que la confusion AA/AB est attestée deux fois
+dans ce même dossier, et que « Force Motors » figure au catalogue des marques
+avec un « Autocar 24 places », il est **probable** que ce soit le même bus.
+Mais la carte le donne neuf de 2026, alors que le parc tient AA-077-FP pour un
+bus en service : rien n'est écrit tant que le métier n'a pas tranché.
 
 ### Ce qu'il faut pour déposer
 
