@@ -7,18 +7,34 @@ Elle dit où en est le projet, ce qui a été décidé, et ce qui reste à faire
 
 ## 0 quinquies. Passage de relais du 14 septembre 2026 — lire ceci d'abord
 
-**Deux fichiers attendent dans le SQL Editor** — le magasin de pièces, préparé en fin de journée
-(`PIECES-REELLES.md`) :
+**Quatre fichiers attendent dans le SQL Editor**, dans cet ordre :
 
 ```
+supabase/migrations/0046_statut_sorti.sql      -- le statut terminal « sorti »
+supabase/migrations/0047_vehicule_sorti.sql    -- sa date, son motif, sa contrainte
 supabase/pieces-parties/pieces-01-referentiel.sql
 supabase/pieces-parties/pieces-02-mouvements.sql
 ```
 
-Dans cet ordre, après les prestataires de la maintenance et les véhicules manquants, tous deux déjà
-joués. Tout le reste est à jour : migrations 0001 à 0045 jouées, et avec elles tous les chargements
-de données réelles préparés les 11 et 14 septembre. Les blocs marqués « joué » plus bas disent
-chacun ce qu'il a apporté ; voici l'état d'ensemble.
+Les deux migrations sont séparées à dessein : PostgreSQL n'accepte pas qu'une valeur d'énumération
+ajoutée serve dans la même transaction. Les deux fichiers du magasin de pièces (`PIECES-REELLES.md`)
+viennent après les prestataires de la maintenance et les véhicules manquants, tous deux déjà joués.
+Tout le reste est à jour : migrations 0001 à 0045 jouées, et avec elles tous les chargements de
+données réelles préparés les 11 et 14 septembre. Les blocs marqués « joué » plus bas disent chacun
+ce qu'il a apporté ; voici l'état d'ensemble.
+
+**La fiche véhicule s'écrit enfin en base** (14 septembre, après-midi). `vehicule` n'était pas dans les
+tables branchées : créer un véhicule ou corriger sa fiche ne quittait jamais le navigateur. C'est fait,
+avec trois particularités que sa nature impose — sa clé est son immatriculation et non un numéro (d'où
+la correction d'une plaque **en place**, sans détacher dépenses, pneus et livraisons) ; sa catégorie
+s'écrit en deux colonnes, famille et catégorie métier ; et un véhicule ne se supprime pas, il **sort**.
+Le formulaire de modification est rangé par sections, et **les champs que la fiche calcule n'y sont
+plus** — région, entité, utilisation, régime de propriété, balise : on pouvait les taper, rien ne les
+enregistrait. Même nettoyage au formulaire de création, qui perd sa section « Réglages ».
+
+**Ce qui se change là où il se lit** : le statut porte un crayon partout où il s'affiche hors rapport
+(liste, fiche, planning, disponibilité ; panneau tactile au téléphone), la photo s'ouvre en grand avant
+de se remplacer, et le nom du chauffeur porte le crayon qui change l'affectation.
 
 **Ce que la base porte.**
 
@@ -60,6 +76,13 @@ rendu des fiches demande `node --import tsx --import ./scripts/rendu/hook.mjs`. 
    aucun n'est inventé, donc aucune demande de réapprovisionnement ne se déclenche. Et les **15 demandes
    de batteries** de la feuille `NOUVELLES DEMANDES`, dont six portent une date d'achat, sont-elles servies
    ou en attente ? (`PIECES-REELLES.md`)
+8. **Fiche véhicule** : deux champs du formulaire de création n'avaient pas de place en base et ont été
+   retirés plutôt que perdus en silence. Le **fournisseur d'achat** — faut-il lui une colonne, ou le
+   rattacher à la demande d'achat du véhicule ? Et le choix du **programme d'entretien**, qui ne
+   proposait que celui de la famille (lequel s'applique de lui-même) et « aucun », sans effet tant que
+   la création n'écrit pas de ligne `plan_vehicule`. Le kilométrage d'entrée et la première visite
+   technique, eux, sont désormais écrits dans leur table — le premier comme relevé, la seconde comme
+   rendez-vous dont le centre reste « à désigner ».
 
 **Matières encore non chargées, par ordre d'intérêt** : la liste des chauffeurs 2025 (matricule, permis,
 contrat, véhicule attitré, statut) ; les livraisons du 9 juillet au 2 août 2026 et celles de septembre, qui

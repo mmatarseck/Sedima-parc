@@ -190,11 +190,12 @@ export async function ecrireCreation(c: Creation): Promise<ResultatEcriture> {
      peuvent pas la partager. Un doublon ne se renumérote donc pas — il se dit,
      parce que c'est presque toujours le même camion saisi deux fois. */
   if (c.type === "vehicule") {
-    const ecriture = await client.from(table).insert(ligne);
+    const ecriture = await client.from(table).insert(ligne).select("id").maybeSingle<{ id: string }>();
     if (ecriture.error) {
       const plaque = afficher(String(ligne.immatriculation ?? ""));
       return { issue: "refusee", motif: ecriture.error.code === "23505" ? `${plaque} est déjà au parc : ouvrez sa fiche plutôt que d'en créer une seconde.` : `Non enregistré en base : ${ecriture.error.message}` };
     }
+    if (ecriture.data) await entreeAuParc(client, ecriture.data.id, moi.utilisateurId, c.valeurs);
     revalidatePath("/", "layout");
     return { issue: "ecrite", numero: `VEH-${ligne.immatriculation}` };
   }
@@ -208,6 +209,29 @@ export async function ecrireCreation(c: Creation): Promise<ResultatEcriture> {
   if (ecriture.error) return { issue: "refusee", motif: `Non enregistré en base : ${ecriture.error.message}` };
   revalidatePath("/", "layout");
   return { issue: "ecrite", numero };
+}
+
+/**
+ * Ce qu'un véhicule apporte en entrant au parc, et qui n'est pas une propriété
+ * de sa ligne : son compteur, et le rendez-vous de sa première visite. Le
+ * formulaire de création les demande parce que c'est le moment où on les a
+ * sous les yeux ; la base les range chacun dans sa table.
+ *
+ * Un échec ici n'annule pas la création — le véhicule, lui, est bien entré.
+ * Il est signalé, pour que personne ne croie le relevé enregistré.
+ */
+async function entreeAuParc(client: SupabaseClient, vehiculeId: string, utilisateurId: string, valeurs: Record<string, unknown>): Promise<void> {
+  const jour = new Date().toISOString().slice(0, 10);
+  const km = typeof valeurs.kilometrage === "number" ? valeurs.kilometrage : Number(String(valeurs.kilometrage ?? "").replace(/\s/g, "").replace(",", "."));
+  if (Number.isFinite(km) && km > 0) {
+    const numero = await numeroSuivant(client, "releve_kilometrique", "releve", `REL-${jour.slice(0, 4)}-00000`);
+    await client.from("releve_kilometrique").insert({ numero, vehicule_id: vehiculeId, date: jour, km: Math.round(km), origine: "saisie", cree_par: utilisateurId });
+  }
+  const visite = typeof valeurs.premiereVisiteTechnique === "string" ? valeurs.premiereVisiteTechnique.trim() : "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(visite)) {
+    const numero = await numeroSuivant(client, "visite_technique", "visite", `VTE-${visite.slice(0, 4)}-00000`);
+    await client.from("visite_technique").insert({ numero, vehicule_id: vehiculeId, type: "visite", centre: "À désigner", date_rendez_vous: visite, statut: "rendez-vous", cree_par: utilisateurId });
+  }
 }
 
 /* Le statut d'un véhicule : sa ligne change, et la trace garde l'avant. */

@@ -4,12 +4,18 @@ import type { ChampEdition } from "@/domaine/cloture";
 import { champsIdentiteVehicule } from "@/composants/transactions/champs";
 
 /* ============================================================================
- * La création d'un véhicule, en six sections — sur le modèle de Fleetio
+ * La création d'un véhicule, en cinq sections — sur le modèle de Fleetio
  * (demande du métier du 7 septembre 2026) : Détails, Entretien, Cycle de vie,
- * Finances, Caractéristiques, Réglages. Chaque section a ses cartes, chaque
- * carte ses champs ; les champs sont ceux de la fiche, pour que ce qui se
- * saisit ici se relise là. Marque, modèle et catégorie viennent des
- * paramètres (champsIdentiteVehicule) ; sites et fournisseurs de la page.
+ * Finances, Caractéristiques. Chaque section a ses cartes, chaque carte ses
+ * champs ; les champs sont ceux de la fiche, pour que ce qui se saisit ici se
+ * relise là. Marque, modèle et catégorie viennent des paramètres
+ * (champsIdentiteVehicule) ; les sites, de la page.
+ *
+ * **On ne demande que ce qu'on sait garder** (14 septembre 2026). Une sixième
+ * section, « Réglages », et trois champs d'autres cartes proposaient balise,
+ * entité juridique, utilisation, région et régime de propriété : cinq valeurs
+ * que la fiche déduit des relevés, de la business unit, de l'usage, du site et
+ * de la catégorie de flotte. On pouvait les taper ; rien ne les enregistrait.
  * ==========================================================================*/
 
 export interface CarteFormulaire {
@@ -27,7 +33,6 @@ export interface SectionFormulaire {
 
 export interface ContexteNouveauVehicule {
   sites: { valeur: string; libelle: string }[];
-  fournisseurs: { valeur: string; libelle: string }[];
 }
 
 const options = (r: Record<string, string>) => Object.entries(r).map(([valeur, libelle]) => ({ valeur, libelle }));
@@ -72,21 +77,14 @@ export function sectionsNouveauVehicule(contexte: ContexteNouveauVehicule): Sect
       precision: "Programme et premier passage",
       cartes: [
         {
-          titre: "Programme d'entretien",
-          precision: "Le programme de la famille s'applique de lui-même ; il s'ajuste ensuite sur la fiche, opération par opération",
-          champs: [
-            {
-              cle: "programmeEntretien",
-              libelle: "Programme",
-              type: "choix",
-              options: [
-                { valeur: "famille", libelle: "Programme de la famille du véhicule (recommandé)" },
-                { valeur: "aucun", libelle: "Aucun — pas de rappel d'entretien" },
-              ],
-              obligatoire: true,
-            },
-            { cle: "premiereVisiteTechnique", libelle: "Première visite technique (véhicule neuf : date accordée par la réglementation)", type: "date" },
-          ],
+          titre: "Première visite technique",
+          precision: "Le programme d'entretien est celui de la famille du véhicule ; il s'ajuste ensuite sur la fiche, opération par opération",
+          /* Le choix « Programme » a été retiré le 14 septembre 2026 : il ne
+             proposait que le programme de la famille — qui s'applique de
+             lui-même — et « aucun », qui demanderait une ligne de
+             `plan_vehicule` que la création n'écrit pas encore. Choisir
+             « aucun » n'avait donc aucun effet. */
+          champs: [{ cle: "premiereVisiteTechnique", libelle: "Première visite technique (véhicule neuf : date accordée par la réglementation)", type: "date" }],
         },
       ],
     },
@@ -100,8 +98,9 @@ export function sectionsNouveauVehicule(contexte: ContexteNouveauVehicule): Sect
           champs: [
             { cle: "premiereMiseEnCirculation", libelle: "1re mise en circulation", type: "date" },
             { cle: "dateImmatriculation", libelle: "Date d'immatriculation", type: "date" },
+            /* Le kilométrage d'entrée n'est pas une propriété du véhicule mais
+               un premier relevé : il est écrit comme tel, daté du jour. */
             { cle: "kilometrage", libelle: "Kilométrage à l'entrée", type: "nombre", unite: "km" },
-            { cle: "region", libelle: "Région d'immatriculation", type: "texte" },
           ],
         },
         {
@@ -118,10 +117,13 @@ export function sectionsNouveauVehicule(contexte: ContexteNouveauVehicule): Sect
       cartes: [
         {
           titre: "Achat",
+          /* Le régime de propriété ne se saisit pas : la fiche le déduit de la
+             catégorie de flotte — propriété SEDIMA, mise à disposition ADEX,
+             location. Le demander ici donnerait deux réponses à la même
+             question, dont une seule serait lue. Le fournisseur d'achat n'a pas
+             encore de colonne : il se note, en attendant, dans les notes. */
           champs: [
-            { cle: "fournisseur", libelle: "Fournisseur", type: "suggestion", options: contexte.fournisseurs },
             { cle: "valeurAcquisition", libelle: "Valeur d'acquisition", type: "nombre", unite: "F" },
-            { cle: "regimePropriete", libelle: "Régime de propriété", type: "suggestion", options: [{ valeur: "Propriété", libelle: "Propriété" }, { valeur: "Location", libelle: "Location" }, { valeur: "Crédit-bail", libelle: "Crédit-bail" }, { valeur: "Plan car", libelle: "Plan car" }] },
             { cle: "commentaire", libelle: "Notes", type: "texte-long" },
           ],
         },
@@ -151,22 +153,10 @@ export function sectionsNouveauVehicule(contexte: ContexteNouveauVehicule): Sect
         },
       ],
     },
-    {
-      cle: "reglages",
-      libelle: "Réglages",
-      precision: "Compteur, télématique, rattachement",
-      cartes: [
-        {
-          titre: "Compteur et télématique",
-          precision: "Le parc compte en kilomètres ; les engins en heures se suivent par leur relevé",
-          champs: [
-            { cle: "gpsActif", libelle: "Télématique (balise active)", type: "oui-non" },
-            { cle: "entite", libelle: "Entité juridique", type: "suggestion", options: [{ valeur: "SEDIMA SA", libelle: "SEDIMA SA" }, { valeur: "SEDIMA Abattoirs", libelle: "SEDIMA Abattoirs" }, { valeur: "KFC", libelle: "KFC" }, { valeur: "Batix", libelle: "Batix" }] },
-            { cle: "utilisation", libelle: "Utilisation", type: "texte" },
-          ],
-        },
-      ],
-    },
+    /* La section « Réglages » a disparu le 14 septembre 2026 : elle ne portait
+       que la balise, l'entité juridique et l'utilisation — trois valeurs que la
+       fiche déduit des relevés, de la business unit et de l'usage. Les demander
+       à la création, c'était les perdre à l'enregistrement. */
   ];
 }
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, Check, ChevronLeft, ClipboardList, FileText, RefreshCw, Settings, Wrench } from "lucide-react";
+import { BarChart3, Check, ChevronLeft, ClipboardList, FileText, RefreshCw, Wrench } from "lucide-react";
 import { ChampSaisie } from "@/composants/transactions/ChampSaisie";
 import { champsDesSections, sectionsNouveauVehicule, type ContexteNouveauVehicule, type SectionFormulaire } from "@/composants/flotte/sections-vehicule";
 import { Numero } from "@/composants/interface/Numero";
@@ -12,7 +12,7 @@ import { familleDe } from "@/domaine/parametres";
 import { apprendreVehicule, lireParametres } from "@/lib/parametres-demo";
 
 /* ============================================================================
- * Nouveau véhicule — une page, six sections, sur le modèle de Fleetio
+ * Nouveau véhicule — une page, cinq sections, sur le modèle de Fleetio
  * (demande du métier du 7 septembre 2026).
  *
  * Un rail à gauche pour passer d'une section à l'autre, des cartes à droite,
@@ -27,7 +27,6 @@ const ICONES: Record<string, typeof FileText> = {
   cycle: RefreshCw,
   finances: BarChart3,
   caracteristiques: ClipboardList,
-  reglages: Settings,
 };
 
 const VALEURS_INITIALES: Record<string, string | boolean> = {
@@ -37,10 +36,8 @@ const VALEURS_INITIALES: Record<string, string | boolean> = {
   categorieFlotte: "interne",
   usage: "fourgon",
   energie: "gasoil",
-  programmeEntretien: "famille",
   transportSpecial: false,
   engage: true,
-  gpsActif: false,
 };
 
 function valeurSortie(type: string, saisie: string | boolean): unknown {
@@ -144,7 +141,7 @@ export function EcranNouveauVehicule({ contexte }: { contexte: ContexteNouveauVe
       <div className="flex flex-wrap items-center gap-4">
         <div className="min-w-0">
           <h1 className="titre-page">Nouveau véhicule</h1>
-          <p className="meta mt-1 text-[13px]">Six sections ; seules les valeurs marquées ● sont exigées, le reste se complète sur la fiche</p>
+          <p className="meta mt-1 text-[13px]">Cinq sections ; seules les valeurs marquées ● sont exigées, le reste se complète sur la fiche</p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2.5">{actions}</div>
       </div>
