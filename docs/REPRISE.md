@@ -59,6 +59,17 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
+**⚠ Chargement à jouer : la caisse parc réelle, 2025-2026** (11 septembre 2026). La caisse n'avait aucun
+mouvement : sa pastille disait « — » et le registre des contraventions était vide. `supabase/caisse-parties/`
+(six fichiers de 400 Ko, à jouer dans l'ordre — le SQL Editor refuse plus gros) porte **42 quinzaines, 3 949 dépenses, 3 990 mouvements**, du 20 janvier 2025 au 31 août 2026,
+tirés des récapitulatifs de la gestion du parc (`MALICK/Depense CAISSE`). Le fonds de 1 004 000 F est reconstitué
+d'une quinzaine à l'autre : l'entrée vaut la recette moins le reste précédent, et le solde reporté passe à zéro.
+Le total calculé égale celui de chaque fichier, et le solde retombe sur le reste écrit — 29 653 F au 31/08/2026.
+Chaque sortie cite la dépense qu'elle règle ; 2 577 dépenses sont rattachées à 117 véhicules par la plaque du
+libellé. **843 amendes** tiennent enfin le registre des contraventions. Banc `tester-caisse-reelle.mts`, doc
+`docs/CAISSE-REELLE.md` (limites : brouillards non relus, frais de transfert groupés par quinzaine, l'écran
+Caisse lit 5 000 mouvements pour 3 990 chargés).
+
 **⚠ Migration 0045 à jouer : les plaques s'écrivent avec des tirets** (11 septembre 2026). Le métier :
 « les nouveaux matricules sont formatés XX-YYY-ZZ, les anciens XX-YYYY-ZZ ; mettre à jour toute la base ».
 L'affichage passe partout au tiret — `afficher()` du domaine (AB-060-KT, DK-4923-BB, TH-8174-K), et
