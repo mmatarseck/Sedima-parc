@@ -157,8 +157,10 @@ async function rattacher(client: SupabaseClient, c: Creation): Promise<Rattachem
   }
   /* Un mouvement de stock ou un pneu cite sa pièce de rechange ; le mouvement nomme qui l'a fait. */
   const pieceId = c.type === "mouvement" || c.type === "pneu" ? await pieceIdDe(client, v.pieceNumero) : null;
+  /* L'attelage lie deux véhicules : celui de la fiche, et celui que le formulaire nomme. */
+  const autreVehiculeId = c.type === "attelage" ? await vehiculeIdDe(client, v.autreId) : null;
   if (c.type === "mouvement" && !v.auteur) v.auteur = c.auteur;
-  return { vehiculeId, chauffeurId, prestataireId, camionTiers, affretementId, pieceId };
+  return { vehiculeId, chauffeurId, prestataireId, camionTiers, affretementId, pieceId, autreVehiculeId };
 }
 
 /** Le numéro suivant du type pour l'année, d'après ce que la table porte déjà. */

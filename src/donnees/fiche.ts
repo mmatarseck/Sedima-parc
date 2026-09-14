@@ -9,9 +9,9 @@
 
 import { cache } from "react";
 import { assemblerFiche, FAITS_VIDES, type FaitsFiche } from "@/domaine/assembler-fiche";
-import type { FicheVehicule } from "@/domaine/fiche";
+import type { AttelageFiche, FicheVehicule } from "@/domaine/fiche";
 import type { LivraisonFiche } from "@/domaine/livraisons";
-import { normaliser } from "@/domaine/immatriculation";
+import { afficher, normaliser } from "@/domaine/immatriculation";
 import type { Parametres } from "@/domaine/parametres";
 import type { CategorieObservation, PosteDepense, TypeDocument } from "@/domaine/types";
 import { authentificationReelle } from "@/lib/session-demo";
@@ -76,6 +76,68 @@ async function livraisonsDuVehicule(client: Awaited<ReturnType<typeof clientServ
   return lecture.data.map((l) => ({ numero: l.numero, date: l.date, site: l.site, client: l.client, produits: l.produits, poidsKg: l.poids_kg === null ? null : Number(l.poids_kg), quantites: l.quantites ?? {}, lignes: l.lignes, transporteur: l.transporteur_libelle, chauffeur: l.chauffeur, source: l.source }));
 }
 
+interface AttelageBase {
+  numero: string;
+  tracteur_id: string;
+  remorque_id: string;
+  debut: string;
+  fin: string | null;
+  permanent: boolean;
+  motif: string | null;
+  tracteur: { immatriculation: string; marque: string; appellation: string } | null;
+  remorque: { immatriculation: string; marque: string; appellation: string } | null;
+}
+
+/**
+ * Les attelages du véhicule (0050), vus de son côté.
+ *
+ * Une requête à part, comme pour les livraisons : `lire_fiche()` ne les
+ * projette pas, et réécrire la fonction entière pour deux colonnes coûterait
+ * plus qu'une lecture bornée au véhicule.
+ *
+ * Le véhicule est d'un côté **ou** de l'autre — d'où le `or` sur les deux clés
+ * étrangères — et c'est ici qu'on sait lequel : la fiche reçoit son rôle et
+ * l'autre moitié déjà nommée, elle n'a plus à démêler.
+ *
+ * Table pas encore jouée, ou véhicule à recevoir sans identifiant : aucun
+ * attelage, pas d'erreur.
+ */
+async function attelagesDuVehicule(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<AttelageFiche[]> {
+  if (!UUID.test(vehiculeId)) return [];
+  const lecture = await client
+    .from("attelage")
+    .select("numero, tracteur_id, remorque_id, debut, fin, permanent, motif, tracteur:tracteur_id (immatriculation, marque, appellation), remorque:remorque_id (immatriculation, marque, appellation)")
+    .or(`tracteur_id.eq.${vehiculeId},remorque_id.eq.${vehiculeId}`)
+    .limit(500)
+    .returns<AttelageBase[]>();
+  if (lecture.error) {
+    console.warn(`Attelages ${vehiculeId} : lecture impossible (${lecture.error.message}).`);
+    return [];
+  }
+  return lecture.data.flatMap((a) => {
+    const tracteurIci = a.tracteur_id === vehiculeId;
+    const autre = tracteurIci ? a.remorque : a.tracteur;
+    const autreId = tracteurIci ? a.remorque_id : a.tracteur_id;
+    /* Sans l'autre moitié, la ligne ne dit rien d'utile : la jointure a échoué
+       ou le véhicule a été supprimé. On la tait plutôt que d'afficher un tiret. */
+    if (!autre) return [];
+    return [
+      {
+        numero: a.numero,
+        role: tracteurIci ? ("tracteur" as const) : ("remorque" as const),
+        autreId,
+        autreImmatriculation: autre.immatriculation,
+        autreImmatriculationAffichee: afficher(autre.immatriculation),
+        autreVehicule: `${autre.marque} ${autre.appellation}`.trim(),
+        debut: a.debut,
+        fin: a.fin,
+        permanent: a.permanent,
+        motif: a.motif,
+      },
+    ];
+  });
+}
+
 /**
  * La pièce jointe de chaque document du véhicule, par numéro. `lire_fiche()` ne
  * projette pas la colonne `fichier` : la réécrire entière pour elle coûterait
@@ -116,10 +178,11 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
     return assemblerFiche(ligne, FAITS_VIDES, parametres, DATE_REFERENCE, { programme: programmeParDefaut(d.categorie), plan: planDuVehicule(d.id, d.categorie), passages: passagesReleves });
   }
   const client = await clientServeur();
-  const [lecture, livraisons, piecesJointes] = await Promise.all([
+  const [lecture, livraisons, piecesJointes, attelages] = await Promise.all([
     client.rpc("lire_fiche", { immat: canonique }).maybeSingle<FicheJson | null>(),
     livraisonsDuVehicule(client, ligne.vehicule.id),
     piecesJointesDuVehicule(client, ligne.vehicule.id),
+    attelagesDuVehicule(client, ligne.vehicule.id),
   ]);
   /* Fonction pas encore jouée : la fiche se dresse sur la ligne seule, sans historique — pas d'erreur. */
   if (lecture.error) console.warn(`Fiche ${canonique} : lire_fiche() indisponible (${lecture.error.message}), fiche dressée sans historique.`);
@@ -134,10 +197,10 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
        ne la projette pas, et réécrire la fonction entière pour une colonne
        coûterait plus qu'une requête bornée au véhicule. */
     const documents = faits.documents.map((d) => ({ ...d, fichier: piecesJointes.get(d.numero) ?? null }));
-    return assemblerFiche(ligne, { ...faits, documents, livraisons }, parametres, aujourdhui, plan);
+    return assemblerFiche(ligne, { ...faits, documents, livraisons, attelages }, parametres, aujourdhui, plan);
   } catch (e) {
     console.error(`Fiche ${canonique} : assemblage impossible sur l'historique lu — ${e instanceof Error ? e.stack ?? e.message : String(e)}`);
-    return assemblerFiche(ligne, { ...FAITS_VIDES, livraisons }, parametres, aujourdhui, plan);
+    return assemblerFiche(ligne, { ...FAITS_VIDES, livraisons, attelages }, parametres, aujourdhui, plan);
   }
 }
 

@@ -52,6 +52,7 @@ const parc: ParcBrut = {
   depenses: dates(await lignes(`select vehicule_id, date, montant::int as montant, km, km_motif_rejet from depense where date >= '${depuis}'`)),
   pleins: dates(await lignes(`select vehicule_id, date, km from plein where date >= '${depuis}'`)),
   interventions: dates(await lignes("select vehicule_id, numero, date, objet, km from intervention")),
+  attelages: await lignes("select tracteur_id, remorque_id from attelage where fin is null"),
 };
 
 console.log("=== Flotte : base contre démonstration");

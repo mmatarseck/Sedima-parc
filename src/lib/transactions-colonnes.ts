@@ -25,6 +25,7 @@ export type TableBranchee =
   | "document"
   | "incident"
   | "affectation"
+  | "attelage"
   | "intervention"
   | "indisponibilite"
   | "sanction"
@@ -54,6 +55,7 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   document: "document",
   incident: "incident",
   affectation: "affectation",
+  attelage: "attelage",
   intervention: "intervention",
   indisponibilite: "indisponibilite",
   sanction: "sanction",
@@ -106,6 +108,11 @@ export interface Rattachement {
   affretementId?: string | null;
   /** La pièce de rechange qu'un mouvement ou un pneu cite, résolue par son numéro. */
   pieceId?: string | null;
+  /**
+   * L'autre moitié d'un attelage : le seul cas où une transaction lie **deux**
+   * véhicules. `vehiculeId` reste celui de la fiche d'où l'on saisit.
+   */
+  autreVehiculeId?: string | null;
 }
 
 /**
@@ -220,6 +227,25 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
     case "affectation": {
       if (!r.vehiculeId || !r.chauffeurId) return { refus: "affectation sans véhicule ou sans chauffeur" };
       return { ligne: { numero, vehicule_id: r.vehiculeId, chauffeur_id: r.chauffeurId, role: texte(v.role) ?? "titulaire", debut: texte(v.debut), fin: texte(v.fin), motif: texte(v.motif) ?? "Saisie dans l'application" } };
+    }
+    case "attelage": {
+      /* Le seul lien entre deux véhicules du référentiel. Le rôle vient de la
+         fiche d'où l'on saisit : une semi-remorque attelle un tracteur, un
+         tracteur attelle une semi — la base ne devine pas lequel est lequel. */
+      if (!r.vehiculeId || !r.autreVehiculeId) return { refus: "attelage sans les deux véhicules" };
+      if (r.vehiculeId === r.autreVehiculeId) return { refus: "un véhicule ne se remorque pas lui-même" };
+      const remorqueIci = texte(v.role) === "remorque";
+      return {
+        ligne: {
+          numero,
+          tracteur_id: remorqueIci ? r.autreVehiculeId : r.vehiculeId,
+          remorque_id: remorqueIci ? r.vehiculeId : r.autreVehiculeId,
+          debut: texte(v.debut),
+          fin: texte(v.fin),
+          permanent: booleen(v.permanent),
+          motif: texte(v.motif),
+        },
+      };
     }
     case "intervention": {
       if (!r.vehiculeId) return { refus: "intervention sans véhicule" };
@@ -595,6 +621,9 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   document: { numeroPiece: "numero_piece", emetteur: "emetteur", dateEffet: "date_effet", echeance: "echeance", montant: "montant", fichier: "fichier" },
   incident: { dateHeure: "date_heure", lieu: "lieu", mission: "mission", kilometrage: "kilometrage", responsabilite: "responsabilite", statut: "statut", description: "description" },
   affectation: { debut: "debut", fin: "fin", motif: "motif" },
+  /* Les deux véhicules ne se changent pas après coup : un attelage qui change
+     de tracteur est un autre attelage. On clôt et on en saisit un nouveau. */
+  attelage: { debut: "debut", fin: "fin", permanent: "permanent", motif: "motif" },
   intervention: { date: "date", type: "type", objet: "objet", km: "km", immobilisationJours: "immobilisation_jours", montant: "montant", reference: "reference" },
   indisponibilite: { motif: "motif", debut: "debut", fin: "fin", commentaire: "commentaire" },
   sanction: { date: "date", type: "type", jours: "jours", motif: "motif" },

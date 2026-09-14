@@ -190,6 +190,9 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
           prixLitre: type === "plein" ? prixEnergie(v.energie, DATE_REFERENCE, lireParametres()) : undefined,
           statut: type === "visite" ? "rendez-vous" : type === "observation" ? "a-traiter" : "declare",
           roulant: "oui",
+          /* L'attelage a deux côtés : la fiche dit lequel elle tient, sinon la
+             base ne saurait pas qui tracte qui. */
+          role: type === "attelage" ? (v.categorie === "semi-remorque" ? "remorque" : "tracteur") : undefined,
           type: type === "visite" ? "visite" : undefined,
           centre: "CCVA Rufisque",
         },

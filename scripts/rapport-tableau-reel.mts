@@ -138,6 +138,7 @@ const parc: ParcBrut = {
   licences: tableau("licences"),
   licencesVehicules: tableau("licences_vehicules"),
   releves: tableau("releves"),
+  attelages: tableau("attelages"),
   depenses: tableau("depenses"),
   pleins: tableau("pleins"),
   interventions: tableau("interventions"),

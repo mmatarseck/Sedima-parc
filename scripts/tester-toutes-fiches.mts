@@ -80,6 +80,7 @@ const parc: ParcBrut = {
   licences: jp.licences!,
   licencesVehicules: jp.licences_vehicules!,
   releves: jp.releves!,
+  attelages: jp.attelages ?? [],
   depenses: jp.depenses!,
   pleins: jp.pleins!,
   interventions: jp.interventions!,

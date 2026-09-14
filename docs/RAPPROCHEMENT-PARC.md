@@ -248,7 +248,8 @@ Sont donc derrière nous :
 - la plaque `DK 6875 DF`, remplacée par `DK 6875 BF` — non par le seed, qui ne
   sait pas changer une clé, mais par son propre script gardé ;
 - les 17 unités opérationnelles et les 16 non opérationnelles, ajoutées avec
-  leurs attelages, chauffeurs et sites ;
+  leurs chauffeurs et leurs sites ; leurs **cinq attelages** ont suivi le
+  14 septembre 2026, quand la table a existé (voir [ATTELAGES.md](ATTELAGES.md)) ;
 - les statuts des 16 lourds connus, réalignés sur la situation 2026 — le seed
   ne réécrit pas ce qui existe, c'est `aligner-referentiel.sql` qui l'a fait ;
 - les onze plaques sans source, expliquées ci-dessus.

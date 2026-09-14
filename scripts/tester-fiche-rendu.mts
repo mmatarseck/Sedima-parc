@@ -47,7 +47,7 @@ const parc: ParcBrut = {
   releves: j.releves,
   depenses: j.depenses,
   pleins: j.pleins,
-  interventions: j.interventions,
+  interventions: j.interventions, attelages: j.attelages ?? [],
 };
 const versFaits = (f: any): FaitsFiche => ({
   documents: f.documents.map((d: any) => ({ numero: d.numero, type: d.type_document_id, dateEffet: d.date_effet, echeance: d.echeance, emetteur: d.emetteur, numeroPiece: d.numero_piece, montant: d.montant, justificatif: d.justificatif })),

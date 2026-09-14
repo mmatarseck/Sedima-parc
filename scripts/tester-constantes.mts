@@ -147,7 +147,7 @@ const parc: ParcBrut = {
   releves: j.releves,
   depenses: j.depenses,
   pleins: j.pleins,
-  interventions: j.interventions,
+  interventions: j.interventions, attelages: j.attelages ?? [],
 };
 const lignesBase = parc.vehicules.map((v) => ligneDepuisLaBase(v, parc, PARAMETRES_DEFAUT));
 const lignesDemo = lignesFlotteDemonstration(PARAMETRES_DEFAUT);

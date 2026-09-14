@@ -18,7 +18,7 @@
 import type { LivraisonFiche } from "./livraisons";
 import { exigeDocument, immobilisationAdministrative } from "./documents";
 import { echeancesDuPlan, type CompteursVehicule, type DernierPassage, type PlanVehicule, type ProgrammeEntretien } from "./entretien";
-import { agregerCouts, type AffectationFiche, type DepenseFiche, type DocumentFiche, type EcheanceFiche, type EtatDocument, type EvenementJournal, type FicheVehicule, type IndicateursFiche, type Intervention, type PeriodeStatutFiche, type PleinFiche, type ReleveFiche, type ConsommationMensuelle } from "./fiche";
+import { agregerCouts, type AffectationFiche, type AttelageFiche, type DepenseFiche, type DocumentFiche, type EcheanceFiche, type EtatDocument, type EvenementJournal, type FicheVehicule, type IndicateursFiche, type Intervention, type PeriodeStatutFiche, type PleinFiche, type ReleveFiche, type ConsommationMensuelle } from "./fiche";
 import { BUSINESS_UNIT, POSTE_DEPENSE, STATUT_VEHICULE, TYPE_DOCUMENT, USAGE_VEHICULE } from "./libelles";
 import { prixEnergie, type Parametres } from "./parametres";
 import { formerNumero } from "./reference";
@@ -54,6 +54,12 @@ export interface FaitsFiche {
   observations: { numero: string; visiteNumero: string; libelle: string; categorie: CategorieObservation; gravite: GraviteObservation; statut: StatutObservation; interventionNumero: string | null; corrigeeLe: string | null; commentaire: string | null }[];
   /** Les bons de livraison portés par le véhicule (0044) ; un lecteur d'avant n'en rend pas. */
   livraisons?: LivraisonFiche[];
+  /**
+   * Les attelages du véhicule (0050), déjà vus de son côté : c'est le lecteur
+   * qui sait lequel des deux véhicules est celui de la fiche, et donc quel rôle
+   * il y tient. Un lecteur d'avant la table n'en rend pas.
+   */
+  attelages?: AttelageFiche[];
 }
 
 export const FAITS_VIDES: FaitsFiche = { documents: [], licences: [], affectations: [], releves: [], pleins: [], depenses: [], interventions: [], statuts: [], visites: [], observations: [] };
@@ -319,7 +325,10 @@ export function assemblerFiche(l: LigneFlotte, faits: FaitsFiche, parametres: Pa
     echeances,
     documents: documents.sort((a, b) => (a.echeance ?? "9999").localeCompare(b.echeance ?? "9999")),
     affectations,
-    attelages: [],
+    /* En cours d'abord, puis du plus récent au plus ancien : la question posée
+       à un tracteur est « qu'est-ce qu'il tire en ce moment ? », et l'historique
+       vient après. Même ordre que les affectations. */
+    attelages: [...(faits.attelages ?? [])].sort((a, b) => (a.fin === null && b.fin !== null ? -1 : b.fin === null && a.fin !== null ? 1 : b.debut.localeCompare(a.debut))),
     /* Les visites et observations valent par leur numéro, comme les autres transactions ; un lecteur d'avant 0023 n'en rend pas. */
     visitesTechniques: (faits.visites ?? []).map((x) => ({ id: x.numero, numero: x.numero, vehiculeId: v.id, type: x.type, centre: x.centre, dateRendezVous: x.dateRendezVous, heure: x.heure, datePassage: x.datePassage, statut: x.statut, numeroPv: x.numeroPv, dateLimiteContreVisite: x.dateLimiteContreVisite, commentaire: x.commentaire })).sort((a, b) => b.dateRendezVous.localeCompare(a.dateRendezVous)),
     observationsVisite: (faits.observations ?? []).map((o) => ({ id: o.numero, numero: o.numero, visiteId: o.visiteNumero, vehiculeId: v.id, libelle: o.libelle, categorie: o.categorie, gravite: o.gravite, statut: o.statut, interventionNumero: o.interventionNumero, corrigeeLe: o.corrigeeLe, commentaire: o.commentaire })),

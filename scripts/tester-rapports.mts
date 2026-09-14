@@ -51,7 +51,7 @@ const parc: ParcBrut = {
   aujourdhui, attributions: j.attributions, attributaires: new Map(j.attributaires.map((a: any) => [a.id, a])), aRecevoir: j.a_recevoir, vehicules: j.vehicules,
   sites: new Map(j.sites.map((s: any) => [s.id, { id: s.id, code: s.code, libelle: s.libelle, region: s.region, type: s.type }])),
   chauffeurs: new Map(j.chauffeurs.map((c: any) => [c.id, c])), affectations: j.affectations, documents: j.documents, licences: j.licences, licencesVehicules: j.licences_vehicules,
-  releves: j.releves, depenses: j.depenses, pleins: j.pleins, interventions: j.interventions,
+  releves: j.releves, depenses: j.depenses, pleins: j.pleins, interventions: j.interventions, attelages: j.attelages ?? [],
 };
 const lignes = parc.vehicules.map((v) => ligneDepuisLaBase(v, parc, PARAMETRES_DEFAUT));
 const vehiculeJson = `(select jsonb_build_object('immatriculation', v.immatriculation, 'marque', v.marque, 'appellation', v.appellation, 'business_unit', v.business_unit, 'site', (select jsonb_build_object('libelle', s.libelle) from site s where s.id = v.site_id)) from vehicule v where v.id = x.vehicule_id)`;

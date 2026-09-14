@@ -51,7 +51,7 @@ const parc: ParcBrut = {
   aujourdhui, attributions: jp.attributions, attributaires: new Map(jp.attributaires.map((a: any) => [a.id, a])), aRecevoir: jp.a_recevoir, vehicules: jp.vehicules,
   sites: new Map(jp.sites.map((s: any) => [s.id, { id: s.id, code: s.code, libelle: s.libelle, region: s.region, type: s.type }])),
   chauffeurs: new Map(jp.chauffeurs.map((c: any) => [c.id, c])), affectations: jp.affectations, documents: jp.documents, licences: jp.licences, licencesVehicules: jp.licences_vehicules,
-  releves: jp.releves, depenses: jp.depenses, pleins: jp.pleins, interventions: jp.interventions,
+  releves: jp.releves, depenses: jp.depenses, pleins: jp.pleins, interventions: jp.interventions, attelages: jp.attelages ?? [],
 };
 const lignes = parc.vehicules.map((v) => ligneDepuisLaBase(v, parc, PARAMETRES_DEFAUT));
 const sit = (await pg.query(`select situation_journaliere($1, $2) as j`, ["2026-08-06", aujourdhui])).rows[0].j as any[];

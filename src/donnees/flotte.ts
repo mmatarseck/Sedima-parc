@@ -13,8 +13,8 @@
  * que les adresses et les fiches ne changent pas de clé. L'UUID de la base ne
  * sort pas d'ici.
  *
- * Ce que la base ne porte pas encore et que la ligne laisse vide : l'attelage
- * courant (pas de table `attelage`), les ajustements du plan d'entretien
+ * Ce que la base ne porte pas encore et que la ligne laisse vide : les
+ * ajustements du plan d'entretien
  * (`plan_vehicule` est vide). La date de référence est celle du jour.
  * ==========================================================================*/
 
@@ -79,6 +79,12 @@ interface LigneAttribution {
   pool: string | null;
   plan_car: boolean;
   fin: string | null;
+}
+
+/** Un attelage en cours (0050) : les deux moitiés, sans date — la liste ne montre que l'attelage du jour. */
+interface LigneAttelage {
+  tracteur_id: string;
+  remorque_id: string;
 }
 
 interface LigneAttributaire {
@@ -179,6 +185,8 @@ export interface ParcBrut {
   attributaires: Map<string, LigneAttributaire>;
   /** Les véhicules commandés, pas encore reçus ni immatriculés. */
   aRecevoir: LigneARecevoir[];
+  /** Les attelages en cours (0050) : un tracteur et une semi-remorque qui roulent ensemble. */
+  attelages: LigneAttelage[];
 }
 
 interface LigneARecevoir {
@@ -233,6 +241,8 @@ interface ParcJson {
   attributions: LigneAttribution[];
   attributaires: LigneAttributaire[];
   a_recevoir: LigneARecevoir[];
+  /** Ajoutée par 0050 ; absente tant que la fonction n'a pas été rejouée. */
+  attelages?: LigneAttelage[];
 }
 
 /**
@@ -251,6 +261,9 @@ export async function lireParc(client: SupabaseClient, aujourdhui: string): Prom
     return {
       aujourdhui,
       attributions: j.attributions,
+      /* Fonction d'avant 0050 : pas de clé, donc pas d'attelage affiché — la
+         liste reste juste, elle en dit seulement moins. */
+      attelages: j.attelages ?? [],
       attributaires: new Map(j.attributaires.map((a) => [a.id, a])),
       aRecevoir: j.a_recevoir,
       vehicules: j.vehicules,
@@ -270,7 +283,7 @@ export async function lireParc(client: SupabaseClient, aujourdhui: string): Prom
 }
 
 async function lireParcEnQuatorze(client: SupabaseClient, aujourdhui: string, depuis: string): Promise<ParcBrut> {
-  const [vehicules, sites, chauffeurs, affectations, documents, licences, licencesVehicules, releves, depenses, pleins, interventions, attributions, attributaires, aRecevoir] = await Promise.all([
+  const [vehicules, sites, chauffeurs, affectations, documents, licences, licencesVehicules, releves, depenses, pleins, interventions, attributions, attributaires, attelages, aRecevoir] = await Promise.all([
     /* Tout le parc, transport et léger : la liste Flotte les réunit depuis le
        7 septembre 2026, et c'est le régime qui les distingue. */
     tout<LigneVehicule>("véhicules", (de, a) => client.from("vehicule").select("*").order("immatriculation").range(de, a)),
@@ -286,10 +299,14 @@ async function lireParcEnQuatorze(client: SupabaseClient, aujourdhui: string, de
     tout<LigneIntervention>("interventions", (de, a) => client.from("intervention").select("vehicule_id, numero, date, objet, km").range(de, a)),
     tout<LigneAttribution>("attributions", (de, a) => client.from("attribution_legere").select("vehicule_id, attributaire_id, pool, plan_car, fin").is("fin", null).range(de, a)),
     tout<LigneAttributaire>("attributaires", (de, a) => client.from("attributaire").select("id, nom, fonction").range(de, a)),
+    /* Seuls les attelages en cours : la liste répond à « qu'est-ce qui roule
+       attelé aujourd'hui ? », l'historique appartient à la fiche. */
+    tout<LigneAttelage>("attelages", (de, a) => client.from("attelage").select("tracteur_id, remorque_id").is("fin", null).range(de, a)),
     tout<LigneARecevoir>("véhicules à recevoir", (de, a) => client.from("vehicule_a_recevoir").select("id, lot, marque, modele, categorie, regime, attributaire_id, pool, business_unit, commentaire, recu_le").is("recu_le", null).range(de, a)),
   ]);
   return {
     aujourdhui,
+    attelages,
     attributions,
     attributaires: new Map(attributaires.map((a) => [a.id, a])),
     aRecevoir,
@@ -467,6 +484,23 @@ function planEntretienDeLaBase(v: Vehicule, uuid: string, compteur: { km: number
 }
 
 /** La ligne de la liste, dérivée des lignes brutes. */
+/**
+ * Ce que ce véhicule tire, ou ce qui le tire, en ce moment (0050).
+ *
+ * L'attelage est une relation entre deux véhicules : la ligne du tracteur nomme
+ * la semi, celle de la semi nomme le tracteur, et chacune dit le rôle qu'elle
+ * tient. Sans attelage en cours, nul — et la colonne reste vide plutôt que
+ * d'afficher un tiret de plus.
+ */
+function attelageCourantDe(vehiculeId: string, parc: ParcBrut): LigneFlotte["attelageCourant"] {
+  const a = parc.attelages.find((x) => x.tracteur_id === vehiculeId || x.remorque_id === vehiculeId);
+  if (!a) return null;
+  const tracteurIci = a.tracteur_id === vehiculeId;
+  const autre = parc.vehicules.find((v) => v.id === (tracteurIci ? a.remorque_id : a.tracteur_id));
+  if (!autre) return null;
+  return { immatriculation: autre.immatriculation, immatriculationAffichee: afficher(autre.immatriculation), role: tracteurIci ? "tracteur" : "remorque" };
+}
+
 export function ligneDepuisLaBase(brut: LigneVehicule, parc: ParcBrut, parametres: Parametres): LigneFlotte {
   const v = vehiculeDepuisLaBase(brut);
   const courantes = parc.affectations.filter((a) => a.vehicule_id === brut.id && enCours(a, parc.aujourdhui));
@@ -507,7 +541,7 @@ export function ligneDepuisLaBase(brut: LigneVehicule, parc: ParcBrut, parametre
     prochaineEcheanceEntretien: planEntretien?.prochaine ?? null,
     etatPlanEntretien: planEntretien?.etat ?? null,
     coutDouzeMois: cout > 0 ? cout : null,
-    attelageCourant: null,
+    attelageCourant: attelageCourantDe(brut.id, parc),
     statutEffectif: immobilisation?.statut ?? v.statut,
     immobilisationAdministrative: immobilisation?.documents ?? [],
     attributaire,
