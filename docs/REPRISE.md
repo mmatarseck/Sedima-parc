@@ -7,16 +7,10 @@ Elle dit où en est le projet, ce qui a été décidé, et ce qui reste à faire
 
 ## 0 quinquies. Passage de relais du 14 septembre 2026 — lire ceci d'abord
 
-**Un fichier attend dans le SQL Editor** :
-
-```
-supabase/migrations/0048_vehicule_fournisseur.sql   -- chez qui le véhicule a été acheté
-```
-
-Tout le reste est joué : migrations 0001 à 0047 — dont 0046 et 0047, le statut « sorti » et ce
-qu'une sortie laisse écrit —, et avec elles tous les chargements de données réelles, magasin de
-pièces compris (`PIECES-REELLES.md`, joué le 14 septembre). Les blocs marqués « joué » plus bas
-disent chacun ce qu'il a apporté ; voici l'état d'ensemble.
+**Rien n'attend dans le SQL Editor.** Migrations 0001 à 0048 jouées — dont le statut « sorti » et ce
+qu'une sortie laisse écrit (0046, 0047), et le vendeur du véhicule (0048) —, et avec elles tous les
+chargements de données réelles, magasin de pièces compris (`PIECES-REELLES.md`). Les blocs marqués
+« joué » plus bas disent chacun ce qu'il a apporté ; voici l'état d'ensemble.
 
 *Note pour la prochaine fois : l'ajout d'une valeur d'énumération et son usage ne tiennent pas dans
 la même transaction — d'où 0046 et 0047 séparées.*
@@ -52,6 +46,27 @@ tous les cas. Il se saisit à la création comme à la modification, se lit sur 
 | Pneus | 410 montés sur 72 véhicules, fév. 2024 → août 2026 | `PNEUS-REELS.md` |
 | Magasin | 3 pièces (batteries 150 et 100 AH, embrayage Tata), 58 mouvements sur 26 véhicules, fév. 2025 → juil. 2026 | `PIECES-REELLES.md` |
 | Carburant | 5 400 pleins, 2022 → juillet 2026 | `CARBURANT-REEL.md` |
+
+**Conformité du référentiel véhicules** (relevée le 14 septembre 2026, sur les 184 véhicules). Rien
+n'est incohérent : aucune plaque hors format, aucun VIN en double, aucun véhicule engagé sans site ni
+business unit, aucun poids qui se contredise. Ce qui manque, ce sont des **valeurs jamais saisies** :
+
+| Donnée | Renseignée | Ce qui en dépend |
+| --- | ---: | --- |
+| Business unit | 184 / 184 | — |
+| Type, 1re mise en circulation, date d'immatriculation | 149 / 184 | Âge du parc, renouvellement |
+| PTAC et charge utile | 98 / 184 | Capacité par catégorie (écran Disponibilité) |
+| VIN | 56 / 184 | Rapprochement constructeur et assureur |
+| Site de rattachement | 56 / 184 | Disponibilité par site, région de la fiche |
+| **Capacité du réservoir** | **0 / 184** | Contrôle de plausibilité d'un plein |
+| **Valeur d'acquisition** | **0 / 184** | Valeur nette comptable, fin d'amortissement, budget |
+| Photo | 0 / 184 | Identification visuelle |
+
+Les deux lignes en gras sont les plus coûteuses : sans valeur d'acquisition, la carte « Achat, valeur
+et amortissement » de chaque fiche est vide et l'amortissement ne se calcule pour personne ; sans
+capacité de réservoir, un plein aberrant ne peut pas être signalé. Les cartes grises du dossier DO ont
+donné le type et les dates de 149 véhicules mais le PTAC de 98 seulement : le reste est à chercher
+ailleurs, ou à saisir.
 
 **Les plaques s'écrivent au tiret** partout (XX-YYY-ZZ, XX-YYYY-ZZ pour les anciennes) : `afficher()` du
 domaine et `plaque_affichee()` en base. La clé reste sans séparateur (`AB060KT`), et toute saisie s'y ramène.
