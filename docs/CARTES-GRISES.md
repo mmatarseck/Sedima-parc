@@ -127,3 +127,57 @@ Après `aligner-referentiel.sql`, `vehicules-manquants.sql` et
 
 Fabriqué par `scripts/charger-cartes-grises.mts`. Banc :
 `scripts/tester-cartes-grises.mts`.
+
+## Le document lui-même
+
+Lire les cartes grises en tire les caractéristiques ; c'est la moitié du
+travail. L'autre moitié met **le scan dans la fiche** : un clic depuis l'onglet
+Conformité ouvre la carte grise du véhicule, au lieu d'aller la chercher sur le
+partage DO.
+
+Un véhicule a souvent deux fichiers — recto et verso — et la fiche n'a qu'une
+pièce jointe par document. Les pages sont donc remontées en **un seul PDF, dans
+l'ordre**. Les douze `.docx` du dossier, où quelqu'un a collé deux photos dans
+un document Word, se traitent pareil : sans quoi douze véhicules resteraient
+sans pièce.
+
+Le réemballage allège l'enveloppe mais **ne recompresse pas** : sans
+bibliothèque d'images, Node ne sait pas réencoder un JPEG. Un scan de 217 Ko
+sort à 217 Ko, un de 7 Mo sort à 7 Mo.
+
+État du dossier : **76 plaques, 157 pages, 75 PDF déposables** pour 23,9 Mo.
+
+- **AA-032-EA** sort à 7,1 Mo, au-delà des 5 Mo du seau. Il n'est ni tronqué ni
+  déposé de force : il est nommé au compte rendu, à alléger puis à déposer à la
+  main.
+- **AA-205-VH** est au dossier mais pas au parc (voir plus haut) : sa carte
+  n'est rattachée à rien.
+
+### Ce qu'il faut pour déposer
+
+Deux variables d'environnement, jamais écrites dans le dépôt :
+
+```
+SUPABASE_URL                 l'adresse du projet
+SUPABASE_SERVICE_ROLE_KEY    la clé de service
+```
+
+La clé de service passe outre les politiques RLS : elle n'a rien à faire dans
+un navigateur, et ce script est la seule raison de la sortir.
+
+```
+npx tsx scripts/attacher-cartes-grises.mts              (essai à blanc)
+npx tsx scripts/attacher-cartes-grises.mts --deposer    (dépôt réel)
+```
+
+Sans `--deposer`, le script dit ce qu'il ferait et s'arrête. Il est rejouable :
+un véhicule qui porte déjà une carte grise **avec** sa pièce est sauté, un
+véhicule qui en porte une **sans** pièce se voit compléter plutôt que doubler.
+
+Migration à jouer d'abord : `supabase/migrations/0049_pieces_pdf.sql`, qui
+laisse entrer le PDF dans le seau `pieces` — et rien d'autre : ni ZIP, ni Word,
+ni exécutable. Le plafond de 5 Mo reste.
+
+Lecture et recomposition vivent dans `scripts/scans-cartes-grises.mts`, que le
+banc `scripts/tester-attachement-cartes.mts` rejoue sur tout le dossier sans
+toucher à la base.
