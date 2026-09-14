@@ -17,6 +17,7 @@ import type {
   Chauffeur,
   MissionIncident,
   MotifImmobilisation,
+  MotifSortie,
   MotifIndisponibilite,
   NatureIncident,
   PosteDepense,
@@ -109,6 +110,22 @@ export const STATUT_VEHICULE: Record<StatutVehicule, DefinitionStatut> = {
     operationnel: false,
     precision: "Commandé, pas encore livré ni immatriculé",
   },
+  sorti: {
+    libelle: "Sorti",
+    couleur: "var(--color-statut-sorti)",
+    operationnel: false,
+    precision: "A quitté le parc — la fiche reste consultable",
+  },
+};
+
+/** Ce qui a fait sortir un véhicule du parc. */
+export const MOTIF_SORTIE: Record<MotifSortie, string> = {
+  cede: "Cédé",
+  reforme: "Réformé",
+  detruit: "Détruit",
+  vole: "Volé",
+  "fin-de-location": "Fin de location",
+  autre: "Autre",
 };
 
 /** Ordre d'affichage, du plus disponible au plus sortant. */
@@ -121,6 +138,7 @@ export const ORDRE_STATUTS: StatutVehicule[] = [
   "en-mutation",
   "retrait-en-cours",
   "a-recevoir",
+  "sorti",
 ];
 
 export const MOTIF_IMMOBILISATION: Record<MotifImmobilisation, string> = {

@@ -44,7 +44,8 @@ export type TableBranchee =
   | "enveloppe"
   | "piece"
   | "mouvement_stock"
-  | "pneu";
+  | "pneu"
+  | "vehicule";
 
 const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   releve: "releve_kilometrique",
@@ -73,7 +74,21 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   mouvement: "mouvement_stock",
   pneu: "pneu",
   budget: "enveloppe",
+  /* La fiche véhicule elle-même : elle se crée et se modifie comme une
+     transaction, mais sa clé est son immatriculation, pas un numéro — c'est
+     `cleDe` qui le dit à l'écriture. */
+  vehicule: "vehicule",
 };
+
+/**
+ * La colonne qui identifie une ligne, et la valeur à y chercher. Tout se repère
+ * par `numero`, sauf le véhicule : sa clé métier est son immatriculation, et la
+ * fiche la porte sous la forme « VEH-AA032EA ».
+ */
+export function cleDe(type: TypeTransaction, numero: string): { colonne: string; valeur: string } {
+  if (type !== "vehicule") return { colonne: "numero", valeur: numero };
+  return { colonne: "immatriculation", valeur: immatriculationCanonique(numero.replace(/^VEH-/i, "")) };
+}
 
 /** La table d'un type ; nulle tant qu'il n'en a pas. Le statut est à part : il s'écrit sur le véhicule. */
 export function tableDe(type: TypeTransaction): TableBranchee | null {
@@ -126,6 +141,27 @@ const nombre = (v: unknown): number | null => {
   return null;
 };
 const booleen = (v: unknown): boolean => v === true || v === "oui" || v === "true";
+const entier = (v: unknown): number | null => {
+  const n = nombre(v);
+  return n === null ? null : Math.round(n);
+};
+
+/* La catégorie d'un véhicule se saisit en un champ et s'écrit en deux colonnes :
+   la **famille** (`categorie`, l'énumération du socle) décide des règles —
+   documents, plafond kilométrique, entretien, silhouette —, et la catégorie
+   ajoutée par le métier dans Paramètres (`categorie_metier`, « cat-… ») ne fait
+   que la nommer plus précisément. L'écran connaît la famille de ce qu'il
+   propose et la joint sous `categorieFamille` ; sans elle, une catégorie
+   métier ne peut pas être classée, et on refuse plutôt que de deviner. */
+const categorieMetierSaisie = (v: Record<string, unknown>): string | null => {
+  const c = texte(v.categorie);
+  return c && c.startsWith("cat-") ? c : (texte(v.categorieMetier) ?? null);
+};
+const familleSaisie = (v: Record<string, unknown>): string | null => {
+  const c = texte(v.categorie);
+  if (c && !c.startsWith("cat-")) return c;
+  return texte(v.categorieFamille);
+};
 
 /** « 2026-09-02T08:00 » ou « 2026-09-02 » → un horodatage complet, en UTC comme tout le jeu de données. */
 export function horodatage(brut: unknown): string | null {
@@ -488,6 +524,55 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       if (!texte(v.motif)) return { refus: "sanction sans motif" };
       return { ligne: { numero, chauffeur_id: r.chauffeurId, date: texte(v.date), type: texte(v.type) ?? "avertissement", motif: texte(v.motif), jours: nombre(v.jours) } };
     }
+    /* Le véhicule n'a pas de numéro : sa clé métier est son immatriculation, et
+       c'est elle qui doit être unique. Le reste se complète sur la fiche. */
+    case "vehicule": {
+      const immatriculation = immatriculationCanonique(texte(v.immatriculation) ?? "");
+      if (!immatriculation) return { refus: "véhicule sans immatriculation" };
+      const marque = texte(v.marque);
+      const appellation = texte(v.appellation);
+      if (!marque || !appellation) return { refus: "véhicule sans marque ou sans modèle" };
+      const categorie = familleSaisie(v);
+      if (!categorie) return { refus: "véhicule sans catégorie" };
+      const statut = texte(v.statut) ?? "en-service";
+      const dateSortie = texte(v.dateSortie);
+      if (statut === "sorti" && !dateSortie) return { refus: "véhicule sorti sans date de sortie" };
+      return {
+        ligne: {
+          immatriculation,
+          vin: texte(v.vin),
+          marque,
+          appellation,
+          type_modele: texte(v.typeModele),
+          categorie,
+          categorie_metier: categorieMetierSaisie(v),
+          categorie_flotte: texte(v.categorieFlotte) ?? "interne",
+          regime: texte(v.regime) ?? "exploitation",
+          usage: texte(v.usage) ?? "autre",
+          transport_special: booleen(v.transportSpecial),
+          energie: texte(v.energie) ?? "gasoil",
+          business_unit: texte(v.businessUnit),
+          site_id: texte(v.siteId),
+          statut,
+          engage: v.engage === undefined ? true : booleen(v.engage),
+          date_sortie: dateSortie,
+          motif_sortie: texte(v.motifSortie),
+          premiere_mise_en_circulation: texte(v.premiereMiseEnCirculation),
+          date_immatriculation: texte(v.dateImmatriculation),
+          puissance_cv: entier(v.puissanceCv),
+          cylindree: entier(v.cylindree),
+          ptac: entier(v.ptac),
+          ptra: entier(v.ptra),
+          poids_vide: entier(v.poidsVide),
+          charge_utile: entier(v.chargeUtile),
+          capacite_reservoir: entier(v.capaciteReservoir),
+          valeur_acquisition: entier(v.valeurAcquisition),
+          duree_amortissement_annees: entier(v.dureeAmortissementAnnees),
+          photo: texte(v.photo),
+          commentaire: texte(v.commentaire),
+        },
+      };
+    }
     default:
       return { refus: `pas de table pour ${type}` };
   }
@@ -530,27 +615,87 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   pneu: { marque: "marque", dimension: "dimension", numeroSerie: "numero_serie", etat: "etat", position: "position", datePose: "date_pose", kmPose: "km_pose", dateDepose: "date_depose", kmDepose: "km_depose", rechapages: "rechapages", commentaire: "commentaire" },
   /* L'enveloppe se corrige en comité : le montant et la base ; jamais son poste ni sa business unit — ce serait une autre enveloppe. */
   budget: { montant: "montant", base: "base", commentaire: "commentaire" },
+  /* La fiche véhicule. L'immatriculation en fait partie : une plaque se
+     refait, et jusqu'ici il fallait recréer le véhicule pour la corriger — ce
+     qui aurait détaché ses dépenses, ses pneus et ses livraisons. Elle se
+     normalise comme partout (« AB-060-KT » → « AB060KT »).
+     `categorie` n'y est pas : elle s'écrit en deux colonnes, et la modification
+     la traite à part.
+     Ce qui se calcule ne s'écrit pas : la région vient du site, l'utilisation
+     de l'usage, le régime de propriété de la catégorie de flotte, l'entité de
+     la business unit, la balise des relevés. */
+  vehicule: {
+    immatriculation: "immatriculation",
+    vin: "vin",
+    marque: "marque",
+    appellation: "appellation",
+    typeModele: "type_modele",
+    categorieFlotte: "categorie_flotte",
+    regime: "regime",
+    usage: "usage",
+    transportSpecial: "transport_special",
+    energie: "energie",
+    businessUnit: "business_unit",
+    siteId: "site_id",
+    engage: "engage",
+    dateSortie: "date_sortie",
+    motifSortie: "motif_sortie",
+    premiereMiseEnCirculation: "premiere_mise_en_circulation",
+    dateImmatriculation: "date_immatriculation",
+    puissanceCv: "puissance_cv",
+    cylindree: "cylindree",
+    ptac: "ptac",
+    ptra: "ptra",
+    poidsVide: "poids_vide",
+    chargeUtile: "charge_utile",
+    capaciteReservoir: "capacite_reservoir",
+    valeurAcquisition: "valeur_acquisition",
+    dureeAmortissementAnnees: "duree_amortissement_annees",
+    photo: "photo",
+    commentaire: "commentaire",
+  },
 };
 
 const NUMERIQUES = new Set([
   "km", "litres", "prix_litre", "montant", "kilometrage", "immobilisation_jours", "jours", "immobilisation_prevue_jours", "montant_estime", "montant_engage", "montant_reel",
   "tonnage", "tonnage_pese", "tonnage_livre", "prix", "minimum", "montant_facture", "prix_exceptionnel", "complement_tarif", "jours_panne", "jours_roules", "carburant_litres", "carburant_montant", "km_parcourus", "tonnes_transportees", "quantite", "prix_unitaire",
   "qualite", "delai", "quantite", "ecart", "prix_unitaire", "prix_reference", "stock_minimum", "stock_maximum", "km_pose", "km_depose", "rechapages",
+  "puissance_cv", "cylindree", "ptac", "ptra", "poids_vide", "charge_utile", "capacite_reservoir", "valeur_acquisition", "duree_amortissement_annees",
 ]);
 /* Les colonnes qui gardent leurs décimales : des litres, des tonnes, des quantités. */
 const DECIMALES = new Set(["litres", "tonnage", "tonnage_pese", "tonnage_livre", "carburant_litres", "tonnes_transportees", "quantite"]);
-const BOOLEENS = new Set(["justificatif"]);
+const BOOLEENS = new Set(["justificatif", "transport_special", "engage"]);
 const HORODATES = new Set(["date_heure"]);
 const PRODUITS = new Set(["produit"]);
+/* Les colonnes qui portent une plaque : elle se range sous sa forme canonique,
+   sans séparateur, quelle que soit la façon dont elle a été tapée. */
+const PLAQUES = new Set(["immatriculation"]);
 
 /** Les colonnes qu'une modification change ; vide quand rien de ce qui a changé n'a de colonne. */
 export function colonnesModification(type: TypeTransaction, diffs: { champ: string; valeur: unknown }[]): Record<string, unknown> {
   const carte = COLONNES[type];
   if (!carte) return {};
   const ligne: Record<string, unknown> = {};
+  /* La catégorie change deux colonnes d'un coup. Choisir une famille standard
+     la pose et efface la catégorie métier — d'où le `null` explicite. Choisir
+     une catégorie ajoutée par le métier (« cat-… ») ne pose qu'elle : sa
+     famille est déclarée dans les paramètres, que ce module pur ne lit pas, et
+     laisser la famille en place vaut mieux que d'en deviner une. */
+  const categorie = diffs.find((d) => d.champ === "categorie");
+  if (type === "vehicule" && categorie) {
+    const v = { categorie: categorie.valeur, categorieFamille: diffs.find((d) => d.champ === "categorieFamille")?.valeur };
+    const famille = familleSaisie(v);
+    if (famille) ligne.categorie = famille;
+    ligne.categorie_metier = categorieMetierSaisie(v);
+  }
   for (const d of diffs) {
     const colonne = carte[d.champ];
     if (!colonne) continue;
+    if (PLAQUES.has(colonne)) {
+      const plaque = immatriculationCanonique(texte(d.valeur) ?? "");
+      if (plaque) ligne[colonne] = plaque;
+      continue;
+    }
     if (NUMERIQUES.has(colonne)) {
       const n = nombre(d.valeur);
       ligne[colonne] = n === null ? null : DECIMALES.has(colonne) ? Math.round(n * 100) / 100 : Math.round(n);

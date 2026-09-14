@@ -32,7 +32,7 @@ import { afficher } from "@/domaine/immatriculation";
 import { TYPE_TRANSACTION, formerNumero, type TypeTransaction } from "@/domaine/reference";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur, utilisateurCourant } from "@/lib/supabase";
-import { EST_UUID, colonnesModification, decomposerSujet, immatriculationCanonique, ligneCreation, tableDe, type Rattachement } from "@/lib/transactions-colonnes";
+import { EST_UUID, cleDe, colonnesModification, decomposerSujet, immatriculationCanonique, ligneCreation, tableDe, type Rattachement } from "@/lib/transactions-colonnes";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type ResultatEcriture = { issue: "ecrite"; numero: string } | { issue: "refusee"; motif: string } | { issue: "hors-base" };
@@ -184,7 +184,20 @@ export async function ecrireCreation(c: Creation): Promise<ResultatEcriture> {
   if (c.type === "achat" && !c.valeurs.demandeurRole) c.valeurs.demandeurRole = moi.role;
   const prep = ligneCreation(c.type, c.numero, c.valeurs, r);
   if ("refus" in prep) return { issue: "refusee", motif: `Non enregistré en base : ${prep.refus}.` };
-  const ligne = { ...prep.ligne, cree_par: moi.utilisateurId };
+  const ligne: Record<string, unknown> = { ...prep.ligne, cree_par: moi.utilisateurId };
+
+  /* Un véhicule n'est pas numéroté : sa clé est sa plaque, et deux véhicules ne
+     peuvent pas la partager. Un doublon ne se renumérote donc pas — il se dit,
+     parce que c'est presque toujours le même camion saisi deux fois. */
+  if (c.type === "vehicule") {
+    const ecriture = await client.from(table).insert(ligne);
+    if (ecriture.error) {
+      const plaque = afficher(String(ligne.immatriculation ?? ""));
+      return { issue: "refusee", motif: ecriture.error.code === "23505" ? `${plaque} est déjà au parc : ouvrez sa fiche plutôt que d'en créer une seconde.` : `Non enregistré en base : ${ecriture.error.message}` };
+    }
+    revalidatePath("/", "layout");
+    return { issue: "ecrite", numero: `VEH-${ligne.immatriculation}` };
+  }
 
   let ecriture = await client.from(table).insert(ligne);
   let numero = c.numero;
@@ -226,14 +239,21 @@ export async function ecrireModification(e: { numero: string; type: TypeTransact
   if (!moi) return { issue: "refusee", motif: "Session absente : reconnectez-vous." };
 
   const colonnes = colonnesModification(e.type, e.diffs);
+  /* Tout se repère par `numero`, sauf le véhicule : sa clé est son
+     immatriculation — celle d'**avant**, puisqu'une plaque peut être ce qui
+     change. La trace, elle, se range sous cette même clé. */
+  const cle = cleDe(e.type, e.numero);
   if (Object.keys(colonnes).length > 0) {
     /* Le relevé n'a pas de colonnes de modification : il se corrige rarement, et la trace suffit. */
     const horodate = table === "releve_kilometrique" ? {} : { modifie_le: new Date().toISOString(), modifie_par: moi.utilisateurId };
-    const maj = await client.from(table).update({ ...colonnes, ...horodate }).eq("numero", e.numero).select("numero");
-    if (maj.error) return { issue: "refusee", motif: `Modification refusée : ${maj.error.message}` };
+    const maj = await client.from(table).update({ ...colonnes, ...horodate }).eq(cle.colonne, cle.valeur).select(cle.colonne);
+    if (maj.error) {
+      const plaque = typeof colonnes.immatriculation === "string" ? afficher(colonnes.immatriculation) : null;
+      return { issue: "refusee", motif: plaque && maj.error.code === "23505" ? `${plaque} est déjà portée par un autre véhicule du parc.` : `Modification refusée : ${maj.error.message}` };
+    }
     if (!maj.data || maj.data.length === 0) return { issue: "refusee", motif: `Modification non appliquée : ${e.numero} n'est pas en base.` };
   }
-  const trace = await client.from("modification").insert(e.diffs.map((d) => ({ table_cible: table, numero: e.numero, champ: d.champ, libelle_champ: d.libelleChamp, avant: d.avant, apres: d.apres, motif: e.motif, statut: "appliquee", cree_par: moi.utilisateurId })));
+  const trace = await client.from("modification").insert(e.diffs.map((d) => ({ table_cible: table, numero: cle.valeur, champ: d.champ, libelle_champ: d.libelleChamp, avant: d.avant, apres: d.apres, motif: e.motif, statut: "appliquee", cree_par: moi.utilisateurId })));
   if (trace.error) return { issue: "refusee", motif: `Modifiée, mais sans trace : ${trace.error.message}` };
   revalidatePath("/", "layout");
   return { issue: "ecrite", numero: e.numero };

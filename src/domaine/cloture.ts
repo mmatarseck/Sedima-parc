@@ -61,6 +61,13 @@ export interface ChampEdition {
   /** Unité affichée après un nombre : « F », « km », « L ». */
   unite?: string;
   obligatoire?: boolean;
+  /**
+   * Le titre sous lequel le champ se range dans le formulaire. Une fiche
+   * véhicule en compte trente : les aligner d'affilée oblige à les lire tous
+   * pour en corriger un. Les champs sans section restent en tête, dans leur
+   * ordre — c'est le cas de tous les types courts, qui n'en ont pas besoin.
+   */
+  section?: string;
 }
 
 /** Une modification appliquée ou demandée sur un champ d'une transaction. */

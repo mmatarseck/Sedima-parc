@@ -15,6 +15,7 @@ import { URGENCE_ACHAT } from "@/domaine/caisse";
 import { SOURCE_TARIF, STATUT_AFFRETEMENT } from "@/domaine/transporteurs";
 import { ENERGIE } from "@/domaine/libelles";
 import { STATUT_ORDRE } from "@/domaine/maintenance";
+import { REGIME_USAGE } from "@/domaine/parc-leger";
 import { TYPES_GARAGE, TYPE_PRESTATAIRE } from "@/domaine/prestataires";
 import { GARAGES } from "@/donnees/fiche-demo";
 import { listePrestataires, optionsPrestataires, optionsPrestatairesParNumero } from "@/donnees/prestataires-demo";
@@ -429,40 +430,67 @@ export const CHAMPS_FRAIS: ChampEdition[] = [
 
 /* -- Le véhicule : identité tirée des paramètres, puis le reste de la fiche ---- */
 
-/** Ce qui se modifie sur une fiche véhicule après sa création. */
+/**
+ * Ce qui se modifie sur une fiche véhicule après sa création, rangé par
+ * sections — les mêmes que celles de la création (demande du métier du
+ * 14 septembre 2026) : trente champs d'affilée obligeaient à les lire tous
+ * pour en corriger un.
+ *
+ * **L'immatriculation en fait partie.** Une plaque se refait, et jusqu'ici la
+ * corriger imposait de recréer le véhicule — ce qui aurait détaché ses
+ * dépenses, ses pneus et ses livraisons, tous rattachés à son identifiant.
+ * Elle se normalise à l'écriture (« AB-060-KT » → « AB060KT ») et reste
+ * unique : une plaque déjà portée est refusée, avec le nom du véhicule.
+ *
+ * **Ce qui se calcule n'y est plus** — région, entité, utilisation, régime de
+ * propriété, balise (14 septembre 2026). Ces cinq champs étaient proposés à la
+ * saisie alors qu'`assembler-fiche` les déduit du site, de la business unit,
+ * de l'usage, de la catégorie de flotte et des relevés : on pouvait les taper,
+ * jamais les enregistrer. Ils se corrigent en changeant ce dont ils dérivent.
+ *
+ * **Le statut n'y est pas non plus** : il a son propre chemin — le crayon à
+ * côté de la pastille —, qui écrit la période et sa trace. Deux chemins pour
+ * un même champ en auraient fait deux vérités.
+ */
 export function champsVehicule(): ChampEdition[] {
+  const section = (titre: string, champs: ChampEdition[]): ChampEdition[] => champs.map((c) => ({ ...c, section: titre }));
   return [
-    /* Une adresse d'image se colle ici ; le cadre de l'en-tête, lui, téléverse
-       un fichier dans le seau et n'en garde que la référence. */
-    { cle: "photo", libelle: "Photo (adresse)", type: "texte" },
-    ...champsIdentiteVehicule(),
-    { cle: "categorieFlotte", libelle: "Catégorie de flotte", type: "choix", options: options(CATEGORIE_FLOTTE), obligatoire: true },
-    { cle: "usage", libelle: "Usage (vrac, frigorifique, plateau…)", type: "choix", options: options(USAGE_VEHICULE), obligatoire: true },
-    { cle: "businessUnit", libelle: "Business unit", type: "choix", options: options(BUSINESS_UNIT) },
-    { cle: "siteId", libelle: "Site", type: "choix", options: optionsSites() },
-    { cle: "energie", libelle: "Énergie", type: "choix", options: options(ENERGIE), obligatoire: true },
-    { cle: "transportSpecial", libelle: "Transport spécial", type: "oui-non" },
-    { cle: "engage", libelle: "Engagé au parc (compte dans D_TDPA)", type: "oui-non" },
-    /* Les caractéristiques de l'onglet du même nom : identification, technique,
-       rattachement, valeur. Une seule modale, une seule trace. */
-    { cle: "typeModele", libelle: "Type / modèle", type: "texte" },
-    { cle: "premiereMiseEnCirculation", libelle: "1re mise en circulation", type: "date" },
-    { cle: "dateImmatriculation", libelle: "Date d'immatriculation", type: "date" },
-    { cle: "region", libelle: "Région", type: "texte" },
-    { cle: "puissanceCv", libelle: "Puissance", type: "nombre", unite: "CV" },
-    { cle: "cylindree", libelle: "Cylindrée", type: "nombre", unite: "cm³" },
-    { cle: "ptac", libelle: "PTAC", type: "nombre", unite: "kg" },
-    { cle: "ptra", libelle: "PTRA", type: "nombre", unite: "kg" },
-    { cle: "poidsVide", libelle: "Poids à vide", type: "nombre", unite: "kg" },
-    { cle: "chargeUtile", libelle: "Charge utile", type: "nombre", unite: "kg" },
-    { cle: "capaciteReservoir", libelle: "Réservoir", type: "nombre", unite: "L" },
-    { cle: "entite", libelle: "Entité", type: "texte" },
-    { cle: "utilisation", libelle: "Utilisation", type: "texte" },
-    { cle: "regimePropriete", libelle: "Régime de propriété", type: "texte" },
-    { cle: "gpsActif", libelle: "Télématique (balise active)", type: "oui-non" },
-    { cle: "valeurAcquisition", libelle: "Valeur d'acquisition", type: "nombre", unite: "F" },
-    { cle: "dureeAmortissementAnnees", libelle: "Durée d'amortissement", type: "nombre", unite: "ans" },
-    { cle: "commentaire", libelle: "Commentaire", type: "texte-long" },
+    ...section("Identification", [
+      { cle: "immatriculation", libelle: "Immatriculation", type: "texte", obligatoire: true },
+      ...champsIdentiteVehicule(),
+      { cle: "typeModele", libelle: "Type / modèle (carte grise)", type: "texte" },
+      { cle: "energie", libelle: "Énergie", type: "choix", options: options(ENERGIE), obligatoire: true },
+      /* Une adresse d'image se colle ici ; le cadre de l'en-tête, lui, téléverse
+         un fichier dans le seau et n'en garde que la référence. */
+      { cle: "photo", libelle: "Photo (adresse)", type: "texte" },
+    ]),
+    ...section("Classement", [
+      { cle: "regime", libelle: "Régime d'usage", type: "choix", options: Object.entries(REGIME_USAGE).map(([valeur, d]) => ({ valeur, libelle: d.libelle })), obligatoire: true },
+      { cle: "categorieFlotte", libelle: "Catégorie de flotte", type: "choix", options: options(CATEGORIE_FLOTTE), obligatoire: true },
+      { cle: "usage", libelle: "Usage (vrac, frigorifique, plateau…)", type: "choix", options: options(USAGE_VEHICULE), obligatoire: true },
+      { cle: "businessUnit", libelle: "Business unit", type: "choix", options: options(BUSINESS_UNIT) },
+      { cle: "siteId", libelle: "Site", type: "choix", options: optionsSites() },
+      { cle: "transportSpecial", libelle: "Transport spécial (denrées, poussins)", type: "oui-non" },
+      { cle: "engage", libelle: "Engagé au parc (compte dans D_TDPA)", type: "oui-non" },
+    ]),
+    ...section("Cycle de vie", [
+      { cle: "premiereMiseEnCirculation", libelle: "1re mise en circulation", type: "date" },
+      { cle: "dateImmatriculation", libelle: "Date d'immatriculation", type: "date" },
+    ]),
+    ...section("Caractéristiques", [
+      { cle: "puissanceCv", libelle: "Puissance", type: "nombre", unite: "CV" },
+      { cle: "cylindree", libelle: "Cylindrée", type: "nombre", unite: "cm³" },
+      { cle: "capaciteReservoir", libelle: "Réservoir", type: "nombre", unite: "L" },
+      { cle: "ptac", libelle: "PTAC", type: "nombre", unite: "kg" },
+      { cle: "ptra", libelle: "PTRA", type: "nombre", unite: "kg" },
+      { cle: "poidsVide", libelle: "Poids à vide", type: "nombre", unite: "kg" },
+      { cle: "chargeUtile", libelle: "Charge utile", type: "nombre", unite: "kg" },
+    ]),
+    ...section("Finances", [
+      { cle: "valeurAcquisition", libelle: "Valeur d'acquisition", type: "nombre", unite: "F" },
+      { cle: "dureeAmortissementAnnees", libelle: "Durée d'amortissement", type: "nombre", unite: "ans" },
+    ]),
+    ...section("Notes", [{ cle: "commentaire", libelle: "Commentaire", type: "texte-long" }]),
   ];
 }
 

@@ -61,6 +61,7 @@ export function ModaleTransaction({
   onFermer,
   onEnregistre,
   apresCreation,
+  apresModification,
   entraine,
 }: {
   mode: "modification" | "creation";
@@ -68,6 +69,11 @@ export function ModaleTransaction({
   sujetDe?: (valeurs: Record<string, unknown>) => string;
   /** Ce qu'une création entraîne ailleurs : clore l'ordre de travail que l'intervention réalise. */
   apresCreation?: (creation: Creation) => void;
+  /**
+   * Ce qu'une modification entraîne ailleurs, une fois appliquée : changer la
+   * plaque d'un véhicule change l'adresse de sa fiche, qui doit suivre.
+   */
+  apresModification?: (apres: Record<string, unknown>) => void;
   /** Ce qu'un champ entraîne sur les autres : choisir la dépense réglée remplit le libellé et le montant. */
   entraine?: (cle: string, valeur: string | boolean, saisie: Record<string, string | boolean>) => Record<string, string | boolean> | null;
   type: TypeTransaction;
@@ -134,6 +140,19 @@ export function ModaleTransaction({
   const referencesInvalides = champs.filter((c) => c.type === "reference" && String(saisie[c.cle] ?? "").trim() !== "" && resoudreReference(String(saisie[c.cle] ?? ""), c.references, immatFormulaire).etat !== "valide");
   const peutEnregistrer = manquants.length === 0 && referencesInvalides.length === 0 && (creation || motif.trim().length >= 3) && issue === null && !bloqueParCloture;
 
+  /* Les champs groupés dans l'ordre où ils viennent : une section par titre
+     déclaré, et un groupe sans titre pour les types qui n'en déclarent pas —
+     l'immense majorité, qui tiennent en cinq champs. */
+  const sections = useMemo(() => {
+    const groupes: { titre?: string; champs: ChampEdition[] }[] = [];
+    for (const c of champs) {
+      const dernier = groupes.at(-1);
+      if (dernier && dernier.titre === c.section) dernier.champs.push(c);
+      else groupes.push({ titre: c.section, champs: [c] });
+    }
+    return groupes;
+  }, [champs]);
+
   function enregistrer() {
     if (!peutEnregistrer) return;
     const apres: Record<string, unknown> = { ...valeurs };
@@ -155,6 +174,7 @@ export function ModaleTransaction({
     setIssue(resultat.issue);
     if (resultat.issue !== "rien") {
       onEnregistre();
+      if (resultat.issue === "appliquee") apresModification?.(apres);
       setTimeout(onFermer, 1400);
     }
   }
@@ -250,21 +270,26 @@ export function ModaleTransaction({
               </div>
             ) : null}
 
-            {/* ---- Champs ---- */}
-            <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
-              {champs.map((c) => {
-                const large = c.type === "texte-long" || c.type === "reference";
-                return (
-                  <label key={c.cle} className={`flex flex-col gap-1.5 ${large ? "sm:col-span-2" : ""}`}>
-                    <span className="label-champ">
-                      {c.libelle}
-                      {c.obligatoire ? <span className="text-defavorable"> ●</span> : null}
-                    </span>
-                    <ChampSaisie champ={c} valeur={saisie[c.cle] ?? ""} saisie={saisie} onChange={(valeur) => changer(c.cle, valeur)} immatriculation={immatFormulaire} />
-                  </label>
-                );
-              })}
-            </div>
+            {/* ---- Champs, par sections quand le type en déclare ---- */}
+            {sections.map((s) => (
+              <div key={s.titre ?? "—"} className={s.titre ? "mt-5 first:mt-0" : ""}>
+                {s.titre ? <h3 className="titre-bloc mb-3 border-b border-bordure pb-1.5 text-[13px]">{s.titre}</h3> : null}
+                <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
+                  {s.champs.map((c) => {
+                    const large = c.type === "texte-long" || c.type === "reference";
+                    return (
+                      <label key={c.cle} className={`flex flex-col gap-1.5 ${large ? "sm:col-span-2" : ""}`}>
+                        <span className="label-champ">
+                          {c.libelle}
+                          {c.obligatoire ? <span className="text-defavorable"> ●</span> : null}
+                        </span>
+                        <ChampSaisie champ={c} valeur={saisie[c.cle] ?? ""} saisie={saisie} onChange={(valeur) => changer(c.cle, valeur)} immatriculation={immatFormulaire} />
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
 
             {/* ---- Motif ---- */}
             <label className="mt-5 flex flex-col gap-1.5">

@@ -44,7 +44,21 @@ export type StatutVehicule =
   | "en-mutation"
   | "retrait-en-cours"
   /** Commandé, pas encore livré ni immatriculé — les quinze du lot 2 (7 septembre 2026). */
-  | "a-recevoir";
+  | "a-recevoir"
+  /**
+   * Terminal : le véhicule a quitté le parc — cédé, réformé, détruit, volé
+   * (14 septembre 2026). Il sort de la liste par défaut, mais sa fiche et tout
+   * ce qui lui est rattaché restent consultables : on ne supprime pas un
+   * véhicule qui porte de l'historique.
+   */
+  | "sorti";
+
+/**
+ * Pourquoi un véhicule est sorti du parc. Le vocabulaire s'allongera avec
+ * l'usage — c'est pourquoi la base le tient en texte contrôlé (0047) plutôt
+ * qu'en énumération.
+ */
+export type MotifSortie = "cede" | "reforme" | "detruit" | "vole" | "fin-de-location" | "autre";
 
 /** Motif d'immobilisation — typé, car D_TICV ne retient que panne et curatif. */
 export type MotifImmobilisation =
@@ -131,6 +145,10 @@ export interface Vehicule {
   businessUnit: BusinessUnit | null;
   siteId: string | null;
   statut: StatutVehicule;
+  /** Le jour où il a quitté le parc ; exigée dès que le statut est « sorti ». */
+  dateSortie?: string | null;
+  /** Pourquoi : cédé, réformé, détruit, volé, fin de location, autre. */
+  motifSortie?: MotifSortie | null;
   valeurAcquisition: number | null;
   dureeAmortissementAnnees: number | null;
   commentaire: string | null;

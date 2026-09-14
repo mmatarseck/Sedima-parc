@@ -5,7 +5,9 @@ import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
 import { lireParametres } from "@/lib/parametres-demo";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
+import { normaliser } from "@/domaine/immatriculation";
 import { ChevronLeft, Link2, Lock, MapPin, Pencil, Radio, UserRound } from "lucide-react";
 import { BoutonDiscussion, PanneauDiscussion } from "@/composants/discussion/PanneauDiscussion";
 import { BandeauKpi } from "@/composants/interface/BandeauKpi";
@@ -95,6 +97,7 @@ function estOnglet(valeur: string | undefined): valeur is Onglet {
  * donc aucun décalage à compenser.
  */
 export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInitial, discussionInitiale = false, cible, detenteur }: { fiche: Fiche; transferts?: Transfert[]; /** Les comptes que la discussion peut citer ; ceux de la démonstration à défaut. */ utilisateurs?: Personne[]; ongletInitial?: string; discussionInitiale?: boolean; cible?: string; /** Le dossier du parc léger d'un véhicule de service ou de fonction : détenteur, forfait, plan car. */ detenteur?: ReactNode }) {
+  const router = useRouter();
   const [onglet, setOnglet] = useState<Onglet>(estOnglet(ongletInitial) ? ongletInitial : "apercu");
   useCible(cible, onglet);
   const [discussionOuverte, setDiscussionOuverte] = useState(discussionInitiale);
@@ -315,7 +318,25 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               type="button"
-              onClick={() => demander({ type: "vehicule", numero: numeroFiche, titre: `Fiche ${v.immatriculationAffichee}`, valeurs: { ...fiche.identite, ...fiche.ligne.vehicule } as unknown as Record<string, unknown> })}
+              onClick={() =>
+                demander({
+                  type: "vehicule",
+                  numero: numeroFiche,
+                  titre: `Fiche ${v.immatriculationAffichee}`,
+                  /* La plaque se propose au format d'affichage — c'est ainsi
+                     qu'on la lit sur la carte grise ; l'écriture la ramène à sa
+                     forme canonique. */
+                  valeurs: { ...fiche.identite, ...fiche.ligne.vehicule, immatriculation: v.immatriculationAffichee } as unknown as Record<string, unknown>,
+                  /* Changer la plaque change l'adresse de la fiche : sans ce
+                     saut, un rechargement tomberait sur l'ancienne, qui n'existe
+                     plus. Le véhicule, lui, n'a pas bougé — c'est le même
+                     identifiant qui porte ses dépenses et ses livraisons. */
+                  apresModification: (apres) => {
+                    const suivante = normaliser(String(apres.immatriculation ?? ""));
+                    if (suivante && suivante !== v.immatriculation) router.replace(`/flotte/${suivante}`);
+                  },
+                })
+              }
               className="bouton-secondaire"
             >
               <Pencil className="size-4 text-texte-2" strokeWidth={1.7} />

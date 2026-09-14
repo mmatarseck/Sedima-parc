@@ -5,7 +5,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { colonnesModification, ligneCreation, tableDe } from "../src/lib/transactions-colonnes";
+import { cleDe, colonnesModification, ligneCreation, tableDe } from "../src/lib/transactions-colonnes";
 
 const bac = process.env.PGLITE_DIR ?? "";
 const require = createRequire(join(bac, "package.json"));
@@ -101,6 +101,74 @@ attendu(`l'observation cite sa visite (${obs?.visite_numero}, ${obs?.centre}, ${
 const sansVisite = ligneCreation("observation", "OBS-2026-90002", { libelle: "Pneu usé" }, r);
 attendu(`une observation sans visite est refusée (${"refus" in sansVisite ? sansVisite.refus : "acceptée"})`, "refus" in sansVisite);
 attendu(`un type sans table le dit (${tableDe("prestataire")})`, tableDe("prestataire") === null);
+
+/* -- La fiche véhicule elle-même (14 septembre 2026) ------------------------- */
+/* Elle se crée et se modifie comme une transaction, mais sa clé est son
+   immatriculation : c'est ce que `cleDe` dit, et c'est ce qui permet de
+   corriger une plaque sans détacher ce qui pend au véhicule. */
+
+attendu(`le véhicule a sa table (${tableDe("vehicule")})`, tableDe("vehicule") === "vehicule");
+attendu("un véhicule se repère par sa plaque, les autres par leur numéro", cleDe("vehicule", "VEH-AB-060-KT").colonne === "immatriculation" && cleDe("vehicule", "VEH-AB-060-KT").valeur === "AB060KT" && cleDe("depense", "DEP-2026-90001").valeur === "DEP-2026-90001");
+
+const neuf = ligneCreation("vehicule", "VEH-2026-90001", { immatriculation: "DK-9911-ZZ", marque: "Tata", appellation: "LPT 1618", categorie: "camion", categorieFlotte: "interne", usage: "vrac", energie: "gasoil", statut: "en-service", ptac: "16 000", valeurAcquisition: 28500000, engage: true }, r);
+if ("refus" in neuf) attendu(`création d'un véhicule : ${neuf.refus}`, false);
+else {
+  await inserer("vehicule", neuf.ligne);
+  const n = (await pg.query(`select immatriculation, marque, categorie, ptac, valeur_acquisition, engage from vehicule where immatriculation = 'DK9911ZZ'`)).rows[0] as { immatriculation: string; marque: string; categorie: string; ptac: number; valeur_acquisition: string; engage: boolean };
+  attendu(`véhicule → vehicule (${n?.immatriculation}, ${n?.marque}, PTAC ${n?.ptac})`, n?.immatriculation === "DK9911ZZ" && n?.marque === "Tata" && n.ptac === 16000 && Number(n.valeur_acquisition) === 28500000 && n.engage === true);
+}
+const sansPlaque = ligneCreation("vehicule", "VEH-2026-90002", { marque: "Tata", appellation: "LPT 1618", categorie: "camion" }, r);
+attendu(`un véhicule sans immatriculation est refusé (${"refus" in sansPlaque ? sansPlaque.refus : "accepté"})`, "refus" in sansPlaque);
+const sansFamille = ligneCreation("vehicule", "VEH-2026-90003", { immatriculation: "DK-1111-AA", marque: "Tata", appellation: "LPT 1618", categorie: "cat-frigo" }, r);
+attendu(`une catégorie métier sans famille est refusée plutôt que devinée (${"refus" in sansFamille ? sansFamille.refus : "acceptée"})`, "refus" in sansFamille);
+const avecFamille = ligneCreation("vehicule", "VEH-2026-90004", { immatriculation: "DK-1111-AA", marque: "Tata", appellation: "LPT 1618", categorie: "cat-frigo", categorieFamille: "camion" }, r);
+attendu("la famille jointe range la catégorie métier", "ligne" in avecFamille && avecFamille.ligne.categorie === "camion" && avecFamille.ligne.categorie_metier === "cat-frigo");
+
+/* Deux véhicules ne partagent pas une plaque : c'est presque toujours le même
+   camion saisi deux fois. */
+let doublon = false;
+try {
+  if ("ligne" in neuf) await inserer("vehicule", neuf.ligne);
+} catch {
+  doublon = true;
+}
+attendu("une plaque déjà au parc est refusée", doublon);
+
+/* Changer la plaque : la ligne garde son identifiant, donc tout ce qui pend au
+   véhicule le suit — c'est la raison d'être de la correction en place. */
+const avant = (await pg.query(`select id from vehicule where immatriculation = 'DK9911ZZ'`)).rows[0] as { id: string };
+const renommage = colonnesModification("vehicule", [{ champ: "immatriculation", valeur: "dk 9911 aa" }, { champ: "ptac", valeur: "17 500" }, { champ: "transportSpecial", valeur: "oui" }]);
+attendu(`la plaque se range sous sa forme canonique (${renommage.immatriculation})`, renommage.immatriculation === "DK9911AA" && renommage.ptac === 17500 && renommage.transport_special === true);
+await pg.query(`update vehicule set immatriculation = $1, ptac = $2, transport_special = $3 where immatriculation = 'DK9911ZZ'`, [renommage.immatriculation, renommage.ptac, renommage.transport_special]);
+const apresRenommage = (await pg.query(`select id, immatriculation from vehicule where id = $1`, [avant.id])).rows[0] as { id: string; immatriculation: string };
+attendu(`la plaque change sans changer d'identifiant (${apresRenommage?.immatriculation})`, apresRenommage?.immatriculation === "DK9911AA" && apresRenommage.id === avant.id);
+
+/* Ce qui se calcule ne s'écrit pas : cinq champs étaient proposés à la saisie
+   alors que la fiche les déduit du site, de l'usage, de la business unit, de la
+   catégorie de flotte et des relevés. */
+const calcules = colonnesModification("vehicule", [{ champ: "region", valeur: "Thiès" }, { champ: "entite", valeur: "KFC" }, { champ: "utilisation", valeur: "Vrac" }, { champ: "regimePropriete", valeur: "Location" }, { champ: "gpsActif", valeur: "oui" }]);
+attendu(`aucun champ calculé ne prétend s'écrire (${Object.keys(calcules).length} colonne(s))`, Object.keys(calcules).length === 0);
+
+/* Sortir un véhicule du parc : le statut terminal exige sa date (0047). */
+let sansDate = false;
+try {
+  await pg.query(`update vehicule set statut = 'sorti' where id = $1`, [avant.id]);
+} catch {
+  sansDate = true;
+}
+attendu("un véhicule sorti sans date de sortie est refusé", sansDate);
+await pg.query(`update vehicule set statut = 'sorti', date_sortie = '2026-09-14', motif_sortie = 'cede' where id = $1`, [avant.id]);
+const sorti = (await pg.query(`select statut, date_sortie::text, motif_sortie from vehicule where id = $1`, [avant.id])).rows[0] as { statut: string; date_sortie: string; motif_sortie: string };
+attendu(`il sort daté et motivé (${sorti?.statut}, ${sorti?.date_sortie}, ${sorti?.motif_sortie})`, sorti?.statut === "sorti" && sorti.date_sortie === "2026-09-14" && sorti.motif_sortie === "cede");
+const sortiSansDate = ligneCreation("vehicule", "VEH-2026-90005", { immatriculation: "DK-2222-BB", marque: "Tata", appellation: "LPT 1618", categorie: "camion", statut: "sorti" }, r);
+attendu(`une création « sortie » sans date est refusée (${"refus" in sortiSansDate ? sortiSansDate.refus : "acceptée"})`, "refus" in sortiSansDate);
+let motifInvente = false;
+try {
+  await pg.query(`update vehicule set motif_sortie = 'perdu-de-vue' where id = $1`, [avant.id]);
+} catch {
+  motifInvente = true;
+}
+attendu("un motif de sortie hors vocabulaire est refusé", motifInvente);
 
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);

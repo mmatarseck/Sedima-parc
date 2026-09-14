@@ -8,7 +8,8 @@ import { ChampSaisie } from "@/composants/transactions/ChampSaisie";
 import { champsDesSections, sectionsNouveauVehicule, type ContexteNouveauVehicule, type SectionFormulaire } from "@/composants/flotte/sections-vehicule";
 import { Numero } from "@/composants/interface/Numero";
 import { enregistrerCreation } from "@/lib/clotures-demo";
-import { apprendreVehicule } from "@/lib/parametres-demo";
+import { familleDe } from "@/domaine/parametres";
+import { apprendreVehicule, lireParametres } from "@/lib/parametres-demo";
 
 /* ============================================================================
  * Nouveau véhicule — une page, six sections, sur le modèle de Fleetio
@@ -90,6 +91,11 @@ export function EcranNouveauVehicule({ contexte }: { contexte: ContexteNouveauVe
     }
     const valeurs: Record<string, unknown> = {};
     for (const c of champs) valeurs[c.cle] = valeurSortie(c.type, saisie[c.cle] ?? "");
+    /* La catégorie s'écrit en deux colonnes : la **famille** décide des règles —
+       documents, plafond kilométrique, entretien, silhouette —, et la catégorie
+       ajoutée par le métier ne fait que la nommer. Cet écran connaît les
+       catégories des paramètres, la base non : on lui joint la famille. */
+    if (typeof valeurs.categorie === "string") valeurs.categorieFamille = familleDe(valeurs.categorie, lireParametres().vehicules.categories);
     const resultat = enregistrerCreation({ sujet: "flotte", type: "vehicule", champs, valeurs, motif: "" });
     if (resultat.issue !== "creee") {
       setIssue({ erreur: resultat.issue === "mois-clos" ? `Le mois ${resultat.mois} est clos : la création attend sa réouverture.` : "La création n'a pas pu être enregistrée." });

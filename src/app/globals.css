@@ -71,6 +71,8 @@
   --color-statut-mutation: #22272b;
   --color-statut-retrait: #a9b2b8;
   --color-statut-a-recevoir: #7f9bb5;
+  /* Sorti du parc : plus pâle que « retrait en cours », qui est encore en mouvement. */
+  --color-statut-sorti: #c8ced2;
 
   /* -- Typographie -------------------------------------------------------- */
   --font-sans: "Inter", -apple-system, "Segoe UI", sans-serif;

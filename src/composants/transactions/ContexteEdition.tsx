@@ -29,6 +29,11 @@ export interface DemandeEdition {
   valeurs: Record<string, unknown>;
   /** Champs à proposer ; ceux du type par défaut. */
   champs?: ChampEdition[];
+  /**
+   * Ce que la modification entraîne ailleurs, une fois appliquée : changer la
+   * plaque d'un véhicule change l'adresse de sa fiche, qui doit suivre.
+   */
+  apresModification?: (apres: Record<string, unknown>) => void;
 }
 
 export interface DemandeCreation {
@@ -134,6 +139,7 @@ export function FournisseurEdition({ sujet, href, children }: { sujet: string; h
           numero={courante.d.numero}
           titre={courante.d.titre}
           champs={courante.d.champs}
+          apresModification={courante.d.apresModification}
           valeurs={surcharger({ numero: courante.d.numero, ...courante.d.valeurs })}
           href={href}
           onFermer={() => setCourante(null)}
