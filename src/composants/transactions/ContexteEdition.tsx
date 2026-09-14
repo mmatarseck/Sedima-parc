@@ -82,7 +82,10 @@ export function FournisseurEdition({ sujet, href, children }: { sujet: string; h
 
   useEffect(() => {
     setSurcharges(lireToutesSurcharges());
-    setCreees(lireCreations(sujet));
+    /* Une création que la base a confirmée n'est plus servie ici : le serveur la
+       renvoie déjà avec le reste, et la servir en plus l'afficherait deux fois —
+       dans la liste, dans les totaux, et dans les alertes qui s'en nourrissent. */
+    setCreees(lireCreations(sujet).filter((c) => !c.enBase));
   }, [version, sujet]);
 
   const surcharger = useCallback(

@@ -207,7 +207,12 @@ const COLONNES: ColonneListe<LigneFlotte>[] = [
   {
     cle: "statut",
     libelle: "Statut",
-    parDefaut: false,
+    /* Affichée par défaut depuis le 14 septembre 2026. Le filet de début de
+       ligne porte bien la couleur de l'état, mais il n'a pas d'affordance :
+       tant que cette colonne restait facultative, le crayon qui change le
+       statut était inatteignable sur la liste telle qu'elle s'ouvre — et c'est
+       en parcourant la liste qu'on s'aperçoit qu'un camion ne partira pas. */
+    parDefaut: true,
     largeur: 220,
     /* Le motif administratif n'est plus écrit sous la pastille (demande du
        métier du 3 septembre) : la fiche le détaille, la ligne reste sur une

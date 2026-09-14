@@ -182,6 +182,17 @@ export interface Creation {
   date: string;
   auteur: string;
   valeurs: Record<string, unknown>;
+  /**
+   * Vrai dès que la base a confirmé l'écriture. La copie du navigateur ne sert
+   * qu'à montrer la ligne **avant** que le serveur ne la connaisse ; une fois
+   * qu'il la connaît, c'est la sienne qui fait foi. Sans ce drapeau, les deux
+   * s'affichent l'une sous l'autre et la ligne compte double — dans la liste,
+   * dans les totaux, et dans les alertes qui s'en nourrissent.
+   *
+   * La copie n'est pas effacée pour autant : elle porte le journal de sa
+   * création, qu'on lit encore dans l'historique de la transaction.
+   */
+  enBase?: boolean;
 }
 
 /** Valeur affichable d'un champ, pour le journal des modifications. */

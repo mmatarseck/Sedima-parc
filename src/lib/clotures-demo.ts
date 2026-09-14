@@ -260,11 +260,28 @@ function renumeroter(sujet: string, ancien: string, nouveau: string): void {
   }
 }
 
+/**
+ * La base a pris la ligne : c'est désormais la sienne qui fait foi. La copie du
+ * navigateur est marquée plutôt qu'effacée — elle porte le journal de sa
+ * création —, et les écrans cessent de la servir. Sans cela, la ligne
+ * s'afficherait deux fois dès que le serveur la renvoie, et compterait double
+ * dans les listes, les totaux et les alertes.
+ */
+function confirmerCreation(sujet: string, numero: string): void {
+  ecrireJson(
+    cleCreations(sujet),
+    lireCreations(sujet).map((c) => (c.numero === numero ? { ...c, enBase: true } : c)),
+  );
+}
+
 async function synchroniserCreation(creation: Creation): Promise<void> {
   try {
     const r = await ecrireCreation(creation);
     if (r.issue === "refusee") signalerRefus(`${TYPE_TRANSACTION[creation.type].libelle} ${creation.numero}`, r.motif, "#");
-    else if (r.issue === "ecrite" && r.numero !== creation.numero) renumeroter(creation.sujet, creation.numero, r.numero);
+    else if (r.issue === "ecrite") {
+      if (r.numero !== creation.numero) renumeroter(creation.sujet, creation.numero, r.numero);
+      confirmerCreation(creation.sujet, r.numero);
+    }
   } catch (e) {
     signalerRefus(`${TYPE_TRANSACTION[creation.type].libelle} ${creation.numero}`, `Non enregistré en base : ${e instanceof Error ? e.message : "erreur inconnue"}`, "#");
   }
@@ -289,13 +306,17 @@ export function lireCreations(sujet: string): Creation[] {
   return lireJson<Creation[]>(cleCreations(sujet), []);
 }
 
-/** Toutes les créations d'un type, toutes fiches confondues — pour le planning. */
+/**
+ * Toutes les créations d'un type, toutes fiches confondues — pour le planning.
+ * Celles que la base a confirmées sont tues : le serveur les renvoie déjà, et
+ * les servir en plus les compterait deux fois.
+ */
 export function lireToutesCreations(type: TypeTransaction): Creation[] {
   const resultat: Creation[] = [];
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && k.startsWith("sedima.parc.creations.")) resultat.push(...lireJson<Creation[]>(k, []).filter((c) => c.type === type));
+      if (k && k.startsWith("sedima.parc.creations.")) resultat.push(...lireJson<Creation[]>(k, []).filter((c) => c.type === type && !c.enBase));
     }
   } catch {
     /* stockage indisponible */
