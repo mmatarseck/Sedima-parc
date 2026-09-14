@@ -204,7 +204,10 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       const typeDoc = texte(v.type);
       if (!typeDoc) return { refus: "document sans type" };
       if (!r.vehiculeId && !r.chauffeurId) return { refus: "document sans porteur" };
-      return { ligne: { numero, type_document_id: typeDoc, vehicule_id: r.vehiculeId, chauffeur_id: r.vehiculeId ? null : r.chauffeurId, date_effet: texte(v.dateEffet), echeance: texte(v.echeance), emetteur: texte(v.emetteur), numero_piece: texte(v.numeroPiece), montant: nombre(v.montant), justificatif: booleen(v.justificatif) } };
+      /* Le fichier joint vaut justificatif : on ne coche pas « fourni » à côté
+         d'une pièce qu'on vient d'attacher. */
+      const fichier = texte(v.fichier);
+      return { ligne: { numero, type_document_id: typeDoc, vehicule_id: r.vehiculeId, chauffeur_id: r.vehiculeId ? null : r.chauffeurId, date_effet: texte(v.dateEffet), echeance: texte(v.echeance), emetteur: texte(v.emetteur), numero_piece: texte(v.numeroPiece), montant: nombre(v.montant), fichier, justificatif: booleen(v.justificatif) || Boolean(fichier) } };
     }
     case "incident": {
       const dateHeure = horodatage(v.dateHeure);
@@ -589,7 +592,7 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   releve: { date: "date", valeur: "km" },
   plein: { date: "date", litres: "litres", prixLitre: "prix_litre", montant: "montant", reference: "reference", km: "km", source: "source", photo: "photo" },
   depense: { date: "date", poste: "poste", libelle: "libelle", montant: "montant", beneficiaire: "beneficiaire", reference: "reference", km: "km", justificatif: "justificatif", origine: "origine", photo: "photo" },
-  document: { numeroPiece: "numero_piece", emetteur: "emetteur", dateEffet: "date_effet", echeance: "echeance", montant: "montant" },
+  document: { numeroPiece: "numero_piece", emetteur: "emetteur", dateEffet: "date_effet", echeance: "echeance", montant: "montant", fichier: "fichier" },
   incident: { dateHeure: "date_heure", lieu: "lieu", mission: "mission", kilometrage: "kilometrage", responsabilite: "responsabilite", statut: "statut", description: "description" },
   affectation: { debut: "debut", fin: "fin", motif: "motif" },
   intervention: { date: "date", type: "type", objet: "objet", km: "km", immobilisationJours: "immobilisation_jours", montant: "montant", reference: "reference" },

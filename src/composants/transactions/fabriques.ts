@@ -82,7 +82,7 @@ export function fabriquerDocument(c: Creation, categorie?: CategorieVehicule): D
   void categorie;
   const echeance = s(v.echeance) ?? echeanceCalculee(type, s(v.dateEffet), lireParametres());
   const { etat, joursRestants: j } = etatDocument(echeance);
-  return { numero: c.numero, type, numeroPiece: s(v.numeroPiece), emetteur: s(v.emetteur), dateEffet: s(v.dateEffet), echeance, montant: n(v.montant), justificatif: false, etat, joursRestants: j };
+  return { numero: c.numero, type, numeroPiece: s(v.numeroPiece), emetteur: s(v.emetteur), dateEffet: s(v.dateEffet), echeance, montant: n(v.montant), justificatif: Boolean(s(v.fichier)), etat, joursRestants: j, fichier: s(v.fichier) };
 }
 
 export function fabriquerReleve(c: Creation): ReleveFiche {

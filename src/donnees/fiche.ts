@@ -77,6 +77,22 @@ async function livraisonsDuVehicule(client: Awaited<ReturnType<typeof clientServ
 }
 
 /**
+ * La pièce jointe de chaque document du véhicule, par numéro. `lire_fiche()` ne
+ * projette pas la colonne `fichier` : la réécrire entière pour elle coûterait
+ * plus qu'une requête bornée au véhicule, et un document dont on ne peut pas
+ * ouvrir la pièce ne prouve rien le jour du contrôle.
+ */
+async function piecesJointesDuVehicule(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<Map<string, string>> {
+  if (!UUID.test(vehiculeId)) return new Map();
+  const lecture = await client.from("document").select("numero, fichier").eq("vehicule_id", vehiculeId).not("fichier", "is", null).limit(2000).returns<{ numero: string; fichier: string }[]>();
+  if (lecture.error) {
+    console.warn(`Documents ${vehiculeId} : pièces jointes illisibles (${lecture.error.message}).`);
+    return new Map();
+  }
+  return new Map(lecture.data.map((d) => [d.numero, d.fichier]));
+}
+
+/**
  * La fiche de **tout** véhicule de la base — transport, service ou fonction —, par
  * immatriculation sous n'importe quelle écriture ; nulle hors périmètre.
  *
@@ -100,7 +116,11 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
     return assemblerFiche(ligne, FAITS_VIDES, parametres, DATE_REFERENCE, { programme: programmeParDefaut(d.categorie), plan: planDuVehicule(d.id, d.categorie), passages: passagesReleves });
   }
   const client = await clientServeur();
-  const [lecture, livraisons] = await Promise.all([client.rpc("lire_fiche", { immat: canonique }).maybeSingle<FicheJson | null>(), livraisonsDuVehicule(client, ligne.vehicule.id)]);
+  const [lecture, livraisons, piecesJointes] = await Promise.all([
+    client.rpc("lire_fiche", { immat: canonique }).maybeSingle<FicheJson | null>(),
+    livraisonsDuVehicule(client, ligne.vehicule.id),
+    piecesJointesDuVehicule(client, ligne.vehicule.id),
+  ]);
   /* Fonction pas encore jouée : la fiche se dresse sur la ligne seule, sans historique — pas d'erreur. */
   if (lecture.error) console.warn(`Fiche ${canonique} : lire_fiche() indisponible (${lecture.error.message}), fiche dressée sans historique.`);
   const aujourdhui = new Date().toISOString().slice(0, 10);
@@ -109,7 +129,12 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
   /* Une donnée fautive dans l'historique ne doit pas fermer la fiche : elle
      s'ouvre alors sans historique, et le journal du serveur dit pourquoi. */
   try {
-    return assemblerFiche(ligne, { ...(!lecture.error && lecture.data ? faitsDepuisJson(lecture.data) : FAITS_VIDES), livraisons }, parametres, aujourdhui, plan);
+    const faits = !lecture.error && lecture.data ? faitsDepuisJson(lecture.data) : FAITS_VIDES;
+    /* La pièce jointe d'un document vient d'une lecture à part : `lire_fiche()`
+       ne la projette pas, et réécrire la fonction entière pour une colonne
+       coûterait plus qu'une requête bornée au véhicule. */
+    const documents = faits.documents.map((d) => ({ ...d, fichier: piecesJointes.get(d.numero) ?? null }));
+    return assemblerFiche(ligne, { ...faits, documents, livraisons }, parametres, aujourdhui, plan);
   } catch (e) {
     console.error(`Fiche ${canonique} : assemblage impossible sur l'historique lu — ${e instanceof Error ? e.stack ?? e.message : String(e)}`);
     return assemblerFiche(ligne, { ...FAITS_VIDES, livraisons }, parametres, aujourdhui, plan);

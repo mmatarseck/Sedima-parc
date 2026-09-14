@@ -257,6 +257,11 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "dateEffet", libelle: "Date d'effet", type: "date", obligatoire: true },
     { cle: "echeance", libelle: "Échéance (calculée si vide, selon la validité du document)", type: "date" },
     { cle: "montant", libelle: "Montant", type: "nombre", unite: "F" },
+    /* La colonne `fichier` existait depuis 0001 sans que rien ne la remplisse :
+       un document dont on ne peut pas ouvrir la pièce ne prouve rien le jour
+       du contrôle routier. Le scan va au seau, la ligne n'en garde que la
+       référence — comme la photo d'un véhicule. */
+    { cle: "fichier", libelle: "Le document", type: "photo", dossier: "documents", precision: "Le scan ou la photo : carte grise, police d'assurance, procès-verbal de visite" },
   ],
   releve: [DATE("date"), { cle: "valeur", libelle: "Compteur", type: "nombre", unite: "km", obligatoire: true }],
   affectation: [DATE("debut", "Début"), { cle: "fin", libelle: "Fin", type: "date" }, { cle: "motif", libelle: "Motif", type: "texte" }],

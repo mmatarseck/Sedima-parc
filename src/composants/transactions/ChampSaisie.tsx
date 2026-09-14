@@ -58,7 +58,18 @@ export function ChampSaisie({
     return <ChampCombo valeur={String(v ?? "")} onChange={onChange} options={champ.suggestionsDe ? champ.suggestionsDe(saisie) : (champ.options ?? [])} creation invalide={invalide} placeholder="Choisir, ou écrire pour créer" />;
   }
   if (champ.type === "photo") {
-    return <ChampPhoto valeur={typeof v === "string" && v ? v : null} onChange={(ref) => onChange(ref ?? "")} dossier="pieces" libelle="Photo de la pièce" precision={champ.obligatoire ? "Obligatoire : le ticket, le bon, la facture" : "Facultative"} compact />;
+    /* Le libellé du champ dit ce qu'on attend — « Photo de la pièce », « Scan du
+       document » —, et le dossier décide où le fichier part dans le seau. */
+    return (
+      <ChampPhoto
+        valeur={typeof v === "string" && v ? v : null}
+        onChange={(ref) => onChange(ref ?? "")}
+        dossier={champ.dossier ?? "pieces"}
+        libelle={champ.libelle}
+        precision={champ.precision ?? (champ.obligatoire ? "Obligatoire : le ticket, le bon, la facture" : "Facultative")}
+        compact
+      />
+    );
   }
   if (champ.type === "texte-long") {
     return <textarea value={String(v ?? "")} onChange={(e) => onChange(e.target.value)} rows={3} className={`${commun} h-auto resize-none py-2 leading-relaxed`} />;

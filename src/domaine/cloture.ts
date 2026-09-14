@@ -75,6 +75,10 @@ export interface ChampEdition {
    * obligation invisible bloquerait l'enregistrement sans qu'on sache pourquoi.
    */
   visibleSi?: (saisie: Record<string, string | boolean>) => boolean;
+  /** Pour un champ « photo » : le dossier du seau où le fichier part. « pieces » par défaut. */
+  dossier?: string;
+  /** Une phrase sous le champ, quand son libellé ne suffit pas à dire ce qu'on attend. */
+  precision?: string;
 }
 
 /** Une modification appliquée ou demandée sur un champ d'une transaction. */

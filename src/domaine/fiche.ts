@@ -22,6 +22,8 @@ export interface DocumentFiche {
   dateEffet: string | null;
   echeance: string | null;
   montant: number | null;
+  /** Le scan ou la photo, dans le seau : la fiche n'en garde que la référence. */
+  fichier?: string | null;
   justificatif: boolean;
   etat: EtatDocument;
   joursRestants: number | null;

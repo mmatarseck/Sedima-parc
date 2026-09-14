@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ENERGIE } from "@/domaine/libelles";
 import { STATUT_TRANSFERT, libellePartie, statutTransfert, type Transfert } from "@/domaine/transferts";
 import { lireAccesCourant } from "@/lib/acces-courant";
+import { urlPhoto } from "@/lib/photos";
 import { lireTransferts } from "@/lib/transferts-demo";
 
 import Link from "next/link";
@@ -137,14 +138,40 @@ function PastilleOrigine({ origine }: { origine: DepenseFiche["origine"] }) {
   );
 }
 
-function Justificatif({ present }: { present: boolean }) {
-  return present ? (
-    <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-texte-2" title="La pièce est déclarée fournie. Sa consultation viendra avec le stockage des fichiers — rien n'en tient encore le contenu.">
-      <FileText className="size-3.5 text-attenue" strokeWidth={1.8} />
-      Fourni
-    </span>
-  ) : (
-    <Echeance ton="vigilance">manquant</Echeance>
+/**
+ * Le justificatif d'une ligne. Quand un fichier est attaché, il s'ouvre : le
+ * lien est signé à la demande, au clic, plutôt que pour chaque ligne au
+ * chargement — une liste de trente documents ne doit pas signer trente adresses
+ * pour n'en ouvrir aucune. Sans fichier, « Fourni » reste une déclaration.
+ */
+function Justificatif({ present, fichier }: { present: boolean; fichier?: string | null }) {
+  const [ouverture, setOuverture] = useState(false);
+  if (!present) return <Echeance ton="vigilance">manquant</Echeance>;
+  if (!fichier) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-texte-2" title="La pièce est déclarée fournie, mais aucun fichier n'y est attaché : « Modifier » permet de l'ajouter.">
+        <FileText className="size-3.5 text-attenue" strokeWidth={1.8} />
+        Fourni
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      disabled={ouverture}
+      title="Ouvrir la pièce"
+      onClick={async (e) => {
+        e.stopPropagation();
+        setOuverture(true);
+        const url = await urlPhoto(fichier);
+        setOuverture(false);
+        if (url) window.open(url, "_blank", "noopener,noreferrer");
+      }}
+      className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-accent-fonce hover:underline disabled:text-attenue"
+    >
+      <FileText className="size-3.5" strokeWidth={1.8} />
+      {ouverture ? "Ouverture…" : "Ouvrir"}
+    </button>
   );
 }
 
@@ -642,7 +669,7 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
           { cle: "effet", libelle: "Effet", rendu: (d) => <span className="code">{date(d.dateEffet)}</span> },
           { cle: "echeance", libelle: "Échéance", rendu: (d) => <span className="code">{date(d.echeance)}</span> },
           { cle: "montant", libelle: "Montant", alignee: "droite", rendu: (d) => montant(d.montant) },
-          { cle: "justificatif", libelle: "Justificatif", rendu: (d) => (d.justificatif ? <Justificatif present /> : <span className="text-attenue-2">à fournir</span>) },
+          { cle: "justificatif", libelle: "Justificatif", rendu: (d) => (d.justificatif ? <Justificatif present fichier={d.fichier} /> : <span className="text-attenue-2">à fournir</span>) },
           { cle: "etat", libelle: "État", rendu: (d) => <Echeance ton={TON_ETAT[d.etat]}>{etatDocumentLibelle(d)}</Echeance> },
         ]}
       />
