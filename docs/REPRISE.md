@@ -7,7 +7,17 @@ Elle dit où en est le projet, ce qui a été décidé, et ce qui reste à faire
 
 ## 0 quinquies. Passage de relais du 14 septembre 2026 — lire ceci d'abord
 
-**Rien n'attend dans le SQL Editor.** Migrations 0001 à 0048 jouées — dont le statut « sorti » et ce
+**Trois fichiers attendent dans le SQL Editor**, dans cet ordre :
+
+```
+supabase/cartes-grises.sql              -- ce que disent les cartes grises (CARTES-GRISES.md)
+supabase/correctif-plaques-refaites.sql -- un véhicule réimmatriculé n'est pas deux véhicules
+supabase/correctif-lot-2.sql            -- les dix plaques du lot 2
+```
+
+Le correctif des plaques vient après les cartes grises : c'est leur lecture qui l'a rendu possible.
+
+**Migrations 0001 à 0048 jouées** — dont le statut « sorti » et ce
 qu'une sortie laisse écrit (0046, 0047), et le vendeur du véhicule (0048) —, et avec elles tous les
 chargements de données réelles, magasin de pièces compris (`PIECES-REELLES.md`). Les blocs marqués
 « joué » plus bas disent chacun ce qu'il a apporté ; voici l'état d'ensemble.
