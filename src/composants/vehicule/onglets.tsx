@@ -205,9 +205,14 @@ export function OngletApercu({ fiche }: { fiche: FicheVehicule }) {
   const dernierPlein = [...creations("plein", fabriquerPlein), ...fiche.pleins.map(surcharger)].sort((x, y) => y.date.localeCompare(x.date))[0] ?? null;
 
   return (
-    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-      <div className="flex min-w-0 flex-col gap-5">
-        {/* ---- Charges en trois familles ---- */}
+    /* Les quatre cartes sont enfants directs de la grille, et non deux colonnes
+       empilées côte à côte : deux piles indépendantes se décalent dès que l'une
+       porte une ligne de plus, et l'œil lit des escaliers. Enfants directs, les
+       cellules d'une même rangée s'étirent à la hauteur de la plus haute —
+       « Charges » avec « Situation », « Dépenses mensuelles » avec
+       « Prochaines échéances » (métier, 14 septembre 2026). */
+    <div className="grid grid-cols-1 items-stretch gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      {/* ---- Charges en trois familles ---- */}
         <Carte titre="Charges sur 12 mois" precision={`${montant(totalCharges)} · ${nombre(coutParKm)} F/km · toutes voies de paiement`}>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             {chargesParGroupe.map((g) => {
@@ -249,10 +254,7 @@ export function OngletApercu({ fiche }: { fiche: FicheVehicule }) {
           />
         </Carte>
 
-      </div>
-
-      <div className="flex min-w-0 flex-col gap-5">
-        {/* ---- Situation ---- */}
+      {/* ---- Situation ---- */}
         <Carte titre="Situation">
           <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
             <div className="min-w-0">
@@ -320,7 +322,6 @@ export function OngletApercu({ fiche }: { fiche: FicheVehicule }) {
             ))}
           </ul>
         </Carte>
-      </div>
     </div>
   );
 }

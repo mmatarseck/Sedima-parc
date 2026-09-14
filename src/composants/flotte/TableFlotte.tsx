@@ -4,6 +4,7 @@ import { ENERGIE } from "@/domaine/libelles";
 
 import { Echeance } from "@/composants/interface/Pastille";
 import { StatutModifiable } from "@/composants/vehicule/StatutModifiable";
+import { ChauffeurDeLaLigne } from "@/composants/vehicule/ChauffeurDeLaLigne";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
 import { REGIME_USAGE } from "@/domaine/parc-leger";
 import { PhotoVehicule } from "@/composants/vehicule/PhotoVehicule";
@@ -128,19 +129,7 @@ const COLONNES: ColonneListe<LigneFlotte>[] = [
     parDefaut: true,
     largeur: 170,
     texte: (l) => l.attributaire?.nom ?? l.chauffeurTitulaire?.nom ?? "Non affecté",
-    rendu: (l) =>
-      l.attributaire ? (
-        /* Un véhicule de service ou de fonction : la personne qui le tient, ou le pool. */
-        <>
-          <span className={`block truncate ${l.attributaire.pool ? "text-texte-2" : ""}`}>{l.attributaire.nom}</span>
-          {l.attributaire.fonction ? <span className="meta block truncate">{l.attributaire.fonction}</span> : null}
-        </>
-      ) : (
-        <>
-          <span className="block truncate">{l.chauffeurTitulaire?.nom ?? <span className="text-attenue-2">Non affecté</span>}</span>
-          {l.nombreSuppleants > 0 ? <span className="meta block truncate">+ {l.nombreSuppleants} suppléant</span> : null}
-        </>
-      ),
+    rendu: (l) => <ChauffeurDeLaLigne ligne={l} />,
   },
   {
     cle: "attelage",
