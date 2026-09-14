@@ -97,6 +97,18 @@ const tracables = await un<{ n: number }>(`select count(*)::int as n from depens
 attendu("chaque dépense sans véhicule nomme quelqu'un", tracables.n === 0);
 const vehicules = await un<{ n: number; distincts: number }>(`select count(vehicule_id)::int as n, count(distinct vehicule_id)::int as distincts from depense where numero like 'DEP-CP-%'`);
 attendu(`${vehicules.n} dépenses rattachées à ${vehicules.distincts} véhicules par la plaque du libellé`, vehicules.n > 1500 && vehicules.distincts > 40);
+/* Le véhicule nommé dans le libellé est rattaché (métier, 14 septembre 2026). */
+const correctif = readFileSync(join(projet, "supabase/correctif-vehicules-depenses.sql"), "utf8");
+const jouerCorrectif = () => pg.exec(correctif.slice(0, correctif.indexOf("-- ---------------------------------------------------------------------------\n-- Vérification")));
+await jouerCorrectif();
+const apresCorrectif = await un<{ n: number; restant: number; nommes: number }>(`select count(vehicule_id)::int as n,
+    count(*) filter (where vehicule_id is null and plaque_du_texte(libelle) is not null)::int as restant,
+    count(*) filter (where vehicule_id is not null and beneficiaire = 'Caisse parc — bénéficiaire non nommé')::int as nommes
+  from depense where numero like 'DEP-CP-%'`);
+await jouerCorrectif();
+const rejoueCaisse = await un<{ n: number }>(`select count(vehicule_id)::int as n from depense where numero like 'DEP-CP-%'`);
+attendu(`le correctif rattache le véhicule nommé dans le libellé : ${vehicules.n} → ${apresCorrectif.n} dépenses (${apresCorrectif.restant} plaques hors référentiel), et rejouable`, apresCorrectif.n >= vehicules.n && rejoueCaisse.n === apresCorrectif.n && apresCorrectif.nommes === 0);
+
 const parametre = await un<{ solde: string }>(`select valeur->>'soldeInitial' as solde from parametre where cle = 'caisse'`);
 attendu(`le solde reporté est remis à zéro (${parametre.solde})`, parametre.solde === "0");
 

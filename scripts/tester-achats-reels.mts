@@ -75,8 +75,9 @@ for (const f of readdirSync(dossier).filter((x) => x.endsWith(".sql")).sort()) a
 
 const bons = await un<{ n: number; reglees: number }>(`select count(*)::int as n, count(*) filter (where etape = 'reglee')::int as reglees from demande_achat where numero like 'DAC-R-0%'`);
 attendu(`${bons.n} demandes entrées pour ${annonce} bons annoncés, toutes réglées`, bons.n === annonce && annonce > 600 && bons.reglees === bons.n);
+const toutes = await un<{ n: number }>(`select count(*)::int as n from demande_achat where numero like 'DAC-R-%'`);
 for (const f of readdirSync(dossier).filter((x) => x.endsWith(".sql")).sort()) await jouer(join(dossier, f));
-attendu("rejouable : les fichiers rejoués n'ajoutent rien", (await un<{ n: number }>(`select count(*)::int as n from demande_achat where numero like 'DAC-R-%'`)).n === bons.n + 6);
+attendu(`rejouable : les fichiers rejoués n'ajoutent rien (${toutes.n} demandes)`, (await un<{ n: number }>(`select count(*)::int as n from demande_achat where numero like 'DAC-R-%'`)).n === toutes.n);
 
 const origines = (await pg.query<{ origine: string; n: number; depense: number; vehicule: number; prestataire: number }>(
   `select case when origine_numero like 'INT-%' then 'intervention' when origine_numero like 'PRS-%' then 'prestation' when origine_numero like 'DEP-%' then 'dépense' else 'bon' end as origine,
@@ -96,17 +97,30 @@ attendu(`la dépense citée porte le montant du bon (${ecarts.liees} liées, ${e
 const sansPrestataire = await un<{ n: number }>(`select count(*)::int as n from demande_achat where numero like 'DAC-R-0%' and prestataire_id is null and fournisseur is null`);
 attendu("chaque demande nomme son fournisseur, au référentiel ou en clair", sansPrestataire.n === 0);
 
+/* Le véhicule nommé dans l'objet est rattaché (métier, 14 septembre 2026). */
+const avantPlaques = await un<{ n: number }>(`select count(vehicule_id)::int as n from demande_achat where numero like 'DAC-R-%'`);
+await jouer(join(projet, "supabase/correctif-vehicules-depenses.sql"));
+const apresPlaques = await un<{ n: number; restant: number }>(`select count(vehicule_id)::int as n, count(*) filter (where vehicule_id is null and plaque_du_texte(objet) is not null)::int as restant from demande_achat where numero like 'DAC-R-%'`);
+await jouer(join(projet, "supabase/correctif-vehicules-depenses.sql"));
+const rejoue = await un<{ n: number }>(`select count(vehicule_id)::int as n from demande_achat where numero like 'DAC-R-%'`);
+/* Le chargeur lit déjà la plaque dans l'objet : le correctif ne rattrape que ce qu'un chargement plus ancien aurait laissé. */
+attendu(`le correctif ne laisse aucune plaque du référentiel sans véhicule : ${avantPlaques.n} → ${apresPlaques.n} demandes (${apresPlaques.restant} plaques hors référentiel), et rejouable`, apresPlaques.n >= avantPlaques.n && rejoue.n === apresPlaques.n && apresPlaques.restant < 40);
+
 const engagees = await un<{ n: number }>(`select count(*)::int as n from demande_achat where numero like 'DAC-R-%' and etape in ('commandee', 'livree')`);
 attendu("aucune demande chargée n'est un engagement en cours", engagees.n === 0);
 
-const factures = (await pg.query<{ numero_demande_x3: string; date: string; etape: string; montant_reel: number; montant_estime: number; prestataire: string | null }>(
-  `select a.numero_demande_x3, a.date::text as date, a.etape, a.montant_reel::float as montant_reel, a.montant_estime::float as montant_estime, p.numero as prestataire
-     from demande_achat a left join prestataire p on p.id = a.prestataire_id where a.numero like 'DAC-R-9%' order by a.numero`,
+const annonceRegistre = Number(/\*\* (\d+) demandes de septembre 2026/.exec(readFileSync(join(dossier, "achats-02-registre-du-parc.sql"), "utf8"))?.[1] ?? 0);
+const factures = (await pg.query<{ numero_demande_x3: string; date: string; etape: string; montant_reel: number; montant_estime: number; prestataire: string | null; vehicule: string | null }>(
+  `select a.numero_demande_x3, a.date::text as date, a.etape, a.montant_reel::float as montant_reel, a.montant_estime::float as montant_estime, p.numero as prestataire, v.immatriculation as vehicule
+     from demande_achat a left join prestataire p on p.id = a.prestataire_id left join vehicule v on v.id = a.vehicule_id where a.numero like 'DAC-R-9%' order by a.numero`,
 )).rows;
-attendu(`registre de septembre : ${factures.length} factures, toutes à régler pour leur montant hors taxe`, factures.length === 6 && factures.every((f) => f.etape === "facturee" && f.montant_reel === f.montant_estime));
+attendu(`registre du parc : ${factures.length} demandes (${annonceRegistre} annoncées), toutes à régler pour leur montant hors taxe`, factures.length === annonceRegistre && annonceRegistre > 15 && factures.every((f) => f.etape === "facturee" && f.montant_reel === f.montant_estime));
 const wade = factures.find((f) => f.numero_demande_x3 === "DA200-2609134");
 attendu(`Dr Wade : la date du registre (10/01) cède au numéro de la DA (${wade?.date})`, wade?.date === "2026-09-10" && wade.prestataire === "PRE-2026-00027");
-attendu("« DEM » reste sans fiche, les cinq autres ont leur transporteur", factures.filter((f) => f.prestataire === null).length === 1 && factures.find((f) => f.numero_demande_x3 === "DA200-2609129")?.prestataire === null);
+const avecVehicule = factures.filter((f) => f.vehicule);
+attendu(`le véhicule nommé dans la description est rattaché : ${avecVehicule.length} demandes (${avecVehicule.slice(0, 3).map((f) => f.vehicule).join(", ")})`, avecVehicule.length >= 5);
+const nommes = factures.filter((f) => f.prestataire !== null).length;
+attendu(`${nommes} demandes du registre retrouvent leur fournisseur au référentiel ; les autres le gardent en clair`, nommes >= 6 && factures.every((f) => f.numero_demande_x3.length > 0));
 
 /* Le métier, le 11 septembre 2026 : la taxe de 18 % de Dr Wade est de la TVA. */
 await jouer(join(projet, "supabase/correctif-dr-wade-tva.sql"));

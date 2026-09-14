@@ -59,6 +59,22 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
+**⚠ À jouer : le véhicule nommé dans le texte, et le registre des demandes d'achat à jour** (14 septembre
+2026). Le métier : « sur les dépenses de caisse et les DA, extraire l'immatriculation du texte si disponible,
+et codifier le véhicule affecté ».
+
+1. `supabase/correctif-vehicules-depenses.sql` — pose `plaque_du_texte()` et rattache le véhicule que le texte
+   nomme aux demandes d'achat (l'objet) et aux dépenses de la caisse (le libellé), sans toucher au libellé ni
+   au montant ; le « bénéficiaire non nommé » s'efface quand le véhicule est trouvé. Rejouable.
+2. `supabase/achats-parties/achats-02-registre-du-parc.sql` — le registre a grandi : **22 demandes** de
+   septembre 2026 (34,5 M F HT) au lieu de six, achats de pièces payés en caisse compris. Le fournisseur se
+   retrouve au référentiel sur son nom ; onze restent en clair. Sept demandes portent le véhicule que leur
+   description nomme. `achats-01-bons-de-commande.sql` est régénéré : il lit désormais la plaque dans l'objet
+   quand la colonne est vide (les lignes déjà en base sont reprises par le correctif).
+
+Restent des plaques citées mais hors référentiel : 26 sur les demandes d'achat, 66 sur la caisse. Bancs
+`tester-achats-reels.mts` et `tester-caisse-reelle.mts`.
+
 **⚠ Chargement à jouer : la caisse parc réelle, 2025-2026** (11 septembre 2026). La caisse n'avait aucun
 mouvement : sa pastille disait « — » et le registre des contraventions était vide. `supabase/caisse-parties/`
 (six fichiers de 400 Ko, à jouer dans l'ordre — le SQL Editor refuse plus gros) porte **42 quinzaines, 3 949 dépenses, 3 990 mouvements**, du 20 janvier 2025 au 31 août 2026,

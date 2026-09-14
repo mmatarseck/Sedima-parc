@@ -36,7 +36,9 @@ depuis la purge.
 - **Bons écartés** : 13 doublons exclus des totaux par l'extraction elle-même,
   et 2 bons en euros.
 
-**`achats-02-registre-septembre.sql`** : **6 demandes**, pour 13 461 223 F HT.
+**`achats-02-registre-du-parc.sql`** : **22 demandes** de septembre 2026, pour 34 522 124 F HT —
+le registre a grandi depuis le premier chargement, et couvre aussi les achats de
+pièces payés par la caisse (numéros « CA200-… »).
 
 ## L'étape : réglée
 
@@ -68,10 +70,19 @@ porte.
   acquisitions, le carburant, et les bons de maintenance dont la plaque n'est
   pas au parc.
 
-## Le registre de septembre : six factures à payer
+## Le registre du parc : 22 demandes de septembre 2026
 
 La facture est reçue : la demande est **facturée**, pour son montant hors taxe, et
 devient une dette envers le transporteur.
+
+**Le véhicule vient de la description** (métier, 14 septembre 2026) : la colonne prévue
+est vide, mais la phrase le nomme — « BATTERIE 75AH VEHICULE AA 019 EA », « ENTRETIEN
+AA 963 JM AUX 55000 KM ». Sept demandes sur 22 sont ainsi rattachées à leur véhicule.
+**Le fournisseur** se retrouve au référentiel sur son nom normalisé ; onze le gardent en
+clair, faute de fiche (DEM, Cheikh Dieng, Djily Diop, Divers, Mecano Ridial, SSPI, Daaba
+Services, Lasa, Baba Mecano, Ely Ngom, Tata International).
+
+Les six premières demandes, celles des transporteurs :
 
 | DA | Transporteur | HT |
 | --- | --- | ---: |
@@ -89,6 +100,19 @@ devient une dette envers le transporteur.
   profil au régime TVA et l'écrit sur la demande.
 - **Dr Wade** : le registre date sa DA du 10 janvier 2026. Son numéro
   (DA200-**2609**134) la place en septembre, et c'est cette date qui est retenue.
+- **Deux demandes ne sont pas datées** : leur numéro donne le mois, le jour reste
+  inconnu — le premier du mois, et le commentaire le dit.
+- **Une ligne sans numéro** prolonge la demande précédente : c'est une seconde
+  fourniture du même achat (les pneus SSPI du 3 septembre).
+
+## Le véhicule nommé dans le texte
+
+`supabase/correctif-vehicules-depenses.sql` rattache le véhicule que le texte nomme, sur
+les lignes déjà chargées : les demandes d'achat (l'objet) et les dépenses de la caisse
+(le libellé). Il pose la fonction `plaque_du_texte()`, ne touche ni au libellé ni au
+montant, et efface le « bénéficiaire non nommé » quand le véhicule est trouvé. Il est
+rejouable. Restent des plaques citées mais absentes du référentiel : 26 sur les demandes
+d'achat, 66 sur la caisse.
 
 ## À trancher par le métier
 

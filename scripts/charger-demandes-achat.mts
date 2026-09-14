@@ -37,11 +37,11 @@
  * Lancer : npx tsx scripts/charger-demandes-achat.mts
  * ==========================================================================*/
 
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { lireClasseur, type Cellule } from "./lire-xlsx.mts";
 import { cleFournisseur, nomPropre } from "./noms-fournisseurs.mts";
-import { normaliser } from "../src/domaine/immatriculation";
+import { extraireDepuisLibelle, normaliser } from "../src/domaine/immatriculation";
 
 const DO = "C:/Users/mamadou.seck/OneDrive - SEDIMA S.A/Direction des Operations (DO) - Documents/6. Logistique & Distribution/";
 const CLASSEUR = DO + "62. Transport & Flotte Automobile/61. Gestion Parc/Maintenance/SEDIMA_Maintenance_Parc_Bons_de_commande.xlsx";
@@ -132,7 +132,10 @@ for (const l of feuille.lignes.slice(1)) {
   const categorie = texte(l[c.categorie]);
   const poste = POSTES[categorie];
   if (!poste) throw new Error(`catégorie « ${categorie} » sans poste`);
-  const immat = normaliser(texte(l[c.immat]));
+  /* La colonne « Immatriculation » ne remplit que la moitié des bons ; l'objet, lui, nomme souvent le véhicule
+     (« RÉPARATION DU VÉHICULE AA 565 GA »). On le lit à défaut — métier, 14 septembre 2026. */
+  const colonne = normaliser(texte(l[c.immat]));
+  const immat = /^[A-Z]{2}\d{3,4}[A-Z]{1,2}$/.test(colonne) ? colonne : (extraireDepuisLibelle(`${texte(l[c.objet])} ${texte(l[c.designations])}`) ?? colonne);
   const objetBrut = texte(l[c.objet]) || texte(l[c.designations]) || categorie;
   const responsable = texte(l[c.responsable]);
   const notes: string[] = [];
@@ -169,53 +172,128 @@ for (const d of demandes) {
   if (autres.length) d.notes.unshift(`La DA ${d.da} a aussi donné le bon ${autres.join(", ")}.`);
 }
 
-/* -- 2. Le registre de septembre -------------------------------------------- */
+/* -- 2. Le registre des demandes d'achat du parc ----------------------------- */
+
+/**
+ * Le registre que la gestion du parc tient au jour le jour : une ligne par
+ * demande, avec son fournisseur, sa description, son montant et le document
+ * justificatif. Il couvre septembre 2026, là où l'extraction des bons s'arrête.
+ *
+ *   * **Le fournisseur** se retrouve au référentiel sur son nom normalisé, comme
+ *     pour les bons ; les six transporteurs portent en plus leur numéro, car le
+ *     registre les écrit autrement que le référentiel (« DR WADE » / « Dr Wade
+ *     Transport »). Un fournisseur inconnu reste en clair.
+ *   * **Le véhicule** n'est pas dans la colonne prévue, qui est vide : il est
+ *     nommé dans la description (« BATTERIE 75AH VEHICULE AA 019 EA »), et c'est
+ *     de là qu'on le lit (métier, 14 septembre 2026).
+ *   * **La date** manque parfois ; le numéro de la demande porte alors l'année et
+ *     le mois (DA200-**2609**046), et le jour reste inconnu : le premier du mois,
+ *     dit en commentaire.
+ *   * **Une ligne sans numéro** prolonge la demande précédente : c'est une
+ *     seconde fourniture du même achat, et le commentaire le dit.
+ */
+const TRANSPORTEURS_DU_REGISTRE: Record<string, string> = {
+  "MOUHAMED SY": "PRE-2026-00029",
+  "DAME NDOYE": "PRE-2026-00030",
+  "DR WADE": "PRE-2026-00027",
+  K2SBT: "PRE-2026-00031",
+  "WAKEUR S. FALLOU": "PRE-2026-80007",
+};
+
+/** Le poste d'une demande du registre, d'après sa description. */
+const POSTES_REGISTRE: [RegExp, string][] = [
+  [/PNEU/, "pneumatiques"],
+  [/BATTERIE/, "pieces"],
+  [/ENTRETIEN|VIDANGE/, "maintenance-preventive"],
+  [/REPARATION|DIAGNOSTIC|MAINTENANCE|DEPANNAGE/, "maintenance-curative"],
+  [/VISITE TECHNIQUE|ASSURANCE|VIGNETTE/, "conformite"],
+  [/CARBURANT|ESSENCE|GASOIL/, "carburant"],
+];
 
 interface Facture {
-  da: string;
+  numeroDa: string;
   date: string;
   fournisseur: string;
   prestataire: string | null;
+  cleFournisseur: string;
   objet: string;
+  poste: string;
   ht: number;
+  immatriculation: string | null;
   document: string;
   notes: string[];
 }
 
-/** Les transporteurs du registre, par leur numéro au référentiel. « DEM » en a trois possibles : il reste en clair. */
-const PRESTATAIRES: Record<string, { numero: string | null; nom: string }> = {
-  "MOUHAMED SY": { numero: "PRE-2026-00029", nom: "Mouhamed Sy" },
-  "DAME NDOYE": { numero: "PRE-2026-00030", nom: "Dame Ndoye" },
-  DEM: { numero: null, nom: "Mouhamed Deme" },
-  "DR WADE": { numero: "PRE-2026-00027", nom: "Dr Wade Transport" },
-  K2SBT: { numero: "PRE-2026-00031", nom: "K2SBT" },
-  "WAKEUR S. FALLOU": { numero: "PRE-2026-80007", nom: "Wakeur Serigne Fallou" },
-};
-
 const registre = lireClasseur(REGISTRE).find((f) => f.nom === "DEMANDE ACHAT")!;
 const r0 = registre.lignes.findIndex((l) => l.map(texte).includes("NUMERO DA"));
 const er = registre.lignes[r0]!.map(texte);
-const rc = (nom: string) => er.indexOf(nom);
+const rc = (nom: string) => {
+  const i = er.indexOf(nom);
+  if (i < 0) throw new Error(`registre : colonne « ${nom} » absente`);
+  return i;
+};
+/* Les fournisseurs déjà au référentiel, par leur nom normalisé : le registre les écrit à sa façon
+   (« TATA INTERNATIONAL » pour « TATA International / Unitech »), et seul le nom les rapproche. */
+const referentiel = new Set<string>();
+for (const fichier of ["supabase/seed.sql", "supabase/maintenance-parties/maintenance-01-prestataires.sql", "supabase/transport-parties/transport-01-prestataires.sql", "supabase/correctif-prestataires.sql"]) {
+  const sqlSource = readFileSync(join(projet, fichier), "utf8");
+  for (const m of sqlSource.matchAll(/\('(?:[0-9a-f-]{36}', ')?PRE-\d{4}-\d{5}', '((?:[^']|'')*)'/g)) referentiel.add(cleFournisseur(m[1]!.replace(/''/g, "'")));
+}
+
 const factures: Facture[] = [];
+const inconnus: string[] = [];
+let precedente: { numeroDa: string; date: string; fournisseur: string; prestataire: string | null; cle: string } | null = null;
+
 for (const l of registre.lignes.slice(r0 + 1)) {
-  const da = texte(l[rc("NUMERO DA")]);
-  if (!da) continue;
-  const brut = texte(l[rc("FOURNISSEUR")]);
-  const p = PRESTATAIRES[brut];
-  if (!p) throw new Error(`fournisseur du registre inconnu : ${brut}`);
+  const description = texte(l[rc("DESCRIPTION")]);
   const ht = entier(l[rc("TOTAL HT")]);
-  if (ht === null) throw new Error(`${da} : montant HT absent`);
-  let date = texte(l[rc("DATE")]);
-  const notes = [`Registre des DA du parc : HT ${texte(l[rc("TOTAL HT")])}, TVA ${texte(l[rc("TVA")]) || "—"}, TTC ${texte(l[rc("TOTAL TTC")])} (le registre retranche la colonne TVA du HT).`];
-  /* Le numéro X3 porte l'année et le mois : DA200-2609134 est de septembre 2026. */
-  const m = /^DA\d+-(\d{2})(\d{2})/.exec(da);
-  if (m && DATE.test(date) && date.slice(2, 7) !== `${m[1]}-${m[2]}`) {
-    const corrigee = `20${m[1]}-${m[2]}-${date.slice(8, 10)}`;
-    notes.push(`Date écrite ${date.split("-").reverse().join("/")} au registre ; le numéro de la DA la place en ${m[2]}/20${m[1]}.`);
+  if (!description || ht === null || ht <= 0) continue;
+  const numeroDaLu = texte(l[rc("NUMERO DA")]);
+  const brut = texte(l[rc("FOURNISSEUR")]);
+  const notes: string[] = [];
+
+  let numeroDa = numeroDaLu;
+  let fournisseur = brut ? nomPropre(brut) : "";
+  let prestataire = brut ? (TRANSPORTEURS_DU_REGISTRE[brut] ?? null) : null;
+  let cle = brut ? cleFournisseur(fournisseur) : "";
+  if (!numeroDa && precedente) {
+    /* Une ligne sans numéro prolonge la demande précédente : même DA, même fournisseur. */
+    ({ numeroDa, fournisseur, prestataire, cle } = { numeroDa: precedente.numeroDa, fournisseur: precedente.fournisseur, prestataire: precedente.prestataire, cle: precedente.cle });
+    notes.push(`Seconde fourniture de la demande ${numeroDa} : le registre la pose sur une ligne de plus.`);
+  }
+  if (!numeroDa) continue;
+  if (!brut && !fournisseur) fournisseur = "Fournisseur non nommé";
+
+  let date = texte(l[rc("DATE")]) || (numeroDaLu ? "" : (precedente?.date ?? ""));
+  const mois = /^[A-Z]{2}\d+-(\d{2})(\d{2})/.exec(numeroDa);
+  if (!DATE.test(date)) {
+    if (!mois) continue;
+    date = `20${mois[1]}-${mois[2]}-01`;
+    notes.push("Le registre ne date pas cette demande : son numéro en donne le mois, le jour reste inconnu.");
+  } else if (mois && date.slice(2, 7) !== `${mois[1]}-${mois[2]}`) {
+    const corrigee = `20${mois[1]}-${mois[2]}-${date.slice(8, 10)}`;
+    notes.push(`Date écrite ${date.split("-").reverse().join("/")} au registre ; le numéro de la demande la place en ${mois[2]}/20${mois[1]}.`);
     date = corrigee;
   }
-  if (!p.numero) notes.push("« DEM » : trois fiches possibles au référentiel (Dème Transport, Mohamed Deme, Mouhamed Deme) ; le fournisseur reste en clair.");
-  factures.push({ da, date, fournisseur: p.nom, prestataire: p.numero, objet: texte(l[rc("DESCRIPTION")]), ht, document: texte(l[rc("DOCUMENT")]), notes });
+
+  const lisible = description.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  const type = texte(l[rc("TYPE DA")]);
+  const tva = texte(l[rc("TVA")]);
+  const ttc = texte(l[rc("TOTAL TTC")]);
+  notes.push(`Registre des demandes d'achat du parc, type « ${type || "—"} » : HT ${texte(l[rc("TOTAL HT")])}, TVA ${tva || "—"}, TTC ${ttc || "—"}.`);
+  if (brut && !TRANSPORTEURS_DU_REGISTRE[brut] && !referentiel.has(cle)) {
+    inconnus.push(brut);
+    notes.push(`${fournisseur} n'a pas de fiche au référentiel des prestataires : le fournisseur reste en clair.`);
+  }
+
+  const immatriculation = extraireDepuisLibelle(`${texte(l[rc("VEHICULE")])} ${description}`);
+  factures.push({
+    numeroDa, date, fournisseur, prestataire, cleFournisseur: cle,
+    objet: description.length > 200 ? `${description.slice(0, 199)}…` : description,
+    poste: POSTES_REGISTRE.find(([m]) => m.test(lisible))?.[1] ?? "divers",
+    ht, immatriculation, document: texte(l[rc("DOCUMENT")]), notes,
+  });
+  precedente = { numeroDa, date, fournisseur, prestataire, cle };
 }
 
 /* -- 3. Les fichiers -------------------------------------------------------- */
@@ -273,28 +351,33 @@ select case when origine_numero like 'INT-%' then 'intervention' when origine_nu
 );
 
 const valeurFacture = (f: Facture, i: number) =>
-  `  ('DAC-R-${String(90001 + i)}', '${f.date}', ${sql(f.objet)}, ${f.ht}, ${sql(f.prestataire)}, ${sql(f.fournisseur)}, ${sql(f.da)}, ${sql(f.document)}, ${sql(["Chargée le 11 septembre 2026 depuis le registre des DA du parc (SUIVI_PARC).", ...f.notes].join(" "))})`;
+  `  ('DAC-R-${String(90001 + i)}', '${f.date}', ${sql(f.objet)}, '${f.poste}', ${f.ht}, ${sql(f.prestataire)}, ${sql(f.cleFournisseur || null)}, ${sql(f.fournisseur)}, ${sql(f.immatriculation)}, ${sql(f.numeroDa)}, ${sql(f.document)}, ${sql(["Chargée le 14 septembre 2026 depuis le registre des demandes d'achat du parc (SUIVI_PARC).", ...f.notes].join(" "))})`;
 writeFileSync(
-  join(dossier, "achats-02-registre-septembre.sql"),
+  join(dossier, "achats-02-registre-du-parc.sql"),
   `-- ============================================================================
--- SEDIMA Parc — les demandes d'achat réelles : le registre de septembre 2026.
+-- SEDIMA Parc — les demandes d'achat réelles : le registre du parc.
 --
--- **Ce n'est pas une migration.** ${factures.length} DA qui demandent le paiement d'une facture
--- de transporteur. Source : LES DEMANDES D'ACHAT PARC.xlsx (SUIVI_PARC).
+-- **Ce n'est pas une migration.** ${factures.length} demandes de septembre 2026, là où
+-- l'extraction des bons s'arrête. Source : LES DEMANDES D'ACHAT PARC.xlsx (SUIVI_PARC).
 --
--- La facture est reçue : la demande est **facturée**, pour son montant hors
--- taxe, et devient une dette envers le transporteur. L'origine est la DA X3
--- elle-même : aucune transaction de l'application ne porte encore ces factures.
+-- La facture ou la fourniture est reçue : la demande est **facturée**, pour son
+-- montant hors taxe, et devient une dette envers le fournisseur. Le véhicule
+-- vient de la description, qui le nomme ; le fournisseur se retrouve au
+-- référentiel sur son nom normalisé, à défaut il reste en clair.
 --
 -- REJOUABLE : \`on conflict do nothing\`.
 -- ============================================================================
 
-insert into demande_achat (numero, date, objet, poste, montant_estime, prestataire_id, fournisseur, urgence, origine_numero, origine_libelle, demandeur_nom, etape, numero_demande_x3, montant_engage, montant_reel, commentaire_decision)
-select v.numero, v.date::date, v.objet, 'divers', v.ht::bigint, p.id, v.fournisseur, 'normale', v.da, v.document, 'Gestion parc', 'facturee', v.da, v.ht::bigint, v.ht::bigint, v.commentaire
+insert into demande_achat (numero, date, objet, poste, montant_estime, prestataire_id, fournisseur, urgence, origine_numero, origine_libelle, vehicule_id, demandeur_nom, etape, numero_demande_x3, montant_engage, montant_reel, commentaire_decision)
+select v.numero, v.date::date, v.objet, v.poste::poste_depense, v.ht::bigint,
+       coalesce(pn.id, pc.id), v.fournisseur, 'normale', v.numero_da, coalesce(nullif(v.document, ''), 'Registre des demandes d''achat du parc'),
+       ve.id, 'Gestion parc', 'facturee', v.numero_da, v.ht::bigint, v.ht::bigint, v.commentaire
   from (values
 ${factures.map(valeurFacture).join(",\n")}
-  ) as v(numero, date, objet, ht, prestataire_numero, fournisseur, da, document, commentaire)
-  left join prestataire p on p.numero = v.prestataire_numero
+  ) as v(numero, date, objet, poste, ht, prestataire_numero, cle_fournisseur, fournisseur, immatriculation, numero_da, document, commentaire)
+  left join prestataire pn on pn.numero = v.prestataire_numero
+  left join lateral (select x.id from prestataire x where v.cle_fournisseur is not null and upper(regexp_replace(x.raison_sociale, '[^A-Za-z0-9]', '', 'g')) = v.cle_fournisseur order by x.numero limit 1) pc on true
+  left join vehicule ve on ve.immatriculation = v.immatriculation
 on conflict (numero) do nothing;
 `,
 );
@@ -308,5 +391,6 @@ console.log(`avec véhicule lisible : ${demandes.filter((d) => d.immatriculation
 for (const f of [...new Set(demandes.map((d) => d.famille))]) console.log(`  ${f.padEnd(28)} ${String(demandes.filter((d) => d.famille === f).length).padStart(4)} bons ${String(Math.round(somme((d) => d.famille === f) / 1e6)).padStart(5)} M F`);
 for (const a of [...new Set(demandes.map((d) => d.date.slice(0, 4)))]) console.log(`  ${a} ${String(demandes.filter((d) => d.date.startsWith(a)).length).padStart(4)} bons ${String(Math.round(somme((d) => d.date.startsWith(a)) / 1e6)).padStart(5)} M F`);
 console.log("écartés :", ecartes);
-console.log(`registre de septembre : ${factures.length} DA, ${factures.reduce((s, f) => s + f.ht, 0)} F HT`);
-for (const f of factures) console.log(`  ${f.da} ${f.date} ${f.fournisseur.padEnd(24)} ${String(f.ht).padStart(9)}  ${f.notes.slice(1).join(" ")}`);
+console.log(`registre du parc : ${factures.length} DA, ${factures.reduce((s, f) => s + f.ht, 0)} F HT`);
+console.log(`fournisseurs du registre absents du référentiel : ${[...new Set(inconnus)].join(", ") || "aucun"}`);
+for (const f of factures) console.log(`  ${f.numeroDa.padEnd(14)} ${f.date} ${f.fournisseur.padEnd(22)} ${String(f.ht).padStart(9)} ${(f.immatriculation ?? "—").padEnd(9)} ${f.poste.padEnd(22)} ${f.notes.filter((n) => !n.startsWith("Registre des")).join(" ")}`);
