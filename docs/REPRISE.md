@@ -1,10 +1,62 @@
-# Reprise du projet — état au 11 septembre 2026
+# Reprise du projet — état au 14 septembre 2026
 
 Note de passage de relais : à lire en premier dans une nouvelle session.
 Elle dit où en est le projet, ce qui a été décidé, et ce qui reste à faire.
 
 ---
 
+## 0 quinquies. Passage de relais du 14 septembre 2026 — lire ceci d'abord
+
+**Rien n'attend dans le SQL Editor.** Migrations 0001 à 0045 jouées, et avec elles tous les
+chargements de données réelles préparés les 11 et 14 septembre. Les blocs marqués « joué » plus bas
+disent chacun ce qu'il a apporté ; voici l'état d'ensemble.
+
+**Ce que la base porte.**
+
+| Matière | Volume | Doc |
+| --- | --- | --- |
+| Flotte | 167 véhicules + 17 créés le 14 septembre ; caractéristiques (carte grise) de 152 ; 32 relevés au 8 juillet | `CARACTERISTIQUES-VEHICULES.md` |
+| Livraisons | 16 771 bons, nov. 2025 → août 2026, 4 504 au parc et 7 571 aux camions tiers (0044) | `LIVRAISONS-REELLES.md` |
+| Relevé de transport | 1 079 voyages, 24 810 t, 15 juin → 3 sept. 2026 | `RELEVE-TRANSPORT-REEL.md` |
+| Achats | 679 demandes tirées des bons (2023-2026) + 22 du registre du parc (sept. 2026) | `ACHATS-REELS.md` |
+| Maintenance | 298 interventions et dépenses, 196 prestations de transport, 25 frais | `MAINTENANCE-REELLE.md` |
+| Caisse parc | 42 quinzaines, 3 949 dépenses, 3 990 mouvements ; solde 29 653 F au 31/08/2026 ; 843 amendes | `CAISSE-REELLE.md` |
+| Pneus | 410 montés sur 72 véhicules, fév. 2024 → août 2026 | `PNEUS-REELS.md` |
+| Carburant | 5 400 pleins, 2022 → juillet 2026 | `CARBURANT-REEL.md` |
+
+**Les plaques s'écrivent au tiret** partout (XX-YYY-ZZ, XX-YYYY-ZZ pour les anciennes) : `afficher()` du
+domaine et `plaque_affichee()` en base. La clé reste sans séparateur (`AB060KT`), et toute saisie s'y ramène.
+
+**Les bancs.** 40 bancs PGlite (`scripts/tester-*.mts`), tous au vert le 14 septembre 2026. Les lancer avec
+`PGLITE_DIR=C:/Users/mamadou.seck/AppData/Local/Temp/sedima-pglite npx tsx scripts/tester-X.mts` ; celui du
+rendu des fiches demande `node --import tsx --import ./scripts/rendu/hook.mjs`. Un fichier SQL de plus de
+~500 Ko est refusé par le SQL Editor (« Query is too large ») : couper à 400 Ko, sans couper une période.
+
+**Ce qui attend une décision du métier** — chaque point est développé dans la doc citée :
+
+1. **Camions de Moussa Kane** : six camions rattachés à PRE-2026-00025 alors que 700 bons les donnent à
+   Moussa Kane ; DK 4430 AB écrit « DJILY » (`LIVRAISONS-REELLES.md`).
+2. **Trois fiches « Deme »** (PRE-2026-00026, 80001, 80015) à fondre ; **Wakeur Serigne Fallou** facture
+   janvier-juin 2026 alors que ces bons sont chargés réglés (`ACHATS-REELS.md`).
+3. **Plaques à trancher** : AB 077 FP (carte grise AB 077 BP, référentiel AA 077 FP), AB 066 KT ou AB 056 KT,
+   AA 372 WJ ou YJ (`CARACTERISTIQUES-VEHICULES.md`).
+4. **Lots 2 - 07 et 2 - 09** restés « à recevoir » alors que leurs détenteurs ont un véhicule ; **attributaire
+   du Prado du DG** à créer.
+5. **Plaques citées hors référentiel** : 26 sur les demandes d'achat, 66 sur la caisse, 5 sur les pneus, et
+   celles de la minoterie qui livrent beaucoup (AA 275 QA, AA 361 MZ…).
+6. **Visite technique** : aucune source fiable, l'application la tire encore au sort (`DONNEES-REELLES.md`).
+
+**Matières encore non chargées, par ordre d'intérêt** : les batteries (`SUIVI BATTERIES.xlsx`) et les disques
+Tata, qui rempliraient le magasin de pièces, vide ; la liste des chauffeurs 2025 (matricule, permis, contrat,
+véhicule attitré, statut) ; les livraisons du 9 juillet au 2 août 2026 et celles de septembre, qui demandent une
+extraction YLIV à jour ; les quinzaines de caisse depuis le 1er septembre. Le pointage du parc ne donne pas
+d'absences : ce sont des feuilles de paie journalière.
+
+**Limites connues à surveiller** : l'écran Caisse lit 5 000 mouvements et calcule son solde sur cette liste
+(3 990 chargés) ; les frais de transfert de la caisse sont groupés par quinzaine, donc absents du coût par
+véhicule ; les livraisons ne comptent pas dans les tonnes du tableau de bord, qui restent celles du relevé.
+
+---
 ## 0 quater. Passage de relais du 9 septembre 2026 — lire ceci d'abord
 
 **Tout lit la base, bureau et téléphone.** La journée du 9 septembre a
@@ -59,7 +111,7 @@ pastilles muettes en production. Et elle porte le **parc des prestataires** au
 tableau de bord, à la demande du métier : huit champs, cinq pastilles. Section
 « Le parc des prestataires au tableau de bord » plus bas.
 
-**⚠ Chargement à jouer : les pneus du parc, un par un** (14 septembre 2026). La table `pneu` (0029) était
+**Chargement joué : les pneus du parc, un par un** (14 septembre 2026). La table `pneu` (0029) était
 vide — l'écran Pièces annonçait « 0 monté ». `supabase/pneus-parties/pneus-01-montages.sql` porte **410 pneus
 montés sur 72 véhicules**, du 10 février 2024 au 8 août 2026, tirés de `SUIVI PNEUS ET MONTAGES 2025` et de
 `PNEUS RECEPTIONNES ET MONTAGES` (dossier DO). Une ligne « six pneus » devient six pneus, chacun citant son
@@ -69,7 +121,7 @@ compteur à la pose et le numéro de série ne sont pas suivis : ils restent vid
 `vehicules-manquants.sql`. Banc `tester-pneus-reels.mts`, doc `docs/PNEUS-REELS.md`. À trancher : cinq plaques
 hors référentiel (DK 3674 AX, DK 7621 BG, DK 4280 AS, AB 098 JC, DK 6241 BM).
 
-**⚠ À jouer : le véhicule nommé dans le texte, et le registre des demandes d'achat à jour** (14 septembre
+**Joué : le véhicule nommé dans le texte, et le registre des demandes d'achat à jour** (14 septembre
 2026). Le métier : « sur les dépenses de caisse et les DA, extraire l'immatriculation du texte si disponible,
 et codifier le véhicule affecté ».
 
@@ -85,7 +137,7 @@ et codifier le véhicule affecté ».
 Restent des plaques citées mais hors référentiel : 26 sur les demandes d'achat, 66 sur la caisse. Bancs
 `tester-achats-reels.mts` et `tester-caisse-reelle.mts`.
 
-**⚠ Chargement à jouer : la caisse parc réelle, 2025-2026** (11 septembre 2026). La caisse n'avait aucun
+**Chargement joué : la caisse parc réelle, 2025-2026** (11 septembre 2026). La caisse n'avait aucun
 mouvement : sa pastille disait « — » et le registre des contraventions était vide. `supabase/caisse-parties/`
 (six fichiers de 400 Ko, à jouer dans l'ordre — le SQL Editor refuse plus gros) porte **42 quinzaines, 3 949 dépenses, 3 990 mouvements**, du 20 janvier 2025 au 31 août 2026,
 tirés des récapitulatifs de la gestion du parc (`MALICK/Depense CAISSE`). Le fonds de 1 004 000 F est reconstitué
@@ -96,7 +148,7 @@ libellé. **843 amendes** tiennent enfin le registre des contraventions. Banc `t
 `docs/CAISSE-REELLE.md` (limites : brouillards non relus, frais de transfert groupés par quinzaine, l'écran
 Caisse lit 5 000 mouvements pour 3 990 chargés).
 
-**⚠ Migration 0045 à jouer : les plaques s'écrivent avec des tirets** (11 septembre 2026). Le métier :
+**Migration 0045 jouée : les plaques s'écrivent avec des tirets** (11 septembre 2026). Le métier :
 « les nouveaux matricules sont formatés XX-YYY-ZZ, les anciens XX-YYYY-ZZ ; mettre à jour toute la base ».
 L'affichage passe partout au tiret — `afficher()` du domaine (AB-060-KT, DK-4923-BB, TH-8174-K), et
 `plaque_affichee()` en base pour les notifications. Deux doublons à espaces (`donnees/demandes.ts`,
@@ -107,7 +159,7 @@ les textes écrits par l'application (sujets de notification, plaque libre du re
 des attributions et des lots) ; les libellés des documents sources gardent leur écriture. **À jouer après
 les chargements des véhicules manquants et des caractéristiques.** Banc `tester-format-plaque.mts`.
 
-**⚠ Chargements à jouer : les véhicules manquants et les caractéristiques des cartes grises**
+**Chargements joués : les véhicules manquants et les caractéristiques des cartes grises**
 (11 septembre 2026). Source : `MALICK/FICHE COMPLET VEHICULES PARC LIVRAISONS ET PERSONNELS.xlsx`.
 Le métier : « créer les véhicules manquants » ; « la taxe de 18 % est de la TVA ». Dans l'ordre :
 
@@ -123,7 +175,7 @@ Bancs `tester-caracteristiques.mts`, `tester-vehicules-manquants.mts`. Voir `doc
 À trancher : AB 077 FP (carte grise AB 077 BP, référentiel AA 077 FP) ; AB 066/056 KT ; AA 372 WJ/YJ ; l'attributaire
 du Prado du DG ; les lots 2 - 07 et 2 - 09 sans doute déjà servis.
 
-**⚠ Migration 0044 et chargements à jouer : les livraisons par véhicule, les demandes d'achat réelles**
+**Migration 0044 et chargements joués : les livraisons par véhicule, les demandes d'achat réelles**
 (11 septembre 2026). Le métier : « toutes les DA sur plusieurs mois, préparer et charger ; préparer
 aussi les données de livraison et associer aux différents véhicules ». Dans l'ordre :
 
@@ -144,7 +196,7 @@ PRE-2026-00025 alors que les bons les donnent à Moussa Kane ; les trois fiches 
 Fallou qui facture janvier-juin 2026, chargés réglés.
 
 
-**⚠ Migration 0043 à jouer : le tableau de bord ne se recalcule plus à chaque ouverture**
+**Migration 0043 jouée : le tableau de bord ne se recalcule plus à chaque ouverture**
 (11 septembre 2026). Le métier : « le tableau de bord est toujours lent à charger ; rafraîchir les
 données qu'à la connexion ou sur appui d'un bouton, visible si elles ne sont pas à jour ». La page
 ne calcule plus rien : le calcul (deux ans de faits, vingt-huit jours de situations) vit dans
@@ -170,7 +222,7 @@ l'assemble ; l'onglet Caractéristiques porte pour les légers la carte du déte
 l'immobilisation administrative. Banc `tester-fiche-rendu.mts` : 172 fiches rendues, dont 109 de
 service ou de fonction et 5 à recevoir, AA 019 EA compris.
 
-**⚠ Correctif à jouer : ce que l'audit interne du parc fait entrer dans la base**
+**Correctif joué : ce que l'audit interne du parc fait entrer dans la base**
 (11 septembre 2026) — `supabase/correctif-audit-parc-2026.sql`. Rapport d'audit
 provisoire (janvier 2025 – juillet 2026) et compte rendu de la réunion de synthèse
 du 2 septembre. Les fournisseurs en double sont fondus : Alioune Ndiaye ×2 et GIE
@@ -181,7 +233,7 @@ avril entre avec ses jours roulés : l'application dit les 11, 9 et 10 jours pay
 non roulés de l'audit. Voir `docs/AUDIT-PARC-2026.md` (constat par constat, et le
 plan d'actions) et le banc `tester-audit-parc.mts`.
 
-**⚠ Migration 0042 à jouer : « zéro panne, zéro accident » cesse de mentir**
+**Migration 0042 jouée : « zéro panne, zéro accident » cesse de mentir**
 (11 septembre 2026). Les registres des incidents et des indisponibilités n'ont
 aucune ligne depuis la purge, ni les contraventions dans les dépenses : aucune
 source n'a été chargée. Un registre sans aucune ligne n'est pas tenu, et ses
@@ -278,7 +330,7 @@ attrapé une fois de plus.
 viennent les lignes, pourquoi le prix est le tarif officiel de la date, et ce
 qui n'est pas chargé.
 
-**Migrations : 0001 à 0041 jouées** (0037 à 0041 et leurs chargements confirmés le 11 septembre 2026) ; **0042 à 0045 en attente** (0043 compte désormais aussi la table `livraison`).
+**Migrations : 0001 à 0045 jouées**, 0042 à 0045 et tous leurs chargements confirmés le 14 septembre 2026. Rien n'attend dans le SQL Editor.
 
 **Le chargement des données réelles est fait** (10 septembre 2026) : les douze
 parties du seed, `aligner-referentiel.sql`, `purge-demonstration.sql` et
