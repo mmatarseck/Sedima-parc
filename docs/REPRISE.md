@@ -7,9 +7,18 @@ Elle dit où en est le projet, ce qui a été décidé, et ce qui reste à faire
 
 ## 0 quinquies. Passage de relais du 14 septembre 2026 — lire ceci d'abord
 
-**Rien n'attend dans le SQL Editor.** Migrations 0001 à 0045 jouées, et avec elles tous les
-chargements de données réelles préparés les 11 et 14 septembre. Les blocs marqués « joué » plus bas
-disent chacun ce qu'il a apporté ; voici l'état d'ensemble.
+**Deux fichiers attendent dans le SQL Editor** — le magasin de pièces, préparé en fin de journée
+(`PIECES-REELLES.md`) :
+
+```
+supabase/pieces-parties/pieces-01-referentiel.sql
+supabase/pieces-parties/pieces-02-mouvements.sql
+```
+
+Dans cet ordre, après les prestataires de la maintenance et les véhicules manquants, tous deux déjà
+joués. Tout le reste est à jour : migrations 0001 à 0045 jouées, et avec elles tous les chargements
+de données réelles préparés les 11 et 14 septembre. Les blocs marqués « joué » plus bas disent
+chacun ce qu'il a apporté ; voici l'état d'ensemble.
 
 **Ce que la base porte.**
 
@@ -22,12 +31,13 @@ disent chacun ce qu'il a apporté ; voici l'état d'ensemble.
 | Maintenance | 298 interventions et dépenses, 196 prestations de transport, 25 frais | `MAINTENANCE-REELLE.md` |
 | Caisse parc | 42 quinzaines, 3 949 dépenses, 3 990 mouvements ; solde 29 653 F au 31/08/2026 ; 843 amendes | `CAISSE-REELLE.md` |
 | Pneus | 410 montés sur 72 véhicules, fév. 2024 → août 2026 | `PNEUS-REELS.md` |
+| Magasin | 3 pièces (batteries 150 et 100 AH, embrayage Tata), 58 mouvements sur 26 véhicules, fév. 2025 → juil. 2026 | `PIECES-REELLES.md` |
 | Carburant | 5 400 pleins, 2022 → juillet 2026 | `CARBURANT-REEL.md` |
 
 **Les plaques s'écrivent au tiret** partout (XX-YYY-ZZ, XX-YYYY-ZZ pour les anciennes) : `afficher()` du
 domaine et `plaque_affichee()` en base. La clé reste sans séparateur (`AB060KT`), et toute saisie s'y ramène.
 
-**Les bancs.** 40 bancs PGlite (`scripts/tester-*.mts`), tous au vert le 14 septembre 2026. Les lancer avec
+**Les bancs.** 41 bancs PGlite (`scripts/tester-*.mts`), tous au vert le 14 septembre 2026. Les lancer avec
 `PGLITE_DIR=C:/Users/mamadou.seck/AppData/Local/Temp/sedima-pglite npx tsx scripts/tester-X.mts` ; celui du
 rendu des fiches demande `node --import tsx --import ./scripts/rendu/hook.mjs`. Un fichier SQL de plus de
 ~500 Ko est refusé par le SQL Editor (« Query is too large ») : couper à 400 Ko, sans couper une période.
@@ -42,15 +52,21 @@ rendu des fiches demande `node --import tsx --import ./scripts/rendu/hook.mjs`. 
    AA 372 WJ ou YJ (`CARACTERISTIQUES-VEHICULES.md`).
 4. **Lots 2 - 07 et 2 - 09** restés « à recevoir » alors que leurs détenteurs ont un véhicule ; **attributaire
    du Prado du DG** à créer.
-5. **Plaques citées hors référentiel** : 26 sur les demandes d'achat, 66 sur la caisse, 5 sur les pneus, et
+5. **Plaques citées hors référentiel** : 26 sur les demandes d'achat, 66 sur la caisse, 5 sur les pneus,
+   2 sur le magasin (DK 4003 BG, DK 3674 AX — cette dernière déjà citée par les pneus), et
    celles de la minoterie qui livrent beaucoup (AA 275 QA, AA 361 MZ…).
 6. **Visite technique** : aucune source fiable, l'application la tire encore au sort (`DONNEES-REELLES.md`).
+7. **Magasin** : les **seuils de réapprovisionnement** des trois pièces sont à poser par le gestionnaire —
+   aucun n'est inventé, donc aucune demande de réapprovisionnement ne se déclenche. Et les **15 demandes
+   de batteries** de la feuille `NOUVELLES DEMANDES`, dont six portent une date d'achat, sont-elles servies
+   ou en attente ? (`PIECES-REELLES.md`)
 
-**Matières encore non chargées, par ordre d'intérêt** : les batteries (`SUIVI BATTERIES.xlsx`) et les disques
-Tata, qui rempliraient le magasin de pièces, vide ; la liste des chauffeurs 2025 (matricule, permis, contrat,
-véhicule attitré, statut) ; les livraisons du 9 juillet au 2 août 2026 et celles de septembre, qui demandent une
-extraction YLIV à jour ; les quinzaines de caisse depuis le 1er septembre. Le pointage du parc ne donne pas
-d'absences : ce sont des feuilles de paie journalière.
+**Matières encore non chargées, par ordre d'intérêt** : la liste des chauffeurs 2025 (matricule, permis,
+contrat, véhicule attitré, statut) ; les livraisons du 9 juillet au 2 août 2026 et celles de septembre, qui
+demandent une extraction YLIV à jour ; les quinzaines de caisse depuis le 1er septembre. Le pointage du parc
+ne donne pas d'absences : ce sont des feuilles de paie journalière. **Le magasin de pièces est amorcé** —
+batteries et embrayages Tata, les deux seules matières suivies au classeur ; les autres pièces n'ont pas de
+source écrite et se saisiront à l'usage.
 
 **Limites connues à surveiller** : l'écran Caisse lit 5 000 mouvements et calcule son solde sur cette liste
 (3 990 chargés) ; les frais de transfert de la caisse sont groupés par quinzaine, donc absents du coût par
