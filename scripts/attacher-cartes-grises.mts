@@ -21,8 +21,12 @@
  * CE QU'IL FAUT POUR L'EXÉCUTER. Deux variables d'environnement, jamais
  * écrites ici ni demandées ailleurs :
  *
- *   SUPABASE_URL                 l'adresse du projet
+ *   SUPABASE_URL                 l'adresse du projet (ou NEXT_PUBLIC_SUPABASE_URL)
  *   SUPABASE_SERVICE_ROLE_KEY    la clé de service
+ *
+ * Elles se lisent aussi dans `.env.local`, que le projet prévoit déjà et que
+ * .gitignore exclut : une clé de service tapée dans le terminal resterait dans
+ * son historique.
  *
  * La clé de service passe outre les politiques : elle n'a rien à faire dans un
  * navigateur, et ce script est la seule raison de la sortir.
@@ -40,6 +44,7 @@
  *   npx tsx scripts/attacher-cartes-grises.mts --deposer    (dépôt réel)
  * ==========================================================================*/
 
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cartesDuDossier, composer, pages, DOSSIER, PLAFOND } from "./scans-cartes-grises.mts";
@@ -48,12 +53,48 @@ const DEPOSER = process.argv.includes("--deposer");
 
 /* -- La base ---------------------------------------------------------------- */
 
+/**
+ * Ce que `.env.local` pose, sans écraser ce que le shell a déjà dit.
+ *
+ * Le projet range ses clés là (`.env.example`, et `.gitignore` l'exclut) : les
+ * redemander à la main à chaque exécution les ferait passer par la ligne de
+ * commande, donc par l'historique du terminal — un mauvais endroit pour une clé
+ * de service. Le shell garde le dernier mot : il sert à viser une autre base
+ * le temps d'une commande.
+ */
+function chargerEnvLocal(): void {
+  let texte: string;
+  try {
+    texte = readFileSync(join(process.cwd(), ".env.local"), "utf8");
+  } catch {
+    return;
+  }
+  for (const ligne of texte.split(/\r?\n/)) {
+    const m = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(ligne);
+    if (!m || ligne.trimStart().startsWith("#")) continue;
+    const valeur = m[2]!.trim().replace(/^(['"])(.*)\1$/, "$2");
+    if (valeur && process.env[m[1]!] === undefined) process.env[m[1]!] = valeur;
+  }
+}
+
 function client(): SupabaseClient {
+  chargerEnvLocal();
   const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const cle = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !cle) {
-    console.error("SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont attendues dans l'environnement.");
-    console.error("Sans elles, le script ne peut ni lire le référentiel ni déposer un fichier.");
+    console.error(`Il manque ${!url ? "l'adresse du projet" : "la clé de service"} : le script ne peut ni lire le référentiel ni déposer un fichier.\n`);
+    console.error("Les deux se lisent dans l'environnement, ou dans `.env.local` à la racine :\n");
+    console.error("  NEXT_PUBLIC_SUPABASE_URL=https://<projet>.supabase.co");
+    console.error("  SUPABASE_SERVICE_ROLE_KEY=<clé de service>\n");
+    if (url && !cle) {
+      /* Le cas courant sur ce poste : l'adresse et la clé anonyme y sont, la
+         clé de service non — l'application n'en a pas besoin pour lire. */
+      console.error("L'adresse est bien là ; seule la clé de service manque. Elle se copie");
+      console.error("depuis le tableau de bord Supabase, Project Settings › API › service_role,");
+      console.error("et se colle dans `.env.local` — que .gitignore exclut déjà du dépôt.\n");
+      console.error("Elle passe outre les politiques RLS : elle ne doit ni aller au navigateur,");
+      console.error("ni être tapée dans le terminal, où l'historique la retiendrait.");
+    }
     process.exit(2);
   }
   return createClient(url, cle, { auth: { persistSession: false, autoRefreshToken: false } });
