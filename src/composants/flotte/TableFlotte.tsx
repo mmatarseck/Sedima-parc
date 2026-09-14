@@ -2,7 +2,8 @@
 
 import { ENERGIE } from "@/domaine/libelles";
 
-import { Echeance, PastilleStatut } from "@/composants/interface/Pastille";
+import { Echeance } from "@/composants/interface/Pastille";
+import { StatutModifiable } from "@/composants/vehicule/StatutModifiable";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
 import { REGIME_USAGE } from "@/domaine/parc-leger";
 import { PhotoVehicule } from "@/composants/vehicule/PhotoVehicule";
@@ -31,17 +32,25 @@ import { dateCourte, kilometrage, montantCourt } from "@/lib/format";
 /** Le statut affiché : effectif si la page l'a calculé, saisi sinon. */
 const statutDe = (l: LigneFlotte) => l.statutEffectif ?? l.vehicule.statut;
 
+/* Un véhicule sorti a quitté le parc : il n'est plus du sujet quand on lit
+   « la flotte », et il fausserait tout compte fait sur la liste. Il reste
+   consultable — sa fiche, son historique, ses coûts —, par son filtre et par
+   la recherche, qui le trouve à sa plaque. C'est « Tous » qui le tait, pas
+   l'application qui l'efface. */
+const sorti = (l: LigneFlotte) => l.vehicule.statut === "sorti";
+
 const FILTRES: FiltreListe<LigneFlotte>[] = [
-  { cle: "tous", libelle: "Tous", retient: () => true },
-  { cle: "operationnels", libelle: "Opérationnels", retient: (l) => STATUT_VEHICULE[statutDe(l)].operationnel },
+  { cle: "tous", libelle: "Tous", retient: (l) => !sorti(l) },
+  { cle: "operationnels", libelle: "Opérationnels", retient: (l) => !sorti(l) && STATUT_VEHICULE[statutDe(l)].operationnel },
   {
     cle: "immobilises",
     libelle: "Immobilisés",
     retient: (l) => statutDe(l) === "en-reparation" || statutDe(l) === "en-restauration" || statutDe(l) === "hors-service",
   },
   { cle: "sortants", libelle: "Sortants", retient: (l) => l.vehicule.statut === "en-mutation" || l.vehicule.statut === "retrait-en-cours" },
-  { cle: "non-conformes", libelle: "Non conformes", retient: (l) => (l.prochaineEcheanceConformite?.joursRestants ?? 1) < 0 },
+  { cle: "non-conformes", libelle: "Non conformes", retient: (l) => !sorti(l) && (l.prochaineEcheanceConformite?.joursRestants ?? 1) < 0 },
   { cle: "a-recevoir", libelle: "À recevoir", retient: (l) => l.vehicule.statut === "a-recevoir" },
+  { cle: "sortis", libelle: "Sortis du parc", retient: sorti },
 ];
 
 /* Le second jeu de pilules, croisé avec l'état : le régime d'usage. Le parc
@@ -200,14 +209,19 @@ const COLONNES: ColonneListe<LigneFlotte>[] = [
     cle: "statut",
     libelle: "Statut",
     parDefaut: false,
-    largeur: 190,
+    largeur: 220,
     /* Le motif administratif n'est plus écrit sous la pastille (demande du
        métier du 3 septembre) : la fiche le détaille, la ligne reste sur une
        hauteur ; il reste lisible au survol. */
+    /* Le crayon change le statut sans quitter la liste : c'est là qu'on
+       parcourt le parc, et le détour par la fiche fait qu'on ne le fait pas. */
     rendu: (l) => (
-      <span title={l.immobilisationAdministrative?.length ? `Immobilisation administrative · ${l.immobilisationAdministrative.map((d) => TYPE_DOCUMENT[d.type].toLowerCase()).join(", ")}` : undefined}>
-        <PastilleStatut statut={statutDe(l)} />
-      </span>
+      <StatutModifiable
+        statut={statutDe(l)}
+        immatriculation={l.vehicule.immatriculation}
+        immatriculationAffichee={l.vehicule.immatriculationAffichee}
+        immobilisation={l.immobilisationAdministrative}
+      />
     ),
     texte: (l) => `${STATUT_VEHICULE[statutDe(l)].libelle} ${l.immobilisationAdministrative?.length ? "administratif" : ""}`,
   },

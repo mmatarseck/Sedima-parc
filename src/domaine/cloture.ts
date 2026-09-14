@@ -68,6 +68,13 @@ export interface ChampEdition {
    * ordre — c'est le cas de tous les types courts, qui n'en ont pas besoin.
    */
   section?: string;
+  /**
+   * Quand le champ a lieu d'être, d'après ce qui est déjà saisi : la date de
+   * sortie n'a de sens qu'une fois le statut « sorti » choisi. Un champ caché
+   * n'est ni affiché ni exigé, et ne produit aucune valeur — sans quoi une
+   * obligation invisible bloquerait l'enregistrement sans qu'on sache pourquoi.
+   */
+  visibleSi?: (saisie: Record<string, string | boolean>) => boolean;
 }
 
 /** Une modification appliquée ou demandée sur un champ d'une transaction. */

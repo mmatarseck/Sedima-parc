@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Plus, UserPlus, ZoomIn, ZoomOut } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
-import { Pastille, PastilleStatut } from "@/composants/interface/Pastille";
+import { Pastille } from "@/composants/interface/Pastille";
+import { StatutModifiable } from "@/composants/vehicule/StatutModifiable";
 import { PastilleStatutChauffeur } from "@/composants/chauffeurs/PastilleStatutChauffeur";
 import { champsCreation } from "@/composants/transactions/champs";
 import { FournisseurEdition, useEdition } from "@/composants/transactions/ContexteEdition";
@@ -364,7 +365,14 @@ function Interieur({ vehicules, chauffeurs, chauffeursTiers, aujourdhui }: { veh
                       d'ambre à gauche, pastille « Tiers », et le nom du
                       transporteur sous la plaque. */}
                   <div className={`sticky left-0 z-10 flex min-w-0 items-center gap-2.5 border-r border-bordure bg-surface px-5 py-2 group-hover:bg-surface-2 ${tiers ? "border-l-[3px] border-l-vigilance pl-[17px]" : ""}`}>
-                    {tiers ? <span className="shrink-0 rounded-[5px] bg-vigilance-fond px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-vigilance uppercase">Tiers</span> : <PastilleStatut statut={v.statut} compacte />}
+                    {tiers ? (
+                      <span className="shrink-0 rounded-[5px] bg-vigilance-fond px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-vigilance uppercase">Tiers</span>
+                    ) : (
+                      /* Le statut d'un camion du parc se change ici aussi : c'est
+                         devant le planning qu'on constate qu'il ne roulera pas.
+                         Un camion de transporteur n'a pas de statut à nous. */
+                      <StatutModifiable statut={v.statut} immatriculation={v.immatriculation} immatriculationAffichee={v.immatriculationAffichee} compacte />
+                    )}
                     <span className="min-w-0">
                       {tiers ? (
                         <Link href={`/transporteurs/${v.tiers!.transporteurNumero}?onglet=flotte`} className="code block truncate text-[13px] font-semibold text-accent-fonce hover:underline">

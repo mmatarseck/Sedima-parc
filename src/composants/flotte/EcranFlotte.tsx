@@ -28,6 +28,10 @@ function Interieur({ lignes }: { lignes: LigneFlotte[] }) {
   const { creations } = useEdition();
   const creees = creations("vehicule", fabriquerLigneFlotte);
   const toutes = [...creees, ...lignes];
+  /* Le sous-titre compte ce que « Tous » montre : les sortis du parc s'y
+     retrouvent par leur filtre, pas dans le total de la flotte. */
+  const auParc = toutes.filter((l) => l.vehicule.statut !== "sorti");
+  const sortis = toutes.length - auParc.length;
   /* Créer un véhicule relève de la gestion de la flotte : le bouton ne
      promet rien à qui n'en a que la saisie ou la lecture. */
   const [peutCreer, setPeutCreer] = useState(false);
@@ -37,7 +41,7 @@ function Interieur({ lignes }: { lignes: LigneFlotte[] }) {
     <div className="flex flex-col gap-5 px-8 py-7 lg:h-full">
       <TitreEcran
         titre="Flotte"
-        sousTitre={`${toutes.length} véhicules${creees.length ? ` dont ${creees.length} créé${creees.length > 1 ? "s" : ""} ici` : ""} · données de démonstration, inventaire de référence non encore figé`}
+        sousTitre={`${auParc.length} véhicules au parc${creees.length ? ` dont ${creees.length} créé${creees.length > 1 ? "s" : ""} ici` : ""}${sortis ? ` · ${sortis} sorti${sortis > 1 ? "s" : ""} du parc` : ""}`}
         actions={
           <>
             {/* L'export vit dans Rapports, où les colonnes sont typées : un

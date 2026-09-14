@@ -18,7 +18,7 @@ import { FormulaireDeclaration } from "@/composants/incidents/FormulaireDeclarat
 import { OngletIncidents } from "@/composants/vehicule/OngletIncidents";
 import { fabriquerAffectationVehicule, fabriquerDocument, fabriquerPeriodeStatut, fabriquerReleve, libelleSite } from "@/composants/transactions/fabriques";
 import { TYPE_TRANSACTION, type TypeTransaction } from "@/domaine/reference";
-import { PastilleStatut } from "@/composants/interface/Pastille";
+import { StatutModifiable } from "./StatutModifiable";
 import type { FicheVehicule as Fiche } from "@/domaine/fiche";
 import type { Personne } from "@/domaine/discussion";
 import type { Transfert } from "@/domaine/transferts";
@@ -245,7 +245,13 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
           <div className="min-w-0 flex-1 basis-[420px]">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="titre-page code whitespace-nowrap">{v.immatriculationAffichee}</h1>
-              <PastilleStatut statut={statutCourant} />
+              <StatutModifiable
+                statut={statutCourant}
+                immatriculation={v.immatriculation}
+                immatriculationAffichee={v.immatriculationAffichee}
+                immobilisation={immobilisation?.documents ?? null}
+                aujourdhui="2026-09-02"
+              />
               {immobilisation ? (
                 <span
                   title={`Statut saisi : ${STATUT_VEHICULE[v.statut].libelle}. Le véhicule repasse à ce statut dès que les documents sont renouvelés.`}
@@ -273,6 +279,10 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
                 {v.businessUnit ? BUSINESS_UNIT[v.businessUnit] : "—"} · {siteLibelle}
               </span>
               <span className="text-attenue-2">·</span>
+              {/* Le nom mène à la fiche du chauffeur — c'est ce qu'on attend
+                  d'un nom —, et le crayon d'à côté change qui conduit, sans
+                  passer par l'onglet Affectations. Le même crayon sert quand
+                  personne n'est affecté : c'est justement là qu'il faut agir. */}
               {titulaire ? (
                 <span className="inline-flex items-center gap-1.5" title={`Titulaire depuis le ${date(titulaire.debut)}`}>
                   <UserRound className="size-3.5 text-attenue" strokeWidth={1.8} />
@@ -284,11 +294,13 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
                     <span className="font-medium text-texte">{titulaire.chauffeur}</span>
                   )}
                   {fiche.ligne.nombreSuppleants > 0 ? <span className="text-attenue">+ {fiche.ligne.nombreSuppleants} suppléant</span> : null}
+                  <BoutonAffecter onClick={() => ajouter("affectation")} libelle={`Changer l'affectation de ${v.immatriculationAffichee}`} />
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-vigilance">
                   <UserRound className="size-3.5" strokeWidth={1.8} />
                   Aucun chauffeur affecté
+                  <BoutonAffecter onClick={() => ajouter("affectation")} libelle={`Affecter un chauffeur à ${v.immatriculationAffichee}`} />
                 </span>
               )}
               {fiche.ligne.attelageCourant ? (
@@ -450,5 +462,24 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
         onNombre={setNombreMessages}
       />
     </div>
+  );
+}
+
+/**
+ * Le crayon posé après le nom du chauffeur : il ouvre le formulaire
+ * d'affectation, celui-là même que le menu « Ajouter » propose. Un chemin de
+ * plus vers la même écriture, pas une écriture de plus.
+ */
+function BoutonAffecter({ onClick, libelle }: { onClick: () => void; libelle: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={libelle}
+      className="grid size-5 shrink-0 place-items-center rounded-[6px] text-attenue transition-colors hover:bg-surface-3 hover:text-accent-fonce focus-visible:bg-surface-3 focus-visible:text-accent-fonce"
+    >
+      <Pencil className="size-3" strokeWidth={1.9} />
+      <span className="sr-only">{libelle}</span>
+    </button>
   );
 }

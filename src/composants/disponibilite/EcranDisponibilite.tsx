@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { BandeauKpi } from "@/composants/interface/BandeauKpi";
-import { Pastille, PastilleStatut } from "@/composants/interface/Pastille";
+import { Pastille } from "@/composants/interface/Pastille";
+import { StatutModifiable } from "@/composants/vehicule/StatutModifiable";
+import { FournisseurEdition } from "@/composants/transactions/ContexteEdition";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
 import { ETAT_DISPONIBILITE, capaciteParCategorie, etatDisponibilite, type CapaciteCategorie, type LigneDisponibilite } from "@/domaine/disponibilite";
 import { lireToutesCreations } from "@/lib/clotures-demo";
 import type { StatutVehicule } from "@/domaine/types";
-import { BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_VEHICULE, STATUT_VEHICULE, TYPE_DOCUMENT, USAGE_VEHICULE } from "@/domaine/libelles";
+import { BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_VEHICULE, STATUT_VEHICULE, USAGE_VEHICULE } from "@/domaine/libelles";
 import type { BusinessUnit } from "@/domaine/types";
 import { date, nombre, pourcentage } from "@/lib/format";
 
@@ -74,14 +76,18 @@ const COLONNES: ColonneListe<LigneDisponibilite>[] = [
     cle: "statut",
     libelle: "Statut",
     parDefaut: true,
-    largeur: 190,
+    largeur: 220,
     /* Le motif administratif n'est plus répété sous la pastille (demande du
-       métier du 3 septembre) : il est dans « Ce qui manque », et reste lisible
-       au survol. */
+       métier du 3 septembre) : il est dans « Ce qui manque ». Le cadenas de la
+       pastille dit qu'il tient le statut, et le crayon le change sans quitter
+       l'écran du matin — c'est ici qu'on découvre qu'un camion ne partira pas. */
     rendu: (l) => (
-      <span title={l.immobilisation ? `Immobilisation administrative · ${l.immobilisation.documents.map((d) => TYPE_DOCUMENT[d.type].toLowerCase()).join(", ")}` : undefined}>
-        <PastilleStatut statut={l.statutEffectif} />
-      </span>
+      <StatutModifiable
+        statut={l.statutEffectif}
+        immatriculation={l.immatriculation}
+        immatriculationAffichee={l.immatriculationAffichee}
+        immobilisation={l.immobilisation?.documents ?? null}
+      />
     ),
     texte: (l) => STATUT_VEHICULE[l.statutEffectif].libelle,
   },
@@ -125,7 +131,20 @@ function statutsDeclares(jour: string): Map<string, StatutVehicule> {
   return new Map([...parVehicule].map(([immat, x]) => [immat, x.statut]));
 }
 
-export function EcranDisponibilite({ lignes: toutes, aujourdhui }: { lignes: LigneDisponibilite[]; aujourdhui: string }) {
+/**
+ * Le contexte d'édition sert au seul crayon des pastilles de statut : c'est ici
+ * qu'on découvre au matin qu'un camion ne partira pas, et c'est donc ici qu'on
+ * doit pouvoir le déclarer en réparation — sans passer par sa fiche.
+ */
+export function EcranDisponibilite(props: { lignes: LigneDisponibilite[]; aujourdhui: string }) {
+  return (
+    <FournisseurEdition sujet="disponibilite" href="/disponibilite">
+      <Interieur {...props} />
+    </FournisseurEdition>
+  );
+}
+
+function Interieur({ lignes: toutes, aujourdhui }: { lignes: LigneDisponibilite[]; aujourdhui: string }) {
   const [maille, setMaille] = useState<Maille>("categorie");
   /* Le filtre par BU tient tout l'écran : KPI, capacité et liste parlent de la même
      population — la disponibilité d'une BU est la question du matin de son responsable. */

@@ -89,8 +89,8 @@ export function ModaleTransaction({
   onEnregistre: () => void;
 }) {
   const creation = mode === "creation";
-  const champs = useMemo(() => champsDonnes ?? champsCourants(type), [champsDonnes, type]);
-  const [saisie, setSaisie] = useState<Record<string, string | boolean>>(() => Object.fromEntries(champs.map((c) => [c.cle, valeurInitiale(c, valeurs[c.cle])])));
+  const tousChamps = useMemo(() => champsDonnes ?? champsCourants(type), [champsDonnes, type]);
+  const [saisie, setSaisie] = useState<Record<string, string | boolean>>(() => Object.fromEntries(tousChamps.map((c) => [c.cle, valeurInitiale(c, valeurs[c.cle])])));
   const [motif, setMotif] = useState("");
   const [historique, setHistorique] = useState<Modification[]>([]);
   const [voirHistorique, setVoirHistorique] = useState(false);
@@ -128,6 +128,11 @@ export function ModaleTransaction({
       return { ...suivant, ...(entraine?.(cle, valeur, suivant) ?? {}) };
     });
   }
+
+  /* Un champ qui n'a pas lieu d'être est retiré du formulaire, et avec lui son
+     obligation : la date de sortie n'a de sens qu'une fois « sorti » choisi, et
+     une obligation invisible bloquerait l'enregistrement sans rien expliquer. */
+  const champs = useMemo(() => tousChamps.filter((c) => c.visibleSi?.(saisie) ?? true), [tousChamps, saisie]);
 
   const manquants = champs.filter((c) => c.obligatoire && String(saisie[c.cle] ?? "").trim() === "");
   const bloqueParCloture = creation && clotureConcernee !== null && !approbateur;

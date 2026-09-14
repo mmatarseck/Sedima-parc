@@ -43,6 +43,9 @@ export function FicheRapide({ ligne, faits, aujourdhui }: { ligne: LigneFlotte; 
   );
 }
 
+/* Ni « à recevoir » ni « sorti » : l'un se pose à la commande, l'autre est une
+   décision de gestion qui engage la date et le motif de sortie du parc. Ni
+   l'une ni l'autre ne se prend au téléphone, devant le camion. */
 const STATUTS_POSABLES: StatutVehicule[] = ["en-service", "en-backup", "en-reparation", "en-restauration", "hors-service", "en-mutation", "retrait-en-cours"];
 
 function Interieur({ ligne, faits, aujourdhui }: { ligne: LigneFlotte; faits: DerniersFaits; aujourdhui: string }) {
@@ -99,7 +102,17 @@ function Interieur({ ligne, faits, aujourdhui }: { ligne: LigneFlotte; faits: De
         retour="/telephone/vehicules"
         droite={
           <span className="flex items-center gap-1">
-            <PastilleStatutTelephone statut={statut} />
+            {/* La pastille ouvre le panneau des statuts, comme le bouton plus
+                bas : au téléphone, on touche ce qu'on veut changer. Le crayon
+                du bureau n'aurait pas la cible ; la pastille entière, si. */}
+            {posables.length > 0 ? (
+              <button type="button" onClick={() => setPanneau(true)} title="Changer le statut" className="rounded-full">
+                <PastilleStatutTelephone statut={statut} />
+                <span className="sr-only">Changer le statut de {v.immatriculationAffichee}</span>
+              </button>
+            ) : (
+              <PastilleStatutTelephone statut={statut} />
+            )}
             <BoutonQr immatriculation={v.immatriculation} immatriculationAffichee={v.immatriculationAffichee} libelle={`${v.marque} ${v.appellation}`} compact />
           </span>
         }

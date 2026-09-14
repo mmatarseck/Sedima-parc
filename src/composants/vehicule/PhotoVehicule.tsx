@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bus, Camera, Car, Caravan, Loader2, Bike, Tractor, Truck, Wrench, X } from "lucide-react";
+import { Bus, Camera, Car, Caravan, Loader2, Bike, Maximize2, Tractor, Truck, Wrench, X } from "lucide-react";
 import type { CategorieVehicule } from "@/domaine/types";
 import { televerserPhoto, urlPhoto } from "@/lib/photos";
 
@@ -62,6 +62,7 @@ export function PhotoVehicule({
   const [charge, setCharge] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [url, setUrl] = useState<string | null>(null);
+  const [agrandie, setAgrandie] = useState(false);
   const champ = useRef<HTMLInputElement>(null);
   const Silhouette = SILHOUETTE[categorie] ?? Truck;
 
@@ -93,6 +94,7 @@ export function PhotoVehicule({
   }
 
   return (
+    <>
     <div className={`group relative shrink-0 overflow-hidden rounded-[10px] border border-bordure bg-surface-2 ${dimensions}`}>
       {url ? (
         /* Une image de fiche, pas une illustration décorative : le texte de
@@ -108,27 +110,20 @@ export function PhotoVehicule({
       {onChanger ? (
         <>
           <input ref={champ} type="file" accept="image/*" className="sr-only" onChange={(e) => choisir(e.target.files?.[0])} aria-label={`Photo de ${immatriculation}`} />
+          {/* Une photo qui existe s'ouvre d'abord en grand : c'est ce qu'on
+              vient y chercher — reconnaître le camion. La remplacer vient
+              ensuite, dans l'agrandissement. Un cadre vide, lui, n'a rien à
+              montrer : il ouvre directement le sélecteur de fichier. */}
           <button
             type="button"
-            onClick={() => champ.current?.click()}
+            onClick={() => (url ? setAgrandie(true) : champ.current?.click())}
             disabled={charge}
-            title={photo ? "Remplacer la photo" : "Ajouter une photo"}
+            title={url ? "Voir la photo en grand" : "Ajouter une photo"}
             className="absolute inset-0 grid place-items-center bg-encre/45 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 disabled:opacity-100"
           >
-            {charge ? <Loader2 className="size-4 animate-spin" strokeWidth={2} /> : <Camera className="size-4" strokeWidth={1.8} />}
-            <span className="sr-only">{photo ? "Remplacer la photo" : "Ajouter une photo"}</span>
+            {charge ? <Loader2 className="size-4 animate-spin" strokeWidth={2} /> : url ? <Maximize2 className="size-4" strokeWidth={1.8} /> : <Camera className="size-4" strokeWidth={1.8} />}
+            <span className="sr-only">{url ? `Voir la photo de ${immatriculation} en grand` : "Ajouter une photo"}</span>
           </button>
-          {photo ? (
-            <button
-              type="button"
-              onClick={() => onChanger(null)}
-              title="Retirer la photo"
-              className="absolute top-1 right-1 grid size-5 place-items-center rounded-full bg-encre/60 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-            >
-              <X className="size-3" strokeWidth={2.4} />
-              <span className="sr-only">Retirer la photo</span>
-            </button>
-          ) : null}
         </>
       ) : null}
 
@@ -137,6 +132,83 @@ export function PhotoVehicule({
           {erreur}
         </span>
       ) : null}
+
     </div>
+    {/* Hors du cadre, qui est en `overflow-hidden` et ne mesure que 110 px. */}
+    {agrandie && url && onChanger ? (
+      <Agrandissement
+        url={url}
+        immatriculation={immatriculation}
+        charge={charge}
+        onRemplacer={() => champ.current?.click()}
+        onRetirer={() => {
+          setAgrandie(false);
+          onChanger(null);
+        }}
+        onFermer={() => setAgrandie(false)}
+      />
+    ) : null}
+    </>
+  );
+}
+
+/**
+ * La photo en grand, sur le voile sombre habituel des modales. Les deux actions
+ * y sont écrites en toutes lettres plutôt qu'en icônes au survol : on n'y arrive
+ * que délibérément, et retirer une photo ne doit pas se faire d'un frôlement.
+ */
+function Agrandissement({
+  url,
+  immatriculation,
+  charge,
+  onRemplacer,
+  onRetirer,
+  onFermer,
+}: {
+  url: string;
+  immatriculation: string;
+  charge: boolean;
+  onRemplacer: () => void;
+  onRetirer: () => void;
+  onFermer: () => void;
+}) {
+  useEffect(() => {
+    function surEchap(e: KeyboardEvent) {
+      if (e.key === "Escape") onFermer();
+    }
+    document.addEventListener("keydown", surEchap);
+    return () => document.removeEventListener("keydown", surEchap);
+  }, [onFermer]);
+
+  return (
+    <>
+      <button type="button" aria-label="Fermer" onClick={onFermer} className="fixed inset-0 z-50 cursor-default bg-encre/70" />
+      <div role="dialog" aria-modal="true" aria-label={`Photo de ${immatriculation}`} className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="pointer-events-auto flex max-h-[92vh] w-full max-w-[720px] flex-col overflow-hidden rounded-[16px] border border-bordure bg-surface shadow-modale" style={{ animation: "apparition 160ms ease-out" }}>
+          <div className="flex items-center gap-3 border-b border-bordure px-5 py-3">
+            <h2 className="titre-bloc min-w-0 flex-1 truncate">
+              Photo · <span className="code">{immatriculation}</span>
+            </h2>
+            <button type="button" onClick={onFermer} aria-label="Fermer" className="grid size-7 shrink-0 place-items-center rounded-[8px] text-attenue hover:bg-surface-3 hover:text-texte">
+              <X className="size-4" strokeWidth={2} />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 bg-surface-2 p-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt={`Véhicule ${immatriculation}`} className="mx-auto max-h-[62vh] w-auto rounded-[10px] object-contain" />
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5 border-t border-bordure px-5 py-3">
+            <p className="meta min-w-0 flex-1">Remplacer ou retirer la photo se trace comme toute modification de la fiche.</p>
+            <button type="button" onClick={onRetirer} className="bouton-discret text-defavorable">
+              Retirer la photo
+            </button>
+            <button type="button" onClick={onRemplacer} disabled={charge} className="bouton-secondaire">
+              {charge ? <Loader2 className="size-4 animate-spin" strokeWidth={2} /> : <Camera className="size-4 text-texte-2" strokeWidth={1.7} />}
+              Remplacer
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

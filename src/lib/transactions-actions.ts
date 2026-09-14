@@ -219,8 +219,18 @@ async function poserStatut(client: SupabaseClient, utilisateurId: string, c: Cre
   if (!statut) return { issue: "refusee", motif: "Non enregistré en base : statut absent." };
   const avant = await client.from("vehicule").select("immatriculation, statut").eq("id", vehiculeId).maybeSingle<{ immatriculation: string; statut: string }>();
   if (!avant.data) return { issue: "refusee", motif: "Non enregistré en base : véhicule introuvable." };
+  /* Sortir du parc est terminal : la date est exigée (0047), le motif la
+     complète. Revenir d'une sortie les efface — sans quoi un véhicule remis en
+     service traînerait une date de sortie qui ne veut plus rien dire. */
+  const sortie =
+    statut === "sorti"
+      ? { date_sortie: typeof c.valeurs.dateSortie === "string" ? c.valeurs.dateSortie : null, motif_sortie: typeof c.valeurs.motifSortie === "string" ? c.valeurs.motifSortie : null }
+      : avant.data.statut === "sorti"
+        ? { date_sortie: null, motif_sortie: null }
+        : {};
+  if (statut === "sorti" && !sortie.date_sortie) return { issue: "refusee", motif: "Non enregistré en base : une sortie de parc porte sa date." };
   const maintenant = new Date().toISOString();
-  const maj = await client.from("vehicule").update({ statut, modifie_le: maintenant, modifie_par: utilisateurId }).eq("id", vehiculeId);
+  const maj = await client.from("vehicule").update({ statut, ...sortie, modifie_le: maintenant, modifie_par: utilisateurId }).eq("id", vehiculeId);
   if (maj.error) return { issue: "refusee", motif: `Statut refusé : ${maj.error.message}` };
   const motif = [typeof c.valeurs.motif === "string" ? c.valeurs.motif : null, typeof c.valeurs.commentaire === "string" ? c.valeurs.commentaire : null].filter(Boolean).join(" — ") || `Statut posé (${c.numero})`;
   const trace = await client.from("modification").insert({ table_cible: "vehicule", numero: avant.data.immatriculation, champ: "statut", libelle_champ: "Statut", avant: avant.data.statut, apres: statut, motif, statut: "appliquee", cree_par: utilisateurId });

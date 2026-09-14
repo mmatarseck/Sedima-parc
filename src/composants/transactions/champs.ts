@@ -21,7 +21,7 @@ import { GARAGES } from "@/donnees/fiche-demo";
 import { listePrestataires, optionsPrestataires, optionsPrestatairesParNumero } from "@/donnees/prestataires-demo";
 import { camionsTiers, chauffeursTiers } from "@/donnees/flotte-tierce-demo";
 import { lireCreations } from "@/lib/clotures-demo";
-import { APTITUDE, BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_OBSERVATION, GRAVITE_OBSERVATION, MISSION_INCIDENT, MOTIF_IMMOBILISATION, MOTIF_INDISPONIBILITE, NATURE_INCIDENT, POSTE_DEPENSE, RESPONSABILITE, ROLE_AFFECTATION, STATUT_DECLARATION, STATUT_OBSERVATION, STATUT_VEHICULE, STATUT_VISITE, TYPE_INCIDENT, TYPE_SANCTION, TYPE_VISITE, USAGE_VEHICULE } from "@/domaine/libelles";
+import { APTITUDE, BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_OBSERVATION, GRAVITE_OBSERVATION, MISSION_INCIDENT, MOTIF_IMMOBILISATION, MOTIF_INDISPONIBILITE, MOTIF_SORTIE, NATURE_INCIDENT, POSTE_DEPENSE, RESPONSABILITE, ROLE_AFFECTATION, STATUT_DECLARATION, STATUT_OBSERVATION, STATUT_VEHICULE, STATUT_VISITE, TYPE_INCIDENT, TYPE_SANCTION, TYPE_VISITE, USAGE_VEHICULE } from "@/domaine/libelles";
 import type { TypeTransaction } from "@/domaine/reference";
 import type { CategorieVehicule } from "@/domaine/types";
 import { listeChauffeurs } from "@/donnees/chauffeurs-demo";
@@ -288,9 +288,15 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "fin", libelle: "Fin", type: "date" },
     { cle: "commentaire", libelle: "Commentaire", type: "texte" },
   ],
+  /* Le changement de statut : le seul chemin par lequel le statut d'un véhicule
+     bouge — le crayon posé à côté de chaque pastille y mène. Sortir du parc est
+     un statut comme un autre, à ceci près qu'il est terminal : il exige sa date
+     et demande son motif, qui n'apparaissent que là (0046, 0047). */
   statut: [
     { cle: "statut", libelle: "Nouveau statut", type: "choix", options: optionsStatut(), obligatoire: true },
-    { cle: "motif", libelle: "Motif d'immobilisation", type: "choix", options: options(MOTIF_IMMOBILISATION) },
+    { cle: "motif", libelle: "Motif d'immobilisation", type: "choix", options: options(MOTIF_IMMOBILISATION), visibleSi: (s) => s.statut !== "sorti" },
+    { cle: "dateSortie", libelle: "Date de sortie du parc", type: "date", obligatoire: true, visibleSi: (s) => s.statut === "sorti" },
+    { cle: "motifSortie", libelle: "Motif de la sortie", type: "choix", options: options(MOTIF_SORTIE), obligatoire: true, visibleSi: (s) => s.statut === "sorti" },
     DATE("debut", "À compter du"),
     { cle: "commentaire", libelle: "Commentaire", type: "texte" },
   ],

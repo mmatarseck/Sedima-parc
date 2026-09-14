@@ -172,3 +172,13 @@ export function useEdition(): Edition {
   if (!c) throw new Error("useEdition s'emploie sous FournisseurEdition");
   return c;
 }
+
+/**
+ * Le contexte quand il y en a un, nul sinon. Pour les composants qui savent se
+ * passer d'édition : la pastille de statut s'affiche sur tous les écrans, mais
+ * n'offre son crayon que là où une modale peut s'ouvrir. Mieux vaut une
+ * pastille en lecture qu'un écran qui casse.
+ */
+export function useEditionFacultative(): Edition | null {
+  return useContext(Contexte);
+}
