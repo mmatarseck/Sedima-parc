@@ -264,21 +264,6 @@ export function OngletApercu({ fiche }: { fiche: FicheVehicule }) {
         </div>
       </Carte>
 
-      {/* ---- Tendance des dépenses, décomposée ----
-          Empilée par famille : un mois à trois millions ne dit rien tant qu'on
-          ignore s'il s'agit de carburant ou d'une réparation. */}
-      <Carte titre="Dépenses mensuelles" precision="Par famille de charges — le total du mois se lit au sommet de la barre">
-        <GraphiqueBarresEmpilees
-          points={coutsMensuels.map((m) => ({ libelle: libelleMois(m.mois, true), valeurs: m.parGroupe }))}
-          series={[
-            { cle: "carburant", libelle: GROUPE_CHARGE.carburant, couleur: "var(--color-accent)" },
-            { cle: "maintenance", libelle: GROUPE_CHARGE.maintenance, couleur: "var(--color-vigilance)" },
-            { cle: "autres", libelle: GROUPE_CHARGE.autres, couleur: "var(--color-attenue-2)" },
-          ]}
-          hauteur={170}
-        />
-      </Carte>
-
       {/* ---- Situation ---- */}
       <Carte titre="Situation" precision="Le dernier fait connu de chaque nature">
         <ul className="flex flex-col">
@@ -303,6 +288,21 @@ export function OngletApercu({ fiche }: { fiche: FicheVehicule }) {
             precision={prochaineIntervention ? `${prochaineIntervention.libelle} · ≈ ${prochaineIntervention.joursEstimes} j` : "Non planifié"}
           />
         </ul>
+      </Carte>
+
+      {/* ---- Tendance des dépenses, décomposée ----
+          Empilée par famille : un mois à trois millions ne dit rien tant qu'on
+          ignore s'il s'agit de carburant ou d'une réparation. */}
+      <Carte titre="Dépenses mensuelles" precision="Par famille de charges — le total du mois se lit au sommet de la barre">
+        <GraphiqueBarresEmpilees
+          points={coutsMensuels.map((m) => ({ libelle: libelleMois(m.mois, true), valeurs: m.parGroupe }))}
+          series={[
+            { cle: "carburant", libelle: GROUPE_CHARGE.carburant, couleur: "var(--color-accent)" },
+            { cle: "maintenance", libelle: GROUPE_CHARGE.maintenance, couleur: "var(--color-vigilance)" },
+            { cle: "autres", libelle: GROUPE_CHARGE.autres, couleur: "var(--color-attenue-2)" },
+          ]}
+          hauteur={170}
+        />
       </Carte>
 
       {/* ---- Échéances ---- */}
