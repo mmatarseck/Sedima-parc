@@ -145,6 +145,8 @@ export interface Vehicule {
   businessUnit: BusinessUnit | null;
   siteId: string | null;
   statut: StatutVehicule;
+  /** Chez qui il a été acheté — son nom en clair, même hors référentiel (0048). */
+  fournisseur?: string | null;
   /** Le jour où il a quitté le parc ; exigée dès que le statut est « sorti ». */
   dateSortie?: string | null;
   /** Pourquoi : cédé, réformé, détruit, volé, fin de location, autre. */

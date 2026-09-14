@@ -33,6 +33,8 @@ export interface SectionFormulaire {
 
 export interface ContexteNouveauVehicule {
   sites: { valeur: string; libelle: string }[];
+  /** Les prestataires qui peuvent avoir vendu un véhicule, par raison sociale. */
+  fournisseurs: { valeur: string; libelle: string }[];
 }
 
 const options = (r: Record<string, string>) => Object.entries(r).map(([valeur, libelle]) => ({ valeur, libelle }));
@@ -120,9 +122,13 @@ export function sectionsNouveauVehicule(contexte: ContexteNouveauVehicule): Sect
           /* Le régime de propriété ne se saisit pas : la fiche le déduit de la
              catégorie de flotte — propriété SEDIMA, mise à disposition ADEX,
              location. Le demander ici donnerait deux réponses à la même
-             question, dont une seule serait lue. Le fournisseur d'achat n'a pas
-             encore de colonne : il se note, en attendant, dans les notes. */
+             question, dont une seule serait lue.
+             Le fournisseur, lui, a sa colonne depuis le 14 septembre 2026
+             (0048) : on choisit dans le référentiel, ou l'on écrit un nom qui
+             n'y est pas — un concessionnaire qui n'a vendu qu'un camion n'a pas
+             à devenir prestataire pour être cité. */
           champs: [
+            { cle: "fournisseur", libelle: "Fournisseur (vendeur du véhicule)", type: "suggestion", options: contexte.fournisseurs },
             { cle: "valeurAcquisition", libelle: "Valeur d'acquisition", type: "nombre", unite: "F" },
             { cle: "commentaire", libelle: "Notes", type: "texte-long" },
           ],

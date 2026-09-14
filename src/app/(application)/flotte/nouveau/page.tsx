@@ -1,18 +1,25 @@
 import { EcranNouveauVehicule } from "@/composants/flotte/EcranNouveauVehicule";
 import { titrePage } from "@/domaine/marque";
-import { sites } from "@/donnees/referentiels";
+import { prestataires, sites } from "@/donnees/referentiels";
 
 export const metadata = { title: titrePage("Nouveau véhicule") };
 
 /**
- * Les sites viennent de la base quand elle est branchée ; marque, modèle et
- * catégorie, des paramètres posés dans le navigateur.
+ * Sites et fournisseurs viennent de la base quand elle est branchée ; marque,
+ * modèle et catégorie, des paramètres posés dans le navigateur.
  *
- * Le fournisseur d'achat était proposé ici : la table `vehicule` n'a pas de
- * colonne pour lui, et il se perdait à l'enregistrement (14 septembre 2026).
- * Il se note dans les notes en attendant qu'une colonne le porte.
+ * Les fournisseurs proposés sont les prestataires qui peuvent avoir vendu un
+ * véhicule ; le champ reste libre, pour un concessionnaire que le référentiel
+ * ne connaît pas — la base garde alors son nom sans lien (0048).
  */
 export default async function PageNouveauVehicule() {
-  const listeSites = await sites();
-  return <EcranNouveauVehicule contexte={{ sites: listeSites.map((s) => ({ valeur: s.id, libelle: s.libelle })) }} />;
+  const [listeSites, listePrestataires] = await Promise.all([sites(), prestataires()]);
+  return (
+    <EcranNouveauVehicule
+      contexte={{
+        sites: listeSites.map((s) => ({ valeur: s.id, libelle: s.libelle })),
+        fournisseurs: listePrestataires.filter((p) => p.actif && ["garage", "pieces", "autre", "transporteur"].includes(p.type)).map((p) => ({ valeur: p.raisonSociale, libelle: p.raisonSociale })),
+      }}
+    />
+  );
 }

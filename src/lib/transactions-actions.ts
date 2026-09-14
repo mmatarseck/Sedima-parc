@@ -273,6 +273,11 @@ export async function ecrireModification(e: { numero: string; type: TypeTransact
   if (!moi) return { issue: "refusee", motif: "Session absente : reconnectez-vous." };
 
   const colonnes = colonnesModification(e.type, e.diffs);
+  /* Le fournisseur d'un véhicule s'écrit en deux colonnes : son nom en clair,
+     que le module pur a déjà posé, et le lien vers le référentiel, qu'il faut
+     une base pour résoudre. Changer le nom refait le lien — ou l'efface, quand
+     le nouveau vendeur n'est pas au référentiel. */
+  if (e.type === "vehicule" && "fournisseur" in colonnes) colonnes.fournisseur_id = await prestataireIdDe(client, colonnes.fournisseur);
   /* Tout se repère par `numero`, sauf le véhicule : sa clé est son
      immatriculation — celle d'**avant**, puisqu'une plaque peut être ce qui
      change. La trace, elle, se range sous cette même clé. */

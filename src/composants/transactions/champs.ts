@@ -493,6 +493,10 @@ export function champsVehicule(): ChampEdition[] {
       { cle: "chargeUtile", libelle: "Charge utile", type: "nombre", unite: "kg" },
     ]),
     ...section("Finances", [
+      /* Le vendeur du véhicule (0048) : le référentiel des prestataires le
+         propose, et un nom qui n'y est pas s'écrit quand même — la base garde
+         alors le nom sans lien. */
+      { cle: "fournisseur", libelle: "Fournisseur (vendeur du véhicule)", type: "suggestion", options: optionsPrestataires(["garage", "pieces", "autre", "transporteur"]) },
       { cle: "valeurAcquisition", libelle: "Valeur d'acquisition", type: "nombre", unite: "F" },
       { cle: "dureeAmortissementAnnees", libelle: "Durée d'amortissement", type: "nombre", unite: "ans" },
     ]),

@@ -203,6 +203,16 @@ const COLONNES: ColonneListe<LigneFlotte>[] = [
     },
   },
   { cle: "cout", libelle: "Coût 12 mois", alignee: "droite", parDefaut: false, largeur: 112, rendu: (l) => <span className="code block truncate">{montantCourt(l.coutDouzeMois)}</span> },
+  /* Chez qui il a été acheté (0048) : facultative, mais c'est elle qui répond à
+     « qu'avons-nous pris chez ce concessionnaire ». */
+  {
+    cle: "fournisseur",
+    libelle: "Fournisseur",
+    parDefaut: false,
+    largeur: 170,
+    texte: (l) => l.vehicule.fournisseur ?? "",
+    rendu: (l) => (l.vehicule.fournisseur ? <span className="block truncate">{l.vehicule.fournisseur}</span> : <span className="text-attenue-2">—</span>),
+  },
   // Le filet de début de ligne porte déjà la couleur ; cette colonne en donne
   // le nom, pour qui ne retient pas encore le code couleur des sept états.
   {
@@ -228,7 +238,7 @@ const COLONNES: ColonneListe<LigneFlotte>[] = [
 ];
 
 function champsRecherche(l: LigneFlotte): string[] {
-  return [l.vehicule.immatriculationAffichee, l.vehicule.immatriculation, l.vehicule.vin ?? "", l.vehicule.marque, l.vehicule.appellation, l.chauffeurTitulaire?.nom ?? "", l.attributaire?.nom ?? "", l.attributaire?.fonction ?? "", l.site?.libelle ?? ""];
+  return [l.vehicule.immatriculationAffichee, l.vehicule.immatriculation, l.vehicule.vin ?? "", l.vehicule.marque, l.vehicule.appellation, l.vehicule.fournisseur ?? "", l.chauffeurTitulaire?.nom ?? "", l.attributaire?.nom ?? "", l.attributaire?.fonction ?? "", l.site?.libelle ?? ""];
 }
 
 export function TableFlotte({ lignes }: { lignes: LigneFlotte[] }) {

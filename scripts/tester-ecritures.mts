@@ -110,13 +110,21 @@ attendu(`un type sans table le dit (${tableDe("prestataire")})`, tableDe("presta
 attendu(`le véhicule a sa table (${tableDe("vehicule")})`, tableDe("vehicule") === "vehicule");
 attendu("un véhicule se repère par sa plaque, les autres par leur numéro", cleDe("vehicule", "VEH-AB-060-KT").colonne === "immatriculation" && cleDe("vehicule", "VEH-AB-060-KT").valeur === "AB060KT" && cleDe("depense", "DEP-2026-90001").valeur === "DEP-2026-90001");
 
-const neuf = ligneCreation("vehicule", "VEH-2026-90001", { immatriculation: "DK-9911-ZZ", marque: "Tata", appellation: "LPT 1618", categorie: "camion", categorieFlotte: "interne", usage: "vrac", energie: "gasoil", statut: "en-service", ptac: "16 000", valeurAcquisition: 28500000, engage: true }, r);
+/* Le fournisseur (0048) : le lien vers le référentiel est résolu par le serveur
+   et arrive dans le rattachement, le nom en clair vient de la saisie. */
+const vendeur = (await pg.query(`select id, raison_sociale from prestataire order by raison_sociale limit 1`)).rows[0] as { id: string; raison_sociale: string };
+const neuf = ligneCreation("vehicule", "VEH-2026-90001", { immatriculation: "DK-9911-ZZ", marque: "Tata", appellation: "LPT 1618", categorie: "camion", categorieFlotte: "interne", usage: "vrac", energie: "gasoil", statut: "en-service", ptac: "16 000", valeurAcquisition: 28500000, engage: true, fournisseur: vendeur.raison_sociale }, { ...r, prestataireId: vendeur.id });
 if ("refus" in neuf) attendu(`création d'un véhicule : ${neuf.refus}`, false);
 else {
   await inserer("vehicule", neuf.ligne);
-  const n = (await pg.query(`select immatriculation, marque, categorie, ptac, valeur_acquisition, engage from vehicule where immatriculation = 'DK9911ZZ'`)).rows[0] as { immatriculation: string; marque: string; categorie: string; ptac: number; valeur_acquisition: string; engage: boolean };
+  const n = (await pg.query(`select immatriculation, marque, categorie, ptac, valeur_acquisition, engage, fournisseur, fournisseur_id from vehicule where immatriculation = 'DK9911ZZ'`)).rows[0] as { immatriculation: string; marque: string; categorie: string; ptac: number; valeur_acquisition: string; engage: boolean; fournisseur: string; fournisseur_id: string };
   attendu(`véhicule → vehicule (${n?.immatriculation}, ${n?.marque}, PTAC ${n?.ptac})`, n?.immatriculation === "DK9911ZZ" && n?.marque === "Tata" && n.ptac === 16000 && Number(n.valeur_acquisition) === 28500000 && n.engage === true);
+  attendu(`il dit chez qui il a été acheté (${n?.fournisseur}), et le lien tient`, n?.fournisseur === vendeur.raison_sociale && n.fournisseur_id === vendeur.id);
 }
+/* Un vendeur hors référentiel se garde quand même, sans lien : c'est tout
+   l'objet des deux colonnes. */
+const horsReferentiel = ligneCreation("vehicule", "VEH-2026-90006", { immatriculation: "DK-3333-CC", marque: "Tata", appellation: "LPT 1618", categorie: "camion", fournisseur: "Garage du coin" }, { ...r, prestataireId: null });
+attendu("un fournisseur hors référentiel garde son nom, sans lien", "ligne" in horsReferentiel && horsReferentiel.ligne.fournisseur === "Garage du coin" && horsReferentiel.ligne.fournisseur_id === null);
 const sansPlaque = ligneCreation("vehicule", "VEH-2026-90002", { marque: "Tata", appellation: "LPT 1618", categorie: "camion" }, r);
 attendu(`un véhicule sans immatriculation est refusé (${"refus" in sansPlaque ? sansPlaque.refus : "accepté"})`, "refus" in sansPlaque);
 const sansFamille = ligneCreation("vehicule", "VEH-2026-90003", { immatriculation: "DK-1111-AA", marque: "Tata", appellation: "LPT 1618", categorie: "cat-frigo" }, r);
@@ -148,6 +156,11 @@ attendu(`la plaque change sans changer d'identifiant (${apresRenommage?.immatric
    catégorie de flotte et des relevés. */
 const calcules = colonnesModification("vehicule", [{ champ: "region", valeur: "Thiès" }, { champ: "entite", valeur: "KFC" }, { champ: "utilisation", valeur: "Vrac" }, { champ: "regimePropriete", valeur: "Location" }, { champ: "gpsActif", valeur: "oui" }]);
 attendu(`aucun champ calculé ne prétend s'écrire (${Object.keys(calcules).length} colonne(s))`, Object.keys(calcules).length === 0);
+
+/* Le fournisseur se corrige : le module pur pose le nom, le lien se résout en
+   base — d'où son absence ici, et sa présence dans `ecrireModification`. */
+const changeVendeur = colonnesModification("vehicule", [{ champ: "fournisseur", valeur: "SENEGALAISE AUTOMOBILE" }]);
+attendu("une modification du fournisseur pose son nom, pas son lien", changeVendeur.fournisseur === "SENEGALAISE AUTOMOBILE" && !("fournisseur_id" in changeVendeur));
 
 /* Sortir un véhicule du parc : le statut terminal exige sa date (0047). */
 let sansDate = false;

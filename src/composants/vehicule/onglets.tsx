@@ -55,6 +55,7 @@ import {
   STATUT_VISITE,
   TYPE_VISITE,
   MOTIF_IMMOBILISATION,
+  MOTIF_SORTIE,
   POSTE_DEPENSE,
   ROLE_AFFECTATION,
   TYPE_DOCUMENT,
@@ -391,9 +392,10 @@ export function OngletCaracteristiques({ fiche, detenteur }: { fiche: FicheVehic
         />
       </Carte>
 
-      <Carte titre="Valeur et amortissement">
+      <Carte titre="Achat, valeur et amortissement">
         <Definitions
           elements={[
+            { libelle: "Fournisseur", valeur: v.fournisseur ?? null },
             { libelle: "Valeur d'acquisition", valeur: montant(i.valeurAcquisition) },
             { libelle: "Durée d'amortissement", valeur: i.dureeAmortissementAnnees ? `${i.dureeAmortissementAnnees} ans` : null },
             { libelle: "Valeur nette comptable", valeur: montant(i.valeurNetteComptable) },
@@ -401,6 +403,19 @@ export function OngletCaracteristiques({ fiche, detenteur }: { fiche: FicheVehic
           ]}
         />
       </Carte>
+
+      {/* Ce qu'une sortie de parc laisse écrit (0047) : la carte n'apparaît que
+          pour un véhicule sorti — elle n'aurait rien à dire des autres. */}
+      {v.statut === "sorti" ? (
+        <Carte titre="Sortie du parc">
+          <Definitions
+            elements={[
+              { libelle: "Sorti le", valeur: v.dateSortie ? date(v.dateSortie) : null },
+              { libelle: "Motif", valeur: v.motifSortie ? MOTIF_SORTIE[v.motifSortie] : null },
+            ]}
+          />
+        </Carte>
+      ) : null}
 
     </div>
   );

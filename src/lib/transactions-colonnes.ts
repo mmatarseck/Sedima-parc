@@ -555,6 +555,10 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
           site_id: texte(v.siteId),
           statut,
           engage: v.engage === undefined ? true : booleen(v.engage),
+          /* Chez qui il a été acheté : le lien quand le référentiel le connaît,
+             le nom en clair dans tous les cas (0048). */
+          fournisseur_id: r.prestataireId,
+          fournisseur: texte(v.fournisseur),
           date_sortie: dateSortie,
           motif_sortie: texte(v.motifSortie),
           premiere_mise_en_circulation: texte(v.premiereMiseEnCirculation),
@@ -651,6 +655,10 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
     capaciteReservoir: "capacite_reservoir",
     valeurAcquisition: "valeur_acquisition",
     dureeAmortissementAnnees: "duree_amortissement_annees",
+    /* Le nom du fournisseur seulement : le lien vers le référentiel se résout
+       en base, que ce module pur ne connaît pas — `ecrireModification` s'en
+       charge, comme `rattacher` le fait à la création. */
+    fournisseur: "fournisseur",
     photo: "photo",
     commentaire: "commentaire",
   },

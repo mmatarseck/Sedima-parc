@@ -66,6 +66,11 @@ interface LigneVehicule {
   photo: string | null;
   commentaire: string | null;
   regime: Vehicule["regime"];
+  /* Le vendeur du véhicule (0048) et ce qu'une sortie de parc laisse écrit
+     (0047) : absents des bases d'avant ces migrations, d'où l'optionnel. */
+  fournisseur?: string | null;
+  date_sortie?: string | null;
+  motif_sortie?: Vehicule["motifSortie"];
 }
 
 interface LigneAttribution {
@@ -332,6 +337,9 @@ export function vehiculeDepuisLaBase(v: LigneVehicule): Vehicule {
     businessUnit: v.business_unit,
     siteId: v.site_id,
     statut: v.statut,
+    fournisseur: v.fournisseur ?? null,
+    dateSortie: v.date_sortie ?? null,
+    motifSortie: v.motif_sortie ?? null,
     valeurAcquisition: v.valeur_acquisition,
     dureeAmortissementAnnees: v.duree_amortissement_annees,
     commentaire: v.commentaire,
