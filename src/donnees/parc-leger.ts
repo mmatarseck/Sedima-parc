@@ -51,7 +51,7 @@ const ETAT_PAR_STATUT: Partial<Record<StatutVehicule, EtatLeger>> = { "en-servic
 /** La source du parc léger depuis ce que la base a rendu — pure, pour le banc d'essai. */
 export function sourceDepuisLignes(lignes: LigneFlotte[], attributions: LigneAttributionBase[], attributaires: LigneAttributaireBase[], forfaits: LigneForfaitBase[]): SourceParcLeger {
   const parImmat = new Map(attributions.filter((a) => a.vehicule).map((a) => [a.vehicule!.immatriculation, a]));
-  const personnes: Attributaire[] = attributaires.map((a) => ({ id: a.id, nom: a.nom, fonction: a.fonction, departement: a.departement, businessUnit: a.business_unit }));
+  const personnes: Attributaire[] = attributaires.map((a) => ({ id: a.id, nom: a.nom, fonction: a.fonction, departement: a.departement, businessUnit: a.business_unit, actif: a.actif }));
   const parNom = new Map(personnes.map((a) => [a.nom, a]));
   const vehicules: VehiculeLeger[] = lignes
     .filter((l) => l.vehicule.regime && l.vehicule.regime !== "exploitation")

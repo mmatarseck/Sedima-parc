@@ -9,7 +9,7 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import { donneesBudgetDe } from "../src/domaine/assembler-budget";
 import { construireRapportDe, type SourceRapports } from "../src/domaine/assembler-rapports";
-import { depensesForfaitsDe } from "../src/domaine/parc-leger";
+import { depensesForfaitsDe, lignesAttributaires } from "../src/domaine/parc-leger";
 import { PARAMETRES_DEFAUT } from "../src/domaine/parametres";
 import { RAPPORTS } from "../src/domaine/rapports";
 import { achatDepuisLigne, type LigneAchatBase } from "../src/donnees/achats";
@@ -74,6 +74,28 @@ attendu(`${nommes} véhicules nomment leur attributaire (démo ${demo.vehicules.
 const fb = depensesForfaitsDe(source, aujourdhui, forfaitDefaut);
 const fd = depensesForfaitsDe(demo, aujourdhui, forfaitDefaut);
 attendu(`les forfaits en dépense : ${fb.length} lignes pour ${fmt(fb.reduce((t, d) => t + d.montant, 0))} F (démo ${fd.length} lignes, ${fmt(fd.reduce((t, d) => t + d.montant, 0))} F)`, fb.length === fd.length && fb.reduce((t, d) => t + d.montant, 0) === fd.reduce((t, d) => t + d.montant, 0));
+
+/* ---- 1 bis. Les fiches d'attributaire ---- */
+/* Chaque attributaire a sa fiche depuis le 14 septembre 2026, adressée par son
+   nom. Deux personnes dont les noms donneraient la même adresse ouvriraient la
+   même fiche, et l'une des deux verrait les véhicules de l'autre : c'est la
+   vérification qui compte ici. */
+for (const [ou, src] of [["base", source], ["démo", demo]] as const) {
+  const fiches = lignesAttributaires(src, PARAMETRES_DEFAUT.parcLeger.forfaitCarburantMensuel);
+  const adresses = new Set(fiches.map((f) => f.id));
+  const doublons = fiches.filter((f, i) => fiches.findIndex((x) => x.id === f.id) !== i).map((f) => f.nom);
+  attendu(`${ou} : ${fiches.length} fiches d'attributaire, ${adresses.size} adresses distinctes${doublons.length ? ` — ${doublons.join(", ")}` : ""}`, fiches.length === src.attributaires.length && adresses.size === fiches.length);
+  const vides = fiches.filter((f) => f.id === "").length;
+  attendu(`${ou} : aucune adresse vide (${vides})`, vides === 0);
+  /* Un véhicule tenu par quelqu'un doit se retrouver sur sa fiche : sinon la
+     personne paraît sans véhicule alors que la Flotte la nomme. */
+  const tenus = new Set(fiches.flatMap((f) => f.vehicules.map((v) => v.id)));
+  const attendus = src.vehicules.filter((v) => v.attributaireId && v.etat !== "a-reformer").map((v) => v.id);
+  const perdus = attendus.filter((id) => !tenus.has(id));
+  attendu(`${ou} : ${attendus.length} véhicules attribués, tous sur une fiche${perdus.length ? ` — perdus : ${perdus.join(", ")}` : ""}`, perdus.length === 0);
+  const avecForfait = fiches.filter((f) => f.forfaitMensuel !== null).length;
+  attendu(`${ou} : ${avecForfait} fiches portent un forfait carburant (${src.forfaits.length} forfaits)`, avecForfait === src.forfaits.length);
+}
 
 /* ---- 2. Les huit rapports du parc léger ---- */
 const rapportsDemo = { ...sourceRapportsDemo(PARAMETRES_DEFAUT), parcLeger: demo };

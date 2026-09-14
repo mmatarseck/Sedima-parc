@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Pencil } from "lucide-react";
 import { champsCreation } from "@/composants/transactions/champs";
 import { useEditionFacultative } from "@/composants/transactions/ContexteEdition";
+import { idAttributaire } from "@/domaine/parc-leger";
 import { peutCourant } from "@/lib/acces-courant";
 import type { LigneFlotte } from "@/domaine/types";
 
@@ -24,9 +25,10 @@ import type { LigneFlotte } from "@/domaine/types";
  *     sont le même geste, au même endroit — c'est en parcourant la liste qu'on
  *     s'en aperçoit.
  *
- * L'attributaire d'un véhicule de service ou de fonction n'a pas de fiche : sa
- * table existe (`attributaire`, 0004) mais aucun écran ne la montre. Son nom
- * reste donc du texte, jusqu'à ce que le métier décide s'il lui en faut une.
+ * L'attributaire d'un véhicule de service ou de fonction a désormais sa fiche
+ * lui aussi (14 septembre 2026) : son nom y mène de la même façon. Ce qui les
+ * sépare tient à l'affectation — celle d'un chauffeur se date et se change
+ * d'ici, l'attribution d'un véhicule de fonction se change sur le véhicule.
  * ==========================================================================*/
 
 export function ChauffeurDeLaLigne({ ligne }: { ligne: LigneFlotte }) {
@@ -66,9 +68,21 @@ export function ChauffeurDeLaLigne({ ligne }: { ligne: LigneFlotte }) {
     ) : null;
 
   if (attributaire) {
+    /* Un pool n'est pas quelqu'un : « Pool DACI · DSI · CG » ne mène nulle part.
+       Une personne nommée, si — sa fiche existe depuis le 14 septembre 2026. */
     return (
       <span className="flex min-w-0 items-center gap-1">
-        <span className={`min-w-0 truncate ${attributaire.pool ? "text-texte-2" : ""}`}>{attributaire.nom}</span>
+        {attributaire.pool ? (
+          <span className="min-w-0 truncate text-texte-2">{attributaire.nom}</span>
+        ) : (
+          <Link
+            href={`/attributaires/${idAttributaire(attributaire.nom)}`}
+            onClick={(e) => e.stopPropagation()}
+            className="min-w-0 truncate font-medium text-texte hover:text-accent-fonce hover:underline"
+          >
+            {attributaire.nom}
+          </Link>
+        )}
       </span>
     );
   }

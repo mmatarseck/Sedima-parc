@@ -178,7 +178,7 @@ function construire() {
     if (nom) {
       attributaireId = idAttributaire(nom);
       const existant = attributaires.get(attributaireId);
-      if (!existant) attributaires.set(attributaireId, { id: attributaireId, nom, fonction, departement, businessUnit });
+      if (!existant) attributaires.set(attributaireId, { id: attributaireId, nom, fonction, departement, businessUnit, actif: true });
       else if (!existant.fonction && fonction) attributaires.set(attributaireId, { ...existant, fonction, departement: existant.departement ?? departement });
     }
     return {

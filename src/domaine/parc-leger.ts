@@ -51,6 +51,8 @@ export interface Attributaire {
   departement: string | null;
   /** La BU de l'agent : c'est elle qui porte la charge au budget (décision du 7 septembre 2026). */
   businessUnit: BusinessUnit | null;
+  /** Faux quand la personne a quitté l'entreprise : elle reste consultable, plus attributaire. */
+  actif: boolean;
 }
 
 /**
@@ -203,4 +205,93 @@ export interface ForfaitCarburant {
   /** Montant mensuel en francs ; nul quand il suit le paramètre. */
   montantMensuel: number | null;
   carte: string | null;
+}
+
+/* -- L'attributaire comme conducteur ---------------------------------------- */
+
+/**
+ * Où en est une personne dotée, déduit de ce qu'elle tient — jamais saisi.
+ *
+ * Demande du métier du 14 septembre 2026 : **tout attributaire d'un véhicule
+ * doit avoir une fiche**, au même titre qu'un chauffeur du parc. Les deux
+ * conduisent un véhicule de l'entreprise ; ce qui les sépare est le rapport à
+ * l'engin — le chauffeur en est l'outil de travail et doit le permis, la visite
+ * médicale et l'aptitude ; l'attributaire le tient au titre de sa fonction, et
+ * ne doit rien de tout cela au parc. D'où deux listes et deux fiches, plutôt
+ * qu'une fiche commune qui afficherait un attributaire « non conforme » faute
+ * d'un permis que le parc n'a pas à lui réclamer.
+ */
+export type SituationAttributaire = "plan-car" | "dote" | "sans-vehicule";
+
+export const SITUATION_ATTRIBUTAIRE: Record<SituationAttributaire, { libelle: string; couleur: string; precision: string }> = {
+  "plan-car": { libelle: "Plan car", couleur: "var(--color-statut-service)", precision: "Véhicule de fonction sous plan car en cours" },
+  dote: { libelle: "Doté", couleur: "var(--color-statut-backup)", precision: "Tient un véhicule de service ou de fonction" },
+  "sans-vehicule": { libelle: "Sans véhicule", couleur: "var(--color-statut-retrait)", precision: "Plus aucun véhicule en cours d'attribution" },
+};
+
+export const ORDRE_SITUATIONS_ATTRIBUTAIRE: SituationAttributaire[] = ["plan-car", "dote", "sans-vehicule"];
+
+export interface LigneAttributaire {
+  attributaire: Attributaire;
+  /** L'adresse de la fiche : « assane-gueye ». */
+  id: string;
+  nom: string;
+  initiales: string;
+  situation: SituationAttributaire;
+  /** Ce qu'il tient aujourd'hui — un véhicule presque toujours, deux parfois. */
+  vehicules: VehiculeLeger[];
+  /** Le premier véhicule tenu, celui que la liste montre. */
+  vehiculePrincipal: VehiculeLeger | null;
+  /** Son forfait carburant mensuel, quand il en a un. */
+  forfait: ForfaitCarburant | null;
+  /** Le forfait en francs, celui du dossier ou celui des paramètres ; nul sans forfait. */
+  forfaitMensuel: number | null;
+}
+
+export function initialesAttributaire(nom: string): string {
+  return (
+    nom
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((m) => m[0]!.toUpperCase())
+      .join("") || "—"
+  );
+}
+
+/**
+ * Une ligne par attributaire, avec ce qu'il tient.
+ *
+ * Les véhicules « à recevoir » comptent : la personne est dotée par décision,
+ * même si l'engin n'est pas encore livré — c'est précisément ce que le plan de
+ * cascade suit. Ceux qui sont sortis du parc ne comptent plus.
+ */
+export function lignesAttributaires(source: SourceParcLeger, forfaitDefaut: number): LigneAttributaire[] {
+  const parPersonne = new Map<string, VehiculeLeger[]>();
+  for (const v of source.vehicules) {
+    if (!v.attributaireId || v.etat === "a-reformer") continue;
+    const tenus = parPersonne.get(v.attributaireId) ?? [];
+    tenus.push(v);
+    parPersonne.set(v.attributaireId, tenus);
+  }
+  const forfaits = new Map(source.forfaits.map((f) => [f.attributaireId, f]));
+
+  return source.attributaires
+    .map((a): LigneAttributaire => {
+      /* Le véhicule de fonction passe devant : c'est celui qui porte le plan car. */
+      const vehicules = (parPersonne.get(a.id) ?? []).sort((x, y) => (x.regime === y.regime ? 0 : x.regime === "fonction" ? -1 : 1));
+      const forfait = forfaits.get(a.id) ?? null;
+      return {
+        attributaire: a,
+        id: idAttributaire(a.nom),
+        nom: a.nom,
+        initiales: initialesAttributaire(a.nom),
+        situation: vehicules.some((v) => v.planCar?.statut === "en-cours") ? "plan-car" : vehicules.length > 0 ? "dote" : "sans-vehicule",
+        vehicules,
+        vehiculePrincipal: vehicules[0] ?? null,
+        forfait,
+        forfaitMensuel: forfait ? (forfait.montantMensuel ?? forfaitDefaut) : null,
+      };
+    })
+    .sort((x, y) => x.nom.localeCompare(y.nom, "fr"));
 }
