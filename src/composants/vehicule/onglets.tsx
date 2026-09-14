@@ -175,6 +175,31 @@ function Justificatif({ present, fichier }: { present: boolean; fichier?: string
   );
 }
 
+/**
+ * Une ligne de repère : une pastille de ton, un libellé, une date ou un
+ * kilométrage aligné à droite, et le détail en dessous.
+ *
+ * « Situation » et « Prochaines échéances » se lisent l'une sous l'autre dans
+ * l'Aperçu et disent la même chose — un fait, quand, et de quoi il s'agit. Elles
+ * étaient pourtant écrites deux fois, l'une en colonnes, l'autre en liste
+ * (corrigé le 14 septembre 2026, demande du métier). Un seul composant les
+ * empêche de diverger à la prochaine retouche.
+ */
+function LigneRepere({ ton, libelle, repere, precision }: { ton: Ton; libelle: string; repere: string | null; precision: string }) {
+  return (
+    <li className="flex items-start gap-3 border-b border-bordure py-3 first:pt-0 last:border-b-0 last:pb-0">
+      <span className={`mt-1.5 size-2 shrink-0 rounded-full ${ton === "defavorable" ? "bg-defavorable" : ton === "vigilance" ? "bg-vigilance" : ton === "favorable" ? "bg-accent" : "bg-attenue-2"}`} />
+      <div className="min-w-0 flex-1">
+        <p className="flex items-baseline gap-2">
+          <span className="text-[13px] font-medium text-texte">{libelle}</span>
+          {repere ? <span className="code ml-auto shrink-0 text-[12px] text-texte-2">{repere}</span> : null}
+        </p>
+        <p className="meta mt-0.5">{precision}</p>
+      </div>
+    </li>
+  );
+}
+
 /* ========================================================================== */
 /* Aperçu — agrégats, analyses, alertes                                       */
 /* ========================================================================== */
@@ -255,70 +280,36 @@ export function OngletApercu({ fiche }: { fiche: FicheVehicule }) {
       </Carte>
 
       {/* ---- Situation ---- */}
-      <Carte titre="Situation">
-        <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
-          <div className="min-w-0">
-            <p className="label-champ">Dernière intervention</p>
-            {derniereIntervention ? (
-              <>
-                <p className="mt-1.5 truncate text-[13px] font-medium text-texte">{derniereIntervention.objet}</p>
-                <p className="meta mt-1 truncate">
-                  {date(derniereIntervention.date)} · {derniereIntervention.garage}
-                </p>
-              </>
-            ) : (
-              <p className="mt-1.5 text-[13px] text-attenue-2">Aucune enregistrée</p>
-            )}
-          </div>
-          <div className="min-w-0">
-            <p className="label-champ">Dernier plein</p>
-            {dernierPlein ? (
-              <>
-                <p className="mt-1.5 text-[13px] font-medium text-texte">
-                  {nombre(dernierPlein.litres, 1)} L · {montant(dernierPlein.montant)}
-                </p>
-                <p className="meta mt-1 truncate">
-                  {date(dernierPlein.date)} · {dernierPlein.source}
-                </p>
-              </>
-            ) : (
-              <p className="mt-1.5 text-[13px] text-attenue-2">Aucun</p>
-            )}
-          </div>
-          <div className="min-w-0">
-            <p className="label-champ">Prochain entretien</p>
-            {prochaineIntervention ? (
-              <>
-                <p className="mt-1.5 text-[13px] font-medium text-texte">{prochaineIntervention.libelle}</p>
-                <p className="meta mt-1">
-                  dans {kilometrage(prochaineIntervention.kmRestants)} · ≈ {prochaineIntervention.joursEstimes} j
-                </p>
-              </>
-            ) : (
-              <p className="mt-1.5 text-[13px] text-attenue-2">Non planifié</p>
-            )}
-          </div>
-        </div>
+      <Carte titre="Situation" precision="Le dernier fait connu de chaque nature">
+        <ul className="flex flex-col">
+          <LigneRepere
+            ton="neutre"
+            libelle="Dernière intervention"
+            repere={derniereIntervention ? date(derniereIntervention.date) : null}
+            precision={derniereIntervention ? [derniereIntervention.objet, derniereIntervention.garage].filter(Boolean).join(" · ") : "Aucune enregistrée"}
+          />
+          <LigneRepere
+            ton="neutre"
+            libelle="Dernier plein"
+            repere={dernierPlein ? date(dernierPlein.date) : null}
+            precision={dernierPlein ? `${nombre(dernierPlein.litres, 1)} L · ${montant(dernierPlein.montant)} · ${dernierPlein.source}` : "Aucun"}
+          />
+          <LigneRepere
+            ton={prochaineIntervention && prochaineIntervention.kmRestants <= 1000 ? "vigilance" : "neutre"}
+            libelle="Prochain entretien"
+            /* Un entretien se repère au compteur, pas au calendrier : c'est le
+               kilométrage restant qui décide, la date n'en est qu'une estimation. */
+            repere={prochaineIntervention ? `dans ${kilometrage(prochaineIntervention.kmRestants)}` : null}
+            precision={prochaineIntervention ? `${prochaineIntervention.libelle} · ≈ ${prochaineIntervention.joursEstimes} j` : "Non planifié"}
+          />
+        </ul>
       </Carte>
 
       {/* ---- Échéances ---- */}
       <Carte titre="Prochaines échéances" precision="Documents et entretien, du plus urgent au plus lointain">
         <ul className="flex flex-col">
           {echeances.map((e) => (
-            <li key={`${e.libelle}-${e.repere}`} className="flex items-start gap-3 border-b border-bordure py-3 first:pt-0 last:border-b-0 last:pb-0">
-              <span
-                className={`mt-1.5 size-2 shrink-0 rounded-full ${
-                  e.ton === "defavorable" ? "bg-defavorable" : e.ton === "vigilance" ? "bg-vigilance" : e.ton === "favorable" ? "bg-accent" : "bg-attenue-2"
-                }`}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="flex items-baseline gap-2">
-                  <span className="text-[13px] font-medium text-texte">{e.libelle}</span>
-                  <span className="code ml-auto shrink-0 text-[12px] text-texte-2">{e.repere.includes("-") ? date(e.repere) : e.repere}</span>
-                </p>
-                <p className="meta mt-0.5">{e.precision}</p>
-              </div>
-            </li>
+            <LigneRepere key={`${e.libelle}-${e.repere}`} ton={e.ton} libelle={e.libelle} repere={e.repere.includes("-") ? date(e.repere) : e.repere} precision={e.precision} />
           ))}
         </ul>
       </Carte>

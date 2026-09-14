@@ -197,6 +197,13 @@ export function FichePoste({ fiche }: { fiche: Fiche }) {
             reglages="budget.ventilation"
             cle={(s) => s.enveloppe.businessUnit ?? "parc"}
             lignes={suivi.parBu}
+            /* Six colonnes de chiffres débordent du cadre sur un écran ordinaire.
+               Un en-tête figé dans la page interdit au conteneur de défiler — il
+               deviendrait sa propre zone de défilement et décrocherait l'en-tête —,
+               si bien que les dernières colonnes étaient coupées net au bord de la
+               carte. Huit lignes n'ont pas besoin d'un en-tête qui suit : le
+               tableau défile en largeur dans sa carte (métier, 14 septembre 2026). */
+            figerEnTete={false}
             filtrable={false}
             vide="Aucune ventilation."
             numero={(s) => s.enveloppe.numero || `${s.enveloppe.poste}:${s.enveloppe.businessUnit ?? "parc"}`}
