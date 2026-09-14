@@ -141,17 +141,21 @@ l'ordre**. Les douze `.docx` du dossier, où quelqu'un a collé deux photos dans
 un document Word, se traitent pareil : sans quoi douze véhicules resteraient
 sans pièce.
 
-Le réemballage allège l'enveloppe mais **ne recompresse pas** : sans
-bibliothèque d'images, Node ne sait pas réencoder un JPEG. Un scan de 217 Ko
-sort à 217 Ko, un de 7 Mo sort à 7 Mo.
+Le réemballage allège l'enveloppe mais ne recompresse pas : un scan de 217 Ko
+sort à 217 Ko. **Seul ce qui dépasse le plafond du seau est réencodé**, par
+`sharp`, au premier palier qui suffit — et le compte rendu dit lequel. Y
+soumettre tout le dossier ferait perdre de la qualité à soixante-quatorze
+documents déjà légers pour rien.
 
-État du dossier : **75 plaques, 157 pages, 74 PDF déposables** pour 23,9 Mo.
+État du dossier : **75 plaques, 157 pages, 75 PDF déposables** pour 17,9 Mo.
 
-Dépôt du 14 septembre 2026 : **71 documents créés**.
+Dépôt du 14 septembre 2026 : **71 documents créés**, puis 3 de plus après
+correction des noms de fichiers, et AA-032-EA une fois réencodé.
 
-- **AA-032-EA** sort à 7,1 Mo, au-delà des 5 Mo du seau. Il n'est ni tronqué ni
-  déposé de force : il est nommé au compte rendu, à alléger puis à déposer à la
-  main.
+- **AA-032-EA** sortait à 7,1 Mo, au-delà des 5 Mo du seau. Il est réencodé à
+  2400 px et qualité 82 — le palier le plus fidèle des trois — et passe à
+  environ 1 Mo. Un scan qui resterait trop lourd même réencodé serait nommé au
+  compte rendu, jamais tronqué ni déposé de force.
 - **AA-205-VH** est au dossier mais pas au parc (voir plus haut) : sa carte
   n'est rattachée à rien.
 
@@ -192,13 +196,27 @@ Carte grise au nom de SEDIMA, première mise en circulation le 02/01/2026 :
 autocar **Force Motors Traveller Super T2**, 24 places, gazole, 3245 cm3,
 10 CV, PTAC 5750 kg, VIN `MC1E4FGD4SP023754`, immatriculé à Dakar.
 
-Le référentiel ne le connaît pas. Il porte en revanche un **AA-077-FP** —
+Le référentiel ne le connaissait pas. Il portait en revanche un **AA-077-FP** —
 mêmes chiffres, même suffixe, préfixe différent — décrit comme « Tata Airforce,
-bus du personnel de Notto ». Vu que la confusion AA/AB est attestée deux fois
-dans ce même dossier, et que « Force Motors » figure au catalogue des marques
-avec un « Autocar 24 places », il est **probable** que ce soit le même bus.
-Mais la carte le donne neuf de 2026, alors que le parc tient AA-077-FP pour un
-bus en service : rien n'est écrit tant que le métier n'a pas tranché.
+bus du personnel de Notto ». **Le métier a tranché le 14 septembre 2026 : c'est
+le même bus.**
+
+Ce n'est donc pas une réimmatriculation : AA-077-FP n'a jamais existé, c'est un
+relevé fautif de l'inventaire de départ — la confusion AA/AB, une troisième
+fois. Le relevé carburant du bus de Notto commence d'ailleurs le 31/01/2026,
+juste après l'immatriculation du 02/01/2026 : les deux se tiennent.
+
+```
+supabase/correctif-bus-notto.sql
+```
+
+Un renommage, pas une fusion : AB-077-FP n'avait pas de fiche, et tout ce qui
+pend au véhicule le suit par son identifiant. La marque et l'appellation sont
+les seules valeurs **écrasées** de tout ce chargement : « Tata Airforce » n'est
+pas un champ à compléter, c'est une erreur que la carte grise corrige. La fiche
+note que la plaque était mal relevée — sans se donner pour une
+réimmatriculation, ce qu'elle n'est pas. Banc :
+`scripts/tester-plaques-refaites.mts`.
 
 ### Ce qu'il faut pour déposer
 

@@ -20,7 +20,7 @@
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { cartesDuDossier, composer, pages, DOSSIER, PLAFOND } from "./scans-cartes-grises.mts";
+import { cartesDuDossier, composerSousPlafond, pages, DOSSIER, PLAFOND } from "./scans-cartes-grises.mts";
 
 if (!existsSync(DOSSIER)) {
   console.log(`Dossier des cartes grises absent de ce poste — banc ignoré.\n  ${DOSSIER}`);
@@ -37,6 +37,7 @@ let octets = 0;
 let pagesPosees = 0;
 const lourds: string[] = [];
 const partiels: string[] = [];
+const alleges: string[] = [];
 
 for (const c of cartes) {
   const images = (await Promise.all(c.fichiers.map((f) => pages(join(DOSSIER, f))))).flat();
@@ -44,7 +45,8 @@ for (const c of cartes) {
     alerte(`${c.ecrite} : aucune image tirée de ${c.fichiers.join(", ")}`);
     continue;
   }
-  const { pdf, posees, ecartees } = await composer(images, `Carte grise ${c.ecrite}`);
+  const { pdf, posees, ecartees, palier } = await composerSousPlafond(images, `Carte grise ${c.ecrite}`);
+  if (palier) alleges.push(`${c.ecrite} (${palier})`);
   if (posees === 0) {
     alerte(`${c.ecrite} : ${images.length} image(s) trouvée(s), aucune posée.`);
     continue;
@@ -59,9 +61,12 @@ for (const c of cartes) {
 const deposables = cartes.length - echecs.length - lourds.length;
 console.log(`${cartes.length} plaques · ${pagesPosees} pages · ${deposables} PDF déposables, ${(octets / 1024 / 1024).toFixed(1)} Mo au total`);
 
-/* Le réemballage ne recompresse pas : un scan trop lourd le reste, et c'est un
-   constat, pas une régression. Il est dit, pas compté en échec. */
-if (lourds.length) console.log(`\nÀ alléger à la main (au-delà des 5 Mo du seau) : ${lourds.join(", ")}`);
+/* Le réemballage ne recompresse pas : seul ce qui dépasse le plafond est
+   réencodé, et le banc dit lequel et à quel palier — sans quoi une perte de
+   qualité passerait inaperçue. Un scan qui resterait trop lourd même réencodé
+   est un constat, pas une régression : il est dit, pas compté en échec. */
+if (alleges.length) console.log(`\nRéencodés pour tenir sous les 5 Mo du seau : ${alleges.join(", ")}`);
+if (lourds.length) console.log(`À traiter à la main, trop lourds même réencodés : ${lourds.join(", ")}`);
 if (partiels.length) console.log(`Partiellement lisibles, le reste est posé : ${partiels.join(", ")}`);
 
 if (echecs.length) {

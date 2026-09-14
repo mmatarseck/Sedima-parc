@@ -134,6 +134,70 @@ export async function composer(images: Buffer[], titre: string): Promise<{ pdf: 
   return { pdf: await doc.save(), posees, ecartees };
 }
 
+/* -- Alléger un scan trop lourd --------------------------------------------- */
+
+/**
+ * Les paliers d'allègement, du plus fidèle au plus économe.
+ *
+ * Une carte grise se lit à l'œil et s'imprime au besoin : 2200 pixels de large
+ * suffisent largement pour un document de 8,5 cm sur 5,4. Les scans du dossier
+ * montent à trois fois cela, sans y gagner en lisibilité — c'est du gaspillage
+ * de stockage, pas de la précision.
+ */
+const PALIERS = [
+  { largeur: 2400, qualite: 82 },
+  { largeur: 2000, qualite: 75 },
+  { largeur: 1600, qualite: 70 },
+];
+
+/**
+ * Un scan trop lourd, réencodé jusqu'à passer sous le plafond — ou nul si on
+ * n'y arrive pas.
+ *
+ * On ne réencode **que** ce qui dépasse. Réencoder tout le dossier ferait
+ * perdre de la qualité à soixante-quatorze documents déjà légers pour rien :
+ * un scan de 217 Ko n'a aucune raison d'être retouché. Ici il s'agit du seul
+ * cas où l'alternative serait de ne rien déposer du tout.
+ *
+ * `sharp` arrive avec Next ; s'il venait à manquer, la fonction rend nul et le
+ * document est nommé au compte rendu comme avant, jamais tronqué.
+ */
+async function alleger(images: Buffer[], titre: string, plafond: number): Promise<{ pdf: Uint8Array; posees: number; ecartees: number; palier: string } | null> {
+  let sharp: typeof import("sharp");
+  try {
+    sharp = (await import("sharp")).default;
+  } catch {
+    return null;
+  }
+  for (const { largeur, qualite } of PALIERS) {
+    const reduites = await Promise.all(
+      images.map((image) =>
+        sharp(image)
+          .rotate() /* l'orientation EXIF devient une vraie rotation : pdf-lib ne la lit pas */
+          .resize({ width: largeur, withoutEnlargement: true })
+          .jpeg({ quality: qualite, mozjpeg: true })
+          .toBuffer(),
+      ),
+    );
+    const compose = await composer(reduites, titre);
+    if (compose.pdf.byteLength <= plafond) return { ...compose, palier: `${largeur} px, qualité ${qualite}` };
+  }
+  return null;
+}
+
+/**
+ * Le PDF d'un scan, allégé seulement s'il le faut.
+ *
+ * C'est la porte d'entrée : elle compose d'abord tel quel, et ne réencode que
+ * si le résultat dépasse le plafond du seau.
+ */
+export async function composerSousPlafond(images: Buffer[], titre: string, plafond = PLAFOND): Promise<{ pdf: Uint8Array; posees: number; ecartees: number; palier: string | null }> {
+  const direct = await composer(images, titre);
+  if (direct.pdf.byteLength <= plafond || direct.posees === 0) return { ...direct, palier: null };
+  const allege = await alleger(images, titre, plafond);
+  return allege ?? { ...direct, palier: null };
+}
+
 /* -- Les cartes du dossier, par plaque -------------------------------------- */
 
 export interface Carte {

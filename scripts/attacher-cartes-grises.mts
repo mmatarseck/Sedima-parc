@@ -14,9 +14,11 @@
  * traitent pareil : sans quoi douze véhicules resteraient sans pièce.
  *
  * Le réemballage allège au passage — l'enveloppe d'origine, ses polices, ses
- * miniatures s'en vont — mais il ne **recompresse pas** : un scan de 7 Mo reste
- * un scan de 7 Mo. Ceux qui dépassent le plafond du seau sont nommés au compte
- * rendu plutôt que tronqués ou déposés de force.
+ * miniatures s'en vont — mais il ne recompresse pas : un scan de 217 Ko sort à
+ * 217 Ko. **Seul ce qui dépasse le plafond du seau est réencodé**, et le compte
+ * rendu le dit : c'est une perte de qualité, consentie faute de mieux. Ce qui
+ * resterait trop lourd même réencodé est nommé, jamais tronqué ni déposé de
+ * force.
  *
  * CE QU'IL FAUT POUR L'EXÉCUTER. Deux variables d'environnement, jamais
  * écrites ici ni demandées ailleurs :
@@ -47,7 +49,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { cartesDuDossier, composer, pages, DOSSIER, PLAFOND } from "./scans-cartes-grises.mts";
+import { cartesDuDossier, composerSousPlafond, pages, DOSSIER, PLAFOND } from "./scans-cartes-grises.mts";
 
 const DEPOSER = process.argv.includes("--deposer");
 
@@ -115,7 +117,7 @@ const annee = new Date().toISOString().slice(0, 4);
 const jour = new Date().toISOString().slice(0, 10);
 let suivant = DEPOSER ? await numeroSuivant(pg, annee) : 1;
 
-const bilan = { deposees: 0, completees: 0, deja: 0, horsParc: [] as string[], vides: [] as string[], tropLourds: [] as string[], illisibles: [] as string[], refus: [] as string[] };
+const bilan = { deposees: 0, completees: 0, deja: 0, horsParc: [] as string[], vides: [] as string[], tropLourds: [] as string[], alleges: [] as string[], illisibles: [] as string[], refus: [] as string[] };
 
 for (const c of cartes) {
   const v = await pg.from("vehicule").select("id, immatriculation, date_immatriculation").eq("immatriculation", c.plaque).maybeSingle<{ id: string; immatriculation: string; date_immatriculation: string | null }>();
@@ -135,7 +137,8 @@ for (const c of cartes) {
     bilan.vides.push(`${c.ecrite} (${c.fichiers.join(", ")})`);
     continue;
   }
-  const { pdf, posees, ecartees } = await composer(images, `Carte grise ${c.ecrite}`);
+  const { pdf, posees, ecartees, palier } = await composerSousPlafond(images, `Carte grise ${c.ecrite}`);
+  if (palier) bilan.alleges.push(`${c.ecrite} : réencodé à ${palier}`);
   if (ecartees > 0) bilan.illisibles.push(`${c.ecrite} : ${ecartees} page(s) illisible(s) sur ${images.length}`);
   if (posees === 0) {
     bilan.vides.push(`${c.ecrite} (${c.fichiers.join(", ")})`);
@@ -143,9 +146,8 @@ for (const c of cartes) {
   }
   const chemin = `documents/${annee}/${jour.slice(5, 7)}/${jour}-${c.plaque}-carte-grise.pdf`;
   const poids = `${Math.round(pdf.byteLength / 1024)} Ko`;
-  /* Réemballer ne compresse pas : un scan trop lourd le reste. Plutôt que de
-     le tronquer ou de relever le plafond du seau pour un seul fichier, on le
-     nomme — il se dépose à la main après avoir été allégé. */
+  /* Il reste trop lourd même réencodé : plutôt que de le tronquer ou de
+     relever le plafond du seau pour un seul fichier, on le nomme. */
   if (pdf.byteLength > PLAFOND) {
     bilan.tropLourds.push(`${c.ecrite} : ${poids}, au-delà des 5 Mo du seau (${c.fichiers.join(", ")})`);
     continue;
@@ -198,7 +200,10 @@ if (bilan.horsParc.length) console.log(`\n${bilan.horsParc.length} plaque(s) hor
 if (bilan.vides.length) console.log(`\n${bilan.vides.length} fichier(s) sans page lisible :\n  ${bilan.vides.join("\n  ")}`);
 /* Un véhicule écarté pour le poids de son scan doit être nommé : sans ça il
    sort du compte rendu sans un mot et personne ne va le chercher. */
-if (bilan.tropLourds.length) console.log(`\n${bilan.tropLourds.length} scan(s) trop lourd(s), à alléger puis déposer à la main :\n  ${bilan.tropLourds.join("\n  ")}`);
+/* Un réencodage se dit : c'est une perte de qualité, consentie faute de mieux,
+   et elle ne doit pas passer inaperçue dans un compte rendu de dépôt. */
+if (bilan.alleges.length) console.log(`\n${bilan.alleges.length} scan(s) réencodé(s) pour tenir sous les 5 Mo du seau :\n  ${bilan.alleges.join("\n  ")}`);
+if (bilan.tropLourds.length) console.log(`\n${bilan.tropLourds.length} scan(s) trop lourd(s) même réencodés, à traiter à la main :\n  ${bilan.tropLourds.join("\n  ")}`);
 if (bilan.illisibles.length) console.log(`\n${bilan.illisibles.length} document(s) partiellement lisible(s) — le reste est bien posé :\n  ${bilan.illisibles.join("\n  ")}`);
 if (bilan.refus.length) console.log(`\n${bilan.refus.length} refus :\n  ${bilan.refus.join("\n  ")}`);
 if (!DEPOSER) console.log("\nRien n'a été déposé. Relancer avec --deposer pour écrire.");

@@ -1,8 +1,12 @@
-/* Un véhicule réimmatriculé n'est pas deux véhicules.
+/* Un véhicule réimmatriculé n'est pas deux véhicules — et une plaque mal
+ * relevée n'est pas une réimmatriculation.
  *
  * `supabase/correctif-plaques-refaites.sql` renomme une fiche quand la nouvelle
- * plaque n'en a pas, et fond les deux quand elles existent. Ce banc le joue sur
- * le référentiel de production et vérifie ce qui compte vraiment :
+ * plaque n'en a pas, et fond les deux quand elles existent.
+ * `supabase/correctif-bus-notto.sql` corrige un cas d'un autre genre : le bus
+ * du personnel de Notto avait été inventorié AA-077-FP, sa carte grise porte
+ * AB-077-FP, et le métier a confirmé que c'est le même engin. Ce banc les joue
+ * sur le référentiel de production et vérifie ce qui compte vraiment :
  *
  *   * qu'**aucune ligne ne se perd** — la somme de ce que portaient les deux
  *     fiches se retrouve sur la survivante, table par table ;
@@ -10,7 +14,8 @@
  *     historique, une plaque de plus au bon endroit ;
  *   * que la fiche fondue passe à « sorti », datée, et dit où elle est allée ;
  *   * que les deux fiches se citent l'une l'autre, pour qu'on retrouve le fil ;
- *   * que le fichier est rejouable.
+ *   * que la correction de relevé ne se donne pas pour une réimmatriculation ;
+ *   * que les fichiers sont rejouables.
  *
  * Lancer : PGLITE_DIR=<dossier PGlite> npx tsx scripts/tester-plaques-refaites.mts */
 import { readFileSync, readdirSync } from "node:fs";
@@ -151,6 +156,33 @@ const rejoue = await charge("AB078JS");
 attendu("rejouable : le fichier rejoué ne déplace rien de plus", egales(somme(avant.dk2348, avant.ab078), rejoue));
 const doublons = await un<{ n: number }>(`select count(*)::int as n from (select commentaire from vehicule where commentaire like '%Anciennement%Anciennement%') d`);
 attendu("rejouable : le commentaire ne se répète pas", doublons.n === 0);
+
+/* -- C. Le bus de Notto : une plaque mal relevée, pas une réimmatriculation -- */
+/* AA 077 FP n'a jamais existé — le scan de la carte grise porte AB-077-FP, et
+   le métier a confirmé le 14 septembre 2026 que c'est le même bus. Renommage
+   simple : la nouvelle plaque n'a pas de fiche. */
+const avantBus = await charge("AA077FP");
+const idBus = (await un<{ id: string | null }>(`select (select id from vehicule where immatriculation = 'AA077FP') as id`)).id;
+attendu("AA 077 FP est au référentiel et AB 077 FP n'a pas de fiche", idBus !== null && (await un<{ n: number }>(`select count(*)::int as n from vehicule where immatriculation = 'AB077FP'`)).n === 0);
+
+await jouer("correctif-bus-notto.sql");
+
+const bus = await un<{ id: string; marque: string; appellation: string; vin: string | null; ptac: number | null; statut: string; commentaire: string | null }>(
+  `select id, marque, appellation, vin, ptac, statut, commentaire from vehicule where immatriculation = 'AB077FP'`,
+);
+attendu("AA-077-FP est devenue AB-077-FP, sans changer d'identifiant", bus?.id === idBus);
+attendu("l'ancienne plaque ne subsiste pas", (await un<{ n: number }>(`select count(*)::int as n from vehicule where immatriculation = 'AA077FP'`)).n === 0);
+attendu(`un renommage ne déplace rien : ${dire(await charge("AB077FP"))}`, egales(avantBus, await charge("AB077FP")));
+attendu(`la carte grise corrige l'engin (${bus?.marque} ${bus?.appellation})`, bus?.marque === "Force Motors" && bus.appellation === "Traveller Super T2");
+attendu(`elle lui donne son châssis et son PTAC (${bus?.vin}, ${bus?.ptac} kg)`, bus?.vin === "MC1E4FGD4SP023754" && bus.ptac === 5750);
+attendu("le bus reste au parc — il n'est pas sorti", bus?.statut !== "sorti");
+/* La note dit « relevée », pas « anciennement » : le bus n'a pas changé de
+   plaque, c'est l'inventaire qui l'avait mal lue. */
+attendu("la fiche dit que la plaque était mal relevée, sans inventer une réimmatriculation", (bus?.commentaire ?? "").includes("relevée AA-077-FP") && !(bus?.commentaire ?? "").includes("Anciennement AA"));
+
+await jouer("correctif-bus-notto.sql");
+const busRejoue = await un<{ commentaire: string | null }>(`select commentaire from vehicule where immatriculation = 'AB077FP'`);
+attendu("rejouable : le correctif rejoué ne change rien", egales(avantBus, await charge("AB077FP")) && (busRejoue?.commentaire ?? "").split("relevée AA-077-FP").length === 2);
 
 console.log(echecs === 0 ? "\ntout passe" : `\n${echecs} contrôle(s) en échec`);
 process.exit(echecs === 0 ? 0 : 1);
