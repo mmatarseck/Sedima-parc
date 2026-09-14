@@ -211,117 +211,117 @@ export function OngletApercu({ fiche }: { fiche: FicheVehicule }) {
        cellules d'une même rangée s'étirent à la hauteur de la plus haute —
        « Charges » avec « Situation », « Dépenses mensuelles » avec
        « Prochaines échéances » (métier, 14 septembre 2026). */
-    <div className="grid grid-cols-1 items-stretch gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 items-stretch gap-5 xl:grid-cols-2">
       {/* ---- Charges en trois familles ---- */}
-        <Carte titre="Charges sur 12 mois" precision={`${montant(totalCharges)} · ${nombre(coutParKm)} F/km · toutes voies de paiement`}>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-            {chargesParGroupe.map((g) => {
-              const part = totalCharges > 0 ? (g.montant / totalCharges) * 100 : 0;
-              return (
-                <div key={g.groupe} className="min-w-0">
-                  <p className="label-champ">{GROUPE_CHARGE[g.groupe]}</p>
-                  <p className="mt-1.5 text-[24px] leading-none font-semibold tracking-[-0.02em] text-texte">{montantCourt(g.montant)}</p>
-                  <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface-3">
-                    <div className="h-full rounded-full bg-accent" style={{ width: `${part}%` }} />
-                  </div>
-                  <p className="meta mt-1.5">{pourcentage(part, 0)} des charges</p>
-                  <ul className="mt-2.5 flex flex-col gap-1">
-                    {g.postes.slice(0, 3).map((c) => (
-                      <li key={c.poste} className="flex items-baseline gap-2 text-[12.5px]">
-                        <span className="min-w-0 truncate text-texte-2">{POSTE_DEPENSE[c.poste]}</span>
-                        <span className="code ml-auto shrink-0 text-texte">{montantCourt(c.montant)}</span>
-                      </li>
-                    ))}
-                  </ul>
+      <Carte titre="Charges sur 12 mois" precision={`${montant(totalCharges)} · ${nombre(coutParKm)} F/km · toutes voies de paiement`}>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+          {chargesParGroupe.map((g) => {
+            const part = totalCharges > 0 ? (g.montant / totalCharges) * 100 : 0;
+            return (
+              <div key={g.groupe} className="min-w-0">
+                <p className="label-champ">{GROUPE_CHARGE[g.groupe]}</p>
+                <p className="mt-1.5 text-[24px] leading-none font-semibold tracking-[-0.02em] text-texte">{montantCourt(g.montant)}</p>
+                <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface-3">
+                  <div className="h-full rounded-full bg-accent" style={{ width: `${part}%` }} />
                 </div>
-              );
-            })}
-          </div>
-        </Carte>
+                <p className="meta mt-1.5">{pourcentage(part, 0)} des charges</p>
+                <ul className="mt-2.5 flex flex-col gap-1">
+                  {g.postes.slice(0, 3).map((c) => (
+                    <li key={c.poste} className="flex items-baseline gap-2 text-[12.5px]">
+                      <span className="min-w-0 truncate text-texte-2">{POSTE_DEPENSE[c.poste]}</span>
+                      <span className="code ml-auto shrink-0 text-texte">{montantCourt(c.montant)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      </Carte>
 
-        {/* ---- Tendance des dépenses, décomposée ----
-            Empilée par famille : un mois à trois millions ne dit rien tant qu'on
-            ignore s'il s'agit de carburant ou d'une réparation. */}
-        <Carte titre="Dépenses mensuelles" precision="Par famille de charges — le total du mois se lit au sommet de la barre">
-          <GraphiqueBarresEmpilees
-            points={coutsMensuels.map((m) => ({ libelle: libelleMois(m.mois, true), valeurs: m.parGroupe }))}
-            series={[
-              { cle: "carburant", libelle: GROUPE_CHARGE.carburant, couleur: "var(--color-accent)" },
-              { cle: "maintenance", libelle: GROUPE_CHARGE.maintenance, couleur: "var(--color-vigilance)" },
-              { cle: "autres", libelle: GROUPE_CHARGE.autres, couleur: "var(--color-attenue-2)" },
-            ]}
-            hauteur={170}
-          />
-        </Carte>
+      {/* ---- Tendance des dépenses, décomposée ----
+          Empilée par famille : un mois à trois millions ne dit rien tant qu'on
+          ignore s'il s'agit de carburant ou d'une réparation. */}
+      <Carte titre="Dépenses mensuelles" precision="Par famille de charges — le total du mois se lit au sommet de la barre">
+        <GraphiqueBarresEmpilees
+          points={coutsMensuels.map((m) => ({ libelle: libelleMois(m.mois, true), valeurs: m.parGroupe }))}
+          series={[
+            { cle: "carburant", libelle: GROUPE_CHARGE.carburant, couleur: "var(--color-accent)" },
+            { cle: "maintenance", libelle: GROUPE_CHARGE.maintenance, couleur: "var(--color-vigilance)" },
+            { cle: "autres", libelle: GROUPE_CHARGE.autres, couleur: "var(--color-attenue-2)" },
+          ]}
+          hauteur={170}
+        />
+      </Carte>
 
       {/* ---- Situation ---- */}
-        <Carte titre="Situation">
-          <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
-            <div className="min-w-0">
-              <p className="label-champ">Dernière intervention</p>
-              {derniereIntervention ? (
-                <>
-                  <p className="mt-1.5 truncate text-[13px] font-medium text-texte">{derniereIntervention.objet}</p>
-                  <p className="meta mt-1 truncate">
-                    {date(derniereIntervention.date)} · {derniereIntervention.garage}
-                  </p>
-                </>
-              ) : (
-                <p className="mt-1.5 text-[13px] text-attenue-2">Aucune enregistrée</p>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="label-champ">Dernier plein</p>
-              {dernierPlein ? (
-                <>
-                  <p className="mt-1.5 text-[13px] font-medium text-texte">
-                    {nombre(dernierPlein.litres, 1)} L · {montant(dernierPlein.montant)}
-                  </p>
-                  <p className="meta mt-1 truncate">
-                    {date(dernierPlein.date)} · {dernierPlein.source}
-                  </p>
-                </>
-              ) : (
-                <p className="mt-1.5 text-[13px] text-attenue-2">Aucun</p>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="label-champ">Prochain entretien</p>
-              {prochaineIntervention ? (
-                <>
-                  <p className="mt-1.5 text-[13px] font-medium text-texte">{prochaineIntervention.libelle}</p>
-                  <p className="meta mt-1">
-                    dans {kilometrage(prochaineIntervention.kmRestants)} · ≈ {prochaineIntervention.joursEstimes} j
-                  </p>
-                </>
-              ) : (
-                <p className="mt-1.5 text-[13px] text-attenue-2">Non planifié</p>
-              )}
-            </div>
+      <Carte titre="Situation">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
+          <div className="min-w-0">
+            <p className="label-champ">Dernière intervention</p>
+            {derniereIntervention ? (
+              <>
+                <p className="mt-1.5 truncate text-[13px] font-medium text-texte">{derniereIntervention.objet}</p>
+                <p className="meta mt-1 truncate">
+                  {date(derniereIntervention.date)} · {derniereIntervention.garage}
+                </p>
+              </>
+            ) : (
+              <p className="mt-1.5 text-[13px] text-attenue-2">Aucune enregistrée</p>
+            )}
           </div>
-        </Carte>
+          <div className="min-w-0">
+            <p className="label-champ">Dernier plein</p>
+            {dernierPlein ? (
+              <>
+                <p className="mt-1.5 text-[13px] font-medium text-texte">
+                  {nombre(dernierPlein.litres, 1)} L · {montant(dernierPlein.montant)}
+                </p>
+                <p className="meta mt-1 truncate">
+                  {date(dernierPlein.date)} · {dernierPlein.source}
+                </p>
+              </>
+            ) : (
+              <p className="mt-1.5 text-[13px] text-attenue-2">Aucun</p>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="label-champ">Prochain entretien</p>
+            {prochaineIntervention ? (
+              <>
+                <p className="mt-1.5 text-[13px] font-medium text-texte">{prochaineIntervention.libelle}</p>
+                <p className="meta mt-1">
+                  dans {kilometrage(prochaineIntervention.kmRestants)} · ≈ {prochaineIntervention.joursEstimes} j
+                </p>
+              </>
+            ) : (
+              <p className="mt-1.5 text-[13px] text-attenue-2">Non planifié</p>
+            )}
+          </div>
+        </div>
+      </Carte>
 
-        {/* ---- Échéances ---- */}
-        <Carte titre="Prochaines échéances" precision="Documents et entretien, du plus urgent au plus lointain">
-          <ul className="flex flex-col">
-            {echeances.map((e) => (
-              <li key={`${e.libelle}-${e.repere}`} className="flex items-start gap-3 border-b border-bordure py-3 first:pt-0 last:border-b-0 last:pb-0">
-                <span
-                  className={`mt-1.5 size-2 shrink-0 rounded-full ${
-                    e.ton === "defavorable" ? "bg-defavorable" : e.ton === "vigilance" ? "bg-vigilance" : e.ton === "favorable" ? "bg-accent" : "bg-attenue-2"
-                  }`}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-baseline gap-2">
-                    <span className="text-[13px] font-medium text-texte">{e.libelle}</span>
-                    <span className="code ml-auto shrink-0 text-[12px] text-texte-2">{e.repere.includes("-") ? date(e.repere) : e.repere}</span>
-                  </p>
-                  <p className="meta mt-0.5">{e.precision}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Carte>
+      {/* ---- Échéances ---- */}
+      <Carte titre="Prochaines échéances" precision="Documents et entretien, du plus urgent au plus lointain">
+        <ul className="flex flex-col">
+          {echeances.map((e) => (
+            <li key={`${e.libelle}-${e.repere}`} className="flex items-start gap-3 border-b border-bordure py-3 first:pt-0 last:border-b-0 last:pb-0">
+              <span
+                className={`mt-1.5 size-2 shrink-0 rounded-full ${
+                  e.ton === "defavorable" ? "bg-defavorable" : e.ton === "vigilance" ? "bg-vigilance" : e.ton === "favorable" ? "bg-accent" : "bg-attenue-2"
+                }`}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="flex items-baseline gap-2">
+                  <span className="text-[13px] font-medium text-texte">{e.libelle}</span>
+                  <span className="code ml-auto shrink-0 text-[12px] text-texte-2">{e.repere.includes("-") ? date(e.repere) : e.repere}</span>
+                </p>
+                <p className="meta mt-0.5">{e.precision}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Carte>
     </div>
   );
 }
