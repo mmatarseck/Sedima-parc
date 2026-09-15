@@ -274,6 +274,14 @@ export interface FicheVehicule {
   documents: DocumentFiche[];
   affectations: AffectationFiche[];
   attelages: AttelageFiche[];
+  /**
+   * Vrai quand les attelages n'ont **pas pu être lus** — table absente, lecture
+   * refusée. « Aucun attelage » et « je n'ai pas pu lire » ne sont pas la même
+   * phrase, et la seconde ne doit pas se déguiser en première : un tracteur
+   * qu'on croit libre alors qu'il tire une citerne, c'est une tournée mal
+   * planifiée.
+   */
+  attelagesIllisibles?: boolean;
   /** Le processus de visite technique : rendez-vous, passages, refus, contre-visites. */
   visitesTechniques: VisiteTechnique[];
   /** Les défauts relevés par le centre, suivis comme actions correctives. */

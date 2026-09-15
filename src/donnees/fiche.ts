@@ -11,7 +11,7 @@ import { cache } from "react";
 import { assemblerFiche, FAITS_VIDES, type FaitsFiche } from "@/domaine/assembler-fiche";
 import type { AttelageFiche, FicheVehicule } from "@/domaine/fiche";
 import type { LivraisonFiche } from "@/domaine/livraisons";
-import { afficher, normaliser } from "@/domaine/immatriculation";
+import { normaliser } from "@/domaine/immatriculation";
 import type { Parametres } from "@/domaine/parametres";
 import type { CategorieObservation, PosteDepense, TypeDocument } from "@/domaine/types";
 import { authentificationReelle } from "@/lib/session-demo";
@@ -84,8 +84,6 @@ interface AttelageBase {
   fin: string | null;
   permanent: boolean;
   motif: string | null;
-  tracteur: { immatriculation: string; marque: string; appellation: string } | null;
-  remorque: { immatriculation: string; marque: string; appellation: string } | null;
 }
 
 /**
@@ -95,31 +93,43 @@ interface AttelageBase {
  * projette pas, et réécrire la fonction entière pour deux colonnes coûterait
  * plus qu'une lecture bornée au véhicule.
  *
- * Le véhicule est d'un côté **ou** de l'autre — d'où le `or` sur les deux clés
- * étrangères — et c'est ici qu'on sait lequel : la fiche reçoit son rôle et
- * l'autre moitié déjà nommée, elle n'a plus à démêler.
+ * ELLE NE JOINT RIEN. La première version demandait à PostgREST d'imbriquer les
+ * deux véhicules — et `attelage` porte **deux** clés étrangères vers
+ * `vehicule`, ce qui rend l'imbrication ambiguë et la requête fragile ; le banc
+ * SQL ne pouvait pas le voir. Or la fiche a déjà toute la flotte sous la main,
+ * plaque et modèle compris : on lit les couples, on nomme l'autre moitié ici.
+ * Une jointure de moins, et plus rien à lever d'ambiguïté.
  *
- * Table pas encore jouée, ou véhicule à recevoir sans identifiant : aucun
- * attelage, pas d'erreur.
+ * Le véhicule est d'un côté **ou** de l'autre — d'où le `or` sur les deux clés
+ * — et c'est ici qu'on sait lequel : la fiche reçoit son rôle et l'autre moitié
+ * déjà nommée, elle n'a plus à démêler.
  */
-async function attelagesDuVehicule(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<AttelageFiche[]> {
-  if (!UUID.test(vehiculeId)) return [];
+async function attelagesDuVehicule(
+  client: Awaited<ReturnType<typeof clientServeur>>,
+  vehiculeId: string,
+  flotte: { vehicule: { id: string; immatriculation: string; immatriculationAffichee: string; marque: string; appellation: string } }[],
+): Promise<{ attelages: AttelageFiche[]; illisible: boolean }> {
+  if (!UUID.test(vehiculeId)) return { attelages: [], illisible: false };
   const lecture = await client
     .from("attelage")
-    .select("numero, tracteur_id, remorque_id, debut, fin, permanent, motif, tracteur:tracteur_id (immatriculation, marque, appellation), remorque:remorque_id (immatriculation, marque, appellation)")
+    .select("numero, tracteur_id, remorque_id, debut, fin, permanent, motif")
     .or(`tracteur_id.eq.${vehiculeId},remorque_id.eq.${vehiculeId}`)
     .limit(500)
     .returns<AttelageBase[]>();
   if (lecture.error) {
+    /* Table pas encore jouée, ou lecture refusée. On le dit à la fiche : « aucun
+       attelage » et « je n'ai pas pu lire » ne sont pas la même phrase, et la
+       seconde ne doit pas se déguiser en première. */
     console.warn(`Attelages ${vehiculeId} : lecture impossible (${lecture.error.message}).`);
-    return [];
+    return { attelages: [], illisible: true };
   }
-  return lecture.data.flatMap((a) => {
+  const parId = new Map(flotte.map((l) => [l.vehicule.id, l.vehicule]));
+  const attelages = lecture.data.flatMap((a) => {
     const tracteurIci = a.tracteur_id === vehiculeId;
-    const autre = tracteurIci ? a.remorque : a.tracteur;
     const autreId = tracteurIci ? a.remorque_id : a.tracteur_id;
-    /* Sans l'autre moitié, la ligne ne dit rien d'utile : la jointure a échoué
-       ou le véhicule a été supprimé. On la tait plutôt que d'afficher un tiret. */
+    const autre = parId.get(autreId);
+    /* L'autre moitié hors périmètre de l'utilisateur : la ligne ne dirait rien
+       d'utile, et inventer un tiret vaudrait moins que le silence. */
     if (!autre) return [];
     return [
       {
@@ -127,7 +137,7 @@ async function attelagesDuVehicule(client: Awaited<ReturnType<typeof clientServe
         role: tracteurIci ? ("tracteur" as const) : ("remorque" as const),
         autreId,
         autreImmatriculation: autre.immatriculation,
-        autreImmatriculationAffichee: afficher(autre.immatriculation),
+        autreImmatriculationAffichee: autre.immatriculationAffichee,
         autreVehicule: `${autre.marque} ${autre.appellation}`.trim(),
         debut: a.debut,
         fin: a.fin,
@@ -136,6 +146,7 @@ async function attelagesDuVehicule(client: Awaited<ReturnType<typeof clientServe
       },
     ];
   });
+  return { attelages, illisible: false };
 }
 
 /**
@@ -182,7 +193,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
     client.rpc("lire_fiche", { immat: canonique }).maybeSingle<FicheJson | null>(),
     livraisonsDuVehicule(client, ligne.vehicule.id),
     piecesJointesDuVehicule(client, ligne.vehicule.id),
-    attelagesDuVehicule(client, ligne.vehicule.id),
+    attelagesDuVehicule(client, ligne.vehicule.id, lignes),
   ]);
   /* Fonction pas encore jouée : la fiche se dresse sur la ligne seule, sans historique — pas d'erreur. */
   if (lecture.error) console.warn(`Fiche ${canonique} : lire_fiche() indisponible (${lecture.error.message}), fiche dressée sans historique.`);
@@ -197,10 +208,10 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
        ne la projette pas, et réécrire la fonction entière pour une colonne
        coûterait plus qu'une requête bornée au véhicule. */
     const documents = faits.documents.map((d) => ({ ...d, fichier: piecesJointes.get(d.numero) ?? null }));
-    return assemblerFiche(ligne, { ...faits, documents, livraisons, attelages }, parametres, aujourdhui, plan);
+    return assemblerFiche(ligne, { ...faits, documents, livraisons, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
   } catch (e) {
     console.error(`Fiche ${canonique} : assemblage impossible sur l'historique lu — ${e instanceof Error ? e.stack ?? e.message : String(e)}`);
-    return assemblerFiche(ligne, { ...FAITS_VIDES, livraisons, attelages }, parametres, aujourdhui, plan);
+    return assemblerFiche(ligne, { ...FAITS_VIDES, livraisons, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
   }
 }
 

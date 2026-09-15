@@ -581,7 +581,13 @@ export function OngletAffectations({ fiche, transferts = [], cible }: { fiche: F
         <TableauSimple<AttelageFiche> reglages="fiche-vehicule.attelages"
           cle={(a) => a.numero}
           lignes={attelages}
-          vide={categorie === "tracteur" ? "Aucune remorque attelée à ce jour." : "Aucun tracteur attelé à ce jour."}
+          vide={
+            fiche.attelagesIllisibles
+              ? "Les attelages n'ont pas pu être lus — la table n'est peut-être pas encore en base. Ce véhicule est peut-être attelé."
+              : categorie === "tracteur"
+                ? "Aucune remorque attelée à ce jour."
+                : "Aucun tracteur attelé à ce jour."
+          }
           numero={(a) => a.numero}
           cible={cible}
           surModifier={(a) => demander({ type: "attelage", numero: a.numero, titre: `Attelage · ${a.autreImmatriculationAffichee}`, valeurs: a as unknown as Record<string, unknown> })}

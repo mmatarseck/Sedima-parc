@@ -60,6 +60,8 @@ export interface FaitsFiche {
    * il y tient. Un lecteur d'avant la table n'en rend pas.
    */
   attelages?: AttelageFiche[];
+  /** Vrai quand la lecture des attelages a échoué : la fiche le dit plutôt que d'annoncer « aucun ». */
+  attelagesIllisibles?: boolean;
 }
 
 export const FAITS_VIDES: FaitsFiche = { documents: [], licences: [], affectations: [], releves: [], pleins: [], depenses: [], interventions: [], statuts: [], visites: [], observations: [] };
@@ -328,6 +330,7 @@ export function assemblerFiche(l: LigneFlotte, faits: FaitsFiche, parametres: Pa
     /* En cours d'abord, puis du plus récent au plus ancien : la question posée
        à un tracteur est « qu'est-ce qu'il tire en ce moment ? », et l'historique
        vient après. Même ordre que les affectations. */
+    attelagesIllisibles: faits.attelagesIllisibles ?? false,
     attelages: [...(faits.attelages ?? [])].sort((a, b) => (a.fin === null && b.fin !== null ? -1 : b.fin === null && a.fin !== null ? 1 : b.debut.localeCompare(a.debut))),
     /* Les visites et observations valent par leur numéro, comme les autres transactions ; un lecteur d'avant 0023 n'en rend pas. */
     visitesTechniques: (faits.visites ?? []).map((x) => ({ id: x.numero, numero: x.numero, vehiculeId: v.id, type: x.type, centre: x.centre, dateRendezVous: x.dateRendezVous, heure: x.heure, datePassage: x.datePassage, statut: x.statut, numeroPv: x.numeroPv, dateLimiteContreVisite: x.dateLimiteContreVisite, commentaire: x.commentaire })).sort((a, b) => b.dateRendezVous.localeCompare(a.dateRendezVous)),
