@@ -1,0 +1,67 @@
+/* ============================================================================
+ * Les référentiels dont les formulaires ont besoin, côté navigateur.
+ *
+ * POURQUOI CE MODULE EXISTE. Les listes déroulantes des formulaires — le
+ * chauffeur d'une affectation, la remorque d'un attelage, le site d'un
+ * véhicule, le garage d'une intervention — se construisaient sur les fixtures
+ * de démonstration. Base branchée, elles proposaient donc des chauffeurs et des
+ * camions qui n'existent pas : l'écriture les refusait ensuite faute de
+ * pouvoir résoudre l'identifiant, et l'utilisateur ne comprenait pas pourquoi.
+ *
+ * COMMENT. Le serveur lit les référentiels dans la mise en page et les pose ici
+ * (`AmorceReferentiels`), comme il le fait déjà des paramètres. `champs.ts` les
+ * lit **de façon synchrone** au moment d'ouvrir une modale — c'est ce que sa
+ * forme impose, et c'est ce que `lireParametres()` fait depuis toujours.
+ *
+ * En mémoire et non dans `localStorage` : cent soixante-douze véhicules et
+ * trente-six chauffeurs n'ont rien à faire dans un stockage de quelques
+ * méga-octets, et la mise en page les repose à chaque rendu — donc à chaque
+ * chargement de page comme à chaque navigation.
+ *
+ * Tant qu'ils ne sont pas posés, les listes sont vides : un choix vide se voit,
+ * une liste de faux noms ne se voit pas.
+ * ==========================================================================*/
+
+import type { TypePrestataire } from "@/domaine/prestataires";
+import type { CategorieVehicule } from "@/domaine/types";
+
+export interface VehiculeChoix {
+  /** L'identifiant de la base : c'est lui que l'écriture attend. */
+  id: string;
+  immatriculation: string;
+  immatriculationAffichee: string;
+  marque: string;
+  appellation: string;
+  categorie: CategorieVehicule;
+}
+
+export interface ReferentielsChoix {
+  vehicules: VehiculeChoix[];
+  chauffeurs: { id: string; nomComplet: string; actif: boolean }[];
+  sites: { id: string; libelle: string }[];
+  prestataires: { numero: string; raisonSociale: string; ville: string | null; type: TypePrestataire; actif: boolean }[];
+  /** Les camions des transporteurs, pour le planning des affectations. */
+  camionsTiers: { immatriculation: string; immatriculationAffichee: string; transporteurNumero: string; actif: boolean }[];
+  chauffeursTiers: { id: string; nom: string; transporteurNumero: string; actif: boolean }[];
+}
+
+export const REFERENTIELS_VIDES: ReferentielsChoix = {
+  vehicules: [],
+  chauffeurs: [],
+  sites: [],
+  prestataires: [],
+  camionsTiers: [],
+  chauffeursTiers: [],
+};
+
+let courants: ReferentielsChoix = REFERENTIELS_VIDES;
+
+/** Ce que le serveur a lu, posé pour les formulaires. */
+export function poserReferentiels(r: ReferentielsChoix): void {
+  courants = r;
+}
+
+/** Ce dont les listes de choix disposent. Vide tant que la mise en page n'a rien posé. */
+export function lireReferentiels(): ReferentielsChoix {
+  return courants;
+}

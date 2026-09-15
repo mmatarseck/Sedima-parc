@@ -17,47 +17,19 @@ import { ENERGIE } from "@/domaine/libelles";
 import { STATUT_ORDRE } from "@/domaine/maintenance";
 import { REGIME_USAGE } from "@/domaine/parc-leger";
 import { TYPES_GARAGE, TYPE_PRESTATAIRE } from "@/domaine/prestataires";
-import { GARAGES } from "@/donnees/fiche-demo";
-import { listePrestataires, optionsPrestataires, optionsPrestatairesParNumero } from "@/donnees/prestataires-demo";
-import { camionsTiers, chauffeursTiers } from "@/donnees/flotte-tierce-demo";
 import { lireCreations } from "@/lib/clotures-demo";
 import { APTITUDE, BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_OBSERVATION, GRAVITE_OBSERVATION, MISSION_INCIDENT, MOTIF_IMMOBILISATION, MOTIF_INDISPONIBILITE, MOTIF_SORTIE, NATURE_INCIDENT, POSTE_DEPENSE, RESPONSABILITE, ROLE_AFFECTATION, STATUT_DECLARATION, STATUT_OBSERVATION, STATUT_VEHICULE, STATUT_VISITE, TYPE_INCIDENT, TYPE_SANCTION, TYPE_VISITE, USAGE_VEHICULE } from "@/domaine/libelles";
 import type { TypeTransaction } from "@/domaine/reference";
 import type { CategorieVehicule } from "@/domaine/types";
-import { listeChauffeurs } from "@/donnees/chauffeurs-demo";
-import { FLOTTE, SITES } from "@/donnees/parc-demo";
 import { cleNom, nomMarqueConnu } from "@/domaine/parametres";
 import { lireParametres } from "@/lib/parametres-demo";
+import { lireReferentiels } from "@/lib/referentiels-navigateur";
+
+import { optionsCamionsTiers, optionsChauffeurs, optionsChauffeursTiers, optionsGarages, optionsPrestataires, optionsPrestatairesParNumero, optionsSites, optionsVehicules } from "./options";
 
 const options = (r: Record<string, string>) => Object.entries(r).map(([valeur, libelle]) => ({ valeur, libelle }));
 const optionsStatut = () => Object.entries(STATUT_VEHICULE).map(([valeur, d]) => ({ valeur, libelle: d.libelle }));
 const optionsAptitude = () => Object.entries(APTITUDE).map(([valeur, d]) => ({ valeur, libelle: d.libelle }));
-const optionsSites = () => SITES.map((s) => ({ valeur: s.id, libelle: s.libelle }));
-const optionsChauffeurs = () => listeChauffeurs().filter((c) => c.chauffeur.actif).map((c) => ({ valeur: c.id, libelle: c.nomComplet }));
-const optionsVehicules = (filtre?: (categorie: CategorieVehicule) => boolean) =>
-  FLOTTE.filter((l) => (filtre ? filtre(l.vehicule.categorie) : true)).map((l) => ({ valeur: l.vehicule.id, libelle: `${l.vehicule.immatriculationAffichee} · ${l.vehicule.marque} ${l.vehicule.appellation}` }));
-
-/*
- * Le planning des affectations couvre aussi les camions et les chauffeurs des
- * transporteurs (demande du métier du 5 septembre 2026). Les deux référentiels
- * se proposent donc dans le même choix — le parc d'abord, les tiers ensuite,
- * marqués de leur transporteur : personne ne doit programmer un camion tiers en
- * croyant affecter un camion à nous.
- */
-const optionsChauffeursTiers = () =>
-  chauffeursTiers()
-    .filter((c) => c.actif)
-    .map((c) => ({ valeur: c.id, libelle: `${c.nom} · ${raisonSocialeDe(c.transporteurNumero)} (tiers)` }));
-
-const optionsCamionsTiers = () =>
-  camionsTiers()
-    .filter((c) => c.actif)
-    .map((c) => ({ valeur: `tiers:${c.immatriculation}`, libelle: `${c.immatriculationAffichee} · ${raisonSocialeDe(c.transporteurNumero)} (tiers)` }));
-
-function raisonSocialeDe(numero: string): string {
-  return listePrestataires().find((p) => p.numero === numero)?.raisonSociale ?? numero;
-}
-
 const DATE = (cle: string, libelle = "Date"): ChampEdition => ({ cle, libelle, type: "date", obligatoire: true });
 
 /*
@@ -71,7 +43,7 @@ export function champsIdentiteVehicule(): ChampEdition[] {
   /* Les marques que le parc porte déjà sans être au référentiel se proposent
      aussi, sous le nom du référentiel quand il les connaît. */
   const noms = new Map(marques.map((m) => [cleNom(m.nom), m.nom]));
-  for (const l of FLOTTE) if (!noms.has(cleNom(l.vehicule.marque))) noms.set(cleNom(l.vehicule.marque), nomMarqueConnu(l.vehicule.marque, marques));
+  for (const v of lireReferentiels().vehicules) if (!noms.has(cleNom(v.marque))) noms.set(cleNom(v.marque), nomMarqueConnu(v.marque, marques));
   const optionsMarques = [...noms.values()].sort((a, b) => a.localeCompare(b, "fr")).map((nom) => ({ valeur: nom, libelle: nom }));
   const modelesDe = (saisie: Record<string, string | boolean>) => {
     const cle = cleNom(String(saisie.marque ?? ""));
@@ -362,7 +334,7 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
   ordre: [
     DATE("datePrevue", "Date prévue"),
     { cle: "objet", libelle: "Objet", type: "texte", obligatoire: true },
-    { cle: "garage", libelle: "Garage", type: "choix", options: GARAGES.map((g) => ({ valeur: g, libelle: g })), obligatoire: true },
+    { cle: "garage", libelle: "Garage", type: "choix", options: optionsGarages(), obligatoire: true },
     { cle: "immobilisationPrevueJours", libelle: "Immobilisation prévue", type: "nombre", unite: "j" },
     { cle: "montantEstime", libelle: "Montant estimé", type: "nombre", unite: "F" },
     { cle: "statut", libelle: "Statut", type: "choix", options: options(STATUT_ORDRE), obligatoire: true },

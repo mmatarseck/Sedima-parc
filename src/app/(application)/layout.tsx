@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { Coquille } from "@/composants/coquille/Coquille";
 import { AmorceSession } from "@/composants/coquille/AmorceSession";
+import { AmorceReferentiels } from "@/composants/coquille/AmorceReferentiels";
 import { AmorceParametres } from "@/composants/parametres/AmorceParametres";
+import { referentielsChoixServeur } from "@/donnees/referentiels-choix";
 import { parametresServeur } from "@/lib/parametres-serveur";
 import { sessionCourante } from "@/lib/session-serveur";
 
@@ -22,11 +24,15 @@ export default async function LayoutApplication({ children }: { children: React.
   /* Base branchée : les paramètres lus en base sont posés dans le navigateur,
      pour que les écrans qui calculent chez eux appliquent les mêmes règles. */
   const parametres = session.etat === "connecte" ? await parametresServeur() : undefined;
+  /* Et les référentiels dont les formulaires tirent leurs listes de choix :
+     mêmes véhicules, mêmes chauffeurs que les écrans, puisque même source. */
+  const referentiels = parametres ? await referentielsChoixServeur(parametres) : undefined;
 
   return (
     <Coquille>
       {session.etat === "connecte" ? <AmorceSession role={session.session.role} nom={session.session.nom} courriel={session.session.courriel} acces={session.session.acces} /> : null}
       <AmorceParametres parametres={parametres} />
+      <AmorceReferentiels referentiels={referentiels} />
       {children}
     </Coquille>
   );

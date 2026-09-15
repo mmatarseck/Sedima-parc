@@ -10,3 +10,6 @@ build/
 .next-local/
 .env*.local
 supabase/seed-parties/
+
+# Dossier de construction d'une instance de vérification lancée en parallèle.
+.next-*/
