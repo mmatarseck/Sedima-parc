@@ -97,7 +97,7 @@ import { MODE_REMUNERATION } from "@/domaine/flotte-tierce";
 import { ETAT_BUDGET } from "@/domaine/budget";
 import { NIVEAU_PRESTATAIRE, ageDette, avanceOuverte } from "@/domaine/compte-prestataire";
 import { ETAT_LEGER, REGIME_USAGE, depensesForfaitsDe, echeancierPlanCar, type SourceParcLeger } from "@/domaine/parc-leger";
-import { libelleMois } from "@/donnees/fiche-demo";
+import { libelleMois } from "@/domaine/temps";
 
 
 /* -- Ce qu'il faut savoir pour dresser un rapport ------------------------------ */

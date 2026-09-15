@@ -119,15 +119,7 @@ const OBJETS_CURATIFS = [
 
 import { REFERENCE_L100 } from "@/domaine/assembler-fiche";
 
-const MOIS_COURTS = ["JAN", "FÉV", "MAR", "AVR", "MAI", "JUIN", "JUIL", "AOÛT", "SEP", "OCT", "NOV", "DÉC"];
 
-export function libelleMois(mois: string, court = false): string {
-  const [a, m] = mois.split("-").map(Number);
-  if (court) return MOIS_COURTS[m! - 1] ?? mois;
-  const longs = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
-  const nom = longs[m! - 1] ?? mois;
-  return `${nom.charAt(0).toUpperCase()}${nom.slice(1)} ${a}`;
-}
 
 function construire(l: LigneFlotte, parametres: Parametres): FicheVehicule {
   const v = l.vehicule;

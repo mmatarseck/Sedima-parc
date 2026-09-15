@@ -28,3 +28,22 @@ export function jourCourant(): string {
 export function moisCourant(): string {
   return new Date().toISOString().slice(0, 7);
 }
+
+const MOIS_COURTS = ["JAN", "FÉV", "MAR", "AVR", "MAI", "JUIN", "JUIL", "AOÛT", "SEP", "OCT", "NOV", "DÉC"];
+const MOIS_LONGS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+
+/**
+ * Un mois « AAAA-MM » écrit en toutes lettres : « Septembre 2026 », ou « SEP »
+ * en abrégé pour un axe de graphique.
+ *
+ * Il vivait dans les fixtures de démonstration, d'où quatre écrans — dont la
+ * fiche chauffeur et l'assemblage des rapports — l'importaient. Lire un mois
+ * n'a rien d'une donnée de démonstration, et cet import faisait entrer onze
+ * cents lignes de faits inventés dans le paquet du navigateur.
+ */
+export function libelleMois(mois: string, court = false): string {
+  const [a, m] = mois.split("-").map(Number);
+  if (court) return MOIS_COURTS[m! - 1] ?? mois;
+  const nom = MOIS_LONGS[m! - 1] ?? mois;
+  return `${nom.charAt(0).toUpperCase()}${nom.slice(1)} ${a}`;
+}

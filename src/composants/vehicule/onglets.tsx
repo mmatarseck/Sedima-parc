@@ -64,7 +64,7 @@ import {
   groupeDuPoste,
   type Ton,
 } from "@/domaine/libelles";
-import { libelleMois } from "@/donnees/fiche-demo";
+import { libelleMois } from "@/domaine/temps";
 import { date, kilometrage, montant, montantCourt, nombre, pourcentage } from "@/lib/format";
 import { GraphiqueBarresEmpilees } from "./GraphiqueBarresEmpilees";
 import { PlanEntretien } from "./PlanEntretien";

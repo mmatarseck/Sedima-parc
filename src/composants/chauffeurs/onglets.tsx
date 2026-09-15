@@ -47,7 +47,7 @@ import {
   type Ton,
 } from "@/domaine/libelles";
 import type { Indisponibilite, Sanction } from "@/domaine/types";
-import { libelleMois } from "@/donnees/fiche-demo";
+import { libelleMois } from "@/domaine/temps";
 import { date, kilometrage, montant, nombre } from "@/lib/format";
 
 /** Ce que la période retient de la fiche — calculé une fois dans l'en-tête. */

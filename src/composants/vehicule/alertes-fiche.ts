@@ -1,7 +1,7 @@
 import { MOTIF_IMMOBILISATION, STATUT_VEHICULE, TYPE_DOCUMENT, TYPE_VISITE, type Ton } from "@/domaine/libelles";
 import type { DocumentFiche, FicheVehicule, ReleveFiche } from "@/domaine/fiche";
 import { date, nombre } from "@/lib/format";
-import { libelleMois } from "@/donnees/fiche-demo";
+import { libelleMois } from "@/domaine/temps";
 import { libelleEcheance } from "@/domaine/entretien";
 
 /* ============================================================================
