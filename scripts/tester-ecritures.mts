@@ -6,7 +6,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { USAGES_STANDARD, apprendreUsage, idUsage, libelleUsageCourant } from "../src/domaine/parametres";
-import { categoriesPermis, cleDe, colonnesModification, ligneCreation, tableDe } from "../src/lib/transactions-colonnes";
+import { categoriesPermis, cleDe, colonnesModification, ligneCreation, scinderUsage, tableDe } from "../src/lib/transactions-colonnes";
 
 const bac = process.env.PGLITE_DIR ?? "";
 const require = createRequire(join(bac, "package.json"));
@@ -357,6 +357,21 @@ try {
   usageHorsForme = true;
 }
 attendu("un usage métier sans son préfixe est refusé", usageHorsForme);
+
+/* La modification doit scinder comme la création. Le champ porte un libellé,
+   la colonne attend une énumération : sans découpage, changer l'usage d'un
+   véhicule est refusé par Postgres — y compris pour un usage ordinaire choisi
+   dans la liste, puisque « Frigorifique » n'est pas « frigorifique ». */
+attendu(`un usage livré modifié redevient sa valeur d'énumération (${JSON.stringify(scinderUsage("Frigorifique"))})`, scinderUsage("Frigorifique").usage === "frigorifique" && scinderUsage("Frigorifique").usage_metier === null);
+attendu(`un usage écrit modifié part à part (${JSON.stringify(scinderUsage("Bétaillère"))})`, scinderUsage("Bétaillère").usage === "autre" && scinderUsage("Bétaillère").usage_metier === "usa-betaillere");
+attendu("un identifiant déjà scindé se reconnaît", scinderUsage("usa-betaillere").usage_metier === "usa-betaillere");
+let usageEnClair = false;
+try {
+  await pg.query(`update vehicule set usage = 'Frigorifique' where immatriculation = 'AA032EA'`);
+} catch {
+  usageEnClair = true;
+}
+attendu("la base refuse un libellé là où elle attend son énumération", usageEnClair);
 
 /* Le libellé ne se perd jamais. Un usage que les paramètres ne connaissent pas
    — fiche enregistrée sans que le référentiel suive, autre navigateur, base

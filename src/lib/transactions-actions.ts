@@ -32,7 +32,7 @@ import { afficher } from "@/domaine/immatriculation";
 import { TYPE_TRANSACTION, formerNumero, type TypeTransaction } from "@/domaine/reference";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur, utilisateurCourant } from "@/lib/supabase";
-import { EST_UUID, cleDe, colonnesModification, decomposerSujet, immatriculationCanonique, ligneCreation, tableDe, type Rattachement } from "@/lib/transactions-colonnes";
+import { EST_UUID, cleDe, colonnesModification, decomposerSujet, immatriculationCanonique, ligneCreation, scinderUsage, tableDe, type Rattachement } from "@/lib/transactions-colonnes";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type ResultatEcriture = { issue: "ecrite"; numero: string } | { issue: "refusee"; motif: string } | { issue: "hors-base" };
@@ -568,6 +568,18 @@ export async function ecrireModification(e: {
    * La région et le type se lisent dans les écarts : ils ne sont pas des
    * colonnes du véhicule, ils ne servent qu'à fonder le site.
    */
+  /*
+   * L'usage arrive en libellé et la colonne attend une énumération : on scinde,
+   * comme à la création. Sans cela, changer l'usage d'un véhicule était refusé
+   * par Postgres — même pour un usage ordinaire choisi dans la liste, puisque
+   * « Frigorifique » n'est pas « frigorifique » (défaut du 15 septembre 2026,
+   * introduit en rendant le champ créable).
+   */
+  if (e.type === "vehicule" && typeof colonnes.usage === "string") {
+    const { usage, usage_metier } = scinderUsage(colonnes.usage);
+    colonnes.usage = usage;
+    colonnes.usage_metier = usage_metier;
+  }
   if ("site_id" in colonnes) {
     const ecart = (champ: string) => e.diffs.find((d) => d.champ === champ)?.valeur;
     const id = await siteIdDe(client, colonnes.site_id, ecart("siteRegion"), ecart("siteType"), moi.utilisateurId);

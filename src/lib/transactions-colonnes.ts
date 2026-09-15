@@ -220,6 +220,22 @@ const usageLivre = (saisi: string): string | null => {
   const cle = cleNom(saisi);
   return USAGES_STANDARD.find((u) => u.id === saisi || cleNom(u.libelle) === cle)?.id ?? null;
 };
+/**
+ * Ce qu'une saisie d'usage donne aux deux colonnes.
+ *
+ * Le champ porte un **libellé** — « Frigorifique », « Bétaillère » — parce que
+ * c'est ce qu'on lit et ce qu'on écrit. La colonne `usage`, elle, est une
+ * énumération en minuscules. Sans ce découpage, modifier l'usage d'un véhicule
+ * envoyait « Frigorifique » dans l'énumération et Postgres refusait — y compris
+ * pour un usage parfaitement ordinaire, choisi dans la liste.
+ */
+export function scinderUsage(saisi: string): { usage: string; usage_metier: string | null } {
+  const livre = usageLivre(saisi);
+  if (livre) return { usage: livre, usage_metier: null };
+  if (saisi.startsWith("usa-")) return { usage: "autre", usage_metier: saisi };
+  return { usage: "autre", usage_metier: idUsage(saisi) };
+}
+
 const usageSaisi = (v: Record<string, unknown>): string => {
   const u = texte(v.usage);
   return u ? (usageLivre(u) ?? "autre") : "autre";
