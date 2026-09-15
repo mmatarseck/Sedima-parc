@@ -28,6 +28,7 @@ export type TypeTransaction =
   | "budget"
   | "affectation"
   | "attribution"
+  | "attributaire"
   | "attelage"
   | "incident"
   | "sanction"
@@ -114,6 +115,10 @@ export const TYPE_TRANSACTION: Record<TypeTransaction, DefinitionTypeTransaction
   prestation: { prefixe: "PRS", libelle: "Prestation de transport", ongletVehicule: null, ongletChauffeur: null },
   tarif: { prefixe: "TAR", libelle: "Ligne de tarif", ongletVehicule: null, ongletChauffeur: null },
   vehicule: { prefixe: "VEH", libelle: "Fiche véhicule", ongletVehicule: "caracteristiques", ongletChauffeur: null },
+  /* La fiche de celui qui tient un véhicule de service ou de fonction. Son nom,
+     sa fonction, son département : ce que le parc sait de lui et qu'il faut
+     pouvoir corriger, comme on corrige une fiche chauffeur. */
+  attributaire: { prefixe: "ATB", libelle: "Fiche attributaire", ongletVehicule: null, ongletChauffeur: null },
   chauffeur: { prefixe: "CHA", libelle: "Fiche chauffeur", ongletVehicule: null, ongletChauffeur: "identite" },
 };
 

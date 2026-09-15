@@ -49,7 +49,8 @@ export type TableBranchee =
   | "pneu"
   | "vehicule"
   | "chauffeur"
-  | "prestataire";
+  | "prestataire"
+  | "attributaire";
 
 const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   releve: "releve_kilometrique",
@@ -90,6 +91,7 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   /* Le prestataire, lui, porte bien un numéro : sa clé est celle de tout le
      monde, et les commandes comme les factures le citent ainsi. */
   prestataire: "prestataire",
+  attributaire: "attributaire",
 };
 
 /**
@@ -118,6 +120,9 @@ export function cleDe(type: TypeTransaction, numero: string): { colonne: string;
      « CHA-babacar-ndiaye » : c'est son adresse lisible, pas sa clé. L'écriture
      la traduit — elle seule a la base sous la main. */
   if (type === "chauffeur") return { colonne: "id", valeur: numero.replace(/^CHA-/i, "") };
+  /* L'attributaire porte l'identifiant de sa table : sa fiche le connaît, il
+     n'y a rien à traduire. */
+  if (type === "attributaire") return { colonne: "id", valeur: numero.replace(/^ATB-/i, "") };
   return { colonne: "numero", valeur: numero };
 }
 
@@ -737,6 +742,14 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   document: { numeroPiece: "numero_piece", emetteur: "emetteur", dateEffet: "date_effet", echeance: "echeance", montant: "montant", fichier: "fichier" },
   incident: { dateHeure: "date_heure", lieu: "lieu", mission: "mission", kilometrage: "kilometrage", responsabilite: "responsabilite", statut: "statut", description: "description" },
   affectation: { debut: "debut", fin: "fin", motif: "motif" },
+  attributaire: {
+    nom: "nom",
+    fonction: "fonction",
+    departement: "departement",
+    businessUnit: "business_unit",
+    matriculeRh: "matricule_rh",
+    actif: "actif",
+  },
   prestataire: {
     raisonSociale: "raison_sociale",
     type: "type",

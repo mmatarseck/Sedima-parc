@@ -411,5 +411,34 @@ attendu("la base refuse un nom de site là où elle attend un identifiant", site
 const siteChoisi = colonnesModification("vehicule", [{ champ: "siteId", valeur: siteChauffeur.id }]);
 attendu("un site choisi passe tel quel", siteChoisi.site_id === siteChauffeur.id);
 
+/* -- La fiche d'un attributaire se corrige (15 septembre 2026) -------------- */
+/* Un chauffeur du parc avait son « Modifier » depuis toujours ; l'autre
+   conducteur n'en avait pas, et son nom, sa fonction ou son département ne se
+   corrigeaient nulle part. */
+
+attendu(`l'attributaire a sa table (${tableDe("attributaire")})`, tableDe("attributaire") === "attributaire");
+attendu(
+  "il se repère par l'identifiant de sa table, débarrassé du préfixe de sa fiche",
+  cleDe("attributaire", "ATB-76d65b36-d8bb-4cb9-a310-7befd1c2da81").colonne === "id" &&
+    cleDe("attributaire", "ATB-76d65b36-d8bb-4cb9-a310-7befd1c2da81").valeur === "76d65b36-d8bb-4cb9-a310-7befd1c2da81",
+);
+
+const personne = (await pg.query(`select id, nom, fonction from attributaire order by nom limit 1`)).rows[0] as { id: string; nom: string; fonction: string | null };
+if (!personne) attendu("un attributaire sert de cobaye", false);
+else {
+  const correction = colonnesModification("attributaire", [
+    { champ: "fonction", valeur: "Responsable Logistique" },
+    { champ: "businessUnit", valeur: "siege" },
+    { champ: "actif", valeur: "non" },
+  ]);
+  attendu(
+    `la modification vise les bonnes colonnes (${Object.keys(correction).sort().join(", ")})`,
+    correction.fonction === "Responsable Logistique" && correction.business_unit === "siege" && correction.actif === false,
+  );
+  await pg.query(`update attributaire set fonction = $1, business_unit = $2, actif = $3 where id = $4`, [correction.fonction, correction.business_unit, correction.actif, personne.id]);
+  const apres = (await pg.query(`select fonction, business_unit::text as bu, actif from attributaire where id = $1`, [personne.id])).rows[0] as { fonction: string; bu: string; actif: boolean };
+  attendu(`la correction est passée (${apres?.fonction}, ${apres?.bu}, actif ${apres?.actif})`, apres?.fonction === "Responsable Logistique" && apres.bu === "siege" && apres.actif === false);
+}
+
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);

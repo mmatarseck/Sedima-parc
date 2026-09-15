@@ -295,6 +295,7 @@ async function synchroniserCreation(creation: Creation): Promise<void> {
   try {
     const r = await ecrireCreation(creation);
     if (r.issue === "refusee") signalerRefus(`${TYPE_TRANSACTION[creation.type].libelle} ${creation.numero}`, r.motif, "#");
+    else if (r.issue === "hors-base") signalerRefus(`${TYPE_TRANSACTION[creation.type].libelle} ${creation.numero}`, MOTIF_HORS_BASE, "#");
     else if (r.issue === "ecrite") {
       if (r.numero !== creation.numero) renumeroter(creation.sujet, creation.numero, r.numero);
       confirmerCreation(creation.sujet, r.numero);
@@ -304,10 +305,27 @@ async function synchroniserCreation(creation: Creation): Promise<void> {
   }
 }
 
+/**
+ * Ce que dit l'application quand la base ne peut pas recevoir une écriture.
+ *
+ * « hors-base » se taisait. La ligne restait alors dans le navigateur, où elle
+ * recouvre ce que les écrans affichent — et elle avait donc **l'air
+ * appliquée**, pendant que la base ignorait tout.
+ *
+ * C'est ce qui est arrivé au nom d'un chauffeur le 15 septembre 2026 : corrigé
+ * sur sa fiche, qui le montrait aussitôt ; inchangé en base ; et l'en-tête du
+ * véhicule qu'il conduit, lui, lisait la base et gardait l'ancien nom. Deux
+ * écrans, deux réponses, sans le moindre avertissement.
+ *
+ * Un silence est pire qu'un refus : un refus se voit et se retente.
+ */
+const MOTIF_HORS_BASE = "Cette modification n'a pas été envoyée à la base : elle n'est visible que sur ce navigateur. Rechargez la page pour voir ce que la base porte réellement.";
+
 async function synchroniserModification(e: Enregistrement, diffs: { champ: string; libelleChamp: string; avant: string; apres: string; valeur: unknown }[]): Promise<void> {
   try {
     const r = await ecrireModification({ numero: e.numero, type: e.type, motif: e.motif, diffs, sujet: e.sujet, cleMetier: e.cleMetier });
     if (r.issue === "refusee") signalerRefus(e.titre, r.motif, e.href);
+    else if (r.issue === "hors-base") signalerRefus(e.titre, MOTIF_HORS_BASE, e.href);
   } catch (x) {
     signalerRefus(e.titre, `Non enregistré en base : ${x instanceof Error ? x.message : "erreur inconnue"}`, e.href);
   }

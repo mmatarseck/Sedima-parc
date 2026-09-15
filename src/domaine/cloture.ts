@@ -172,6 +172,7 @@ export const CHAMP_DATE: Record<TypeTransaction, string> = {
   /* Les fiches n'ont pas de mois : la clôture ne les concerne pas. */
   vehicule: "",
   chauffeur: "",
+  attributaire: "",
 };
 
 /** Une transaction créée dans l'application, en attendant la base. */

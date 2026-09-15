@@ -451,6 +451,16 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
   /* Les champs du véhicule se construisent par `champsVehicule()` : marque,
      modèle et catégorie viennent des paramètres, relus à chaque ouverture. */
   vehicule: [],
+  /* La fiche d'un attributaire : ce que le parc sait de la personne. Son
+     véhicule n'est pas ici — il se change par une attribution, qui se date. */
+  attributaire: [
+    { cle: "nom", libelle: "Nom complet", type: "texte", obligatoire: true },
+    { cle: "fonction", libelle: "Fonction", type: "texte" },
+    { cle: "departement", libelle: "Département", type: "texte" },
+    { cle: "businessUnit", libelle: "Business unit (porte la charge au budget)", type: "choix", options: options(BUSINESS_UNIT) },
+    { cle: "matriculeRh", libelle: "Matricule RH", type: "texte" },
+    { cle: "actif", libelle: "Actif (proposé à l'attribution)", type: "oui-non" },
+  ],
   chauffeur: [
     { cle: "prenom", libelle: "Prénom", type: "texte", obligatoire: true },
     { cle: "nom", libelle: "Nom", type: "texte", obligatoire: true },

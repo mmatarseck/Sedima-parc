@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { FicheAttributaire } from "@/composants/chauffeurs/FicheAttributaire";
+import { FournisseurEdition } from "@/composants/transactions/ContexteEdition";
 import { titrePage } from "@/domaine/marque";
 import { lignesAttributaires } from "@/domaine/parc-leger";
 import { jourCourant } from "@/domaine/temps";
@@ -39,5 +40,9 @@ export default async function PageAttributaire({ params }: Props) {
   if (!ligne) notFound();
 
   const aujourdhui = jourCourant();
-  return <FicheAttributaire ligne={ligne} regles={parametres.parcLeger} aujourdhui={aujourdhui} />;
+  return (
+    <FournisseurEdition sujet={`attributaire:${ligne.id}`} href={`/attributaires/${ligne.id}`}>
+      <FicheAttributaire ligne={ligne} regles={parametres.parcLeger} aujourdhui={aujourdhui} />
+    </FournisseurEdition>
+  );
 }

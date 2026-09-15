@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Building2, ChevronLeft, Fuel } from "lucide-react";
 import { Carte, Definitions } from "@/composants/interface/Carte";
+import { BoutonFicheAttributaire } from "./BoutonFicheAttributaire";
 import { Pastille } from "@/composants/interface/Pastille";
 import { BUSINESS_UNIT } from "@/domaine/libelles";
 import { ETAT_LEGER, REGIME_USAGE, SITUATION_ATTRIBUTAIRE, echeancierPlanCar, type LigneAttributaire } from "@/domaine/parc-leger";
@@ -19,9 +20,11 @@ import { kilometrage, montant } from "@/lib/format";
  * laisserait croire à des données manquantes ; la fiche ne porte donc que ce
  * que le parc sait réellement de lui.
  *
- * ELLE NE SE MODIFIE PAS ICI. L'attributaire n'existe pas par lui-même : il
- * naît de l'attribution d'un véhicule et s'éteint avec elle. Changer qui tient
- * quoi se fait donc sur la fiche du véhicule, d'où partent tous les liens.
+ * CE QUI SE MODIFIE ICI, ET CE QUI NE S'Y MODIFIE PAS. L'identité se corrige
+ * d'ici — le nom, la fonction, le département —, comme sur une fiche chauffeur.
+ * Le véhicule tenu, non : il se change par une **attribution**, qui se date et
+ * garde son histoire, et cela se fait sur la fiche du véhicule ou depuis la
+ * liste Flotte.
  * ==========================================================================*/
 
 export function FicheAttributaire({ ligne, regles, aujourdhui }: { ligne: LigneAttributaire; regles: ParametresParcLeger; aujourdhui: string }) {
@@ -78,7 +81,7 @@ export function FicheAttributaire({ ligne, regles, aujourdhui }: { ligne: LigneA
       {/* ---- Contenu ---- */}
       <div className="flex flex-col gap-5 px-8 py-6 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
         <div className="grid grid-cols-1 items-stretch gap-5 xl:grid-cols-2">
-          <Carte titre="Identité" precision="Ce que le référentiel du parc tient de la personne">
+          <Carte titre="Identité" precision="Ce que le référentiel du parc tient de la personne" action={<BoutonFicheAttributaire attributaire={a} />}>
             <Definitions
               elements={[
                 { libelle: "Nom", valeur: a.nom },
