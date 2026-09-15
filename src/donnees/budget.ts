@@ -19,10 +19,8 @@ import { afficher } from "@/domaine/immatriculation";
 import type { BusinessUnit, PosteDepense } from "@/domaine/types";
 import { depensesForfaitsDe, type DepenseForfait } from "@/domaine/parc-leger";
 import { parametresServeur } from "@/lib/parametres-serveur";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 import { achatsServeur } from "./achats";
-import { sourceBudgetDemo } from "./budget-demo";
 import { parcLegerServeur } from "./parc-leger";
 
 export interface LigneEnveloppe {
@@ -90,7 +88,6 @@ export function sourceDepuisLignes(enveloppes: LigneEnveloppe[], depenses: Ligne
 }
 
 async function budgetServeurBrut(): Promise<SourceBudget> {
-  if (!authentificationReelle()) return sourceBudgetDemo();
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const exercice = aujourdhui.slice(0, 4);
   const client = await clientServeur();

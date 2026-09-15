@@ -17,7 +17,6 @@ import type { AffectationFiche } from "@/domaine/fiche";
 import { BUSINESS_UNIT } from "@/domaine/libelles";
 import { idChauffeur, nomComplet } from "@/domaine/chauffeur";
 import type { Parametres } from "@/domaine/parametres";
-import { authentificationReelle } from "@/lib/session-demo";
 import { achatsServeur } from "./achats";
 import { budgetServeur } from "./budget";
 import { caisseServeur } from "./caisse";
@@ -32,7 +31,7 @@ import { interventionsServeur, travauxServeur } from "./maintenance";
 import { ordresServeur } from "./ordres";
 import { parcLegerServeur } from "./parc-leger";
 import { prestatairesServeur } from "./prestataires";
-import { affectationsDemonstration, resumesFicheDemonstration } from "./rapports-demo";
+
 import { relevesServeur } from "./releves";
 import { transporteursServeur } from "./transporteurs";
 import { visitesServeur } from "./visites";
@@ -104,7 +103,7 @@ async function sourceRapportsServeurBrut(parametres: Parametres): Promise<Source
   const [lignes, conformite, visites, couts, carburant, interventions, ordres, travaux, incidents, chauffeurs, fichesChauffeurs, achats, caisse, prestataires, transporteurs, releves, budget, parcLeger] = await Promise.all([
     lignesFlotte(parametres),
     conformiteServeur(parametres),
-    visitesServeur(parametres),
+    visitesServeur(),
     coutsServeur(parametres),
     carburantServeur(parametres),
     interventionsServeur(),
@@ -121,8 +120,7 @@ async function sourceRapportsServeurBrut(parametres: Parametres): Promise<Source
     budgetServeur(),
     parcLegerServeur(parametres),
   ]);
-  const reel = authentificationReelle();
-  const affectations = reel ? affectationsDepuisLeParc(await parcServeur()) : affectationsDemonstration(parametres);
+  const affectations = affectationsDepuisLeParc(await parcServeur());
   const sansFiches: Omit<SourceRapports, "resumesFiche"> = {
     aujourdhui: conformite.aujourdhui,
     lignes,
@@ -147,8 +145,8 @@ async function sourceRapportsServeurBrut(parametres: Parametres): Promise<Source
     budget,
     parcLeger,
   };
-  /* Ce que la fiche apporte : lu sur les fiches en démonstration, dérivé des lecteurs en base. */
-  return { ...sansFiches, resumesFiche: reel ? resumesFicheDepuisLaSource(sansFiches) : resumesFicheDemonstration(parametres) };
+  /* Ce que la fiche apporte, dérivé des lecteurs. */
+  return { ...sansFiches, resumesFiche: resumesFicheDepuisLaSource(sansFiches) };
 }
 
 export const sourceRapportsServeur = cache(sourceRapportsServeurBrut);

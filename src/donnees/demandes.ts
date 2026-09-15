@@ -9,9 +9,7 @@
 import { cache } from "react";
 import type { Demande, TypeDemande } from "@/domaine/demandes";
 import { afficher } from "@/domaine/immatriculation";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
-import { demandesDemo } from "./demandes-demo";
 
 interface LigneDemande {
   id: string;
@@ -53,7 +51,6 @@ function demandeDepuisLigne(l: LigneDemande): Demande {
 }
 
 async function demandesServeurBrut(): Promise<Demande[]> {
-  if (!authentificationReelle()) return demandesDemo();
   const client = await clientServeur();
   const lecture = await client
     .from("demande")

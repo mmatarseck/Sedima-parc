@@ -15,10 +15,8 @@ import { cache } from "react";
 import type { Attributaire, EtatLeger, ForfaitCarburant, SourceParcLeger, VehiculeLeger } from "@/domaine/parc-leger";
 import type { Parametres } from "@/domaine/parametres";
 import type { BusinessUnit, LigneFlotte, StatutVehicule } from "@/domaine/types";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 import { lignesFlotte } from "./flotte";
-import { sourceParcLegerDemo } from "./parc-leger-demo";
 
 export interface LigneAttributionBase {
   attributaire_id: string | null;
@@ -92,7 +90,6 @@ export function sourceDepuisLignes(lignes: LigneFlotte[], attributions: LigneAtt
 }
 
 async function parcLegerServeurBrut(parametres: Parametres): Promise<SourceParcLeger> {
-  if (!authentificationReelle()) return sourceParcLegerDemo();
   const client = await clientServeur();
   const [lignes, attributions, attributaires, forfaits] = await Promise.all([
     lignesFlotte(parametres),

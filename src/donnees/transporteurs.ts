@@ -25,9 +25,7 @@ import type { LigneReleve, ModeExecution, ProduitTransporte } from "@/domaine/re
 import { semaineDe } from "@/domaine/releve-transport";
 import type { Affretement, ConventionFacturation, FamilleMad, LigneTarif, MiseADisposition, MotifAffretement, Prestation, SourceTarif, StatutAffretement, UnitePrestation, UniteTarif } from "@/domaine/transporteurs";
 import type { BusinessUnit, CategorieVehicule } from "@/domaine/types";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
-import { sourceDemonstration } from "./fiche-transporteur-demo";
 import { prestataireDepuisLigne, prestataires, type LignePrestataire } from "./referentiels";
 
 /* -- Ce que la fonction rend ------------------------------------------------------ */
@@ -353,7 +351,6 @@ export function depuisPour(aujourdhui: string): string {
 }
 
 async function transporteursServeurBrut(): Promise<SourceTransporteurs> {
-  if (!authentificationReelle()) return sourceDemonstration();
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const client = await clientServeur();
   const lecture = await client.rpc("lire_transporteurs", { depuis: depuisPour(aujourdhui) }).maybeSingle<TransporteursJson | null>();

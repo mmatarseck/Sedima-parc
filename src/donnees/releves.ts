@@ -12,9 +12,7 @@ import { cache } from "react";
 import { destinationTarifaire } from "@/domaine/flotte-tierce";
 import { afficher } from "@/domaine/immatriculation";
 import { semaineDe, type LigneReleve, type ModeExecution, type ProduitTransporte } from "@/domaine/releve-transport";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
-import { relevesTransport } from "./releve-demo";
 import { transporteursServeur } from "./transporteurs";
 
 export interface LigneReleveBase {
@@ -36,7 +34,6 @@ export interface LigneReleveBase {
 }
 
 async function relevesServeurBrut(): Promise<LigneReleve[]> {
-  if (!authentificationReelle()) return relevesTransport();
   const client = await clientServeur();
   const depuis = new Date();
   depuis.setUTCFullYear(depuis.getUTCFullYear() - 2);

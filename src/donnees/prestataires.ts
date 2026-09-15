@@ -20,11 +20,9 @@ import { afficher } from "@/domaine/immatriculation";
 import { TYPE_DOCUMENT } from "@/domaine/libelles";
 import type { Prestataire } from "@/domaine/prestataires";
 import type { PosteDepense } from "@/domaine/types";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 import { achatsServeur } from "./achats";
 import { depenseCaisseDepuisLigne, type LigneDepenseCaisseBase } from "./caisse";
-import { sourcePrestatairesDemo } from "./compte-prestataire-demo";
 import { prestatairePour } from "./prestataires-demo";
 import { prestataireDepuisLigne, type LignePrestataire } from "./referentiels";
 import { transporteursServeur } from "./transporteurs";
@@ -117,7 +115,6 @@ export function depuisPour(aujourdhui: string): string {
 }
 
 async function prestatairesServeurBrut(): Promise<SourcePrestataires> {
-  if (!authentificationReelle()) return sourcePrestatairesDemo();
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const client = await clientServeur();
   const [lecture, achats, transport] = await Promise.all([client.rpc("lire_prestataires", { depuis: depuisPour(aujourdhui) }).maybeSingle<PrestatairesJson | null>(), achatsServeur(), transporteursServeur()]);

@@ -12,9 +12,7 @@ import { lienOrigine, type LigneAchat } from "@/domaine/caisse";
 import { afficher } from "@/domaine/immatriculation";
 import type { Role } from "@/domaine/roles";
 import type { BusinessUnit, PosteDepense } from "@/domaine/types";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
-import { demandesAchat } from "./caisse-demo";
 
 export interface LigneAchatBase {
   numero: string;
@@ -87,7 +85,6 @@ export function achatDepuisLigne(l: LigneAchatBase): LigneAchat {
 }
 
 async function achatsServeurBrut(): Promise<LigneAchat[]> {
-  if (!authentificationReelle()) return demandesAchat();
   const client = await clientServeur();
   const lecture = await client
     .from("demande_achat")

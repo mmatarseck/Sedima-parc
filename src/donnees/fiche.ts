@@ -14,11 +14,8 @@ import type { LivraisonFiche } from "@/domaine/livraisons";
 import { normaliser } from "@/domaine/immatriculation";
 import type { Parametres } from "@/domaine/parametres";
 import type { CategorieObservation, PosteDepense, TypeDocument } from "@/domaine/types";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
-import { DATE_REFERENCE } from "./chauffeurs-demo";
 import { passagesReleves, planDuVehicule, programmeParDefaut } from "./entretien-demo";
-import { fichePourImmatriculation } from "./fiche-demo";
 import { lignesFlotte } from "./flotte";
 
 export interface FicheJson {
@@ -175,19 +172,11 @@ async function piecesJointesDuVehicule(client: Awaited<ReturnType<typeof clientS
  * leurs interventions et leurs dépenses (11 septembre 2026).
  */
 async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<FicheVehicule | null> {
-  const demonstration = !authentificationReelle();
-  /* La démonstration tient ses fiches de transport toutes faites. */
-  const faite = demonstration ? fichePourImmatriculation(brut, parametres) : null;
-  if (faite) return faite;
   const canonique = normaliser(brut);
   const lignes = await lignesFlotte(parametres);
   /* Par immatriculation, ou par numéro de lot pour un véhicule à recevoir : sans plaque encore, il a sa fiche complète comme les autres — c'est la seule fiche de l'application. */
   const ligne = lignes.find((l) => l.vehicule.immatriculation === canonique || l.vehicule.id === brut.toLowerCase()) ?? null;
   if (!ligne) return null;
-  if (demonstration) {
-    const d = ligne.vehicule;
-    return assemblerFiche(ligne, FAITS_VIDES, parametres, DATE_REFERENCE, { programme: programmeParDefaut(d.categorie), plan: planDuVehicule(d.id, d.categorie), passages: passagesReleves });
-  }
   const client = await clientServeur();
   const [lecture, livraisons, piecesJointes, attelages] = await Promise.all([
     client.rpc("lire_fiche", { immat: canonique }).maybeSingle<FicheJson | null>(),

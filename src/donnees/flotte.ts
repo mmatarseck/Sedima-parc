@@ -27,13 +27,12 @@ import { idChauffeur } from "@/domaine/chauffeur";
 import type { Parametres } from "@/domaine/parametres";
 import type { EcheanceVehicule, LigneFlotte, PosteDepense, Site, TypeDocument, Vehicule } from "@/domaine/types";
 import { joursRestants } from "@/lib/format";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { passagesReleves, programmeParDefaut } from "./entretien-demo";
 
 export { ligneLegere } from "./flotte-demo";
-import { ligneLegere, lignesFlotteDemonstration } from "./flotte-demo";
+import { ligneLegere } from "./flotte-demo";
 
 interface LigneVehicule {
   id: string;
@@ -556,7 +555,6 @@ export const parcServeur = cache(async (): Promise<ParcBrut> => lireParc(await c
 /** Les lignes de la liste Flotte, statut effectif et immobilisation compris. */
 async function lignesFlotteBrut(parametres: Parametres): Promise<LigneFlotte[]> {
   /* La démonstration : les fiches, et le parc léger du dossier (`flotte-demo.ts`). */
-  if (!authentificationReelle()) return lignesFlotteDemonstration(parametres);
   const parc = await parcServeur();
   return [...parc.vehicules.map((v) => ligneDepuisLaBase(v, parc, parametres)), ...lignesARecevoir(parc)];
 }

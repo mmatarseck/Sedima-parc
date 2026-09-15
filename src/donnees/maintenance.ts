@@ -23,10 +23,8 @@ import { estOuvert, type LigneInterventionFlotte, type LigneOrdre, type LigneTra
 import type { Parametres } from "@/domaine/parametres";
 import type { BusinessUnit, LigneFlotte, TypeIncident } from "@/domaine/types";
 import { date as formaterDate } from "@/lib/format";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 import { echeancesEntretienDeLaBase, lignesFlotte, parcServeur, type ParcBrut } from "./flotte";
-import { interventionsFlotte, travauxAFaire } from "./maintenance-demo";
 import { ordresServeur } from "./ordres";
 
 /* -- Interventions ------------------------------------------------------------- */
@@ -68,7 +66,6 @@ export function interventionDepuisLigne(l: LigneInterventionBase): LigneInterven
 }
 
 async function interventionsServeurBrut(): Promise<LigneInterventionFlotte[]> {
-  if (!authentificationReelle()) return interventionsFlotte();
   const client = await clientServeur();
   const lecture = await client
     .from("intervention")
@@ -183,7 +180,6 @@ export function travauxDepuisLaBase(lignes: LigneFlotte[], parc: ParcBrut, ordre
 }
 
 async function travauxServeurBrut(parametres: Parametres): Promise<LigneTravail[]> {
-  if (!authentificationReelle()) return travauxAFaire();
   const client = await clientServeur();
   const [lignes, parc, ordres, incidents, observations] = await Promise.all([
     lignesFlotte(parametres),

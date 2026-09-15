@@ -19,10 +19,8 @@ import type { Parametres } from "@/domaine/parametres";
 import type { FicheChauffeur } from "@/domaine/chauffeur";
 import type { LigneFlotte, TypeDocument } from "@/domaine/types";
 import { joursRestants } from "@/lib/format";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
-import { DATE_REFERENCE } from "./chauffeurs-demo";
-import { echeancesChauffeurs, echeancesDemonstration, fmtKm } from "./conformite-demo";
+import { echeancesChauffeurs, fmtKm } from "./conformite-demo";
 import { fichesChauffeursServeur } from "./fiche-chauffeur";
 import { lignesFlotte, parcServeur } from "./flotte";
 
@@ -159,7 +157,6 @@ export interface ConformiteServeur {
 }
 
 async function conformiteServeurBrut(parametres: Parametres): Promise<ConformiteServeur> {
-  if (!authentificationReelle()) return { echeances: echeancesDemonstration(parametres), aujourdhui: DATE_REFERENCE };
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const client = await clientServeur();
   const [lignes, fiches, documents, licences, visites, observations] = await Promise.all([

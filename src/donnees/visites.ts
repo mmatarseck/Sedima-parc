@@ -9,11 +9,8 @@
  * ==========================================================================*/
 
 import { cache } from "react";
-import type { Parametres } from "@/domaine/parametres";
 import type { ObservationVisite, VisiteTechnique } from "@/domaine/types";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
-import { visitesDemonstration } from "./visites-demo";
 
 export interface VisitesServeur {
   visites: VisiteTechnique[];
@@ -47,8 +44,7 @@ interface LigneObservationBase {
   vehicule: { immatriculation: string } | null;
 }
 
-async function visitesServeurBrut(parametres: Parametres): Promise<VisitesServeur> {
-  if (!authentificationReelle()) return visitesDemonstration(parametres);
+async function visitesServeurBrut(): Promise<VisitesServeur> {
   const client = await clientServeur();
   const depuis = new Date();
   depuis.setUTCFullYear(depuis.getUTCFullYear() - 2);

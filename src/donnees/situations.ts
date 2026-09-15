@@ -15,7 +15,6 @@
 import { cache } from "react";
 import type { FaitsFlotteJour, FaitsVehiculeJour, SituationJournaliere } from "@/domaine/pastilles";
 import type { StatutVehicule } from "@/domaine/types";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 import { situationsJournalieres } from "./situation-demo";
 
@@ -131,7 +130,6 @@ function situationDepuisJson(s: SituationJson): SituationJournaliere {
 
 /** Les situations des `profondeur` derniers jours, du plus ancien à `aujourdhui`. */
 async function situationsServeurBrut(aujourdhui: string, profondeur = 28): Promise<SituationJournaliere[]> {
-  if (!authentificationReelle()) return situationsJournalieres(aujourdhui, profondeur);
   const client = await clientServeur();
   const lecture = await client.rpc("situation_journaliere", { depuis: plusJours(aujourdhui, 1 - profondeur), jusqua: aujourdhui }).maybeSingle<SituationJson[]>();
   /* Fonction pas encore jouée en base : la démonstration prend le relais, comme pour le parc. */

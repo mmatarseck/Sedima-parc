@@ -15,10 +15,7 @@
 
 import type { Prestataire, TypePrestataire } from "@/domaine/prestataires";
 import type { Site } from "@/domaine/types";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
-import { FLOTTE, SITES } from "./parc-demo";
-import { listePrestataires } from "./prestataires-demo";
 
 interface LigneSite {
   id: string;
@@ -51,7 +48,6 @@ function ouErreur<T>(quoi: string, resultat: { data: T | null; error: { message:
 
 /** Les sites, dans l'ordre du référentiel. */
 export async function sites(): Promise<Site[]> {
-  if (!authentificationReelle()) return SITES;
   const client = await clientServeur();
   const lignes = ouErreur("sites", await client.from("site").select("id, code, libelle, region, type").order("code").returns<LigneSite[]>());
   return lignes.map((s) => ({ id: s.id, code: s.code, libelle: s.libelle, region: s.region, type: s.type }));
@@ -60,13 +56,6 @@ export async function sites(): Promise<Site[]> {
 /** Combien de véhicules chaque site porte — sur la même source que `sites()`. */
 export async function vehiculesParSite(): Promise<Map<string, number>> {
   const compte = new Map<string, number>();
-  if (!authentificationReelle()) {
-    for (const l of FLOTTE) {
-      const s = l.vehicule.siteId;
-      if (s) compte.set(s, (compte.get(s) ?? 0) + 1);
-    }
-    return compte;
-  }
   const client = await clientServeur();
   const lignes = ouErreur("véhicules par site", await client.from("vehicule").select("site_id").returns<{ site_id: string | null }[]>());
   for (const v of lignes) if (v.site_id) compte.set(v.site_id, (compte.get(v.site_id) ?? 0) + 1);
@@ -75,7 +64,6 @@ export async function vehiculesParSite(): Promise<Map<string, number>> {
 
 /** Les prestataires, par numéro croissant — l'ordre de leur entrée au référentiel. */
 export async function prestataires(): Promise<Prestataire[]> {
-  if (!authentificationReelle()) return listePrestataires();
   const client = await clientServeur();
   const lignes = ouErreur(
     "prestataires",

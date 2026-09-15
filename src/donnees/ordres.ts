@@ -11,9 +11,7 @@ import { cache } from "react";
 import { afficher } from "@/domaine/immatriculation";
 import type { LigneOrdre } from "@/domaine/maintenance";
 import type { BusinessUnit } from "@/domaine/types";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
-import { ordresDeTravail } from "./maintenance-demo";
 
 export interface LigneOrdreBase {
   numero: string;
@@ -66,7 +64,6 @@ export function ordreDepuisLigne(l: LigneOrdreBase): LigneOrdre {
 }
 
 async function ordresServeurBrut(): Promise<LigneOrdre[]> {
-  if (!authentificationReelle()) return ordresDeTravail();
   const client = await clientServeur();
   const lecture = await client
     .from("ordre_travail")

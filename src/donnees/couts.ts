@@ -18,10 +18,8 @@ import type { LigneInterventionFlotte } from "@/domaine/maintenance";
 import { depensesForfaitsDe, type DepenseForfait } from "@/domaine/parc-leger";
 import type { Parametres } from "@/domaine/parametres";
 import type { CategorieVehicule, LigneFlotte, PosteDepense } from "@/domaine/types";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 import { carburantServeur } from "./carburant";
-import { donneesCouts } from "./couts-demo";
 import { lignesFlotte } from "./flotte";
 import { interventionsServeur } from "./maintenance";
 import { parcLegerServeur } from "./parc-leger";
@@ -114,7 +112,6 @@ export function donneesCoutsDepuisLaBase(lignes: LigneFlotte[], depenses: LigneD
 }
 
 async function coutsServeurBrut(parametres: Parametres): Promise<DonneesVehicule[]> {
-  if (!authentificationReelle()) return donneesCouts();
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const client = await clientServeur();
   const [lignes, depenses, carburant, interventions, parcLeger] = await Promise.all([

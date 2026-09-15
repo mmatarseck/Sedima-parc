@@ -13,10 +13,8 @@ import { assemblerFicheChauffeur, type FaitsFicheChauffeur } from "@/domaine/ass
 import type { FicheChauffeur } from "@/domaine/chauffeur";
 import { afficher } from "@/domaine/immatriculation";
 import type { BusinessUnit, CategorieVehicule, DeclarationIncident, Indisponibilite, Sanction, TypeDocument } from "@/domaine/types";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 import { lignesChauffeurs } from "./chauffeurs";
-import { fichePourChauffeur, fichesChauffeurs } from "./chauffeurs-demo";
 
 interface FicheChauffeurJson {
   chauffeur: { adresse: string | null; contact_urgence: string | null; permis_delivrance: string | null };
@@ -54,7 +52,6 @@ export function faitsChauffeurDepuisJson(j: FicheChauffeurJson, id: string): Fai
 
 /** La fiche d'un chauffeur par son identifiant d'adresse (« moustapha-diaw ») ; nulle hors périmètre. */
 async function ficheChauffeurServeurBrut(id: string): Promise<FicheChauffeur | null> {
-  if (!authentificationReelle()) return fichePourChauffeur(id);
   const lignes = await lignesChauffeurs();
   const ligne = lignes.find((l) => l.id === id) ?? null;
   if (!ligne) return null;
@@ -84,7 +81,6 @@ const FAITS_VIDES: FaitsFicheChauffeur = { adresse: null, contactUrgence: null, 
  * la ligne de la liste qui porte le même identifiant.
  */
 async function fichesChauffeursServeurBrut(): Promise<FicheChauffeur[]> {
-  if (!authentificationReelle()) return fichesChauffeurs();
   const lignes = await lignesChauffeurs();
   const client = await clientServeur();
   const lecture = await client.rpc("lire_fiches_chauffeurs").maybeSingle<FicheChauffeurEnListe[] | null>();

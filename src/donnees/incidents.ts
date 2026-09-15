@@ -12,9 +12,7 @@ import { idChauffeur } from "@/domaine/chauffeur";
 import { afficher } from "@/domaine/immatriculation";
 import type { LigneIncident } from "@/domaine/incidents";
 import type { BusinessUnit } from "@/domaine/types";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
-import { listeIncidents } from "./incidents-demo";
 
 export interface LigneIncidentBase {
   numero: string;
@@ -71,7 +69,6 @@ export function incidentDepuisLigne(l: LigneIncidentBase): LigneIncident {
 }
 
 async function incidentsServeurBrut(): Promise<LigneIncident[]> {
-  if (!authentificationReelle()) return listeIncidents();
   const client = await clientServeur();
   const depuis = new Date();
   depuis.setUTCFullYear(depuis.getUTCFullYear() - 2);

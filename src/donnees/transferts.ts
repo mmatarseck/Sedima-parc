@@ -10,9 +10,7 @@ import { cache } from "react";
 import { afficher } from "@/domaine/immatriculation";
 import type { EquipementTransfert, ReserveTransfert, Signature, Transfert } from "@/domaine/transferts";
 import type { TypeDocument } from "@/domaine/types";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
-import { transfertsDemo } from "./transferts-demo";
 
 interface LigneTransfert {
   id: string;
@@ -68,7 +66,6 @@ function transfertDepuisLigne(l: LigneTransfert): Transfert {
 }
 
 async function transfertsServeurBrut(): Promise<Transfert[]> {
-  if (!authentificationReelle()) return transfertsDemo();
   const client = await clientServeur();
   const lecture = await client
     .from("transfert")

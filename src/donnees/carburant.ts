@@ -17,9 +17,7 @@ import { afficher } from "@/domaine/immatriculation";
 import { CATEGORIE_VEHICULE } from "@/domaine/libelles";
 import type { Parametres } from "@/domaine/parametres";
 import type { BusinessUnit, CategorieVehicule } from "@/domaine/types";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
-import { consommationsMensuelles, livraisonsEtJauges, pleinsFlotte } from "./carburant-demo";
 import { parcServeur, type ParcBrut } from "./flotte";
 
 /* -- Pleins -------------------------------------------------------------------- */
@@ -196,7 +194,6 @@ export interface CarburantServeur {
 
 async function carburantServeurBrut(parametres: Parametres): Promise<CarburantServeur> {
   const stockInitial = parametres.cuve.stockInitial;
-  if (!authentificationReelle()) return { pleins: pleinsFlotte(), cuve: livraisonsEtJauges(), stockInitial, consommations: consommationsMensuelles() };
   const client = await clientServeur();
   const [pleins, cuve, parc] = await Promise.all([
     client.from("plein").select("numero, vehicule_id, date, litres, prix_litre, montant, km, source, reference, vehicule (immatriculation, marque, appellation, business_unit, site (libelle)), prestataire (raison_sociale)").order("date", { ascending: false }).limit(5000).returns<LignePleinBase[]>(),

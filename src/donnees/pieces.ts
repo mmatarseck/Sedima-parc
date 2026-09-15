@@ -10,10 +10,7 @@
 import { cache } from "react";
 import { afficher } from "@/domaine/immatriculation";
 import type { MouvementStock, Piece, Pneu } from "@/domaine/pieces";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
-import { DATE_REFERENCE } from "./chauffeurs-demo";
-import { mouvementsDemo, piecesDemo, pneusDemo } from "./pieces-demo";
 
 export interface SourcePieces {
   pieces: Piece[];
@@ -138,7 +135,6 @@ export function pneuDepuisLigne(l: LignePneuBase): Pneu {
 }
 
 async function piecesServeurBrut(): Promise<SourcePieces> {
-  if (!authentificationReelle()) return { pieces: piecesDemo(), mouvements: mouvementsDemo(), pneus: pneusDemo(), aujourdhui: DATE_REFERENCE };
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const client = await clientServeur();
   const [pieces, mouvements, pneus] = await Promise.all([

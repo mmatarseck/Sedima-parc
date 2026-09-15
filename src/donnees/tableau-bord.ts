@@ -26,12 +26,11 @@ import type { FaitsFlotteMois, FaitsVehiculeMois, SituationJour, VehiculeTableau
 import { coutAffretement, coutMiseADisposition, coutPrestation, prestationFaite, type Affretement, type MiseADisposition, type Prestation, type RegimeFiscal, ventiler } from "@/domaine/transporteurs";
 import type { BusinessUnit, CategorieFlotte, CategorieVehicule, LigneFlotte, PosteDepense, StatutVehicule, TypeDocument } from "@/domaine/types";
 import { joursRestants } from "@/lib/format";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 import { achatsServeur } from "./achats";
 import { lignesFlotte } from "./flotte";
 import { situationsServeur } from "./situations";
-import { donneesTableau, type Alerte, type DonneesTableau } from "./tableau-bord-demo";
+import type { Alerte, DonneesTableau } from "./tableau-bord-demo";
 
 /* -- Ce que la base rend ------------------------------------------------------- */
 
@@ -311,7 +310,6 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
 /* -- Ce que la page appelle -------------------------------------------------- */
 
 async function donneesTableauServeurBrut(parametres: Parametres): Promise<DonneesTableau> {
-  if (!authentificationReelle()) return donneesTableau();
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const depuis = `${moisDuTableau(aujourdhui)[0]}-01`;
   const client = await clientServeur();

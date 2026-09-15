@@ -22,10 +22,8 @@
 import { idChauffeur, initialesDe, nomComplet, statutChauffeur, type EcheanceChauffeur, type LigneChauffeur, type VehiculeAffecte } from "@/domaine/chauffeur";
 import type { Chauffeur, Indisponibilite, Site } from "@/domaine/types";
 import { joursRestants } from "@/lib/format";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { listeChauffeurs } from "./chauffeurs-demo";
 import { afficher } from "@/domaine/immatriculation";
 
 interface LigneChauffeurBase {
@@ -300,6 +298,5 @@ export function lignesDepuisLaBase(brut: ChauffeursBrut): LigneChauffeur[] {
 
 /** Les lignes de la liste Chauffeurs, dans l'ordre statut puis nom. */
 export async function lignesChauffeurs(): Promise<LigneChauffeur[]> {
-  if (!authentificationReelle()) return listeChauffeurs();
   return lignesDepuisLaBase(await lireChauffeurs(await clientServeur(), new Date().toISOString().slice(0, 10)));
 }

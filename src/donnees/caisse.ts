@@ -15,9 +15,8 @@ import { avecSolde, type LigneMouvement, type SensCaisse } from "@/domaine/caiss
 import { afficher } from "@/domaine/immatriculation";
 import type { Parametres } from "@/domaine/parametres";
 import type { BusinessUnit, PosteDepense } from "@/domaine/types";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
-import { depensesAReglier, journalCaisse, type DepenseCaisse } from "./caisse-demo";
+import type { DepenseCaisse } from "./caisse-demo";
 
 export interface LigneCaisseBase {
   numero: string;
@@ -108,7 +107,6 @@ export interface CaisseServeur {
 
 async function caisseServeurBrut(parametres: Parametres): Promise<CaisseServeur> {
   const p = parametres.caisse;
-  if (!authentificationReelle()) return { mouvements: journalCaisse(), depensesARegler: depensesAReglier(), soldeInitial: p.soldeInitial, seuil: p.seuil };
   const client = await clientServeur();
   const [mouvements, depenses] = await Promise.all([
     client.from("mouvement_caisse").select("numero, date, sens, libelle, montant, beneficiaire, piece, justificatif, depense_numero, enregistre_par").order("date", { ascending: false }).limit(5000).returns<LigneCaisseBase[]>(),
