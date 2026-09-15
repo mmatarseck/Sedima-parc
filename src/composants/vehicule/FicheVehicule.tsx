@@ -42,6 +42,7 @@ import {
   OngletJournal,
   OngletKilometrage,
 } from "./onglets";
+import { OngletDossier } from "./OngletDossier";
 import { OngletLivraisons } from "./OngletLivraisons";
 
 const LIBELLE_ORIGINE_RELEVE: Record<Fiche["releves"][number]["origine"], string> = {
@@ -57,6 +58,7 @@ type Onglet =
   | "caracteristiques"
   | "affectations"
   | "conformite"
+  | "dossier"
   | "incidents"
   | "maintenance"
   | "carburant"
@@ -70,11 +72,16 @@ type Onglet =
  * onglet est une liste de transactions d'un seul type — c'est la règle posée
  * par le métier, et elle décide de ce qui va où.
  */
-const ONGLETS: { cle: Onglet; libelle: string }[] = [
+const ONGLETS: { cle: Onglet; libelle: string; ordinateurSeulement?: boolean }[] = [
   { cle: "apercu", libelle: "Aperçu" },
   { cle: "caracteristiques", libelle: "Caractéristiques" },
   { cle: "affectations", libelle: "Affectations" },
   { cle: "conformite", libelle: "Conformité" },
+  /* Sur ordinateur seulement (demande du métier, 15 septembre 2026) : lire une
+     carte grise dans un cadre d'un tiers d'écran de téléphone ne rend service à
+     personne, et le bouton « Ouvrir » de la Conformité y reste le bon geste —
+     il confie la pièce au lecteur du téléphone, qui sait la pincer et la tourner. */
+  { cle: "dossier", libelle: "Dossier", ordinateurSeulement: true },
   { cle: "incidents", libelle: "Incidents & sinistres" },
   { cle: "maintenance", libelle: "Maintenance" },
   { cle: "carburant", libelle: "Carburant" },
@@ -416,7 +423,7 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
                 role="tab"
                 aria-selected={actif}
                 onClick={() => setOnglet(o.cle)}
-                className={`relative flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 pt-1 pb-3 text-[13px] whitespace-nowrap transition-colors ${
+                className={`relative shrink-0 items-center gap-1.5 border-b-2 px-2.5 pt-1 pb-3 text-[13px] whitespace-nowrap transition-colors ${o.ordinateurSeulement ? "hidden lg:flex" : "flex"} ${
                   actif ? "border-accent font-semibold text-texte" : "border-transparent font-medium text-texte-2 hover:text-texte"
                 }`}
               >
@@ -446,6 +453,13 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
         {onglet === "caracteristiques" && <OngletCaracteristiques fiche={fiche} detenteur={detenteur} />}
         {onglet === "affectations" && <OngletAffectations fiche={fiche} transferts={transferts} cible={cible} />}
         {onglet === "conformite" && <OngletConformite fiche={fiche} cible={cible} />}
+        {/* Le dossier ne s'affiche pas sous 1024 px : le cadre y serait trop
+            petit pour lire un scan, et l'onglet lui-même y est masqué. */}
+        {onglet === "dossier" && (
+          <div className="hidden lg:block">
+            <OngletDossier fiche={fiche} />
+          </div>
+        )}
         {onglet === "incidents" && <OngletIncidents fiche={fiche} cible={cible} />}
         {onglet === "maintenance" && <OngletMaintenance fiche={fiche} cible={cible} />}
         {onglet === "carburant" && <OngletCarburant fiche={fiche} cible={cible} />}

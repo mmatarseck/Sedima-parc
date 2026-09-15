@@ -21,6 +21,8 @@ const { PGlite } = require("@electric-sql/pglite");
 const { btree_gist } = require("@electric-sql/pglite/contrib/btree_gist");
 const { pgcrypto } = require("@electric-sql/pglite/contrib/pgcrypto");
 const projet = process.cwd();
+/* Combien de fiches portent au moins une pièce scannée. */
+let avecPieces = 0;
 const pg = new PGlite({ extensions: { btree_gist, pgcrypto } });
 await pg.exec(`create schema auth; create table auth.users (id uuid primary key); create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;`);
 for (const m of readdirSync(join(projet, "supabase/migrations")).sort()) await pg.exec(readFileSync(join(projet, "supabase/migrations", m), "utf8"));
@@ -84,6 +86,17 @@ for (const brut of parc.vehicules) {
         React.createElement(FicheVehicule, { fiche, ongletInitial: undefined, discussionInitiale: false, cible: undefined } as any)),
     );
     if (html.length < 1000) throw new Error(`rendu trop court (${html.length})`);
+    /* Et sur l'onglet Dossier, où les pièces s'ouvrent dans la page. On ne peut
+       pas y signer d'adresse hors d'un navigateur : ce qu'on éprouve ici, c'est
+       que la liste des pièces se dresse et que le cadre se pose — le reste est
+       affaire de session. */
+    etape = "rendre le dossier";
+    const dossier = renderToString(
+      React.createElement(FournisseurEdition, { sujet: `vehicule:${v.immatriculation}`, href: `/flotte/${v.immatriculation}` } as any,
+        React.createElement(FicheVehicule, { fiche, ongletInitial: "dossier", discussionInitiale: false, cible: undefined } as any)),
+    );
+    if (!dossier.includes("Dossier")) throw new Error("l'onglet Dossier ne s'annonce pas");
+    avecPieces += fiche.documents.filter((d) => d.fichier).length > 0 ? 1 : 0;
     n++;
     if (leger) legers++;
     rendues.add(v.immatriculation);
@@ -116,5 +129,40 @@ if (!rendues.has("AA019EA")) {
   echecs++;
   console.log("ÉCHEC AA 019 EA n'a pas sa fiche complète");
 }
-console.log(`${n} fiches rendues, dont ${legers} de service ou de fonction${echecs ? `, ${echecs} échec(s)` : ", tout passe"}`);
+/* -- Le dossier garni ------------------------------------------------------ */
+/* La base du banc ne porte aucune pièce scannée : le jeu de départ n'en attache
+   pas, et les soixante-quatorze cartes grises réelles vivent dans la base de
+   production. Sans cela, on n'éprouverait que le dossier vide — c'est-à-dire le
+   cas qui n'intéresse personne. On en attache donc une ici. */
+{
+  const brut = parc.vehicules.find((x) => x.immatriculation) ?? null;
+  const ligne = brut ? ligneDepuisLaBase(brut, parc, PARAMETRES_DEFAUT) : null;
+  if (!ligne) console.log("ÉCHEC dossier garni : aucun véhicule");
+  else {
+    const v = ligne.vehicule;
+    const fiche = assemblerFiche(ligne, FAITS_VIDES, PARAMETRES_DEFAUT, aujourdhui, { programme: programmeParDefaut(v.categorie), plan: planDuVehicule(v.id, v.categorie), passages: passagesReleves });
+    const garnie = {
+      ...fiche,
+      documents: [
+        { ...fiche.documents[0]!, type: "carte-grise" as const, numero: "DOC-2026-90001", fichier: "pieces/documents/2026/09/essai-carte-grise.pdf", justificatif: true, etat: "valide" as const },
+        { ...fiche.documents[0]!, type: "assurance" as const, numero: "DOC-2026-90002", fichier: "pieces/documents/2026/09/essai-police.jpg", justificatif: true, etat: "valide" as const },
+      ],
+    };
+    try {
+      const html = renderToString(
+        React.createElement(FournisseurEdition, { sujet: `vehicule:${v.immatriculation}`, href: `/flotte/${v.immatriculation}` } as any,
+          React.createElement(FicheVehicule, { fiche: garnie, ongletInitial: "dossier", discussionInitiale: false, cible: undefined } as any)),
+      );
+      const annonce = html.includes("Dossier (2)");
+      const nomme = html.includes("Carte grise") && html.includes("Assurance");
+      console.log(`${annonce && nomme ? "ok   " : "ÉCHEC"} le dossier garni liste ses deux pièces et les nomme`);
+      if (!annonce || !nomme) echecs++;
+    } catch (e) {
+      echecs++;
+      console.log(`ÉCHEC dossier garni : ${(e as Error).message}`);
+    }
+  }
+}
+
+console.log(`${n} fiches rendues, ${avecPieces} avec au moins une pièce au dossier, dont ${legers} de service ou de fonction${echecs ? `, ${echecs} échec(s)` : ", tout passe"}`);
 process.exit(echecs ? 1 : 0);
