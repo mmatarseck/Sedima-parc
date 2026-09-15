@@ -28,6 +28,29 @@ import { ACCROCHE_APPLICATION, NOM_APPLICATION, PRECISION_APPLICATION } from "@/
  */
 const DEGRADE = "linear-gradient(145deg, #8cc72e 0%, #78b225 30%, #4e7d1a 58%, #7d1c15 86%, #c00000 100%)";
 
+/**
+ * La photo qui passe sous le dégradé — un camion du parc, à déposer dans
+ * `public/` sous ce nom.
+ *
+ * Elle est facultative, et c'est voulu : tant qu'elle n'est pas là, le fichier
+ * manque, le navigateur n'affiche rien à cette couche, et on retrouve
+ * exactement la page d'avant. Aucune erreur, aucun cadre vide — une page de
+ * garde ne doit pas se casser parce qu'une image n'a pas été fournie.
+ */
+const PHOTO_FOND = "/fond-connexion.jpg";
+
+/**
+ * Ce qui garde le texte lisible par-dessus une photo.
+ *
+ * Le dégradé de marque couvre à 72 % : assez pour que la couleur reste celle de
+ * la maison, assez peu pour qu'on reconnaisse le camion dessous. Au-delà de 80 %
+ * la photo devient une texture qu'on ne lit plus — autant ne pas en mettre. Une photo claire
+ * — un pare-brise au soleil, un ciel blanc — ferait disparaître le texte blanc,
+ * d'où le second voile, plus sombre en bas à gauche, là où se lisent la marque
+ * et l'accroche. C'est le prix d'une photo qu'on ne choisit pas.
+ */
+const VOILE = "linear-gradient(115deg, rgba(18,24,10,0.62) 0%, rgba(18,24,10,0.34) 48%, rgba(18,24,10,0) 72%)";
+
 /** Ce que la page de garde dit quand on y revient sans l'avoir choisi. */
 const MOTIFS: Record<string, string> = {
   "sans-profil":
@@ -129,11 +152,20 @@ export function FormulaireConnexion() {
     /* Le fond dégradé occupe toute la page ; la carte blanche flotte dessus
        avec une marge tout autour, si bien que le vert continue de se voir sur
        les quatre côtés. C'est le trait de la maquette qui porte le plus. */
-    <div className="relative flex min-h-screen flex-col justify-center p-4 sm:p-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(460px,46%)] lg:items-stretch lg:gap-0 lg:p-5" style={{ background: DEGRADE }}>
+    <div className="relative flex min-h-screen flex-col justify-center overflow-hidden bg-[#4e7d1a] p-4 sm:p-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(460px,46%)] lg:items-stretch lg:gap-0 lg:p-5">
+      {/* -- Le fond, en trois couches -----------------------------------------
+          La photo, le dégradé de marque en transparence, puis un voile sombre
+          côté texte. Les trois sont `aria-hidden` et sans interaction : ce
+          n'est qu'un décor, il ne doit ni s'annoncer au lecteur d'écran ni
+          intercepter un clic sur le formulaire. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${PHOTO_FOND})` }} />
+      <div aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.72]" style={{ background: DEGRADE }} />
+      <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: VOILE }} />
+
       {/* -- À gauche : la marque et l'accroche, sur le dégradé --------------
           Cachée sous 1024 px : sur un téléphone, la carte prend l'écran et
           l'accroche n'aurait fait que repousser le formulaire vers le bas. */}
-      <section className="hidden flex-col justify-center px-12 py-12 lg:flex xl:px-16">
+      <section className="relative hidden flex-col justify-center px-12 py-12 lg:flex xl:px-16">
         <div className="flex items-center gap-3">
           <span className="grid size-12 shrink-0 place-items-center rounded-[14px] bg-white/95 shadow-flottante">
             <Image src="/sedima-picto.png" alt="" width={30} height={30} priority className="size-[30px] object-contain" />
@@ -146,7 +178,7 @@ export function FormulaireConnexion() {
       </section>
 
       {/* -- À droite : la carte blanche ------------------------------------ */}
-      <div className="mx-auto flex w-full max-w-[440px] flex-col items-center rounded-[26px] bg-surface px-5 py-8 shadow-flottante sm:px-8 lg:my-0 lg:max-w-none lg:justify-center lg:rounded-[28px] lg:px-8 lg:py-10">
+      <div className="relative mx-auto flex w-full max-w-[440px] flex-col items-center rounded-[26px] bg-surface px-5 py-8 shadow-flottante sm:px-8 lg:my-0 lg:max-w-none lg:justify-center lg:rounded-[28px] lg:px-8 lg:py-10">
         {/* La marque revient ici sous 1024 px, puisque le panneau de gauche
             n'y est pas : sans elle, l'écran ne dirait pas où l'on entre. */}
         <div className="mb-7 flex flex-col items-center gap-2.5 lg:hidden">
