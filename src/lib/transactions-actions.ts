@@ -209,6 +209,7 @@ export async function ecrireCreation(c: Creation): Promise<ResultatEcriture> {
 
   if (c.type === "statut") return poserStatut(client, moi.utilisateurId, c);
   if (c.type === "aptitude") return poserAptitude(client, moi.utilisateurId, c);
+  if (c.type === "attribution") return poserAttribution(client, moi.utilisateurId, c);
   const table = tableDe(c.type);
   if (!table) return { issue: "hors-base" };
 
@@ -290,6 +291,78 @@ async function entreeAuParc(client: SupabaseClient, vehiculeId: string, utilisat
  * écrivain, et laisse une trace dans `modification` : une inaptitude prononcée
  * doit pouvoir se relire, avec sa date et son motif.
  */
+/**
+ * Changer qui tient un véhicule de service ou de fonction — ou le lui retirer.
+ *
+ * UNE ATTRIBUTION NE SE MODIFIE PAS, ELLE SE REMPLACE. On clôt celle qui court
+ * à la veille de la nouvelle, puis on en ouvre une autre. Écraser la ligne
+ * existante ferait disparaître qui tenait le véhicule le mois dernier — or
+ * c'est précisément ce que le budget et les forfaits carburant lisent pour
+ * répartir la charge sur la bonne business unit.
+ *
+ * Retirer l'attribution, c'est clore sans rouvrir : le véhicule redevient
+ * disponible, sa fiche le dit, et l'historique reste entier.
+ *
+ * La base tient la règle : un index partiel (0004) interdit deux attributions
+ * en cours pour un même véhicule. Clore avant d'ouvrir n'est donc pas une
+ * précaution de style — sans cela, l'écriture serait refusée.
+ */
+async function poserAttribution(client: SupabaseClient, utilisateurId: string, c: Creation): Promise<ResultatEcriture> {
+  const s = decomposerSujet(c.sujet);
+  const vehiculeId = (await vehiculeIdDe(client, c.valeurs.vehiculeId)) ?? (s.genre === "vehicule" ? await vehiculeIdDe(client, s.cle) : null);
+  if (!vehiculeId) return { issue: "refusee", motif: "Non enregistré en base : véhicule introuvable." };
+
+  const choix = typeof c.valeurs.attributaireId === "string" ? c.valeurs.attributaireId.trim() : "";
+  const pool = typeof c.valeurs.pool === "string" ? c.valeurs.pool.trim() : "";
+  if (choix === "pool" && !pool) return { issue: "refusee", motif: "Non enregistré en base : nommez le pool ou le service." };
+  const debut = typeof c.valeurs.debut === "string" && c.valeurs.debut ? c.valeurs.debut : new Date().toISOString().slice(0, 10);
+  /* La veille du nouveau début : deux attributions ne se chevauchent pas d'un
+     jour, sans quoi le véhicule aurait deux détenteurs ce jour-là. */
+  const veille = new Date(`${debut}T00:00:00Z`);
+  veille.setUTCDate(veille.getUTCDate() - 1);
+  const finPrecedente = veille.toISOString().slice(0, 10);
+
+  const courante = await client.from("attribution_legere").select("id, attributaire_id, pool, debut").eq("vehicule_id", vehiculeId).is("fin", null).maybeSingle<{ id: string; attributaire_id: string | null; pool: string | null; debut: string | null }>();
+  if (courante.error) return { issue: "refusee", motif: `Attribution non changée : ${courante.error.message}` };
+  if (courante.data) {
+    /* Une attribution ouverte le jour même n'a pas d'antériorité à garder : on
+       la referme sur son propre début plutôt que sur la veille, ce qui donnerait
+       une période à l'envers. */
+    const fin = courante.data.debut && courante.data.debut > finPrecedente ? courante.data.debut : finPrecedente;
+    const cloture = await client.from("attribution_legere").update({ fin, modifie_le: new Date().toISOString(), modifie_par: utilisateurId }).eq("id", courante.data.id);
+    if (cloture.error) return { issue: "refusee", motif: `Attribution précédente non close : ${cloture.error.message}` };
+  }
+
+  if (choix !== "") {
+    const ouverture = await client.from("attribution_legere").insert({
+      vehicule_id: vehiculeId,
+      attributaire_id: choix === "pool" ? null : choix,
+      pool: choix === "pool" ? pool : null,
+      debut,
+      commentaire: typeof c.valeurs.motif === "string" && c.valeurs.motif.trim() ? c.valeurs.motif.trim() : null,
+      cree_par: utilisateurId,
+    });
+    if (ouverture.error) return { issue: "refusee", motif: `Attribution non ouverte : ${ouverture.error.message}` };
+  } else if (!courante.data) {
+    return { issue: "refusee", motif: "Ce véhicule n'a pas d'attributaire à retirer." };
+  }
+
+  const trace = await client.from("modification").insert({
+    table_cible: "attribution_legere",
+    numero: vehiculeId,
+    champ: "attributaire_id",
+    libelle_champ: "Attributaire",
+    avant: courante.data?.attributaire_id ?? courante.data?.pool ?? "",
+    apres: choix === "pool" ? pool : choix,
+    motif: typeof c.valeurs.motif === "string" && c.valeurs.motif.trim() ? c.valeurs.motif.trim() : choix === "" ? "Attribution retirée" : "Changement d'attributaire",
+    statut: "appliquee",
+    cree_par: utilisateurId,
+  });
+  if (trace.error) return { issue: "refusee", motif: `Changée, mais sans trace : ${trace.error.message}` };
+  revalidatePath("/", "layout");
+  return { issue: "ecrite", numero: c.numero };
+}
+
 async function poserAptitude(client: SupabaseClient, utilisateurId: string, c: Creation): Promise<ResultatEcriture> {
   const s = decomposerSujet(c.sujet);
   const chauffeurId = (await chauffeurIdDe(client, c.valeurs.chauffeurId)) ?? (s.genre === "chauffeur" ? await chauffeurIdDe(client, s.cle) : null);

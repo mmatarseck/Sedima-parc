@@ -16,16 +16,18 @@ import type { Parametres } from "@/domaine/parametres";
 import { REFERENTIELS_VIDES, type ReferentielsChoix } from "@/lib/referentiels-navigateur";
 import { lignesChauffeurs } from "./chauffeurs";
 import { lignesFlotte } from "./flotte";
+import { parcLegerServeur } from "./parc-leger";
 import { sites } from "./referentiels";
 import { transporteursServeur } from "./transporteurs";
 
 async function referentielsChoixBrut(parametres: Parametres): Promise<ReferentielsChoix> {
   try {
-    const [flotte, chauffeurs, listeSites, tiers] = await Promise.all([
+    const [flotte, chauffeurs, listeSites, tiers, parcLeger] = await Promise.all([
       lignesFlotte(parametres),
       lignesChauffeurs(),
       sites(),
       transporteursServeur(),
+      parcLegerServeur(parametres),
     ]);
     return {
       /* Un véhicule sorti du parc ne s'attelle ni ne se remplit : il n'a rien à
@@ -56,6 +58,7 @@ async function referentielsChoixBrut(parametres: Parametres): Promise<Referentie
         vehicule: c.vehiculeTitulaire?.immatriculationAffichee ?? c.suppleances[0]?.immatriculationAffichee ?? null,
       })),
       sites: listeSites,
+      attributaires: parcLeger.attributaires.map((a) => ({ id: a.id, nom: a.nom, fonction: a.fonction, actif: a.actif })),
       prestataires: tiers.prestataires.map((p) => ({ numero: p.numero, raisonSociale: p.raisonSociale, ville: p.ville ?? null, type: p.type, actif: p.actif })),
       camionsTiers: tiers.camions.map((c) => ({ immatriculation: c.immatriculation, immatriculationAffichee: c.immatriculationAffichee, transporteurNumero: c.transporteurNumero, actif: c.actif })),
       chauffeursTiers: tiers.chauffeurs.map((c) => ({ id: c.id, nom: c.nom, transporteurNumero: c.transporteurNumero, actif: c.actif })),

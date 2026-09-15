@@ -25,7 +25,7 @@ import { cleNom, nomMarqueConnu } from "@/domaine/parametres";
 import { lireParametres } from "@/lib/parametres-demo";
 import { lireReferentiels } from "@/lib/referentiels-navigateur";
 
-import { optionsCamionsTiers, optionsChauffeurs, optionsChauffeursTiers, optionsGarages, optionsPrestataires, optionsPrestatairesParNumero, optionsSites, optionsVehicules } from "./options";
+import { optionsAttribution, optionsCamionsTiers, optionsChauffeurs, optionsChauffeursTiers, optionsGarages, optionsPrestataires, optionsPrestatairesParNumero, optionsSites, optionsVehicules } from "./options";
 
 const options = (r: Record<string, string>) => Object.entries(r).map(([valeur, libelle]) => ({ valeur, libelle }));
 const optionsStatut = () => Object.entries(STATUT_VEHICULE).map(([valeur, d]) => ({ valeur, libelle: d.libelle }));
@@ -237,6 +237,23 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
   ],
   releve: [DATE("date"), { cle: "valeur", libelle: "Compteur", type: "nombre", unite: "km", obligatoire: true }],
   affectation: [DATE("debut", "Début"), { cle: "fin", libelle: "Fin", type: "date" }, { cle: "motif", libelle: "Motif", type: "texte" }],
+  /*
+   * Qui tient ce véhicule de service ou de fonction.
+   *
+   * Une attribution ne se « modifie » pas : elle se **remplace**. On clôt celle
+   * qui court à la veille de la nouvelle, et on en ouvre une autre — sans quoi
+   * on ne saurait plus qui tenait le véhicule le mois dernier, ce que le budget
+   * et les forfaits carburant lisent pour répartir la charge.
+   *
+   * Le premier champ porte donc les trois gestes : donner à quelqu'un d'autre,
+   * rendre au pool, ou simplement retirer.
+   */
+  attribution: [
+    { cle: "attributaireId", libelle: "Attribué à", type: "choix", options: optionsAttribution() },
+    { cle: "pool", libelle: "Nom du pool ou du service", type: "texte", visibleSi: (s) => s.attributaireId === "pool" },
+    DATE("debut", "À compter du"),
+    { cle: "motif", libelle: "Motif", type: "texte" },
+  ],
   attelage: [
     DATE("debut", "Début"),
     { cle: "fin", libelle: "Fin", type: "date" },

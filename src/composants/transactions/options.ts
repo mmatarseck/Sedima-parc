@@ -35,6 +35,22 @@ export const optionsVehicules = (filtre?: (categorie: CategorieVehicule) => bool
     .vehicules.filter((v) => (filtre ? filtre(v.categorie) : true))
     .map((v) => ({ valeur: v.id, libelle: `${v.immatriculationAffichee} · ${v.marque} ${v.appellation}` }));
 
+/**
+ * À qui l'on attribue un véhicule de service ou de fonction.
+ *
+ * Trois natures de choix dans une seule liste, et c'est voulu : le métier pense
+ * « qui tient ce véhicule maintenant ? », pas « quelle opération vais-je
+ * faire ». Retirer l'attribution et la donner à quelqu'un d'autre sont la même
+ * question posée au même endroit.
+ */
+export const optionsAttribution = (): Option[] => [
+  { valeur: "", libelle: "Personne — retirer l'attribution" },
+  { valeur: "pool", libelle: "Un pool ou un service (à nommer)" },
+  ...lireReferentiels()
+    .attributaires.filter((a) => a.actif)
+    .map((a) => ({ valeur: a.id, libelle: a.fonction ? `${a.nom} · ${a.fonction}` : a.nom })),
+];
+
 function raisonSocialeDe(numero: string): string {
   return lireReferentiels().prestataires.find((p) => p.numero === numero)?.raisonSociale ?? numero;
 }

@@ -27,6 +27,7 @@ export type TypeTransaction =
   | "pneu"
   | "budget"
   | "affectation"
+  | "attribution"
   | "attelage"
   | "incident"
   | "sanction"
@@ -81,6 +82,10 @@ export const TYPE_TRANSACTION: Record<TypeTransaction, DefinitionTypeTransaction
   budget: { prefixe: "BUD", libelle: "Enveloppe budgétaire", ongletVehicule: null, ongletChauffeur: null },
   affectation: { prefixe: "AFF", libelle: "Affectation", ongletVehicule: "affectations", ongletChauffeur: "affectations" },
   attelage: { prefixe: "ATT", libelle: "Attelage", ongletVehicule: "affectations", ongletChauffeur: null },
+  /* Qui tient un véhicule de service ou de fonction. À ne pas confondre avec
+     l'affectation, qui met un chauffeur au volant d'un camion : ici la personne
+     dispose du véhicule, elle n'en est pas l'outil de travail. */
+  attribution: { prefixe: "ATR", libelle: "Attribution", ongletVehicule: "affectations", ongletChauffeur: null },
   incident: { prefixe: "INC", libelle: "Incident ou accident", ongletVehicule: "journal", ongletChauffeur: "incidents" },
   sanction: { prefixe: "SAN", libelle: "Sanction", ongletVehicule: null, ongletChauffeur: "incidents" },
   indisponibilite: { prefixe: "IND", libelle: "Indisponibilité", ongletVehicule: null, ongletChauffeur: "journal" },

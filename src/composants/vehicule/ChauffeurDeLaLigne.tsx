@@ -25,10 +25,11 @@ import type { LigneFlotte } from "@/domaine/types";
  *     sont le même geste, au même endroit — c'est en parcourant la liste qu'on
  *     s'en aperçoit.
  *
- * L'attributaire d'un véhicule de service ou de fonction a désormais sa fiche
- * lui aussi (14 septembre 2026) : son nom y mène de la même façon. Ce qui les
- * sépare tient à l'affectation — celle d'un chauffeur se date et se change
- * d'ici, l'attribution d'un véhicule de fonction se change sur le véhicule.
+ * L'attributaire d'un véhicule de service ou de fonction a sa fiche lui aussi
+ * (14 septembre 2026) : son nom y mène de la même façon, et son crayon change
+ * ou retire l'attribution (15 septembre 2026) — jusque-là, rien dans
+ * l'application ne permettait de le faire, alors que deux commentaires
+ * affirmaient le contraire.
  * ==========================================================================*/
 
 export function ChauffeurDeLaLigne({ ligne }: { ligne: LigneFlotte }) {
@@ -40,6 +41,9 @@ export function ChauffeurDeLaLigne({ ligne }: { ligne: LigneFlotte }) {
   /* Un véhicule de service ou de fonction : la personne qui le tient, ou le pool. */
   const attributaire = ligne.attributaire;
   const titulaire = ligne.chauffeurTitulaire;
+  /* Service ou fonction : la personne tient le véhicule, elle n'en est pas
+     l'outil de travail — et c'est une attribution, pas une affectation. */
+  const leger = Boolean(v.regime && v.regime !== "exploitation");
 
   const crayon =
     edition && peutSaisir ? (
@@ -67,6 +71,29 @@ export function ChauffeurDeLaLigne({ ligne }: { ligne: LigneFlotte }) {
       </button>
     ) : null;
 
+  const crayonAttribution =
+    edition && peutSaisir ? (
+      <button
+        type="button"
+        title={`Changer ou retirer l'attributaire de ${v.immatriculationAffichee}`}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          edition.creer({
+            type: "attribution",
+            titre: `Attribution · ${v.immatriculationAffichee}`,
+            champs: champsCreation("attribution", { pour: "planning" }),
+            valeurs: { vehiculeId: v.id, debut: new Date().toISOString().slice(0, 10) },
+            sujetDe: () => `vehicule:${v.immatriculation}`,
+          });
+        }}
+        className="grid size-5 shrink-0 place-items-center rounded-[6px] text-attenue opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:bg-surface-3 hover:text-accent-fonce"
+      >
+        <Pencil className="size-3" strokeWidth={1.9} />
+        <span className="sr-only">Changer ou retirer l&apos;attributaire</span>
+      </button>
+    ) : null;
+
   if (attributaire) {
     /* Un pool n'est pas quelqu'un : « Pool DACI · DSI · CG » ne mène nulle part.
        Une personne nommée, si — sa fiche existe depuis le 14 septembre 2026. */
@@ -83,6 +110,7 @@ export function ChauffeurDeLaLigne({ ligne }: { ligne: LigneFlotte }) {
             {attributaire.nom}
           </Link>
         )}
+        {crayonAttribution}
       </span>
     );
   }
@@ -97,7 +125,10 @@ export function ChauffeurDeLaLigne({ ligne }: { ligne: LigneFlotte }) {
         <span className="min-w-0 truncate text-attenue-2">Non affecté</span>
       )}
       {ligne.nombreSuppleants > 0 ? <span className="meta shrink-0">+{ligne.nombreSuppleants}</span> : null}
-      {crayon}
+      {/* Un véhicule de service ou de fonction sans personne nommée s'attribue
+          d'ici : c'est là qu'on s'aperçoit qu'il n'a personne. Un camion
+          d'exploitation, lui, s'affecte à un chauffeur. */}
+      {leger ? crayonAttribution : crayon}
     </span>
   );
 }

@@ -1,4 +1,5 @@
 import { Carte, Definitions } from "@/composants/interface/Carte";
+import { BoutonAttribution } from "./BoutonAttribution";
 import { ETAT_LEGER, echeancierPlanCar, type Attributaire, type ForfaitCarburant, type VehiculeLeger } from "@/domaine/parc-leger";
 import type { ParametresParcLeger } from "@/domaine/parametres";
 import { montant } from "@/lib/format";
@@ -19,7 +20,11 @@ export function CartesDossierLeger({ vehicule, attributaire, forfait, regles, au
   const montantForfait = forfait ? (forfait.montantMensuel ?? regles.forfaitCarburantMensuel) : null;
   return (
     <>
-      <Carte titre={attributaire ? "Détenteur" : "Pool"} precision={attributaire ? "Le véhicule est attribué, non affecté à un chauffeur" : "Le service ou le site qui en dispose"}>
+      <Carte
+        titre={attributaire ? "Détenteur" : "Pool"}
+        precision={attributaire ? "Le véhicule est attribué, non affecté à un chauffeur" : "Le service ou le site qui en dispose"}
+        action={<BoutonAttribution vehiculeId={vehicule.id} immatriculation={vehicule.immatriculation} immatriculationAffichee={vehicule.immatriculationAffichee} />}
+      >
         <Definitions
           elements={[
             { libelle: attributaire ? "Nom" : "Pool", valeur: attributaire?.nom ?? vehicule.pool ?? "Non affecté" },

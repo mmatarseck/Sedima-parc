@@ -46,6 +46,8 @@ export interface ReferentielsChoix {
   vehicules: VehiculeChoix[];
   chauffeurs: { id: string; nomComplet: string; actif: boolean; statut: StatutChauffeur; site: string | null; matriculeRh: string | null; telephone: string | null; vehicule: string | null }[];
   sites: Site[];
+  /** Les personnes qui tiennent un véhicule de service ou de fonction. */
+  attributaires: { id: string; nom: string; fonction: string | null; actif: boolean }[];
   prestataires: { numero: string; raisonSociale: string; ville: string | null; type: TypePrestataire; actif: boolean }[];
   /** Les camions des transporteurs, pour le planning des affectations. */
   camionsTiers: { immatriculation: string; immatriculationAffichee: string; transporteurNumero: string; actif: boolean }[];
@@ -56,6 +58,7 @@ export const REFERENTIELS_VIDES: ReferentielsChoix = {
   vehicules: [],
   chauffeurs: [],
   sites: [],
+  attributaires: [],
   prestataires: [],
   camionsTiers: [],
   chauffeursTiers: [],

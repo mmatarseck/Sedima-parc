@@ -124,5 +124,48 @@ const carburantDemo = budgetDemo.postes.find((p) => p.poste === "carburant")!;
 attendu(`le carburant du budget, forfaits compris : consommé ${fmt(carburantBase.cumul.consomme)} F (démo ${fmt(carburantDemo.cumul.consomme)}), ${carburantBase.parBu.length} BU, état ${carburantBase.cumul.etat} (démo ${carburantDemo.cumul.etat})`, carburantBase.cumul.consomme === carburantDemo.cumul.consomme && carburantBase.cumul.etat === carburantDemo.cumul.etat);
 attendu(`la synthèse du budget à l'identique : consommé ${fmt(budgetBase.synthese.consomme)} F (démo ${fmt(budgetDemo.synthese.consomme)})`, budgetBase.synthese.consomme === budgetDemo.synthese.consomme && budgetBase.synthese.horsBudget === budgetDemo.synthese.horsBudget);
 
+/* -- Changer l'attributaire, ou le retirer (15 septembre 2026) -------------- */
+/* Jusque-là, rien dans l'application ne le permettait. Une attribution ne se
+   modifie pas : elle se remplace — on clôt celle qui court, on en ouvre une
+   autre — sans quoi on perdrait qui tenait le véhicule le mois dernier, ce que
+   le budget lit pour répartir la charge. */
+
+const tenu = (await pg.query(`select a.id, a.vehicule_id, a.attributaire_id, a.debut::text as debut
+  from attribution_legere a where a.fin is null and a.attributaire_id is not null order by a.debut limit 1`)).rows[0] as
+  { id: string; vehicule_id: string; attributaire_id: string; debut: string } | undefined;
+attendu("un véhicule attribué sert de cobaye", Boolean(tenu));
+
+if (tenu) {
+  const suivant = (await pg.query(`select id from attributaire where id <> $1 order by nom limit 1`, [tenu.attributaire_id])).rows[0] as { id: string };
+  const debut = "2026-09-15";
+  const veille = "2026-09-14";
+
+  /* La base refuse deux attributions en cours : c'est elle qui tient la règle,
+     et c'est pour cela qu'il faut clore avant d'ouvrir. */
+  let chevauchement = false;
+  try {
+    await pg.query(`insert into attribution_legere (vehicule_id, attributaire_id, debut) values ($1, $2, $3)`, [tenu.vehicule_id, suivant.id, debut]);
+  } catch {
+    chevauchement = true;
+  }
+  attendu("deux attributions en cours pour un même véhicule sont refusées", chevauchement);
+
+  await pg.query(`update attribution_legere set fin = $1 where id = $2`, [veille, tenu.id]);
+  await pg.query(`insert into attribution_legere (vehicule_id, attributaire_id, debut) values ($1, $2, $3)`, [tenu.vehicule_id, suivant.id, debut]);
+  const apres = (await pg.query(`select count(*)::int as n from attribution_legere where vehicule_id = $1`, [tenu.vehicule_id])).rows[0] as { n: number };
+  const courante = (await pg.query(`select attributaire_id, debut::text as debut from attribution_legere where vehicule_id = $1 and fin is null`, [tenu.vehicule_id])).rows[0] as { attributaire_id: string; debut: string };
+  attendu(`clore puis ouvrir laisse deux lignes et une seule en cours (${apres?.n} lignes)`, apres?.n === 2 && courante?.attributaire_id === suivant.id && courante.debut === debut);
+
+  const ancienne = (await pg.query(`select fin::text as fin from attribution_legere where id = $1`, [tenu.id])).rows[0] as { fin: string };
+  attendu(`l'attribution précédente garde son histoire, close la veille (${ancienne?.fin})`, ancienne?.fin === veille);
+
+  /* Retirer, c'est clore sans rouvrir : le véhicule redevient disponible et
+     l'historique reste entier. */
+  await pg.query(`update attribution_legere set fin = $1 where vehicule_id = $2 and fin is null`, ["2026-09-20", tenu.vehicule_id]);
+  const plusRien = (await pg.query(`select count(*)::int as n from attribution_legere where vehicule_id = $1 and fin is null`, [tenu.vehicule_id])).rows[0] as { n: number };
+  const histoire = (await pg.query(`select count(*)::int as n from attribution_legere where vehicule_id = $1`, [tenu.vehicule_id])).rows[0] as { n: number };
+  attendu(`retirer l'attribution ne laisse rien en cours (${plusRien?.n}) mais garde les ${histoire?.n} lignes d'histoire`, plusRien?.n === 0 && histoire?.n === 2);
+}
+
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);
