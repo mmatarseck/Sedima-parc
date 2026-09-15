@@ -5,7 +5,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { USAGES_STANDARD, apprendreUsage, idUsage } from "../src/domaine/parametres";
+import { USAGES_STANDARD, apprendreUsage, idUsage, libelleUsageCourant } from "../src/domaine/parametres";
 import { categoriesPermis, cleDe, colonnesModification, ligneCreation, tableDe } from "../src/lib/transactions-colonnes";
 
 const bac = process.env.PGLITE_DIR ?? "";
@@ -357,6 +357,16 @@ try {
   usageHorsForme = true;
 }
 attendu("un usage métier sans son préfixe est refusé", usageHorsForme);
+
+/* Le libellé ne se perd jamais. Un usage que les paramètres ne connaissent pas
+   — fiche enregistrée sans que le référentiel suive, autre navigateur, base
+   restaurée — se relit de son identifiant plutôt que de s'afficher « Autre »
+   sur un véhicule dont la base sait parfaitement ce qu'il transporte. */
+attendu(
+  `un usage inconnu du référentiel garde son libellé (${libelleUsageCourant("autre", "usa-vehicule-particulier")})`,
+  libelleUsageCourant("autre", "usa-vehicule-particulier") === "Vehicule particulier",
+);
+attendu(`un usage livré garde le sien (${libelleUsageCourant("frigorifique", null)})`, libelleUsageCourant("frigorifique", null) === "Frigorifique");
 
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);

@@ -21,6 +21,7 @@ import { CHAMP_DATE, ROLES_CLOTURANT, formaterValeur, moisDe, peutCloturer, type
 import { TYPE_TRANSACTION, formerNumero, type TypeTransaction } from "@/domaine/reference";
 import { ROLES, trouverRole } from "@/domaine/roles";
 import { ajouterNotification } from "./notifications-demo";
+import { apprendreVehicule } from "@/lib/parametres-demo";
 import { authentificationReelle, lireRole } from "./session-demo";
 import { ecrireCreation, ecrireModification } from "./transactions-actions";
 
@@ -249,6 +250,7 @@ export function enregistrerModification(e: Enregistrement): ResultatEnregistreme
   }));
   ajouterHistorique(e.numero, modifications);
   appliquerSurcharge(e.numero, Object.fromEntries(diffs.map((d) => [d.champ, d.valeur])));
+  if (e.type === "vehicule") apprendreDuVehicule(e.apres);
   if (authentificationReelle()) void synchroniserModification(e, diffs);
   return { issue: "appliquee", modifications };
 }
@@ -352,6 +354,33 @@ function prochainNumero(type: TypeTransaction, dateIso: string): string {
   return formerNumero(type, dateIso, suivant);
 }
 
+/**
+ * Ce qu'une fiche véhicule enregistrée apprend au référentiel.
+ *
+ * La marque, le modèle et l'usage écrits dans un formulaire y entrent aussitôt,
+ * pour être **choisis** la fois suivante au lieu d'être réécrits.
+ *
+ * C'était fait sur l'écran « Nouveau véhicule » seulement. Un usage écrit dans
+ * la modale — le geste ordinaire, sur une fiche existante — n'était appris nulle
+ * part : il n'apparaissait pas dans la liste du véhicule suivant, et, pire, la
+ * fiche qui le portait affichait « Autre », faute de pouvoir relier
+ * « usa-vehicule-particulier » à un libellé (signalé le 15 septembre 2026).
+ *
+ * Posé ici, à l'enregistrement, il couvre tous les chemins : la modale, l'écran
+ * de création, et ceux qui viendront.
+ */
+function apprendreDuVehicule(valeurs: Record<string, unknown>): void {
+  const texte = (x: unknown) => (typeof x === "string" && x.trim() ? x.trim() : null);
+  const marque = texte(valeurs.marque);
+  const usage = texte(valeurs.usage);
+  if (!marque && !usage) return;
+  void apprendreVehicule(marque ?? "", texte(valeurs.appellation), usage).then((refus) => {
+    /* Le véhicule est enregistré ; seul le référentiel n'a pas suivi. On le dit
+       sans défaire quoi que ce soit. */
+    if (refus) signalerRefus("Référentiel des véhicules", refus, "/parametres/vehicules");
+  });
+}
+
 export type ResultatCreation = { issue: "creee"; creation: Creation } | { issue: "mois-clos"; mois: string } | { issue: "invalide" };
 
 /**
@@ -394,6 +423,7 @@ export function enregistrerCreation(e: { sujet: string; type: TypeTransaction; c
       commentaireDecision: null,
     },
   ]);
+  if (e.type === "vehicule") apprendreDuVehicule(e.valeurs);
   if (authentificationReelle()) void synchroniserCreation(creation);
   return { issue: "creee", creation };
 }

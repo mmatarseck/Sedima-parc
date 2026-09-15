@@ -719,6 +719,17 @@ export function libelleUsageCourant(usage: string, usageMetier?: string | null):
   if (usageMetier) {
     const ajoute = u.find((x) => x.id === usageMetier);
     if (ajoute) return ajoute.libelle;
+    /*
+     * Le référentiel ne connaît pas cet usage : on le relit de son identifiant
+     * plutôt que de rendre « Autre ».
+     *
+     * Cela arrive quand la fiche a été enregistrée sans que les paramètres
+     * suivent — un refus du serveur, un autre navigateur, une base restaurée.
+     * L'identifiant porte le libellé, aux accents près : le rendre vaut
+     * infiniment mieux que d'afficher « Autre » sur un véhicule dont la base
+     * sait parfaitement ce qu'il transporte.
+     */
+    return humaniser(usageMetier.replace(/^usa-/, ""));
   }
   return u.find((x) => x.id === usage)?.libelle ?? USAGES_STANDARD.find((x) => x.id === usage)?.libelle ?? humaniser(usage);
 }
