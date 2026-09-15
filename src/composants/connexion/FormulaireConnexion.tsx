@@ -17,8 +17,11 @@ import { ACCROCHE_APPLICATION, NOM_APPLICATION, PRECISION_APPLICATION } from "@/
  * en tient le coin bas (métier, 10 septembre 2026 : « mettre un peu du rouge
  * sedima »).
  *
- * « Un peu » est le mot. Le rouge arrive en diagonale, dans le dernier quart,
- * et ne mord pas sur la zone où se lisent la marque et l'accroche. Dans
+ * Le rouge occupe le dernier tiers depuis le 15 septembre 2026 — sa part a
+ * doublé à la demande du métier. Il arrive toujours en diagonale, et ne mord
+ * toujours pas sur la zone où se lisent la marque et l'accroche : à 145°, le
+ * dernier tiers tombe en bas à droite, derrière la carte de connexion et le
+ * long du bord. Dans
  * l'application, le rouge est réservé à ce qui alerte ; cette page est en
  * dehors de l'application, personne n'y lit un état, et la couleur peut y
  * redevenir ce qu'elle est ailleurs — une couleur de marque.
@@ -26,7 +29,7 @@ import { ACCROCHE_APPLICATION, NOM_APPLICATION, PRECISION_APPLICATION } from "@/
  * Écrit en clair plutôt qu'en jetons : c'est le seul endroit qui porte un
  * aplat de couleur pleine, et il n'a pas à peser sur la palette commune.
  */
-const DEGRADE = "linear-gradient(145deg, #8cc72e 0%, #78b225 30%, #4e7d1a 58%, #7d1c15 86%, #c00000 100%)";
+const DEGRADE = "linear-gradient(145deg, #8cc72e 0%, #78b225 22%, #4e7d1a 44%, #7d1c15 70%, #c00000 100%)";
 
 /**
  * La photo qui passe sous le dégradé — un camion du parc, à déposer dans
@@ -45,11 +48,13 @@ const PHOTO_FOND = "/fond-connexion.jpg";
  * Le dégradé de marque couvre à 72 % : assez pour que la couleur reste celle de
  * la maison, assez peu pour qu'on reconnaisse le camion dessous. Au-delà de 80 %
  * la photo devient une texture qu'on ne lit plus — autant ne pas en mettre. Une photo claire
- * — un pare-brise au soleil, un ciel blanc — ferait disparaître le texte blanc,
- * d'où le second voile, plus sombre en bas à gauche, là où se lisent la marque
- * et l'accroche. C'est le prix d'une photo qu'on ne choisit pas.
+ * — un pare-brise au soleil, le flanc clair d'une citerne — ferait disparaître
+ * le texte blanc, d'où le second voile sur le tiers gauche, là où se lisent la
+ * marque et l'accroche. Il est plus dense qu'il n'en a l'air : l'accroche est en
+ * blanc à 70 %, et ce gris pâle décroche sur un aplat clair bien avant que le
+ * grand titre ne bronche. C'est le prix d'une photo qu'on ne choisit pas.
  */
-const VOILE = "linear-gradient(115deg, rgba(18,24,10,0.62) 0%, rgba(18,24,10,0.34) 48%, rgba(18,24,10,0) 72%)";
+const VOILE = "linear-gradient(100deg, rgba(16,22,8,0.78) 0%, rgba(16,22,8,0.62) 26%, rgba(16,22,8,0.30) 48%, rgba(16,22,8,0) 68%)";
 
 /** Ce que la page de garde dit quand on y revient sans l'avoir choisi. */
 const MOTIFS: Record<string, string> = {
