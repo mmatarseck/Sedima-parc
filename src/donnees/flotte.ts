@@ -558,7 +558,10 @@ export const parcServeur = cache(async (): Promise<ParcBrut> => lireParc(await c
 
 /** Les lignes de la liste Flotte, statut effectif et immobilisation compris. */
 async function lignesFlotteBrut(parametres: Parametres): Promise<LigneFlotte[]> {
-  /* La démonstration : les fiches, et le parc léger du dossier (`flotte-demo.ts`). */
+  /* Tout vient de `parcServeur()`, donc des tables. Le commentaire qui vivait
+     ici annonçait encore une branche de démonstration au-dessus d'une ligne qui
+     n'en a plus : relu de bonne foi, il faisait croire l'inverse de ce que le
+     code fait (15 septembre 2026). */
   const parc = await parcServeur();
   return [...parc.vehicules.map((v) => ligneDepuisLaBase(v, parc, parametres)), ...lignesARecevoir(parc)];
 }
