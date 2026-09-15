@@ -9,7 +9,6 @@ import { fabriquerLigneIncident } from "@/composants/transactions/fabriques";
 import { ROULANT, TON_STATUT_DECLARATION, estEnCours, type LigneIncident } from "@/domaine/incidents";
 import type { FicheVehicule } from "@/domaine/fiche";
 import { NATURE_INCIDENT, RESPONSABILITE, STATUT_DECLARATION, TYPE_INCIDENT } from "@/domaine/libelles";
-import { incidentsDuVehicule } from "@/donnees/incidents-demo";
 import { dateCourte, montant, montantCourt } from "@/lib/format";
 
 /* ============================================================================
@@ -27,8 +26,12 @@ export function OngletIncidents({ fiche, cible }: { fiche: FicheVehicule; cible?
        elle appartient à ce véhicule autant qu'au chauffeur, et doit se lire
        ici. C'est le rangement par fiche de la démonstration qui les sépare. */
     const creees = [...creations("incident", fabriquerLigneIncident), ...creationsLiees("incident", (c) => String(c.valeurs.vehiculeId ?? "") === vehiculeId, fabriquerLigneIncident)];
-    return [...creees, ...incidentsDuVehicule(vehiculeId)].map((l) => surcharger(l));
-  }, [creations, creationsLiees, surcharger, vehiculeId]);
+    /* Les incidents de la fiche, et non plus ceux du jeu de démonstration :
+       l'onglet montrait des accidents inventés sur un camion réel (corrigé le
+       15 septembre 2026). Ils passent par le même convertisseur que l'écran
+       Incidents et que le rapport — les trois disent donc la même chose. */
+    return [...creees, ...fiche.incidents].map((l) => surcharger(l));
+  }, [creations, creationsLiees, surcharger, vehiculeId, fiche.incidents]);
 
   const cout = lignes.reduce((s, l) => s + (l.cout ?? 0), 0);
   const jours = lignes.reduce((s, l) => s + (l.immobilisationJours ?? 0), 0);

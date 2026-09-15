@@ -288,6 +288,8 @@ export interface FicheVehicule {
   observationsVisite: ObservationVisite[];
   /** Les bons de livraison que le véhicule a portés, du plus récent au plus ancien. */
   livraisons: import("./livraisons").LivraisonFiche[];
+  /** Les incidents et sinistres du véhicule, du plus récent au plus ancien. */
+  incidents: import("./incidents").LigneIncident[];
   /** Nulle quand tous les documents critiques sont en règle. Voir src/domaine/documents.ts. */
   immobilisationAdministrative: import("./documents").ImmobilisationAdministrative | null;
   planEntretien: PlanEntretienFiche;

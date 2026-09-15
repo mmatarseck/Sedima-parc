@@ -923,6 +923,10 @@ function construire(l: LigneFlotte, parametres: Parametres): FicheVehicule {
     visitesTechniques,
     observationsVisite,
     livraisons: [],
+    /* Les incidents de la démonstration se lisent dans `incidents-demo`, qui
+       les dérive des fiches chauffeurs : les reprendre ici ferait une boucle.
+       La fiche réelle, elle, les reçoit de sa lecture. */
+    incidents: [],
     immobilisationAdministrative: immobilisation,
     planEntretien,
     prochaineIntervention,
@@ -1062,6 +1066,10 @@ export function ficheVierge(l: LigneFlotte, parametres: Parametres = PARAMETRES_
     visitesTechniques: [],
     observationsVisite: [],
     livraisons: [],
+    /* Les incidents de la démonstration se lisent dans `incidents-demo`, qui
+       les dérive des fiches chauffeurs : les reprendre ici ferait une boucle.
+       La fiche réelle, elle, les reçoit de sa lecture. */
+    incidents: [],
     immobilisationAdministrative: immobilisation,
     /* Un véhicule qui vient d'être créé hérite du gabarit de sa catégorie : le
        plan existe avant le premier entretien, et toutes ses opérations sont

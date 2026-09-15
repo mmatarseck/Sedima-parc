@@ -118,6 +118,27 @@ attendu(`les kilomètres des affectations : ${avecKm.length} période(s) sur ${n
  * rien ne casserait : chaque recherche rendrait simplement « rien », et les
  * trois écrans annonceraient un parc entier sans conducteur — un mensonge
  * silencieux, du genre qu'on ne découvre qu'en le cherchant. D'où ce garde. */
+/* Et la contrepartie, qui a coûté cher : cet identifiant n'est PAS celui de la
+ * colonne `vehicule_id`.
+ *
+ * Un véhicule lu en base porte son immatriculation comme identifiant — c'est
+ * elle qui adresse sa fiche. Les lectures annexes de la fiche (pièces jointes,
+ * attelages, livraisons, incidents) filtrent, elles, sur une colonne d'UUID :
+ * on leur passait `ligne.vehicule.id`, leur garde-fou voyait que ce n'était pas
+ * un UUID, et elles rendaient vide **sans rien dire**. Les soixante-quatorze
+ * cartes grises attachées restaient introuvables, les attelages d'AA-053-AP
+ * invisibles, les livraisons absentes de toutes les fiches (15 septembre 2026).
+ *
+ * Ce banc fixe la règle : la plaque est l'identifiant de la ligne, jamais celui
+ * de la table. Qui filtre une colonne `vehicule_id` doit résoudre l'UUID. */
+const UUID_TEST = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const parPlaque = lignes.filter((l) => l.vehicule.id === l.vehicule.immatriculation).length;
+const enUuid = lignes.filter((l) => UUID_TEST.test(l.vehicule.id)).length;
+attendu(
+  `l'identifiant d'une ligne est sa plaque, pas celui de la table (${parPlaque}/${lignes.length} par plaque, ${enUuid} en UUID)`,
+  parPlaque === lignes.length && enUuid === 0,
+);
+
 const clesAffectations = [...affectations.keys()];
 const idsVehicules = new Set(lignes.map((l) => l.vehicule.id));
 const orphelines = clesAffectations.filter((c) => !idsVehicules.has(c));

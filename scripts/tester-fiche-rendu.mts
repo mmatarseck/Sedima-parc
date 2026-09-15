@@ -114,6 +114,16 @@ for (const brut of parc.vehicules) {
     );
     if (!planOnglet.includes("Plan d&#x27;entretien —")) throw new Error("l'onglet Plan d'entretien ne porte pas le plan");
     if (planOnglet.includes("Atelier")) throw new Error("la liste d'atelier a suivi le plan");
+    /* Les incidents viennent de la fiche depuis le 15 septembre 2026, et non
+       plus du jeu de démonstration. Sans incident lu, l'onglet doit le dire —
+       et non montrer les accidents d'un autre parc. */
+    etape = "rendre les incidents";
+    const onglIncidents = renderToString(
+      React.createElement(FournisseurEdition, { sujet: `vehicule:${v.immatriculation}`, href: `/flotte/${v.immatriculation}` } as any,
+        React.createElement(FicheVehicule, { fiche, ongletInitial: "incidents", discussionInitiale: false, cible: undefined } as any)),
+    );
+    const annonce = fiche.incidents.length > 0 ? `${fiche.incidents.length} déclaration` : "Aucune déclaration sur ce véhicule";
+    if (!onglIncidents.includes(annonce)) throw new Error(`l'onglet Incidents n'annonce pas ce que la fiche porte (${fiche.incidents.length})`);
     avecPieces += fiche.documents.filter((d) => d.fichier).length > 0 ? 1 : 0;
     n++;
     if (leger) legers++;

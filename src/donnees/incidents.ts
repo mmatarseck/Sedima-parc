@@ -7,6 +7,7 @@
  * (`LigneIncident`) : les rapports la lisent telle quelle.
  * ==========================================================================*/
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { lignesLues } from "./lecture";
 import { cache } from "react";
 import { idChauffeur } from "@/domaine/chauffeur";
@@ -69,13 +70,16 @@ export function incidentDepuisLigne(l: LigneIncidentBase): LigneIncident {
   };
 }
 
+/** Ce qu'une ligne d'incident porte, partout pareil : l'écran, le rapport et la fiche. */
+const CHAMPS_INCIDENT = "numero, date_heure, nature, type, lieu, mission, responsabilite, statut, blesses, sinistre_ouvert, immobilisation_jours, kilometrage, declarant, description, vehicule (immatriculation, marque, appellation, business_unit, site (libelle)), chauffeur (nom, prenom)";
+
 async function incidentsServeurBrut(): Promise<LigneIncident[]> {
   const client = await clientServeur();
   const depuis = new Date();
   depuis.setUTCFullYear(depuis.getUTCFullYear() - 2);
   const lecture = await client
     .from("incident")
-    .select("numero, date_heure, nature, type, lieu, mission, responsabilite, statut, blesses, sinistre_ouvert, immobilisation_jours, kilometrage, declarant, description, vehicule (immatriculation, marque, appellation, business_unit, site (libelle)), chauffeur (nom, prenom)")
+    .select(CHAMPS_INCIDENT)
     .gte("date_heure", depuis.toISOString())
     .order("date_heure", { ascending: false })
     .limit(5000)
@@ -84,3 +88,29 @@ async function incidentsServeurBrut(): Promise<LigneIncident[]> {
 }
 
 export const incidentsServeur = cache(incidentsServeurBrut);
+
+/**
+ * Les incidents d'un seul véhicule, pour sa fiche.
+ *
+ * L'onglet « Incidents & sinistres » d'une fiche lisait `incidents-demo` — il
+ * montrait donc des accidents inventés sur un camion réel (corrigé le
+ * 15 septembre 2026, après le même défaut sur l'écran Incidents).
+ *
+ * POURQUOI UNE LECTURE À PART, ALORS QUE `lire_fiche()` REND DÉJÀ DES
+ * INCIDENTS. Elle n'en rend qu'un résumé — ni responsabilité, ni blessés, ni
+ * véhicule roulant, ni coût. La liste de l'onglet montre ces colonnes ; les
+ * servir vides ferait croire qu'un accident n'a fait aucun blessé alors que la
+ * question n'a pas été posée. Une requête bornée au véhicule coûte moins qu'une
+ * fonction réécrite, et elle passe par **le même convertisseur** que l'écran
+ * Incidents et que le rapport : les trois ne peuvent pas diverger.
+ */
+export async function incidentsDuVehicule(client: SupabaseClient, vehiculeId: string): Promise<LigneIncident[]> {
+  const lecture = await client
+    .from("incident")
+    .select(CHAMPS_INCIDENT)
+    .eq("vehicule_id", vehiculeId)
+    .order("date_heure", { ascending: false })
+    .limit(2000)
+    .returns<LigneIncidentBase[]>();
+  return lignesLues("Incidents du véhicule", lecture).map(incidentDepuisLigne);
+}

@@ -16,6 +16,7 @@
  * ==========================================================================*/
 
 import type { LivraisonFiche } from "./livraisons";
+import type { LigneIncident } from "./incidents";
 import { exigeDocument, immobilisationAdministrative } from "./documents";
 import { libelleUsageCourant } from "./parametres";
 import { echeancesDuPlan, type CompteursVehicule, type DernierPassage, type PlanVehicule, type ProgrammeEntretien } from "./entretien";
@@ -55,6 +56,15 @@ export interface FaitsFiche {
   observations: { numero: string; visiteNumero: string; libelle: string; categorie: CategorieObservation; gravite: GraviteObservation; statut: StatutObservation; interventionNumero: string | null; corrigeeLe: string | null; commentaire: string | null }[];
   /** Les bons de livraison portés par le véhicule (0044) ; un lecteur d'avant n'en rend pas. */
   livraisons?: LivraisonFiche[];
+  /**
+   * Les incidents et sinistres du véhicule, du plus récent au plus ancien.
+   *
+   * L'onglet qui les montre lisait le jeu de démonstration : il affichait des
+   * accidents inventés sur un camion réel (corrigé le 15 septembre 2026).
+   * Facultatif comme les livraisons : un lecteur qui ne les rend pas laisse la
+   * liste vide, il ne fait pas échouer la fiche.
+   */
+  incidents?: LigneIncident[];
   /**
    * Les attelages du véhicule (0050), déjà vus de son côté : c'est le lecteur
    * qui sait lequel des deux véhicules est celui de la fiche, et donc quel rôle
@@ -337,6 +347,7 @@ export function assemblerFiche(l: LigneFlotte, faits: FaitsFiche, parametres: Pa
     visitesTechniques: (faits.visites ?? []).map((x) => ({ id: x.numero, numero: x.numero, vehiculeId: v.id, type: x.type, centre: x.centre, dateRendezVous: x.dateRendezVous, heure: x.heure, datePassage: x.datePassage, statut: x.statut, numeroPv: x.numeroPv, dateLimiteContreVisite: x.dateLimiteContreVisite, commentaire: x.commentaire })).sort((a, b) => b.dateRendezVous.localeCompare(a.dateRendezVous)),
     observationsVisite: (faits.observations ?? []).map((o) => ({ id: o.numero, numero: o.numero, visiteId: o.visiteNumero, vehiculeId: v.id, libelle: o.libelle, categorie: o.categorie, gravite: o.gravite, statut: o.statut, interventionNumero: o.interventionNumero, corrigeeLe: o.corrigeeLe, commentaire: o.commentaire })),
     livraisons: [...(faits.livraisons ?? [])].sort((a, b) => b.date.localeCompare(a.date) || b.numero.localeCompare(a.numero)),
+    incidents: [...(faits.incidents ?? [])].sort((a, b) => b.dateHeure.localeCompare(a.dateHeure)),
     immobilisationAdministrative: immobilisation,
     planEntretien: { programmeCode: programme.code, programmeLibelle: programme.libelle, programmePrecision: programme.precision, base: programme.base, aujourdhui, compteurs, echeances: echeancesEntretien },
     prochaineIntervention,

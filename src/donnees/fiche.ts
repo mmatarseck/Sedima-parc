@@ -10,6 +10,7 @@
 import { lignesLues } from "./lecture";
 import { cache } from "react";
 import { assemblerFiche, FAITS_VIDES, type FaitsFiche } from "@/domaine/assembler-fiche";
+import { incidentsDuVehicule } from "./incidents";
 import type { AttelageFiche, FicheVehicule } from "@/domaine/fiche";
 import type { LivraisonFiche } from "@/domaine/livraisons";
 import { normaliser } from "@/domaine/immatriculation";
@@ -17,7 +18,7 @@ import type { Parametres } from "@/domaine/parametres";
 import type { CategorieObservation, PosteDepense, TypeDocument } from "@/domaine/types";
 import { clientServeur } from "@/lib/supabase";
 import { passagesReleves, planDuVehicule, programmeParDefaut } from "./entretien-demo";
-import { lignesFlotte } from "./flotte";
+import { lignesFlotte, parcServeur } from "./flotte";
 
 export interface FicheJson {
   documents: { numero: string; type_document_id: string; date_effet: string | null; echeance: string | null; emetteur: string | null; numero_piece: string | null; montant: number | null; justificatif: boolean }[];
@@ -173,11 +174,31 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
   const ligne = lignes.find((l) => l.vehicule.immatriculation === canonique || l.vehicule.id === brut.toLowerCase()) ?? null;
   if (!ligne) return null;
   const client = await clientServeur();
-  const [lecture, livraisons, piecesJointes, attelages] = await Promise.all([
+  /*
+   * L'IDENTIFIANT DE LA TABLE, ET NON CELUI DE LA LIGNE.
+   *
+   * `vehiculeDepuisLaBase()` donne à un véhicule son **immatriculation** comme
+   * identifiant : c'est elle qui adresse sa fiche, et c'est voulu. Mais les
+   * lectures annexes filtrent sur `vehicule_id`, une colonne d'UUID. On leur
+   * passait `ligne.vehicule.id` — donc une plaque —, et leur garde-fou
+   * `UUID.test()` les faisait abandonner **sans rien dire** : livraisons,
+   * pièces jointes et attelages rendaient toujours vide.
+   *
+   * Personne ne pouvait le voir : « aucune pièce au dossier » est exactement ce
+   * qu'affiche un véhicule sans scan. C'est ce qui a fait chercher les
+   * soixante-quatorze cartes grises attachées le 15 septembre 2026, et ce qui
+   * faisait dire à la fiche d'AA-053-AP qu'elle n'avait pas d'attelage.
+   *
+   * Le parc est déjà lu et mis en cache : la plaque y donne l'identifiant.
+   */
+  const parc = await parcServeur();
+  const vehiculeId = parc.vehicules.find((v) => v.immatriculation === ligne.vehicule.immatriculation)?.id ?? null;
+  const [lecture, livraisons, piecesJointes, attelages, incidents] = await Promise.all([
     client.rpc("lire_fiche", { immat: canonique }).maybeSingle<FicheJson | null>(),
-    livraisonsDuVehicule(client, ligne.vehicule.id),
-    piecesJointesDuVehicule(client, ligne.vehicule.id),
-    attelagesDuVehicule(client, ligne.vehicule.id, lignes),
+    vehiculeId ? livraisonsDuVehicule(client, vehiculeId) : Promise.resolve([]),
+    vehiculeId ? piecesJointesDuVehicule(client, vehiculeId) : Promise.resolve(new Map<string, string>()),
+    vehiculeId ? attelagesDuVehicule(client, vehiculeId, lignes) : Promise.resolve({ attelages: [], illisible: false }),
+    vehiculeId ? incidentsDuVehicule(client, vehiculeId) : Promise.resolve([]),
   ]);
   /* Fonction pas encore jouée : la fiche se dresse sur la ligne seule, sans historique — pas d'erreur. */
   if (lecture.error) console.warn(`Fiche ${canonique} : lire_fiche() indisponible (${lecture.error.message}), fiche dressée sans historique.`);
@@ -192,10 +213,10 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
        ne la projette pas, et réécrire la fonction entière pour une colonne
        coûterait plus qu'une requête bornée au véhicule. */
     const documents = faits.documents.map((d) => ({ ...d, fichier: piecesJointes.get(d.numero) ?? null }));
-    return assemblerFiche(ligne, { ...faits, documents, livraisons, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
+    return assemblerFiche(ligne, { ...faits, documents, livraisons, incidents, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
   } catch (e) {
     console.error(`Fiche ${canonique} : assemblage impossible sur l'historique lu — ${e instanceof Error ? e.stack ?? e.message : String(e)}`);
-    return assemblerFiche(ligne, { ...FAITS_VIDES, livraisons, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
+    return assemblerFiche(ligne, { ...FAITS_VIDES, livraisons, incidents, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
   }
 }
 
