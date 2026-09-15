@@ -543,7 +543,9 @@ export function ligneDepuisLaBase(brut: LigneVehicule, parc: ParcBrut, parametre
     etatPlanEntretien: planEntretien?.etat ?? null,
     coutDouzeMois: cout > 0 ? cout : null,
     attelageCourant: attelageCourantDe(brut.id, parc),
-    statutEffectif: immobilisation?.statut ?? v.statut,
+    /* Le statut déclaré fait foi : une immobilisation administrative avertit,
+       elle n'impose plus (15 septembre 2026). */
+    statutEffectif: v.statut,
     immobilisationAdministrative: immobilisation?.documents ?? [],
     attributaire,
   };

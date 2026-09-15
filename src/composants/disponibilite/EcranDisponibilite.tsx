@@ -161,10 +161,10 @@ function Interieur({ lignes: toutes, aujourdhui }: { lignes: LigneDisponibilite[
     return toutes.map((l) => {
       const statutEffectif = declares.get(l.immatriculation);
       if (!statutEffectif || statutEffectif === l.statutEffectif) return l;
-      /* Un statut déclaré prime sur celui du référentiel, mais pas sur une
-         immobilisation administrative : remettre « en service » un véhicule
-         dont l'assurance est échue ne le rend pas conforme pour autant. */
-      if (l.immobilisation) return l;
+      /* Un statut déclaré prime sur celui du référentiel, document échu
+         compris : celui qui fait l'appel du matin voit le camion, l'échéancier
+         non. Le document reste signalé — il ne rend pas le véhicule conforme,
+         il cesse seulement de décider à la place de l'équipe. */
       const base = { ...l, statutSaisi: statutEffectif, statutEffectif };
       const { etat, motif } = etatDisponibilite(base);
       return { ...base, etat, motif };

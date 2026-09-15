@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Lock, Pencil } from "lucide-react";
+import { Pencil, TriangleAlert } from "lucide-react";
 import { PastilleStatut } from "@/composants/interface/Pastille";
 import { useEditionFacultative } from "@/composants/transactions/ContexteEdition";
 import { CHAMPS } from "@/composants/transactions/champs";
@@ -27,10 +27,19 @@ import type { StatutVehicule, TypeDocument } from "@/domaine/types";
  * écran de travail — on n'y corrige pas la donnée, on la lit telle qu'elle
  * était. Le composant n'y est donc pas employé.
  *
- * **Ce qu'on ne peut pas changer à la main**, le crayon ne le promet pas : une
- * immobilisation administrative (assurance échue, visite manquante) se lève en
- * renouvelant le document, jamais par une saisie — le cadenas le dit à sa
- * place. Et sans le niveau « saisie » sur la flotte, le crayon ne s'affiche pas.
+ * **Un document échu avertit, il n'interdit plus.** Jusqu'au 15 septembre 2026,
+ * une immobilisation administrative verrouillait le statut : un cadenas
+ * remplaçait le crayon, et le statut ne se libérait qu'au renouvellement du
+ * document. Le métier l'a fait retirer, et la raison se tient — un camion dont
+ * l'assurance est échue roule peut-être encore, ou attend au garage, ou part en
+ * mutation. L'application décidait à la place de ceux qui voient le camion, et
+ * leur interdisait ensuite de rectifier.
+ *
+ * Le document échu reste dit, en rouge, au survol comme au lecteur d'écran. Il
+ * informe au lieu de décider : un avertissement qu'on peut passer outre vaut
+ * mieux qu'une règle qu'on contourne en saisissant n'importe quoi ailleurs.
+ *
+ * Sans le niveau « saisie » sur la flotte, le crayon ne s'affiche toujours pas.
  * ==========================================================================*/
 
 export function StatutModifiable({
@@ -56,19 +65,19 @@ export function StatutModifiable({
   const [peutSaisir, setPeutSaisir] = useState(false);
   useEffect(() => setPeutSaisir(peutCourant("flotte", "saisie")), []);
 
-  const bloque = Boolean(immobilisation?.length);
-  const modifiable = Boolean(edition) && peutSaisir && !bloque;
+  const aDocumentEchu = Boolean(immobilisation?.length);
+  const modifiable = Boolean(edition) && peutSaisir;
 
   return (
     <span className="inline-flex items-center gap-1">
       <PastilleStatut statut={statut} compacte={compacte} />
-      {bloque ? (
+      {aDocumentEchu ? (
         <span
-          title={`Immobilisé administrativement — ${immobilisation!.map((d) => TYPE_DOCUMENT[d.type].toLowerCase()).join(", ")}. Le statut se libère au renouvellement du document, pas à la saisie.`}
+          title={`Document à renouveler — ${immobilisation!.map((d) => TYPE_DOCUMENT[d.type].toLowerCase()).join(", ")}. Le véhicule ne devrait pas rouler tant qu'il n'est pas en règle.`}
           className="grid size-6 shrink-0 place-items-center text-defavorable"
         >
-          <Lock className="size-3.5" strokeWidth={1.9} />
-          <span className="sr-only">Statut tenu par une immobilisation administrative</span>
+          <TriangleAlert className="size-3.5" strokeWidth={1.9} />
+          <span className="sr-only">Document critique échu ou manquant</span>
         </span>
       ) : null}
       {modifiable ? (

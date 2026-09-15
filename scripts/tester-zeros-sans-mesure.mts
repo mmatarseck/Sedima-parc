@@ -26,7 +26,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { exigeDocument, immobilisationAdministrative } from "../src/domaine/documents";
+import { exigeDocument, immobilisationAdministrative, statutEffectif } from "../src/domaine/documents";
 import { PARAMETRES_DEFAUT, fusionnerParametres } from "../src/domaine/parametres";
 
 const bac = process.env.PGLITE_DIR ?? "";
@@ -66,6 +66,23 @@ attendu(
 attendu(
   "un type non suivi mais échu en liste n'immobilise pas non plus",
   immobilisationAdministrative(camion, [...aJour, { type: "carte-grise", etat: "echu" as const }], nonSuivie) === null,
+);
+
+/* -- Un document échu avertit, il n'impose plus le statut ------------------- */
+/* Jusqu'au 15 septembre 2026, une immobilisation administrative forçait le
+   véhicule à « hors service » et verrouillait la saisie. Le métier l'a fait
+   retirer : celui qui voit le camion sait s'il roule, attend au garage ou part
+   en mutation ; l'échéancier, non. Le document reste signalé — il ne rend pas
+   le véhicule conforme, il cesse de décider à sa place. */
+const echus = [...aJour.filter((d) => d.type !== "assurance"), { type: "assurance" as const, etat: "echu" as const }];
+attendu("une assurance échue immobilise toujours — la règle demeure", immobilisationAdministrative(camion, echus, PARAMETRES_DEFAUT) !== null);
+attendu(
+  `mais le statut déclaré tient bon (${statutEffectif(camion, echus, PARAMETRES_DEFAUT)})`,
+  statutEffectif(camion, echus, PARAMETRES_DEFAUT) === camion.statut,
+);
+attendu(
+  "un véhicule déclaré en réparation le reste, document échu ou non",
+  statutEffectif({ ...camion, statut: "en-reparation" }, echus, PARAMETRES_DEFAUT) === "en-reparation",
 );
 
 /* -- 2. La base, sur le jeu de départ ---------------------------------------- */

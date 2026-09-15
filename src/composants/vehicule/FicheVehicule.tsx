@@ -127,10 +127,11 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
   const siteLibelle = v.siteId === fiche.ligne.vehicule.siteId ? (fiche.ligne.site?.libelle ?? "—") : (libelleSite(v.siteId) ?? "—");
   /* Un changement de statut créé dans l'application prime sur le statut du jeu de données. */
   const statutsCrees = creations("statut", fabriquerPeriodeStatut).sort((a, b) => b.debut.localeCompare(a.debut));
-  /* L'immobilisation administrative l'emporte sur tout statut saisi : elle se
-     lève quand le document est renouvelé, pas par une saisie. */
+  /* Le document échu avertit, il n'impose plus le statut (15 septembre 2026) :
+     c'est l'équipe parc qui sait si le camion roule, attend au garage ou part
+     en mutation — pas un échéancier. */
   const immobilisation = fiche.immobilisationAdministrative;
-  const statutCourant = immobilisation?.statut ?? statutsCrees[0]?.statut ?? v.statut;
+  const statutCourant = statutsCrees[0]?.statut ?? v.statut;
   const i = fiche.indicateurs;
   const titulaire = fiche.affectations.find((a) => a.role === "titulaire" && a.fin === null) ?? null;
   /* Qui tient ce véhicule, quand ce n'est pas un chauffeur : la liste Flotte le

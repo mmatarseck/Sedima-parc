@@ -98,6 +98,24 @@ export function immobilisationAdministrative(
   return { statut: "hors-service", motif: "administratif", documents: enCause };
 }
 
-export function statutEffectif(v: ProfilVehicule & { statut: StatutVehicule }, documents: { type: TypeDocument; etat: EtatDocument }[], p?: Parametres): StatutVehicule {
-  return immobilisationAdministrative(v, documents, p)?.statut ?? v.statut;
+/**
+ * Le statut d'un véhicule : celui qu'on lui a donné.
+ *
+ * Il ne l'a pas toujours été. Un document critique échu ou manquant forçait le
+ * véhicule à « hors service » et **verrouillait** la saisie : le statut ne se
+ * libérait qu'au renouvellement du document.
+ *
+ * Le métier l'a fait retirer le 15 septembre 2026, et la raison se tient : un
+ * camion dont l'assurance est échue **roule peut-être encore**, ou attend au
+ * garage, ou est en mutation. L'application décidait à la place de l'équipe
+ * parc, et lui interdisait ensuite de rectifier — le seul écran qui sait ce que
+ * fait le camion ne pouvait pas le dire.
+ *
+ * Le document échu reste signalé, et fortement : il est la première chose que
+ * montre la Conformité, et il continue d'alerter. Mais il **informe** au lieu
+ * de décider. Un avertissement qu'on peut ignorer vaut mieux qu'une règle qu'on
+ * contourne en saisissant n'importe quoi ailleurs.
+ */
+export function statutEffectif(v: ProfilVehicule & { statut: StatutVehicule }, _documents: { type: TypeDocument; etat: EtatDocument }[], _p?: Parametres): StatutVehicule {
+  return v.statut;
 }
