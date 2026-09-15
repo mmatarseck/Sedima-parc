@@ -58,6 +58,17 @@
   --color-neutre: #b8bec4;
   --color-neutre-fond: #f1f3f6;
 
+  /* -- Départ des dégradés de carte ---------------------------------------
+   * Les cartes du tableau de bord se teintent du haut vers le blanc pour dire
+   * leur état d'un coup d'œil. Le départ prenait le fond des pastilles — trop
+   * pâle à cette échelle : sur cent quarante pixels de haut, la teinte se
+   * perdait avant d'avoir été vue (métier, 15 septembre 2026). Ces deux-là sont
+   * un cran plus soutenus, et ne servent qu'à cela : le fond des pastilles et
+   * des bandeaux, lui, ne bouge pas — il porte du texte, qui doit rester lisible.
+   * ---------------------------------------------------------------------- */
+  --color-favorable-degrade: #e2f0cd;
+  --color-defavorable-degrade: #fbe4e4;
+
   /* -- Statuts de véhicule ------------------------------------------------
    * Couleurs données par la gestion de parc. Elles ne servent qu'à marquer un
    * état sur une pastille ou un filet : ce sont des couleurs de donnée, pas des

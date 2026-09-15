@@ -48,8 +48,22 @@ export const STATUT_CHAUFFEUR: Record<StatutChauffeur, DefinitionStatutChauffeur
 
 export const ORDRE_STATUTS_CHAUFFEUR: StatutChauffeur[] = ["en-poste", "disponible", "indisponible", "sorti"];
 
-/** Catégories du permis sénégalais, dans l'ordre où elles se lisent. */
-export const CATEGORIES_PERMIS = ["A", "B", "C", "D", "E"] as const;
+/**
+ * Catégories du permis sénégalais, dans l'ordre du tableau au dos de la carte.
+ *
+ * ELLES SONT DIX, PAS CINQ. L'application en connaissait cinq — A, B, C, D, E —
+ * et sa lecture découpait lettre par lettre : « A1 » devenait « A », « C1E »
+ * devenait « C » et « E ». Un permis réel, montré par le métier le 15 septembre
+ * 2026, porte « 9. Catégories : A1 B », et le dos énumère A1, A, B, C1, C, D,
+ * BE, C1E, CE, DE.
+ *
+ * « E » SEUL N'EST PAS UNE CATÉGORIE : la remorque se lit BE, C1E, CE ou DE,
+ * selon le véhicule tracteur. Trente-six chauffeurs en portent pourtant un en
+ * base, hérité de l'ancien modèle à cinq lettres. On ne l'efface pas — ce
+ * serait décider à la place du métier quelle remorque chacun tire ; la saisie
+ * le montre tel quel, coché, et c'est en le décochant qu'on le corrige.
+ */
+export const CATEGORIES_PERMIS = ["A1", "A", "B", "C1", "C", "D", "BE", "C1E", "CE", "DE"] as const;
 
 /**
  * Identifiant d'adresse d'un chauffeur : « Babacar Ndiaye » → « babacar-ndiaye ».

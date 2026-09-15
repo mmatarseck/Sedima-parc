@@ -197,11 +197,20 @@ attendu(
   cleDe("chauffeur", "CHA-babacar-ndiaye").colonne === "id" && cleDe("chauffeur", "CHA-babacar-ndiaye").valeur === "babacar-ndiaye",
 );
 
-/* Les catégories de permis : le formulaire laisse écrire ce qu'on veut, la base
-   attend un tableau. On ne fait recommencer personne pour un séparateur. */
-attendu(`« B · C · E » devient ${JSON.stringify(categoriesPermis("B · C · E"))}`, JSON.stringify(categoriesPermis("B · C · E")) === JSON.stringify(["B", "C", "E"]));
-attendu("« b,c,e » aussi, et sans doublon", JSON.stringify(categoriesPermis("b,c,e,c")) === JSON.stringify(["B", "C", "E"]));
-attendu("ce qui n'est pas une catégorie est écarté plutôt qu'entré de travers", JSON.stringify(categoriesPermis("B et le permis Z")) === JSON.stringify(["B", "E"]));
+/* Les catégories de permis se cochent depuis le 15 septembre 2026, sur les dix
+   du permis sénégalais — A1, A, B, C1, C, D, BE, C1E, CE, DE. La lecture
+   balayait le texte lettre par lettre : « A1 B » entrait « A, B », « C1E »
+   entrait « C, E ». Trois catégories sur dix étaient impossibles à enregistrer,
+   et deux autres se transformaient en silence. */
+attendu(`« A1 · B » garde son A1 (${JSON.stringify(categoriesPermis("A1 · B"))})`, JSON.stringify(categoriesPermis("A1 · B")) === JSON.stringify(["A1", "B"]));
+attendu("« C1E » ne se découpe plus en C et E", JSON.stringify(categoriesPermis("C1E")) === JSON.stringify(["C1E"]));
+attendu("les cases rendent l'ordre de la carte, sans doublon", JSON.stringify(categoriesPermis("de,b,a1,b")) === JSON.stringify(["A1", "B", "DE"]));
+attendu("un tableau déjà en base se relit tel quel", JSON.stringify(categoriesPermis(["B", "C"])) === JSON.stringify(["B", "C"]));
+/* « E » seul n'existe pas sur la carte — la remorque se lit BE, C1E, CE ou DE.
+   Trente-six chauffeurs en portent un, hérité de l'ancien modèle : on le garde
+   plutôt que de choisir à leur place quelle remorque ils tirent. */
+attendu("un « E » hérité survit à une relecture", JSON.stringify(categoriesPermis("B · C · E")) === JSON.stringify(["B", "C", "E"]));
+attendu("mais un texte libre n'entre pas de travers", JSON.stringify(categoriesPermis("B et le permis Z")) === JSON.stringify(["B"]));
 
 const siteChauffeur = (await pg.query(`select id from site order by code limit 1`)).rows[0] as { id: string };
 const recrue = ligneCreation(

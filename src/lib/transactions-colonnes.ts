@@ -15,6 +15,7 @@
  * et servir la fonction serveur comme les tests.
  * ==========================================================================*/
 
+import { CATEGORIES_PERMIS } from "@/domaine/chauffeur";
 import { USAGES_STANDARD, cleNom, idUsage } from "@/domaine/parametres";
 import type { TypeTransaction } from "@/domaine/reference";
 import { PRODUIT_TRANSPORTE, type ProduitTransporte } from "@/domaine/releve-transport";
@@ -100,18 +101,37 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
  * fiche la porte sous la forme « VEH-AA032EA ».
  */
 /**
- * Les catégories de permis, du texte libre vers le tableau que la base attend.
+ * Les catégories de permis, du texte saisi vers le tableau que la base attend.
  *
- * Le formulaire laisse écrire « B · C · E », « b,c,e » ou « B C E » : on ne
- * fait pas recommencer quelqu'un pour un séparateur. Tout ce qui n'est pas une
- * lettre de catégorie sénégalaise est écarté plutôt qu'entré de travers.
+ * ELLE NE DÉCOUPE PLUS LETTRE PAR LETTRE. L'ancienne version balayait le texte
+ * à la recherche de A, B, C, D ou E : un permis réel portant « A1 B » entrait
+ * donc « A, B », et « C1E » entrait « C, E ». Trois catégories sénégalaises sur
+ * dix étaient impossibles à enregistrer, et deux autres se transformaient en
+ * silence (corrigé le 15 septembre 2026, sur une carte montrée par le métier).
+ *
+ * On lit maintenant des **jetons entiers** — ce que les cases à cocher posent,
+ * et ce qu'un ancien texte libre donne aussi une fois découpé sur ses
+ * séparateurs. Un jeton hors de la liste n'est pas jeté : il est gardé tel quel.
+ * Trente-six chauffeurs portent un « E » seul venu de l'ancien modèle, et
+ * choisir à leur place entre BE, C1E, CE et DE serait inventer.
  */
 export function categoriesPermis(brut: unknown): string[] {
-  if (Array.isArray(brut)) return brut.map(String);
-  if (typeof brut !== "string") return [];
-  const vues = new Set<string>();
-  for (const m of brut.toUpperCase().matchAll(/[A-E]/g)) vues.add(m[0]);
-  return [...vues].sort();
+  const jetons = Array.isArray(brut)
+    ? brut.map((x) => String(x).trim().toUpperCase())
+    : typeof brut === "string"
+      ? brut.toUpperCase().split(/[^A-Z0-9]+/)
+      : [];
+  const vues = new Set(jetons.filter(Boolean));
+  const connues = CATEGORIES_PERMIS.filter((c) => vues.has(c));
+  /*
+   * Ce que la carte ne connaît pas est écarté — sauf les cinq lettres seules de
+   * l'ancien modèle, que trente-six chauffeurs portent en base. Les garder,
+   * c'est refuser d'effacer ce qu'on n'a pas su lire ; s'arrêter là, c'est
+   * refuser d'entrer « ET » ou « PERMIS » parce qu'un texte libre les contenait.
+   */
+  const HERITAGE = new Set(["A", "B", "C", "D", "E"]);
+  const heritees = [...vues].filter((x) => HERITAGE.has(x) && !CATEGORIES_PERMIS.includes(x as (typeof CATEGORIES_PERMIS)[number]));
+  return [...connues, ...heritees];
 }
 
 /**

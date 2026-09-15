@@ -10,6 +10,7 @@
  * ==========================================================================*/
 
 import type { ChampEdition } from "@/domaine/cloture";
+import { CATEGORIES_PERMIS } from "@/domaine/chauffeur";
 import { CATEGORIE_PIECE, ETAT_PNEU, NATURE_MOUVEMENT, POSITIONS_PNEU, UNITE_PIECE } from "@/domaine/pieces";
 import { URGENCE_ACHAT } from "@/domaine/caisse";
 import { SOURCE_TARIF, STATUT_AFFRETEMENT } from "@/domaine/transporteurs";
@@ -509,7 +510,13 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "dateSortie", libelle: "Date de sortie", type: "date" },
     { cle: "adresse", libelle: "Adresse", type: "texte" },
     { cle: "contactUrgence", libelle: "Contact d'urgence", type: "texte" },
-    { cle: "permisCategories", libelle: "Catégories de permis (B · C · D · E)", type: "texte" },
+    /* Des cases plutôt qu'un champ de texte (métier, 15 septembre 2026) : les
+       catégories se saisissaient « B, C », « B/C/E » ou « bce ». La lecture les
+       rattrapait, mais rien ne disait ce qu'on attendait ni n'empêchait d'écrire
+       une catégorie qui n'existe pas. Les libellés sont les lettres elles-mêmes :
+       l'application ne nomme ces catégories nulle part, et les décrire ici
+       reviendrait à inventer. */
+    { cle: "permisCategories", libelle: "Catégories de permis", type: "cases", options: CATEGORIES_PERMIS.map((c) => ({ valeur: c, libelle: c })) },
     { cle: "permisDelivrance", libelle: "Permis délivré le", type: "date" },
   ],
 };
@@ -569,6 +576,13 @@ export function champsVehicule(): ChampEdition[] {
     ]),
     ...section("Classement", [
       { cle: "regime", libelle: "Régime d'usage", type: "choix", options: Object.entries(REGIME_USAGE).map(([valeur, d]) => ({ valeur, libelle: d.libelle })), obligatoire: true },
+      /* Le plan car, en case à cocher (métier, 15 septembre 2026). Il ne vaut
+         que pour un véhicule de fonction — c'est la définition du domaine — et
+         il se pose sur l'attribution en cours, pas sur le véhicule : la base
+         interdit un plan car sans attributaire (`plan_car_nomme`, 0004). On ne
+         le propose donc pas à la création, où personne ne tient encore le
+         véhicule ; l'écriture le dit si l'attribution manque. */
+      { cle: "planCar", libelle: "Plan car", type: "cases", precision: "Véhicule de fonction cédé à son attributaire au terme", visibleSi: (s) => String(s.regime ?? "") === "fonction" },
       { cle: "categorieFlotte", libelle: "Catégorie de flotte", type: "choix", options: options(CATEGORIE_FLOTTE), obligatoire: true },
       { cle: "usage", libelle: "Usage (vrac, frigorifique, plateau…)", type: "suggestion", options: optionsUsages(), obligatoire: true },
       { cle: "businessUnit", libelle: "Business unit", type: "choix", options: options(BUSINESS_UNIT) },

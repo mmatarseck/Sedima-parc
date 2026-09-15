@@ -47,7 +47,7 @@ export function moisDe(dateIso: string): string {
  * « être sûr du rattachement »).
  */
 /** « suggestion » : un texte libre, avec une liste proposée — la marque, le modèle. */
-export type TypeChamp = "texte" | "texte-long" | "nombre" | "date" | "choix" | "oui-non" | "reference" | "suggestion" | "photo";
+export type TypeChamp = "texte" | "texte-long" | "nombre" | "date" | "choix" | "oui-non" | "cases" | "reference" | "suggestion" | "photo";
 
 export interface ChampEdition {
   cle: string;

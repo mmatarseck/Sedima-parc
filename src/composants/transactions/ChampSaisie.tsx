@@ -42,6 +42,73 @@ export function ChampSaisie({
       </button>
     );
   }
+  /*
+   * Des cases à cocher — demande du métier du 15 septembre 2026, pour les
+   * catégories de permis et le plan car.
+   *
+   * POURQUOI DES CASES ET NON UN CHAMP DE TEXTE. Les catégories de permis se
+   * saisissaient en toutes lettres : « B, C » ou « B/C/E » ou « bce ». La
+   * lecture les rattrapait à la relecture, mais rien ne disait à l'agent ce
+   * qu'on attendait, et rien ne l'empêchait d'écrire une catégorie qui n'existe
+   * pas. Les cases montrent les catégories possibles, et n'en laissent passer
+   * aucune autre.
+   *
+   * La valeur reste **une chaîne** : les valeurs cochées, séparées par un point
+   * médian. La saisie d'un formulaire ne porte que des chaînes et des booléens,
+   * et la lecture qui range les catégories en base découpe déjà sur tout ce qui
+   * n'est pas une lettre — elle accepte donc cette forme sans rien changer.
+   */
+  if (champ.type === "cases") {
+    /* Sans options, une seule case : un booléen, coché ou non. */
+    if (!champ.options || champ.options.length === 0) {
+      return (
+        <label className="flex h-9 cursor-pointer items-center gap-2.5 text-[13px] text-texte">
+          <input type="checkbox" checked={Boolean(v)} onChange={(e) => onChange(e.target.checked)} className="size-4 shrink-0 accent-[var(--color-accent)]" />
+          {champ.precision ?? "Oui"}
+        </label>
+      );
+    }
+    const cochees = new Set(
+      String(v ?? "")
+        .toUpperCase()
+        .split(/[^A-Z0-9]+/)
+        .filter(Boolean),
+    );
+    /*
+     * Une valeur enregistrée qui n'est plus dans la liste garde sa case, cochée
+     * et marquée. Sans cela, ouvrir puis enregistrer une fiche l'effacerait sans
+     * que personne ne l'ait décidé : trente-six chauffeurs portent un « E » seul
+     * hérité d'un modèle de permis à cinq lettres, et choisir à leur place entre
+     * BE, C1E, CE et DE serait inventer. On la montre ; on la corrige en la
+     * décochant.
+     */
+    const listees = new Set(champ.options.map((o) => o.valeur.toUpperCase()));
+    const heritees = [...cochees].filter((x) => !listees.has(x));
+    const toutes = [...champ.options.map((o) => ({ valeur: o.valeur.toUpperCase(), libelle: o.libelle, heritee: false })), ...heritees.map((x) => ({ valeur: x, libelle: x, heritee: true }))];
+    const basculer = (valeur: string) => {
+      const suite = new Set(cochees);
+      if (suite.has(valeur)) suite.delete(valeur);
+      else suite.add(valeur);
+      /* L'ordre des options, et non celui des clics : deux agents qui cochent
+         les mêmes cases doivent enregistrer la même valeur. */
+      onChange(
+        toutes
+          .map((o) => o.valeur)
+          .filter((x) => suite.has(x))
+          .join(" · "),
+      );
+    };
+    return (
+      <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[10px] border px-3 py-2 ${invalide ? "border-defavorable" : "border-bordure-champ"}`}>
+        {toutes.map((o) => (
+          <label key={o.valeur} className="flex cursor-pointer items-center gap-2 text-[13px] text-texte" title={o.heritee ? "Valeur enregistrée avant, hors de la liste actuelle : décochez-la pour la retirer" : undefined}>
+            <input type="checkbox" checked={cochees.has(o.valeur)} onChange={() => basculer(o.valeur)} className="size-4 shrink-0 accent-[var(--color-accent)]" />
+            <span className={o.heritee ? "text-texte-2 italic" : undefined}>{o.libelle}</span>
+          </label>
+        ))}
+      </div>
+    );
+  }
   if (champ.type === "choix") {
     /*
      * On écrit pour filtrer, même là où l'on ne peut pas créer.

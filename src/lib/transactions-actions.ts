@@ -692,6 +692,52 @@ export async function ecrireModification(e: {
   const moi = moi0;
 
   const colonnes = colonnesModification(e.type, e.diffs);
+
+  /*
+   * Le plan car se coche sur le véhicule, et s'écrit sur son attribution.
+   *
+   * Demande du métier du 15 septembre 2026 : une case à cocher dans la fiche du
+   * véhicule. La colonne, elle, est sur `attribution_legere` — et la base
+   * interdit un plan car sans attributaire (`plan_car_nomme`, 0004). C'est
+   * cohérent : un plan car est un engagement envers **quelqu'un**, pas une
+   * propriété d'un châssis. On écrit donc sur l'attribution en cours, et on
+   * refuse en le disant quand personne ne tient le véhicule.
+   */
+  const ecartPlanCar = e.type === "vehicule" ? e.diffs.find((d) => d.champ === "planCar") : undefined;
+  if (ecartPlanCar) {
+    const cle = cleDe("vehicule", e.numero);
+    const v = await client.from("vehicule").select("id").eq(cle.colonne, cle.valeur).maybeSingle<{ id: string }>();
+    if (!v.data) return { issue: "refusee", motif: "Plan car non enregistré : véhicule introuvable." };
+    const courante = await client.from("attribution_legere").select("id, attributaire_id").eq("vehicule_id", v.data.id).is("fin", null).maybeSingle<{ id: string; attributaire_id: string | null }>();
+    if (courante.error) return { issue: "refusee", motif: `Plan car non enregistré : ${courante.error.message}` };
+    /* La case rend un booléen ; une trace ancienne peut porter « oui ». */
+    const brut = ecartPlanCar.valeur;
+    const veut = typeof brut === "boolean" ? brut : ["oui", "true", "1"].includes(String(brut).trim().toLowerCase());
+    if (veut && !courante.data?.attributaire_id) {
+      return { issue: "refusee", motif: "Un plan car s'engage envers quelqu'un : attribuez d'abord ce véhicule à une personne, puis cochez le plan car." };
+    }
+    if (!courante.data) return { issue: "refusee", motif: "Ce véhicule n'a pas d'attribution en cours : rien où poser le plan car." };
+    const pose = await client.from("attribution_legere").update({ plan_car: veut, modifie_le: new Date().toISOString(), modifie_par: moi.utilisateurId }).eq("id", courante.data.id);
+    if (pose.error) return { issue: "refusee", motif: `Plan car non enregistré : ${pose.error.message}` };
+    const trace = await client.from("modification").insert({
+      table_cible: "attribution_legere",
+      numero: v.data.id,
+      champ: "plan_car",
+      libelle_champ: "Plan car",
+      avant: ecartPlanCar.avant,
+      apres: ecartPlanCar.apres,
+      motif: e.motif || (veut ? "Plan car engagé" : "Plan car levé"),
+      statut: "appliquee",
+      cree_par: moi.utilisateurId,
+    });
+    if (trace.error) return { issue: "refusee", motif: `Plan car posé, mais sans trace : ${trace.error.message}` };
+    /* Seul écart de la saisie : plus rien à écrire sur le véhicule lui-même. */
+    if (e.diffs.length === 1) {
+      revalidatePath("/", "layout");
+      return { issue: "ecrite", numero: e.numero };
+    }
+  }
+
   /*
    * Un écart sur un champ qu'aucune colonne ne porte était **silencieusement
    * perdu** : la trace s'écrivait, la modale disait « enregistré », et la base

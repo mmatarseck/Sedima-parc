@@ -386,7 +386,9 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
                   /* La plaque se propose au format d'affichage — c'est ainsi
                      qu'on la lit sur la carte grise ; l'écriture la ramène à sa
                      forme canonique. */
-                  valeurs: { ...fiche.identite, ...fiche.ligne.vehicule, immatriculation: v.immatriculationAffichee } as unknown as Record<string, unknown>,
+                  /* Le plan car ne vit pas sur le véhicule mais sur son
+                     attribution : la case doit montrer ce qui est engagé. */
+                  valeurs: { ...fiche.identite, ...fiche.ligne.vehicule, immatriculation: v.immatriculationAffichee, planCar: fiche.ligne.attributaire?.planCar ?? false } as unknown as Record<string, unknown>,
                   /* Changer la plaque change l'adresse de la fiche : sans ce
                      saut, un rechargement tomberait sur l'ancienne, qui n'existe
                      plus. Le véhicule, lui, n'a pas bougé — c'est le même

@@ -512,9 +512,9 @@ export function EcranTableauBord({
                peut pas juger. Il s'éteint à 62 % de la hauteur pour que le
                texte du pied reste sur du blanc. */
             const fond = p.alerte
-              ? "linear-gradient(180deg, var(--color-defavorable-fond) 0%, var(--color-surface) 62%)"
+              ? "linear-gradient(180deg, var(--color-defavorable-degrade) 0%, var(--color-surface) 62%)"
               : d.seuil && p.valeur !== null
-                ? "linear-gradient(180deg, var(--color-favorable-fond) 0%, var(--color-surface) 62%)"
+                ? "linear-gradient(180deg, var(--color-favorable-degrade) 0%, var(--color-surface) 62%)"
                 : undefined;
             return (
               <Link
