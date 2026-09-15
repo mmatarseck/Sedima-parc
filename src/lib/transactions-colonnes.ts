@@ -114,6 +114,17 @@ export function categoriesPermis(brut: unknown): string[] {
   return [...vues].sort();
 }
 
+/**
+ * « Personne — retirer le chauffeur », dans le champ Chauffeur d'une affectation.
+ *
+ * Une valeur choisie, et non un champ laissé vide : c'est ce qui distingue le
+ * geste voulu de l'étourderie, et cela permet au champ de rester obligatoire.
+ * Elle vit ici parce que les deux rives la lisent — le formulaire qui la
+ * propose, l'écriture qui la reconnaît — et qu'un module de saisie du
+ * navigateur n'a pas sa place dans une action de serveur.
+ */
+export const RETRAIT_CHAUFFEUR = "retirer";
+
 export function cleDe(type: TypeTransaction, numero: string): { colonne: string; valeur: string } {
   if (type === "vehicule") return { colonne: "immatriculation", valeur: immatriculationCanonique(numero.replace(/^VEH-/i, "")) };
   /* Le chauffeur se repère par son identifiant de table. La fiche le nomme

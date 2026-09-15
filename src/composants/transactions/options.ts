@@ -17,6 +17,9 @@ import type { Creation } from "@/domaine/cloture";
 import type { TypePrestataire } from "@/domaine/prestataires";
 import type { CategorieVehicule } from "@/domaine/types";
 import { lireReferentiels } from "@/lib/referentiels-navigateur";
+import { RETRAIT_CHAUFFEUR } from "@/lib/transactions-colonnes";
+
+export { RETRAIT_CHAUFFEUR };
 
 export interface Option {
   valeur: string;
@@ -49,6 +52,26 @@ export const optionsAttribution = (): Option[] => [
   ...lireReferentiels()
     .attributaires.filter((a) => a.actif)
     .map((a) => ({ valeur: a.id, libelle: a.fonction ? `${a.nom} · ${a.fonction}` : a.nom })),
+];
+
+/**
+ * Ce qu'on peut faire du chauffeur d'un véhicule : en mettre un, en changer,
+ * ou n'en laisser aucun.
+ *
+ * « On doit pouvoir supprimer une affectation de véhicule et le laisser sans
+ * chauffeur » (métier, 15 septembre 2026). Jusque-là le champ n'acceptait qu'un
+ * nom : un camion qui perdait son conducteur gardait le sien à l'écran, et les
+ * kilomètres du mois continuaient de lui être rattachés.
+ *
+ * LE RETRAIT EST UNE VALEUR, PAS UN CHAMP VIDE. « retirer » se choisit ; un
+ * champ laissé vide ne retire rien. C'est ce qui distingue le geste voulu de
+ * l'étourderie — et le champ peut rester obligatoire, donc le formulaire refuse
+ * d'être envoyé sans qu'on ait dit ce qu'on voulait.
+ */
+export const optionsAffectation = (avecTiers = false): Option[] => [
+  { valeur: RETRAIT_CHAUFFEUR, libelle: "Personne — retirer le chauffeur" },
+  ...optionsChauffeurs(),
+  ...(avecTiers ? optionsChauffeursTiers() : []),
 ];
 
 function raisonSocialeDe(numero: string): string {

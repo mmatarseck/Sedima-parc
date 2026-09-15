@@ -455,6 +455,39 @@ else {
   attendu(`la correction est passée (${apres?.fonction}, ${apres?.bu}, actif ${apres?.actif})`, apres?.fonction === "Responsable Logistique" && apres.bu === "siege" && apres.actif === false);
 }
 
+/* -- Retirer le chauffeur d'un véhicule (15 septembre 2026) ----------------- */
+/* « On doit pouvoir supprimer une affectation de véhicule et le laisser sans
+   chauffeur. » On clôt, on n'efface pas : l'affectation a porté des pleins et
+   des relevés, et les effacer rendrait ces faits orphelins. Ce que le banc
+   tient, c'est qu'après le geste il ne reste aucun titulaire en cours et que
+   la période passée est toujours là. */
+
+const aRetirer = (await pg.query(`select a.id, a.vehicule_id, a.debut::text as debut
+  from affectation a where a.fin is null and a.role = 'titulaire' order by a.debut desc limit 1`)).rows[0] as
+  { id: string; vehicule_id: string; debut: string } | undefined;
+attendu("un véhicule avec un chauffeur en cours sert de cobaye", Boolean(aRetirer));
+
+if (aRetirer) {
+  const lignesAvant = Number((await pg.query(`select count(*)::int as n from affectation where vehicule_id = $1`, [aRetirer.vehicule_id])).rows[0].n);
+  const veille = "2026-09-14";
+  /* Une affectation ouverte après la veille se referme sur son propre début :
+     la veille donnerait une période à l'envers, que la base refuse. */
+  const cloture = aRetirer.debut > veille ? aRetirer.debut : veille;
+  await pg.query(`update affectation set fin = $1, motif = 'Chauffeur retiré' where id = $2`, [cloture, aRetirer.id]);
+
+  const enCours = Number((await pg.query(`select count(*)::int as n from affectation where vehicule_id = $1 and role = 'titulaire' and fin is null`, [aRetirer.vehicule_id])).rows[0].n);
+  attendu(`le véhicule n'a plus de chauffeur en cours (${enCours})`, enCours === 0);
+  const lignesApres = Number((await pg.query(`select count(*)::int as n from affectation where vehicule_id = $1`, [aRetirer.vehicule_id])).rows[0].n);
+  attendu(`et garde ses ${lignesApres} ligne(s) d'histoire`, lignesApres === lignesAvant);
+  const close = (await pg.query(`select fin::text as fin, debut::text as debut from affectation where id = $1`, [aRetirer.id])).rows[0] as { fin: string; debut: string };
+  attendu(`la période close ne part pas à l'envers (${close?.debut} → ${close?.fin})`, Boolean(close) && close.fin >= close.debut);
+
+  /* Deuxième retrait sur un véhicule déjà sans chauffeur : il n'y a rien à
+     clore, et l'écriture doit le dire plutôt que de se taire. */
+  const encore = (await pg.query(`select id from affectation where vehicule_id = $1 and role = 'titulaire' and fin is null`, [aRetirer.vehicule_id])).rows[0];
+  attendu("un second retrait ne trouve rien à clore", encore === undefined);
+}
+
 /* -- Un autre conducteur s'ajoute sans entrer chez les chauffeurs ----------- */
 /* Demande du 15 septembre 2026 : « à l'ajout d'un autre conducteur, il faut
    pouvoir spécifier pour ne pas le mettre dans la liste des chauffeurs du

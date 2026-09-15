@@ -57,17 +57,24 @@ select c.id, c.prenom, c.nom, c.matricule_rh, c.contrat::text as contrat,
 -- ---------------------------------------------------------------------------
 -- PARTIE 2 — la suppression. À jouer après avoir lu la partie 1.
 --
--- Les tables qui n'existent pas encore dans cette base (transfert, demande et
--- accès utilisateur selon les migrations jouées) sont comptées si elles sont
--- là, ignorées sinon : un garde-fou qui échoue faute de table ne garde rien.
+-- LE GARDE-FOU SE CONSTRUIT SUR LE CATALOGUE, et non sur une liste écrite à la
+-- main. Première version, le 15 septembre : la liste comptait « transfert.
+-- chauffeur_id », colonne qui n'existe pas — la table porte deux références,
+-- `remettant_chauffeur_id` et `recipiendaire_chauffeur_id`. Le bloc s'est
+-- arrêté sur l'erreur, sans rien effacer, ce qui est le comportement voulu ;
+-- mais un garde-fou qui se trompe de colonne ne garde pas ce qu'il croit.
+--
+-- On demande donc à Postgres lui-même quelles colonnes pointent vers
+-- `chauffeur`, et on les compte toutes. Une table ajoutée demain sera comptée
+-- sans que ce fichier change.
 -- ---------------------------------------------------------------------------
 
 do $$
 declare
   personne uuid := 'cd385611-d24d-47e0-ae54-fdbd7eb7f980';
   nom_lu   text;
-  pendant  bigint;
-  t        text;
+  pendant  bigint := 0;
+  r        record;
   n        bigint;
 begin
   select prenom || ' ' || nom into nom_lu from chauffeur where id = personne;
@@ -80,23 +87,28 @@ begin
     raise exception 'Cet identifiant porte « % » et non « Ndiankou Ndiaye » : ne rien effacer.', nom_lu;
   end if;
 
-  pendant := (select count(*) from affectation     where chauffeur_id = personne)
-           + (select count(*) from plein           where chauffeur_id = personne)
-           + (select count(*) from depense         where chauffeur_id = personne)
-           + (select count(*) from document        where chauffeur_id = personne)
-           + (select count(*) from incident        where chauffeur_id = personne)
-           + (select count(*) from sanction        where chauffeur_id = personne)
-           + (select count(*) from indisponibilite where chauffeur_id = personne);
-
-  foreach t in array array['transfert', 'demande', 'acces_utilisateur'] loop
-    if to_regclass(t) is not null then
-      execute format('select count(*) from %I where chauffeur_id = $1', t) into n using personne;
-      pendant := pendant + n;
+  for r in
+    select n.nspname as schema, cl.relname as tbl, att.attname as col
+      from pg_constraint c
+      join pg_class cl      on cl.oid = c.conrelid
+      join pg_namespace n   on n.oid = cl.relnamespace
+      join pg_class ref     on ref.oid = c.confrelid
+      join unnest(c.conkey) as k(attnum) on true
+      join pg_attribute att on att.attrelid = c.conrelid and att.attnum = k.attnum
+     where c.contype = 'f'
+       and ref.relname = 'chauffeur'
+       and cl.relname <> 'chauffeur'
+     order by cl.relname, att.attname
+  loop
+    execute format('select count(*) from %I.%I where %I = $1', r.schema, r.tbl, r.col) into n using personne;
+    if n > 0 then
+      raise notice '  %.% porte % ligne(s)', r.tbl, r.col, n;
     end if;
+    pendant := pendant + n;
   end loop;
 
   if pendant > 0 then
-    raise exception 'Ndiankou Ndiaye porte % ligne(s) : inspecter avant d''effacer.', pendant;
+    raise exception 'Ndiankou Ndiaye porte % ligne(s) au total : inspecter avant d''effacer.', pendant;
   end if;
 
   delete from chauffeur where id = personne;

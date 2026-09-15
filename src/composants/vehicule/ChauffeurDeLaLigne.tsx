@@ -49,14 +49,14 @@ export function ChauffeurDeLaLigne({ ligne }: { ligne: LigneFlotte }) {
     edition && peutSaisir ? (
       <button
         type="button"
-        title={titulaire ? `Changer l'affectation de ${v.immatriculationAffichee}` : `Affecter un chauffeur à ${v.immatriculationAffichee}`}
+        title={titulaire ? `Changer ou retirer le chauffeur de ${v.immatriculationAffichee}` : `Affecter un chauffeur à ${v.immatriculationAffichee}`}
         onClick={(e) => {
           /* La ligne entière mène à la fiche : sans cela, affecter l'ouvrirait aussi. */
           e.preventDefault();
           e.stopPropagation();
           edition.creer({
             type: "affectation",
-            titre: `Nouvelle affectation · ${v.immatriculationAffichee}`,
+            titre: `Affectation · ${v.immatriculationAffichee}`,
             champs: champsCreation("affectation", { pour: "planning" }),
             valeurs: { vehiculeId: v.id, role: "titulaire", debut: new Date().toISOString().slice(0, 10) },
             /* Rangée sur le véhicule de la ligne, pas sur la liste : c'est sa
@@ -67,7 +67,7 @@ export function ChauffeurDeLaLigne({ ligne }: { ligne: LigneFlotte }) {
         className="grid size-5 shrink-0 place-items-center rounded-[6px] text-attenue opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:bg-surface-3 hover:text-accent-fonce"
       >
         <Pencil className="size-3" strokeWidth={1.9} />
-        <span className="sr-only">{titulaire ? "Changer l'affectation" : "Affecter un chauffeur"}</span>
+        <span className="sr-only">{titulaire ? "Changer ou retirer le chauffeur" : "Affecter un chauffeur"}</span>
       </button>
     ) : null;
 

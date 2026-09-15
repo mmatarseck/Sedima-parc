@@ -26,7 +26,7 @@ export const TITRE_CREATION: Partial<Record<CibleAjout, string>> = {
   plein: "Nouveau plein",
   depense: "Nouvelle dépense",
   intervention: "Nouvelle intervention",
-  affectation: "Nouvelle affectation",
+  affectation: "Affectation",
   attelage: "Nouvel attelage",
   visite: "Rendez-vous de visite technique",
   observation: "Observation de visite technique",

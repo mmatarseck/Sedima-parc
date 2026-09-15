@@ -32,7 +32,7 @@ import { afficher } from "@/domaine/immatriculation";
 import { TYPE_TRANSACTION, formerNumero, type TypeTransaction } from "@/domaine/reference";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur, utilisateurCourant } from "@/lib/supabase";
-import { EST_UUID, cleDe, colonnesModification, decomposerSujet, immatriculationCanonique, ligneCreation, scinderUsage, tableDe, type Rattachement } from "@/lib/transactions-colonnes";
+import { EST_UUID, RETRAIT_CHAUFFEUR, cleDe, colonnesModification, decomposerSujet, immatriculationCanonique, ligneCreation, scinderUsage, tableDe, type Rattachement } from "@/lib/transactions-colonnes";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type ResultatEcriture = { issue: "ecrite"; numero: string } | { issue: "refusee"; motif: string } | { issue: "hors-base" };
@@ -285,6 +285,9 @@ export async function ecrireCreation(c: Creation): Promise<ResultatEcriture> {
   if (c.type === "statut") return poserStatut(client, moi.utilisateurId, c);
   if (c.type === "aptitude") return poserAptitude(client, moi.utilisateurId, c);
   if (c.type === "attribution") return poserAttribution(client, moi.utilisateurId, c);
+  /* « Personne — retirer le chauffeur » : on clôt sans rouvrir. Ce n'est pas
+     une affectation à écrire, c'est celle qui court qu'il faut arrêter. */
+  if (c.type === "affectation" && typeof c.valeurs.chauffeurId === "string" && c.valeurs.chauffeurId.trim() === RETRAIT_CHAUFFEUR) return retirerAffectation(client, moi.utilisateurId, c);
   const table = tableDe(c.type);
   if (!table) return { issue: "hors-base" };
 
@@ -426,6 +429,64 @@ async function entreeAuParc(client: SupabaseClient, vehiculeId: string, utilisat
  * en cours pour un même véhicule. Clore avant d'ouvrir n'est donc pas une
  * précaution de style — sans cela, l'écriture serait refusée.
  */
+/**
+ * Laisser un véhicule sans chauffeur.
+ *
+ * « On doit pouvoir supprimer une affectation de véhicule et le laisser sans
+ * chauffeur » (métier, 15 septembre 2026). Rien ne le permettait : le champ
+ * n'acceptait qu'un nom, et un camion qui perdait son conducteur gardait le
+ * sien à l'écran — avec les kilomètres, la consommation et les incidents du
+ * mois rattachés à quelqu'un qui ne le conduisait plus.
+ *
+ * ON CLÔT, ON N'EFFACE PAS. L'affectation qui court est un fait daté : elle a
+ * porté des pleins, des relevés, peut-être un incident. L'effacer rendrait ces
+ * faits orphelins et réécrirait l'histoire du véhicule. On lui pose une fin, ce
+ * qui dit exactement ce qui s'est passé — quelqu'un a conduit jusqu'à cette
+ * date, et plus personne depuis.
+ *
+ * Une saisie du jour même se referme sur son propre début : la veille donnerait
+ * une période à l'envers, que la base refuse.
+ */
+async function retirerAffectation(client: SupabaseClient, utilisateurId: string, c: Creation): Promise<ResultatEcriture> {
+  const s = decomposerSujet(c.sujet);
+  const vehiculeId = (await vehiculeIdDe(client, c.valeurs.vehiculeId)) ?? (s.genre === "vehicule" ? await vehiculeIdDe(client, s.cle) : null);
+  if (!vehiculeId) return { issue: "refusee", motif: "Non enregistré en base : véhicule introuvable." };
+
+  const role = typeof c.valeurs.role === "string" && c.valeurs.role.trim() ? c.valeurs.role.trim() : "titulaire";
+  const jour = typeof c.valeurs.debut === "string" && c.valeurs.debut ? c.valeurs.debut : new Date().toISOString().slice(0, 10);
+  const veille = new Date(`${jour}T00:00:00Z`);
+  veille.setUTCDate(veille.getUTCDate() - 1);
+  const fin = veille.toISOString().slice(0, 10);
+
+  const courante = await client.from("affectation").select("id, numero, chauffeur_id, debut").eq("vehicule_id", vehiculeId).eq("role", role).is("fin", null).maybeSingle<{ id: string; numero: string; chauffeur_id: string; debut: string }>();
+  if (courante.error) return { issue: "refusee", motif: `Affectation non retirée : ${courante.error.message}` };
+  if (!courante.data) {
+    return { issue: "refusee", motif: role === "titulaire" ? "Ce véhicule n'a pas de chauffeur à retirer." : "Ce véhicule n'a pas de suppléant à retirer." };
+  }
+
+  const cloture = courante.data.debut > fin ? courante.data.debut : fin;
+  const fermee = await client.from("affectation").update({ fin: cloture, motif: typeof c.valeurs.motif === "string" && c.valeurs.motif.trim() ? c.valeurs.motif.trim() : "Chauffeur retiré", modifie_le: new Date().toISOString(), modifie_par: utilisateurId }).eq("id", courante.data.id);
+  if (fermee.error) return { issue: "refusee", motif: `Affectation non retirée : ${fermee.error.message}` };
+
+  /* Le nom part dans la trace, pas l'identifiant : c'est ce qu'on relit six
+     mois plus tard en se demandant qui conduisait. */
+  const qui = await client.from("chauffeur").select("nom, prenom").eq("id", courante.data.chauffeur_id).maybeSingle<{ nom: string; prenom: string }>();
+  const trace = await client.from("modification").insert({
+    table_cible: "affectation",
+    numero: courante.data.numero,
+    champ: "fin",
+    libelle_champ: "Fin d'affectation",
+    avant: "",
+    apres: cloture,
+    motif: typeof c.valeurs.motif === "string" && c.valeurs.motif.trim() ? c.valeurs.motif.trim() : `Chauffeur retiré${qui.data ? ` : ${qui.data.prenom} ${qui.data.nom}` : ""}`,
+    statut: "appliquee",
+    cree_par: utilisateurId,
+  });
+  if (trace.error) return { issue: "refusee", motif: `Retirée, mais sans trace : ${trace.error.message}` };
+  revalidatePath("/", "layout");
+  return { issue: "ecrite", numero: courante.data.numero };
+}
+
 async function poserAttribution(client: SupabaseClient, utilisateurId: string, c: Creation): Promise<ResultatEcriture> {
   const s = decomposerSujet(c.sujet);
   const vehiculeId = (await vehiculeIdDe(client, c.valeurs.vehiculeId)) ?? (s.genre === "vehicule" ? await vehiculeIdDe(client, s.cle) : null);

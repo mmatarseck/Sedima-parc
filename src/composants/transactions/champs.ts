@@ -25,7 +25,7 @@ import { cleNom, nomMarqueConnu } from "@/domaine/parametres";
 import { lireParametres } from "@/lib/parametres-demo";
 import { lireReferentiels } from "@/lib/referentiels-navigateur";
 
-import { optionsAttribution, optionsCamionsTiers, optionsChauffeurs, optionsChauffeursTiers, optionsGarages, optionsPrestataires, optionsPrestatairesParNumero, optionsSites, optionsVehicules } from "./options";
+import { optionsAffectation, optionsAttribution, optionsCamionsTiers, optionsChauffeurs, optionsGarages, optionsPrestataires, optionsPrestatairesParNumero, optionsSites, optionsVehicules } from "./options";
 
 const options = (r: Record<string, string>) => Object.entries(r).map(([valeur, libelle]) => ({ valeur, libelle }));
 const optionsStatut = () => Object.entries(STATUT_VEHICULE).map(([valeur, d]) => ({ valeur, libelle: d.libelle }));
@@ -655,17 +655,28 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
         },
         ...base,
       ];
+    /*
+     * Qui conduit ce véhicule — et le geste de n'y laisser personne.
+     *
+     * Vu du véhicule, le premier champ porte les trois gestes, comme
+     * l'attribution : affecter quelqu'un, le remplacer, ou retirer le chauffeur
+     * et laisser le véhicule libre (demande du 15 septembre 2026).
+     *
+     * Vu du chauffeur, non : « retirer le chauffeur » n'a pas de sens sur la
+     * fiche de la personne qu'on retirerait — on y choisit un véhicule, et
+     * c'est la fin de l'affectation qui l'en détache.
+     */
     case "affectation":
       if (contexte.pour === "planning") {
         return [
           { cle: "vehiculeId", libelle: "Véhicule", type: "choix", options: [...optionsVehicules(), ...optionsCamionsTiers()], obligatoire: true },
-          { cle: "chauffeurId", libelle: "Chauffeur", type: "choix", options: [...optionsChauffeurs(), ...optionsChauffeursTiers()], obligatoire: true },
+          { cle: "chauffeurId", libelle: "Chauffeur", type: "choix", suggestionsDe: () => optionsAffectation(true), obligatoire: true },
           { cle: "role", libelle: "Rôle", type: "choix", options: options(ROLE_AFFECTATION), obligatoire: true },
           ...base,
         ];
       }
       return contexte.pour === "vehicule"
-        ? [{ cle: "chauffeurId", libelle: "Chauffeur", type: "choix", options: optionsChauffeurs(), obligatoire: true }, { cle: "role", libelle: "Rôle", type: "choix", options: options(ROLE_AFFECTATION), obligatoire: true }, ...base]
+        ? [{ cle: "chauffeurId", libelle: "Chauffeur", type: "choix", suggestionsDe: () => optionsAffectation(), obligatoire: true }, { cle: "role", libelle: "Rôle", type: "choix", options: options(ROLE_AFFECTATION), obligatoire: true }, ...base]
         : [{ cle: "vehiculeId", libelle: "Véhicule", type: "choix", options: optionsVehicules(), obligatoire: true }, { cle: "role", libelle: "Rôle", type: "choix", options: options(ROLE_AFFECTATION), obligatoire: true }, ...base];
     case "chauffeur":
       /* À la création on demande d'abord ce qui identifie la personne et ce qui

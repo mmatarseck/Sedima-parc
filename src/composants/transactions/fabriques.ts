@@ -15,6 +15,7 @@ import type { AffectationFiche, AttelageFiche, DepenseFiche, DocumentFiche, Etat
 import { BUSINESS_UNIT, MOTIF_INDISPONIBILITE, STATUT_VEHICULE, TYPE_DOCUMENT, TYPE_INCIDENT } from "@/domaine/libelles";
 import type { BusinessUnit, CategorieFlotte, DeclarationIncident, Indisponibilite, LigneFlotte, ObservationVisite, Sanction, TypeDocument, UsageVehicule, VisiteTechnique } from "@/domaine/types";
 import { lireReferentiels } from "@/lib/referentiels-navigateur";
+import { RETRAIT_CHAUFFEUR } from "@/lib/transactions-colonnes";
 import { joursRestants } from "@/lib/format";
 import { echeanceCalculee } from "@/domaine/documents";
 import type { LigneIncident } from "@/domaine/incidents";
@@ -101,8 +102,17 @@ export function fabriquerReleve(c: Creation): ReleveFiche {
   return { numero: c.numero, date: s(v.date) ?? c.date.slice(0, 10), valeur: n(v.valeur) ?? 0, origine: "saisie", source: s(v.source) ?? `Saisie manuelle — ${c.auteur}`, depenseId: null, valide: true, motifRejet: null };
 }
 
-export function fabriquerAffectationVehicule(c: Creation, buSite: string): AffectationFiche {
+/**
+ * Une affectation créée depuis la fiche du véhicule.
+ *
+ * Nulle quand la saisie retire le chauffeur : ce n'est pas une affectation de
+ * plus, c'est celle qui court qu'on arrête. La montrer comme une ligne
+ * nouvelle ferait croire à une affectation « à personne », et le véhicule
+ * paraîtrait en porter deux.
+ */
+export function fabriquerAffectationVehicule(c: Creation, buSite: string): AffectationFiche | null {
   const v = c.valeurs;
+  if (s(v.chauffeurId) === RETRAIT_CHAUFFEUR) return null;
   const chauffeur = chauffeurDe(s(v.chauffeurId));
   return { numero: c.numero, chauffeur: chauffeur?.nomComplet ?? null, chauffeurId: chauffeur?.id ?? null, initiales: chauffeur ? initialesDe(chauffeur.nomComplet) : "—", role: (s(v.role) as AffectationFiche["role"]) ?? "titulaire", debut: s(v.debut) ?? c.date.slice(0, 10), fin: s(v.fin), buSite, kmParcourus: 0, motif: s(v.motif) ?? "Saisie dans l'application" };
 }
@@ -175,6 +185,7 @@ export function fabriquerEvenementStatut(c: Creation): EvenementJournal {
 
 export function fabriquerAffectationChauffeur(c: Creation): AffectationChauffeur | null {
   const v = c.valeurs;
+  if (s(v.chauffeurId) === RETRAIT_CHAUFFEUR) return null;
   const l = vehiculeDe(s(v.vehiculeId));
   if (!l) return null;
   const bu = l.businessUnit ? BUSINESS_UNIT[l.businessUnit] : "—";
