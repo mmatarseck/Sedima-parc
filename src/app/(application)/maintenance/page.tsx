@@ -1,10 +1,9 @@
 import { EcranMaintenance, type VueMaintenance } from "@/composants/maintenance/EcranMaintenance";
 import { titrePage } from "@/domaine/marque";
 import { typeDuNumero } from "@/domaine/reference";
-import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { jourCourant } from "@/domaine/temps";
 import { interventionsServeur, travauxServeur } from "@/donnees/maintenance";
 import { ordresServeur } from "@/donnees/ordres";
-import { authentificationReelle } from "@/lib/session-demo";
 import { parametresServeur } from "@/lib/parametres-serveur";
 
 export const metadata = { title: titrePage("Maintenance") };
@@ -22,7 +21,6 @@ export default async function PageMaintenance({ searchParams }: { searchParams: 
 
   /* Base branchée : les ordres viennent de leur table, les interventions de la
      leur, et le travail à faire se déduit du parc lu pour la liste Flotte. */
-  const reel = authentificationReelle();
   const [travaux, ordres, interventions] = await Promise.all([travauxServeur(await parametresServeur()), ordresServeur(), interventionsServeur()]);
-  return <EcranMaintenance travaux={travaux} ordres={ordres} interventions={interventions} aujourdhui={reel ? new Date().toISOString().slice(0, 10) : DATE_REFERENCE} vueInitiale={vueRetenue} cible={ref} />;
+  return <EcranMaintenance travaux={travaux} ordres={ordres} interventions={interventions} aujourdhui={jourCourant()} vueInitiale={vueRetenue} cible={ref} />;
 }

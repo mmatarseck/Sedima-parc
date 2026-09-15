@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { situationsServeur } from "@/donnees/situations";
 import { donneesTableauServeur } from "@/donnees/tableau-bord";
-import { DATE_REFERENCE } from "@/donnees/tableau-bord-demo";
+import { jourCourant } from "@/domaine/temps";
 import { compteServeur } from "@/lib/compte-serveur";
 import { parametresServeur } from "@/lib/parametres-serveur";
-import { authentificationReelle } from "@/lib/session-demo";
 
 /**
  * Le calcul du tableau de bord, rendu une fois et gardé par le navigateur.
@@ -17,7 +16,7 @@ import { authentificationReelle } from "@/lib/session-demo";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const aujourdhui = authentificationReelle() ? new Date().toISOString().slice(0, 10) : DATE_REFERENCE;
+  const aujourdhui = jourCourant();
   const compte = await compteServeur();
   /* Le garde de l'application laisse passer /api : sans compte, rien à calculer. */
   if (compte === "anonyme") return NextResponse.json({ erreur: "non connecté" }, { status: 401 });

@@ -1,7 +1,6 @@
 import { Classement, type IdentiteClassement } from "@/composants/chauffeurs/Classement";
-import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { jourCourant } from "@/domaine/temps";
 import { fichesChauffeursServeur } from "@/donnees/fiche-chauffeur";
-import { authentificationReelle } from "@/lib/session-demo";
 import { titrePage } from "@/domaine/marque";
 import { classer, type LigneClassement } from "@/domaine/performance";
 
@@ -20,7 +19,7 @@ function moisRevolus(reference: string, nombre: number): string[] {
  */
 export default async function PageClassement() {
   const fiches = await fichesChauffeursServeur();
-  const mois = moisRevolus(authentificationReelle() ? new Date().toISOString().slice(0, 10) : DATE_REFERENCE, 6);
+  const mois = moisRevolus(jourCourant(), 6);
   const classements: Record<string, LigneClassement[]> = {};
   for (const m of mois) classements[m] = classer(fiches, m);
 

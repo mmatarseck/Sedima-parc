@@ -2,7 +2,7 @@ import { EcranSeuilsPastilles } from "@/composants/parametres/EcranSeuilsPastill
 import { titrePage } from "@/domaine/marque";
 import { PASTILLES, evaluerPastille } from "@/domaine/pastilles";
 import { situationsServeur } from "@/donnees/situations";
-import { DATE_REFERENCE } from "@/donnees/tableau-bord-demo";
+import { jourCourant } from "@/domaine/temps";
 
 export const metadata = { title: titrePage("Pastilles — paramètres") };
 
@@ -13,7 +13,7 @@ export const metadata = { title: titrePage("Pastilles — paramètres") };
  * réglage déclenche avant de l'enregistrer.
  */
 export default async function PageParametresPastilles() {
-  const situations = await situationsServeur(DATE_REFERENCE);
+  const situations = await situationsServeur(jourCourant());
   const valeursDuJour = Object.fromEntries(PASTILLES.map((p) => [p.id, evaluerPastille(p, situations).valeur]));
   return <EcranSeuilsPastilles valeursDuJour={valeursDuJour} />;
 }

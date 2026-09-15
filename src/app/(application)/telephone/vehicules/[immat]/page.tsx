@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { FicheRapide, type DerniersFaits } from "@/composants/telephone/FicheRapide";
 import { afficher, normaliser } from "@/domaine/immatriculation";
 import { titrePage } from "@/domaine/marque";
-import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { jourCourant } from "@/domaine/temps";
 import { ficheServeur } from "@/donnees/fiche";
 import { lignesFlotte } from "@/donnees/flotte";
 import { parametresServeur } from "@/lib/parametres-serveur";
@@ -46,7 +46,7 @@ export default async function PageFicheRapide({ params }: Props) {
   };
   return (
     <Suspense fallback={null}>
-      <FicheRapide ligne={ligne} faits={faits} aujourdhui={DATE_REFERENCE} />
+      <FicheRapide ligne={ligne} faits={faits} aujourdhui={jourCourant()} />
     </Suspense>
   );
 }

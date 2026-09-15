@@ -4,13 +4,12 @@ import { FicheVehiculeCreee } from "@/composants/vehicule/FicheVehiculeCreee";
 import { afficher, normaliser } from "@/domaine/immatriculation";
 import { titrePage } from "@/domaine/marque";
 import { CartesDossierLeger } from "@/composants/parc-leger/CartesDossierLeger";
-import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { jourCourant } from "@/domaine/temps";
 import { ficheServeur } from "@/donnees/fiche";
 import { transfertsServeur } from "@/donnees/transferts";
 import { parcLegerServeur } from "@/donnees/parc-leger";
 import { parametresServeur } from "@/lib/parametres-serveur";
 import { personnesServeur } from "@/lib/personnes-serveur";
-import { authentificationReelle } from "@/lib/session-demo";
 
 type Props = { params: Promise<{ immat: string }>; searchParams: Promise<{ onglet?: string; discussion?: string; ref?: string }> };
 
@@ -74,7 +73,7 @@ export default async function PageVehicule({ params, searchParams }: Props) {
         attributaire={parcLeger.attributaires.find((a) => a.id === leger.attributaireId) ?? null}
         forfait={parcLeger.forfaits.find((f) => f.attributaireId === leger.attributaireId) ?? null}
         regles={parametres.parcLeger}
-        aujourdhui={authentificationReelle() ? new Date().toISOString().slice(0, 10) : DATE_REFERENCE}
+        aujourdhui={jourCourant()}
       />
     ) : undefined;
   const siennes = transferts.filter((t) => t.vehicule.id === v.id || normaliser(t.vehicule.immatriculation) === v.immatriculation);

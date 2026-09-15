@@ -2,10 +2,9 @@ import { notFound } from "next/navigation";
 import { FicheAttributaire } from "@/composants/chauffeurs/FicheAttributaire";
 import { titrePage } from "@/domaine/marque";
 import { lignesAttributaires } from "@/domaine/parc-leger";
-import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { jourCourant } from "@/domaine/temps";
 import { parcLegerServeur } from "@/donnees/parc-leger";
 import { parametresServeur } from "@/lib/parametres-serveur";
-import { authentificationReelle } from "@/lib/session-demo";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -39,6 +38,6 @@ export default async function PageAttributaire({ params }: Props) {
   const { ligne, parametres } = await ligneDe(decodeURIComponent(id));
   if (!ligne) notFound();
 
-  const aujourdhui = authentificationReelle() ? new Date().toISOString().slice(0, 10) : DATE_REFERENCE;
+  const aujourdhui = jourCourant();
   return <FicheAttributaire ligne={ligne} regles={parametres.parcLeger} aujourdhui={aujourdhui} />;
 }

@@ -1,6 +1,6 @@
 import { EcranIncidents } from "@/composants/incidents/EcranIncidents";
 import { titrePage } from "@/domaine/marque";
-import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { jourCourant } from "@/domaine/temps";
 import { listeIncidents } from "@/donnees/incidents-demo";
 
 export const metadata = { title: titrePage("Incidents & sinistres") };
@@ -12,5 +12,5 @@ export const metadata = { title: titrePage("Incidents & sinistres") };
  */
 export default async function PageIncidents({ searchParams }: { searchParams: Promise<{ ref?: string; declarer?: string }> }) {
   const { ref, declarer } = await searchParams;
-  return <EcranIncidents lignes={listeIncidents()} aujourdhui={DATE_REFERENCE} cible={ref} declarerInitial={declarer === "1"} />;
+  return <EcranIncidents lignes={listeIncidents()} aujourdhui={jourCourant()} cible={ref} declarerInitial={declarer === "1"} />;
 }

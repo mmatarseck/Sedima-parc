@@ -1,11 +1,10 @@
 import { EcranCaisse, type VueCaisse } from "@/composants/caisse/EcranCaisse";
 import { titrePage } from "@/domaine/marque";
 import { typeDuNumero } from "@/domaine/reference";
-import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { jourCourant } from "@/domaine/temps";
 import { achatsServeur } from "@/donnees/achats";
 import { caisseServeur } from "@/donnees/caisse";
 import { parametresServeur } from "@/lib/parametres-serveur";
-import { authentificationReelle } from "@/lib/session-demo";
 import { prestataires } from "@/donnees/referentiels";
 
 export const metadata = { title: titrePage("Caisse & achats") };
@@ -22,7 +21,6 @@ export const metadata = { title: titrePage("Caisse & achats") };
 export default async function PageCaisse({ searchParams }: { searchParams: Promise<{ vue?: string; ref?: string }> }) {
   const [{ vue, ref }, liste, caisse, achats] = await Promise.all([searchParams, prestataires(), parametresServeur().then(caisseServeur), achatsServeur()]);
   /* Base branchée : le journal, les dépenses à régler et les demandes d'achat viennent des tables. */
-  const reel = authentificationReelle();
   const typeCible = ref ? typeDuNumero(ref) : null;
   const vueRetenue: VueCaisse = vue === "achats" || typeCible === "achat" ? "achats" : "journal";
 
@@ -33,7 +31,7 @@ export default async function PageCaisse({ searchParams }: { searchParams: Promi
       achats={achats}
       prestataires={liste}
       soldeInitial={caisse.soldeInitial}
-      aujourdhui={reel ? new Date().toISOString().slice(0, 10) : DATE_REFERENCE}
+      aujourdhui={jourCourant()}
       vueInitiale={vueRetenue}
       cible={ref}
     />

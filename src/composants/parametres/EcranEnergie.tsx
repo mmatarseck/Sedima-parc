@@ -10,7 +10,7 @@ import { Echeance } from "@/composants/interface/Pastille";
 import { peutCloturer } from "@/domaine/cloture";
 import { BAREMES_DEFAUT, ENERGIE_DEFAUT, PARAMETRES_DEFAUT, baremeALaDate, type BaremeEnergie, type Parametres } from "@/domaine/parametres";
 import { trouverRole } from "@/domaine/roles";
-import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { jourCourant } from "@/domaine/temps";
 import { date as formaterDate, montant, nombre } from "@/lib/format";
 import { ecrireParametres, lireParametres } from "@/lib/parametres-demo";
 import { lireRole } from "@/lib/session-demo";
@@ -68,7 +68,7 @@ export function EcranEnergie() {
 
   /* Le barème en vigueur aujourd'hui, sur la saisie en cours : c'est lui que
      les formulaires appliqueront après enregistrement. */
-  const enVigueur = baremeALaDate(DATE_REFERENCE, { ...p, energie: { baremes: [...baremes].sort((a, b) => a.debut.localeCompare(b.debut)), capaciteCuve: capaciteNombre } });
+  const enVigueur = baremeALaDate(jourCourant(), { ...p, energie: { baremes: [...baremes].sort((a, b) => a.debut.localeCompare(b.debut)), capaciteCuve: capaciteNombre } });
 
   function changerBareme(index: number, cle: "debut" | ClePrix | "source", valeur: string) {
     setBaremes((liste) =>
@@ -87,7 +87,7 @@ export function EcranEnergie() {
     setBaremes((liste) => [
       ...liste,
       {
-        debut: DATE_REFERENCE,
+        debut: jourCourant(),
         prixLitreGasoil: dernier?.prixLitreGasoil ?? 0,
         prixLitreEssence: dernier?.prixLitreEssence ?? 0,
         prixKwh: dernier?.prixKwh ?? 0,
@@ -192,7 +192,7 @@ export function EcranEnergie() {
             <tbody>
               {baremes.map((b, i) => {
                 const courant = b.debut === enVigueur.debut;
-                const futur = b.debut > DATE_REFERENCE;
+                const futur = b.debut > jourCourant();
                 return (
                   <tr key={`${b.debut}-${i}`} className={`group ${courant ? "bg-accent-fond/40" : "hover:bg-surface-2"}`}>
                     <td className="h-12 border-b border-bordure px-5 last:border-b-0">
@@ -252,7 +252,7 @@ export function EcranEnergie() {
           </table>
         </div>
         <p className="meta px-5 py-3">
-          L&apos;historique commence le {formaterDate(baremes[0]?.debut ?? DATE_REFERENCE)}. Avant cette date, faute de mieux, c&apos;est le premier barème qui s&apos;applique — et il vaut mieux le
+          L&apos;historique commence le {formaterDate(baremes[0]?.debut ?? jourCourant())}. Avant cette date, faute de mieux, c&apos;est le premier barème qui s&apos;applique — et il vaut mieux le
           savoir que de croire à un prix nul.
         </p>
       </Carte>

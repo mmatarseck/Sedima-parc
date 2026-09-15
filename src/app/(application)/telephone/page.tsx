@@ -1,6 +1,6 @@
 import { EcranTelephoneAccueil, type CompteursAtelier } from "@/composants/telephone/EcranTelephoneAccueil";
 import { titrePage } from "@/domaine/marque";
-import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { jourCourant } from "@/domaine/temps";
 import { demandesServeur } from "@/donnees/demandes";
 import { lignesFlotte } from "@/donnees/flotte";
 import { transfertsServeur } from "@/donnees/transferts";
@@ -8,7 +8,6 @@ import { travauxServeur } from "@/donnees/maintenance";
 import { ordresServeur } from "@/donnees/ordres";
 import { estOuvert } from "@/domaine/maintenance";
 import { parametresServeur } from "@/lib/parametres-serveur";
-import { authentificationReelle } from "@/lib/session-demo";
 
 export const metadata = { title: titrePage("Téléphone") };
 
@@ -19,7 +18,7 @@ export const metadata = { title: titrePage("Téléphone") };
  */
 export default async function PageTelephone() {
   const [parametres, demandes, transferts] = await Promise.all([parametresServeur(), demandesServeur(), transfertsServeur()]);
-  const maintenant = authentificationReelle() ? new Date().toISOString() : `${DATE_REFERENCE}T12:00:00.000Z`;
+  const maintenant = new Date().toISOString();
   /* L'atelier compte sur le jeu de démonstration tant que les ordres n'ont pas leur table. */
   const ordres = await ordresServeur();
   const atelier: CompteursAtelier = {
@@ -27,5 +26,5 @@ export default async function PageTelephone() {
     planifies: ordres.filter((o) => o.statut === "planifie").length,
     aPlanifier: (await travauxServeur(parametres)).filter((t) => (t.urgence === "en-retard" || t.urgence === "a-planifier") && !ordres.some((o) => estOuvert(o.statut) && o.vehiculeId === t.vehiculeId)).length,
   };
-  return <EcranTelephoneAccueil lignes={await lignesFlotte(parametres)} aujourdhui={DATE_REFERENCE} demandes={demandes} transferts={transferts} atelier={atelier} maintenant={maintenant} />;
+  return <EcranTelephoneAccueil lignes={await lignesFlotte(parametres)} aujourdhui={jourCourant()} demandes={demandes} transferts={transferts} atelier={atelier} maintenant={maintenant} />;
 }

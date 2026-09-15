@@ -4,10 +4,9 @@ import { FournisseurEdition } from "@/composants/transactions/ContexteEdition";
 import { debutPeriode, type PeriodeMois } from "@/domaine/chauffeur";
 import { titrePage } from "@/domaine/marque";
 import { classer, kmMoyen } from "@/domaine/performance";
-import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { jourCourant } from "@/domaine/temps";
 import { ficheChauffeurServeur, fichesChauffeursServeur } from "@/donnees/fiche-chauffeur";
 import { personnesServeur } from "@/lib/personnes-serveur";
-import { authentificationReelle } from "@/lib/session-demo";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string; discussion?: string; ref?: string }> };
 
@@ -32,8 +31,7 @@ export default async function PageChauffeur({ params, searchParams }: Props) {
   const fiche = await ficheChauffeurServeur(decodeURIComponent(id));
   if (!fiche) notFound();
 
-  const reel = authentificationReelle();
-  const aujourdhui = reel ? new Date().toISOString().slice(0, 10) : DATE_REFERENCE;
+  const aujourdhui = jourCourant();
   const reference = new Date(`${aujourdhui}T00:00:00Z`);
   const moisRevolu = new Date(Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
   /* Ce qui compare le chauffeur aux autres se calcule ici, une fois pour tous :

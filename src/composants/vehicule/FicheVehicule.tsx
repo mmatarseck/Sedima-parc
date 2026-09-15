@@ -1,7 +1,7 @@
 "use client";
 
 import { prixEnergie } from "@/domaine/parametres";
-import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { jourCourant } from "@/domaine/temps";
 import { lireParametres } from "@/lib/parametres-demo";
 
 import Link from "next/link";
@@ -187,7 +187,7 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
              l'énergie du véhicule : on saisit un plein d'aujourd'hui. Pour un
              plein antérieur, la date saisie prime — le prix se corrige à la
              main, l'application ne devine pas à quel barème il se rattache. */
-          prixLitre: type === "plein" ? prixEnergie(v.energie, DATE_REFERENCE, lireParametres()) : undefined,
+          prixLitre: type === "plein" ? prixEnergie(v.energie, jourCourant(), lireParametres()) : undefined,
           statut: type === "visite" ? "rendez-vous" : type === "observation" ? "a-traiter" : "declare",
           roulant: "oui",
           /* L'attelage a deux côtés : la fiche dit lequel elle tient, sinon la

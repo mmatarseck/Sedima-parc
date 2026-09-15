@@ -1,7 +1,8 @@
 import { EcranDisponibilite } from "@/composants/disponibilite/EcranDisponibilite";
 import { conducteurDuJour, etatDisponibilite, type LigneDisponibilite } from "@/domaine/disponibilite";
 import { titrePage } from "@/domaine/marque";
-import { DATE_REFERENCE, listeChauffeurs } from "@/donnees/chauffeurs-demo";
+import { listeChauffeurs } from "@/donnees/chauffeurs-demo";
+import { jourCourant } from "@/domaine/temps";
 import { fichePourImmatriculation } from "@/donnees/fiche-demo";
 import { parametresServeur } from "@/lib/parametres-serveur";
 import { FLOTTE } from "@/donnees/parc-demo";
@@ -21,7 +22,7 @@ export default async function PageDisponibilite() {
     const v = l.vehicule;
     const immobilisation = f?.immobilisationAdministrative ?? null;
     const statutEffectif = immobilisation?.statut ?? v.statut;
-    const conducteur = conducteurDuJour(f?.affectations ?? [], chauffeurs, DATE_REFERENCE);
+    const conducteur = conducteurDuJour(f?.affectations ?? [], chauffeurs, jourCourant());
     const base = {
       vehiculeId: v.id,
       immatriculation: v.immatriculation,
@@ -44,5 +45,5 @@ export default async function PageDisponibilite() {
     const { etat, motif } = etatDisponibilite(base);
     return { ...base, etat, motif };
   });
-  return <EcranDisponibilite lignes={lignes} aujourdhui={DATE_REFERENCE} />;
+  return <EcranDisponibilite lignes={lignes} aujourdhui={jourCourant()} />;
 }

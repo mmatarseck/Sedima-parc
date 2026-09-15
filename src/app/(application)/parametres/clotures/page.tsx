@@ -1,5 +1,5 @@
 import { EcranClotures } from "@/composants/clotures/EcranClotures";
-import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { jourCourant } from "@/domaine/temps";
 import { titrePage } from "@/domaine/marque";
 
 export const metadata = { title: titrePage("Clôture des mois") };
@@ -17,5 +17,5 @@ function moisDepuisJanvierPrecedent(reference: string): string[] {
 }
 
 export default function PageClotures() {
-  return <EcranClotures mois={moisDepuisJanvierPrecedent(DATE_REFERENCE)} />;
+  return <EcranClotures mois={moisDepuisJanvierPrecedent(jourCourant())} />;
 }

@@ -8,7 +8,7 @@ import { HAUTEUR_BARRE } from "@/composants/coquille/mesures";
 import { CLASSES_TON } from "@/domaine/libelles";
 import type { Reponse } from "@/domaine/assistant";
 import { assistantDemo, questionsSuggerees } from "@/donnees/assistant-demo";
-import { DATE_REFERENCE } from "@/donnees/chauffeurs-demo";
+import { jourCourant } from "@/domaine/temps";
 
 /* ============================================================================
  * L'assistant du parc, accessible de partout.
@@ -155,7 +155,7 @@ export function Assistant() {
       setEchanges((liste) => [...liste, { id, question: q, reponse: null }]);
       setQuestion("");
       setAttente(true);
-      const reponse = await assistantDemo.repondre({ question: q, origine: chemin, aujourdhui: DATE_REFERENCE });
+      const reponse = await assistantDemo.repondre({ question: q, origine: chemin, aujourdhui: jourCourant() });
       setEchanges((liste) => liste.map((e) => (e.id === id ? { ...e, reponse } : e)));
       setAttente(false);
     },

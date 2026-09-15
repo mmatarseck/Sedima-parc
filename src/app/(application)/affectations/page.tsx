@@ -1,7 +1,8 @@
 import { EcranAffectations } from "@/composants/affectations/EcranAffectations";
 import type { VehiculePlanning } from "@/domaine/affectations";
 import { titrePage } from "@/domaine/marque";
-import { DATE_REFERENCE, listeChauffeurs } from "@/donnees/chauffeurs-demo";
+import { listeChauffeurs } from "@/donnees/chauffeurs-demo";
+import { jourCourant } from "@/domaine/temps";
 import { fichePourImmatriculation } from "@/donnees/fiche-demo";
 import { parametresServeur } from "@/lib/parametres-serveur";
 import { FLOTTE } from "@/donnees/parc-demo";
@@ -50,7 +51,7 @@ export default async function PageAffectations() {
   const chauffeurs = chauffeursTiers();
   const noms = new Map((await prestataires()).map((p) => [p.numero, p.raisonSociale]));
   const depuis = (() => {
-    const d = new Date(`${DATE_REFERENCE}T00:00:00Z`);
+    const d = new Date(`${jourCourant()}T00:00:00Z`);
     d.setUTCFullYear(d.getUTCFullYear() - 1);
     return d.toISOString().slice(0, 10);
   })();
@@ -82,7 +83,7 @@ export default async function PageAffectations() {
       vehicules={[...vehicules, ...tiers]}
       chauffeurs={listeChauffeurs()}
       chauffeursTiers={chauffeurs.map((c) => ({ id: c.id, nom: c.nom, transporteur: noms.get(c.transporteurNumero) ?? c.transporteurNumero }))}
-      aujourdhui={DATE_REFERENCE}
+      aujourdhui={jourCourant()}
     />
   );
 }

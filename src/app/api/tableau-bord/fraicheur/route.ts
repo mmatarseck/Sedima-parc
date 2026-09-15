@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { DATE_REFERENCE } from "@/donnees/tableau-bord-demo";
+import { jourCourant } from "@/domaine/temps";
 import { compteServeur } from "@/lib/compte-serveur";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
@@ -16,7 +16,7 @@ export async function GET() {
   const compte = await compteServeur();
   /* Le garde de l'application laisse passer /api : sans compte, rien à calculer. */
   if (compte === "anonyme") return NextResponse.json({ erreur: "non connecté" }, { status: 401 });
-  if (!authentificationReelle()) return NextResponse.json({ compte, derniereSaisie: null, aujourdhui: DATE_REFERENCE });
+  if (!authentificationReelle()) return NextResponse.json({ compte, derniereSaisie: null, aujourdhui: jourCourant() });
   const lecture = await (await clientServeur()).rpc("derniere_saisie");
   if (lecture.error) console.warn(`Fraîcheur du tableau de bord : derniere_saisie() indisponible (${lecture.error.message}).`);
   return NextResponse.json({
