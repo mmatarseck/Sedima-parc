@@ -56,6 +56,19 @@ const PHOTO_FOND = "/fond-connexion.jpg";
  */
 const VOILE = "linear-gradient(100deg, rgba(16,22,8,0.78) 0%, rgba(16,22,8,0.62) 26%, rgba(16,22,8,0.30) 48%, rgba(16,22,8,0) 68%)";
 
+/**
+ * Le logo complet — picto, « SEDIMA », mention « SA » — remplace le seul picto
+ * sur la page de garde depuis le 15 septembre 2026.
+ *
+ * C'est le seul écran que voit quelqu'un qui n'est pas encore entré, et c'est
+ * donc là que la maison se nomme en entier. Ailleurs dans l'application, le
+ * picto suffit : on sait où l'on est.
+ *
+ * La plaque est plus haute qu'elle ne l'était, et ce n'est pas une coquetterie :
+ * le logo est empilé — picto au-dessus, mot au milieu, « SA » en bas — et à la
+ * taille d'un picto carré, la mention du bas serait un trait gris.
+ */
+
 /** Ce que la page de garde dit quand on y revient sans l'avoir choisi. */
 const MOTIFS: Record<string, string> = {
   "sans-profil":
@@ -172,8 +185,8 @@ export function FormulaireConnexion() {
           l'accroche n'aurait fait que repousser le formulaire vers le bas. */}
       <section className="relative hidden flex-col justify-center px-12 py-12 lg:flex xl:px-16">
         <div className="flex items-center gap-3">
-          <span className="grid size-12 shrink-0 place-items-center rounded-[14px] bg-white/95 shadow-flottante">
-            <Image src="/sedima-picto.png" alt="" width={30} height={30} priority className="size-[30px] object-contain" />
+          <span className="grid h-[74px] shrink-0 place-items-center rounded-[16px] bg-white/95 px-4 shadow-flottante">
+            <Image src="/sedima-logo.webp" alt="SEDIMA SA" width={1920} height={1356} priority className="h-[50px] w-auto object-contain" />
           </span>
           <span className="text-[19px] font-semibold tracking-[-0.01em] text-white">{NOM_APPLICATION}</span>
         </div>
@@ -187,8 +200,8 @@ export function FormulaireConnexion() {
         {/* La marque revient ici sous 1024 px, puisque le panneau de gauche
             n'y est pas : sans elle, l'écran ne dirait pas où l'on entre. */}
         <div className="mb-7 flex flex-col items-center gap-2.5 lg:hidden">
-          <span className="grid size-12 place-items-center rounded-[14px] bg-surface ring-1 ring-bordure">
-            <Image src="/sedima-picto.png" alt="" width={30} height={30} priority className="size-[30px] object-contain" />
+          <span className="grid h-[68px] place-items-center rounded-[16px] bg-surface px-4 ring-1 ring-bordure">
+            <Image src="/sedima-logo.webp" alt="SEDIMA SA" width={1920} height={1356} priority className="h-[46px] w-auto object-contain" />
           </span>
           <span className="text-[14.5px] font-semibold tracking-[-0.01em] text-texte">{NOM_APPLICATION}</span>
         </div>
