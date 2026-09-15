@@ -291,6 +291,33 @@ function confirmerCreation(sujet: string, numero: string): void {
   );
 }
 
+/**
+ * La base vient d'accepter une écriture : le serveur a de quoi rendre autre
+ * chose qu'avant.
+ *
+ * POURQUOI CE SIGNAL EXISTE. Les listes déroulantes se construisent sur les
+ * référentiels que la mise en page a posés en mémoire au dernier rendu du
+ * serveur (`AmorceReferentiels`). L'écriture appelle bien `revalidatePath()`,
+ * mais côté serveur : sans que le routeur redemande la page, le navigateur
+ * garde la liste d'avant. Un chauffeur, un site, un usage ou un autre conducteur
+ * créé à l'instant restait donc introuvable dans le formulaire suivant — jusqu'à
+ * ce qu'on navigue ou qu'on recharge.
+ *
+ * Trois signalements du métier des 15 septembre 2026 avaient la même cause :
+ * « le site rajouté ne se retrouve pas sur un autre véhicule », « l'usage
+ * rajouté ne figure pas dans la liste », « les nouveaux chauffeurs ne figurent
+ * pas sur la liste pour affectation ».
+ *
+ * Un évènement du navigateur plutôt qu'un appel direct : ce module ne connaît
+ * pas React, et c'est la coquille qui sait rafraîchir.
+ */
+export const EVENEMENT_BASE_ECRITE = "sedima:base-ecrite";
+
+function signalerEcritureEnBase(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(EVENEMENT_BASE_ECRITE));
+}
+
 async function synchroniserCreation(creation: Creation): Promise<void> {
   try {
     const r = await ecrireCreation(creation);
@@ -299,6 +326,7 @@ async function synchroniserCreation(creation: Creation): Promise<void> {
     else if (r.issue === "ecrite") {
       if (r.numero !== creation.numero) renumeroter(creation.sujet, creation.numero, r.numero);
       confirmerCreation(creation.sujet, r.numero);
+      signalerEcritureEnBase();
     }
   } catch (e) {
     signalerRefus(`${TYPE_TRANSACTION[creation.type].libelle} ${creation.numero}`, `Non enregistré en base : ${e instanceof Error ? e.message : "erreur inconnue"}`, "#");
@@ -326,6 +354,9 @@ async function synchroniserModification(e: Enregistrement, diffs: { champ: strin
     const r = await ecrireModification({ numero: e.numero, type: e.type, motif: e.motif, diffs, sujet: e.sujet, cleMetier: e.cleMetier });
     if (r.issue === "refusee") signalerRefus(e.titre, r.motif, e.href);
     else if (r.issue === "hors-base") signalerRefus(e.titre, MOTIF_HORS_BASE, e.href);
+    /* Une correction change ce que les listes proposent autant qu'une création :
+       un chauffeur désactivé doit cesser d'être proposé à l'affectation. */
+    else signalerEcritureEnBase();
   } catch (x) {
     signalerRefus(e.titre, `Non enregistré en base : ${x instanceof Error ? x.message : "erreur inconnue"}`, e.href);
   }

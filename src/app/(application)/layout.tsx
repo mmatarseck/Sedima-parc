@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Coquille } from "@/composants/coquille/Coquille";
 import { AmorceSession } from "@/composants/coquille/AmorceSession";
 import { AmorceReferentiels } from "@/composants/coquille/AmorceReferentiels";
+import { RafraichirApresEcriture } from "@/composants/coquille/RafraichirApresEcriture";
 import { AmorceParametres } from "@/composants/parametres/AmorceParametres";
 import { referentielsChoixServeur } from "@/donnees/referentiels-choix";
 import { parametresServeur } from "@/lib/parametres-serveur";
@@ -33,6 +34,9 @@ export default async function LayoutApplication({ children }: { children: React.
       {session.etat === "connecte" ? <AmorceSession role={session.session.role} nom={session.session.nom} courriel={session.session.courriel} acces={session.session.acces} /> : null}
       <AmorceParametres parametres={parametres} />
       <AmorceReferentiels referentiels={referentiels} />
+      {/* Une écriture acceptée par la base redemande la page : sans quoi les
+          listes déroulantes gardent les référentiels du rendu précédent. */}
+      <RafraichirApresEcriture />
       {children}
     </Coquille>
   );
