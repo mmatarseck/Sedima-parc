@@ -24,7 +24,7 @@ import { libelleEcheance } from "@/domaine/entretien";
  * n'y agit pas. La carte s'indexe pourtant sur **tous** les onglets, pour que
  * la barre puisse l'interroger sans conversion de type.
  */
-export type OngletCible = "affectations" | "conformite" | "incidents" | "maintenance" | "carburant" | "kilometrage" | "journal";
+export type OngletCible = "affectations" | "conformite" | "incidents" | "maintenance" | "plan" | "carburant" | "kilometrage" | "journal";
 
 export interface AlerteFiche {
   onglet: OngletCible;
@@ -127,7 +127,7 @@ export function alertesDeLaFiche(
   const imminentes = fiche.planEntretien.echeances.filter((e) => e.etat === "a-planifier");
   if (depassees.length > 0) {
     alertes.push({
-      onglet: "maintenance",
+      onglet: "plan",
       ton: "defavorable",
       titre: depassees.length === 1 ? `${depassees[0]!.libelle} — échéance dépassée` : `${depassees.length} échéances d'entretien dépassées`,
       precision: depassees.map((e) => `${e.libelle} · ${libelleEcheance(e).toLowerCase()}`).join(" · "),
@@ -135,7 +135,7 @@ export function alertesDeLaFiche(
   }
   if (imminentes.length > 0) {
     alertes.push({
-      onglet: "maintenance",
+      onglet: "plan",
       ton: "vigilance",
       titre: imminentes.length === 1 ? `${imminentes[0]!.libelle} à prévoir` : `${imminentes.length} entretiens à planifier`,
       precision: imminentes.map((e) => `${e.libelle} · ${libelleEcheance(e).toLowerCase()}`).join(" · "),

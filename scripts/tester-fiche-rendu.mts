@@ -96,6 +96,24 @@ for (const brut of parc.vehicules) {
         React.createElement(FicheVehicule, { fiche, ongletInitial: "dossier", discussionInitiale: false, cible: undefined } as any)),
     );
     if (!dossier.includes("Dossier")) throw new Error("l'onglet Dossier ne s'annonce pas");
+    /* Maintenance et Plan d'entretien, séparés le 15 septembre 2026 : une seule
+       liste d'atelier d'un côté, les rappels de l'autre. Chacun doit porter ce
+       qui lui revient, et rien de ce qui revient à l'autre. */
+    etape = "rendre l'atelier";
+    const atelier = renderToString(
+      React.createElement(FournisseurEdition, { sujet: `vehicule:${v.immatriculation}`, href: `/flotte/${v.immatriculation}` } as any,
+        React.createElement(FicheVehicule, { fiche, ongletInitial: "maintenance", discussionInitiale: false, cible: undefined } as any)),
+    );
+    if (!atelier.includes("Atelier")) throw new Error("l'onglet Maintenance n'annonce pas sa liste d'atelier");
+    if (atelier.includes("Plan d&#x27;entretien —")) throw new Error("le plan d'entretien est resté dans Maintenance");
+    if (atelier.includes("Pièces et pneumatiques")) throw new Error("les fournitures ont gardé leur tableau à part");
+    etape = "rendre le plan";
+    const planOnglet = renderToString(
+      React.createElement(FournisseurEdition, { sujet: `vehicule:${v.immatriculation}`, href: `/flotte/${v.immatriculation}` } as any,
+        React.createElement(FicheVehicule, { fiche, ongletInitial: "plan", discussionInitiale: false, cible: undefined } as any)),
+    );
+    if (!planOnglet.includes("Plan d&#x27;entretien —")) throw new Error("l'onglet Plan d'entretien ne porte pas le plan");
+    if (planOnglet.includes("Atelier")) throw new Error("la liste d'atelier a suivi le plan");
     avecPieces += fiche.documents.filter((d) => d.fichier).length > 0 ? 1 : 0;
     n++;
     if (leger) legers++;

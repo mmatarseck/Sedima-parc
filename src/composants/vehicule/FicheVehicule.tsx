@@ -40,6 +40,7 @@ import {
   OngletCarburant,
   OngletConformite,
   OngletMaintenance,
+  OngletPlanEntretien,
   OngletJournal,
   OngletKilometrage,
 } from "./onglets";
@@ -62,6 +63,7 @@ type Onglet =
   | "dossier"
   | "incidents"
   | "maintenance"
+  | "plan"
   | "carburant"
   | "autres"
   | "kilometrage"
@@ -85,6 +87,9 @@ const ONGLETS: { cle: Onglet; libelle: string; ordinateurSeulement?: boolean }[]
   { cle: "dossier", libelle: "Dossier", ordinateurSeulement: true },
   { cle: "incidents", libelle: "Incidents & sinistres" },
   { cle: "maintenance", libelle: "Maintenance" },
+  /* Les rappels sur leur propre onglet (15 septembre 2026) : ce qui reste à
+     faire ne se lit pas au même moment que ce qui a été fait. */
+  { cle: "plan", libelle: "Plan d'entretien" },
   { cle: "carburant", libelle: "Carburant" },
   { cle: "autres", libelle: "Autres dépenses" },
   { cle: "kilometrage", libelle: "Kilométrages" },
@@ -495,6 +500,7 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
         )}
         {onglet === "incidents" && <OngletIncidents fiche={fiche} cible={cible} />}
         {onglet === "maintenance" && <OngletMaintenance fiche={fiche} cible={cible} />}
+        {onglet === "plan" && <OngletPlanEntretien fiche={fiche} />}
         {onglet === "carburant" && <OngletCarburant fiche={fiche} cible={cible} />}
         {onglet === "autres" && <OngletAutresDepenses fiche={fiche} cible={cible} />}
         {onglet === "kilometrage" && <OngletKilometrage fiche={fiche} cible={cible} />}

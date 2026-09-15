@@ -41,7 +41,6 @@ import type {
   EtatDocument,
   EvenementJournal,
   FicheVehicule,
-  Intervention,
   PeriodeStatutFiche,
   PleinFiche,
   ReleveFiche,
@@ -711,24 +710,114 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
 /* Entretien — interventions, pièces et pneumatiques                          */
 /* ========================================================================== */
 
+/* --------------------------------------------------------------------------
+ * Une ligne d'atelier : ce qui a été fait sur le véhicule, quelle que soit la
+ * pièce comptable qui le porte.
+ *
+ * Demande du métier du 15 septembre 2026 : « grouper sur une seule liste les
+ * interventions, les pièces et pneumatiques ». Les deux tableaux disaient la
+ * même chose en deux endroits — un train de pneus posé au garage était une
+ * intervention, le même train acheté puis monté était une dépense, et il
+ * fallait lire deux listes pour savoir ce qu'avait coûté un véhicule. La
+ * distinction est comptable, pas mécanique.
+ *
+ * LA COLONNE « NATURE » GARDE CE QUI SE PERD À FUSIONNER : préventif, curatif,
+ * pièces, pneumatiques. On voit d'un coup d'œil ce qui relève de l'entretien
+ * programmé et ce qui relève de la panne.
+ * ------------------------------------------------------------------------ */
+
+type NatureAtelier = "preventif" | "curatif" | "pieces" | "pneumatiques";
+
+interface LigneAtelier {
+  cle: string;
+  numero: string;
+  date: string;
+  nature: NatureAtelier;
+  objet: string;
+  /** Le garage d'une intervention, le fournisseur d'une fourniture. */
+  tiers: string;
+  km: number | null;
+  kmMotifRejet: string | null;
+  immobilisationJours: number | null;
+  montant: number;
+  reference: string | null;
+  /** Caisse, bon de commande ou facture — une fourniture seulement. */
+  origine: DepenseFiche["origine"] | null;
+  modifier: () => void;
+}
+
+const NATURE_ATELIER: Record<NatureAtelier, { libelle: string; ton: "favorable" | "vigilance" | "neutre" }> = {
+  preventif: { libelle: "Préventif", ton: "favorable" },
+  curatif: { libelle: "Curatif", ton: "vigilance" },
+  pieces: { libelle: "Pièces", ton: "neutre" },
+  pneumatiques: { libelle: "Pneumatiques", ton: "neutre" },
+};
+
 export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cible?: string }) {
   const ajouter = useAjoutVehicule(fiche);
   const { surcharger, demander, creations } = useEdition();
   const interventions = [...creations("intervention", fabriquerIntervention), ...fiche.interventions.map(surcharger)];
   const depensesCreees = creations("depense", fabriquerDepense);
-  const fournitures = [...depensesCreees, ...fiche.depenses.map(surcharger)].filter((d) => d.poste === "pieces" || d.poste === "pneumatiques");
+  /*
+   * Toute la famille « maintenance », et non les deux seuls postes pièces et
+   * pneumatiques : une dépense de poste « maintenance préventive » ou
+   * « curative » relève du même groupe de charges, mais l'ancien filtre la
+   * laissait de côté — et l'onglet Autres dépenses l'écarte aussi, par le même
+   * groupe. Elle n'apparaissait donc **sur aucun onglet de la fiche**.
+   */
+  const fournitures = [...depensesCreees, ...fiche.depenses.map(surcharger)].filter((d) => groupeDuPoste(d.poste) === "maintenance");
   const total = interventions.reduce((s, i) => s + i.montant, 0) + fournitures.reduce((s, d) => s + d.montant, 0);
   const observations = [...creations("observation", (c) => fabriquerObservation(c, fiche.ligne.vehicule.id)), ...fiche.observationsVisite.map(surcharger)];
   const observationsOuvertes = observations.filter((o) => o.statut !== "corrigee");
   const visitesParId = new Map([...creations("visite", (c) => fabriquerVisite(c, fiche.ligne.vehicule.id)), ...fiche.visitesTechniques].map((x) => [x.id, x]));
 
+  const atelier: LigneAtelier[] = [
+    ...interventions.map(
+      (i): LigneAtelier => ({
+        cle: `int-${i.numero}`,
+        numero: i.numero,
+        date: i.date,
+        nature: i.type === "preventif" ? "preventif" : "curatif",
+        objet: i.objet,
+        tiers: i.garage,
+        km: i.km,
+        kmMotifRejet: null,
+        immobilisationJours: i.immobilisationJours,
+        montant: i.montant,
+        reference: i.reference,
+        origine: null,
+        modifier: () => demander({ type: "intervention", numero: i.numero, titre: `Intervention · ${i.objet}`, valeurs: i as unknown as Record<string, unknown> }),
+      }),
+    ),
+    ...fournitures.map(
+      (d): LigneAtelier => ({
+        cle: `dep-${d.id}`,
+        numero: d.numero,
+        date: d.date,
+        /* Les postes « maintenance préventive » et « curative » se rangent sous
+           la nature qu'ils nomment : c'est le même travail qu'une intervention,
+           passé par la caisse plutôt que par le garage. */
+        nature: d.poste === "pneumatiques" ? "pneumatiques" : d.poste === "pieces" ? "pieces" : d.poste === "maintenance-preventive" ? "preventif" : "curatif",
+        objet: d.libelle,
+        tiers: d.beneficiaire ?? "—",
+        km: d.km,
+        kmMotifRejet: d.kmMotifRejet,
+        /* Une fourniture n'immobilise pas : c'est l'intervention qui la monte
+           qui immobilise, et elle a sa propre ligne. */
+        immobilisationJours: null,
+        montant: d.montant,
+        reference: d.reference,
+        origine: d.origine,
+        modifier: () => demander({ type: "depense", numero: d.numero, titre: `Dépense · ${d.libelle}`, valeurs: d as unknown as Record<string, unknown> }),
+      }),
+    ),
+  ].sort((a, b) => b.date.localeCompare(a.date));
+
   return (
     <div className="flex flex-col gap-5">
-      <PlanEntretien fiche={fiche} />
-
       <Carte
-        titre="Interventions"
-        precision={`${fiche.interventions.length} interventions · maintenance ${montant(total)} sur 12 mois, fournitures comprises`}
+        titre="Atelier"
+        precision={`${interventions.length} intervention${interventions.length > 1 ? "s" : ""} · ${fournitures.length} fourniture${fournitures.length > 1 ? "s" : ""} · ${montant(total)} sur 12 mois`}
         action={
           <button type="button" onClick={() => ajouter("intervention")} className="bouton-secondaire h-9">
             <Wrench className="size-4" strokeWidth={1.8} />
@@ -737,26 +826,28 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
         }
         sansMarge
       >
-        <TableauSimple<Intervention> reglages="fiche-vehicule.interventions"
-          cle={(i) => i.numero}
-          lignes={interventions}
-          numero={(i) => i.numero}
+        <TableauSimple<LigneAtelier> reglages="fiche-vehicule.atelier"
+          cle={(l) => l.cle}
+          lignes={atelier}
+          vide="Aucune intervention ni fourniture sur la période."
+          numero={(l) => l.numero}
           cible={cible}
-          surModifier={(i) => demander({ type: "intervention", numero: i.numero, titre: `Intervention · ${i.objet}`, valeurs: i as unknown as Record<string, unknown> })}
+          surModifier={(l) => l.modifier()}
           colonnes={[
-            { cle: "numero", libelle: "Réf.", rendu: (i) => <Numero valeur={i.numero} /> },
-            { cle: "date", libelle: "Date", rendu: (i) => <span className="code whitespace-nowrap">{date(i.date)}</span> },
+            { cle: "numero", libelle: "Réf.", rendu: (l) => <Numero valeur={l.numero} /> },
+            { cle: "date", libelle: "Date", rendu: (l) => <span className="code whitespace-nowrap">{date(l.date)}</span> },
             {
-              cle: "type",
-              libelle: "Type",
-              rendu: (i) => <Pastille ton={i.type === "preventif" ? "favorable" : "vigilance"}>{i.type === "preventif" ? "Préventif" : "Curatif"}</Pastille>,
+              cle: "nature",
+              libelle: "Nature",
+              rendu: (l) => <Pastille ton={NATURE_ATELIER[l.nature].ton}>{NATURE_ATELIER[l.nature].libelle}</Pastille>,
             },
-            { cle: "objet", libelle: "Objet", rendu: (i) => <span className="font-medium">{i.objet}</span> },
-            { cle: "garage", libelle: "Garage", rendu: (i) => i.garage },
-            { cle: "km", libelle: "Km relevé", alignee: "droite", rendu: (i) => kilometrage(i.km) },
-            { cle: "immob", libelle: "Immob.", alignee: "droite", rendu: (i) => (i.immobilisationJours === null ? <span className="text-attenue" title="Durée non relevée sur la pièce">—</span> : `${i.immobilisationJours} j`) },
-            { cle: "montant", libelle: "Montant", alignee: "droite", rendu: (i) => <span className="font-medium">{montant(i.montant)}</span> },
-            { cle: "ref", libelle: "Pièce", rendu: (i) => <span className="code whitespace-nowrap text-accent-fonce">{i.reference}</span> },
+            { cle: "objet", libelle: "Objet", rendu: (l) => <span className="block max-w-[360px] font-medium">{l.objet}</span> },
+            { cle: "tiers", libelle: "Garage ou fournisseur", rendu: (l) => <span className="block max-w-[220px] truncate">{l.tiers}</span> },
+            { cle: "origine", libelle: "Origine", rendu: (l) => (l.origine ? <PastilleOrigine origine={l.origine} /> : <span className="text-attenue-2">—</span>) },
+            { cle: "km", libelle: "Km relevé", alignee: "droite", rendu: (l) => <KmReleve km={l.km} motifRejet={l.kmMotifRejet} /> },
+            { cle: "immob", libelle: "Immob.", alignee: "droite", rendu: (l) => (l.immobilisationJours === null ? <span className="text-attenue" title="Une fourniture n'immobilise pas ; pour une intervention, durée non relevée sur la pièce">—</span> : `${l.immobilisationJours} j`) },
+            { cle: "montant", libelle: "Montant", alignee: "droite", rendu: (l) => <span className="font-medium">{montant(l.montant)}</span> },
+            { cle: "ref", libelle: "Pièce", rendu: (l) => <span className="code whitespace-nowrap text-accent-fonce">{l.reference ?? "—"}</span> },
           ]}
         />
       </Carte>
@@ -786,29 +877,26 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
         />
       </Carte>
 
-      <Carte titre="Pièces et pneumatiques" precision="Fournitures de maintenance hors intervention" sansMarge>
-        <TableauSimple<DepenseFiche> reglages="fiche-vehicule.pieces"
-          cle={(d) => d.id}
-          lignes={fournitures}
-          vide="Aucune fourniture sur la période."
-          numero={(d) => d.numero}
-          cible={cible}
-          surModifier={(d) => demander({ type: "depense", numero: d.numero, titre: `Dépense · ${d.libelle}`, valeurs: d as unknown as Record<string, unknown> })}
-          colonnes={[
-            { cle: "numero", libelle: "Réf.", rendu: (d) => <Numero valeur={d.numero} /> },
-            { cle: "date", libelle: "Date", rendu: (d) => <span className="code whitespace-nowrap">{date(d.date)}</span> },
-            { cle: "poste", libelle: "Poste", rendu: (d) => <span className="whitespace-nowrap font-medium">{POSTE_DEPENSE[d.poste]}</span> },
-            { cle: "libelle", libelle: "Libellé", rendu: (d) => <span className="block max-w-[360px] truncate">{d.libelle}</span> },
-            { cle: "beneficiaire", libelle: "Fournisseur", rendu: (d) => d.beneficiaire ?? "—" },
-            { cle: "origine", libelle: "Origine", rendu: (d) => <PastilleOrigine origine={d.origine} /> },
-            { cle: "reference", libelle: "Pièce", rendu: (d) => <span className="code whitespace-nowrap text-texte-2">{d.reference ?? "—"}</span> },
-            { cle: "km", libelle: "Km relevé", alignee: "droite", rendu: (d) => <KmReleve km={d.km} motifRejet={d.kmMotifRejet} /> },
-            { cle: "montant", libelle: "Montant", alignee: "droite", rendu: (d) => <span className="font-medium">{montant(d.montant)}</span> },
-          ]}
-        />
-      </Carte>
     </div>
   );
+}
+
+/* ========================================================================== */
+/* Plan d'entretien — les rappels, sur leur propre onglet                      */
+/* ========================================================================== */
+
+/**
+ * Le plan d'entretien tenait le haut de l'onglet Maintenance, au-dessus des
+ * listes. Demande du métier du 15 septembre 2026 : « mettre le plan
+ * d'intervention (les rappels) sur un autre onglet ».
+ *
+ * Les deux ne se lisent pas au même moment, et c'est ce qui les sépare :
+ * l'atelier dit **ce qui a été fait** et se consulte après coup ; le plan dit
+ * **ce qui reste à faire** et se consulte avant de décider. Les empiler
+ * obligeait à passer sous les rappels pour atteindre l'historique, chaque fois.
+ */
+export function OngletPlanEntretien({ fiche }: { fiche: FicheVehicule }) {
+  return <PlanEntretien fiche={fiche} />;
 }
 
 /* ========================================================================== */
