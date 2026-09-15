@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CalendarOff, ChevronLeft, MapPin, Pencil, Phone, Trophy } from "lucide-react";
 import { PanneauDiscussion, BoutonDiscussion } from "@/composants/discussion/PanneauDiscussion";
 import { BandeauKpi } from "@/composants/interface/BandeauKpi";
@@ -123,6 +124,7 @@ export function FicheChauffeur({
   }, []);
 
   const l = fiche.ligne;
+  const router = useRouter();
   const { surcharger, creer, demander, creations } = useEdition();
   const numeroFiche = `CHA-${l.id}`;
   const chauffeurSurcharge = surcharger({ numero: numeroFiche, ...l.chauffeur });
@@ -285,7 +287,25 @@ export function FicheChauffeur({
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               type="button"
-              onClick={() => demander({ type: "chauffeur", numero: numeroFiche, titre: `Fiche ${nomAffiche}`, valeurs: { ...fiche.identite, ...l.chauffeur, permisCategories: fiche.identite.permisCategories.join(" · ") } as unknown as Record<string, unknown> })}
+              onClick={() =>
+                demander({
+                  type: "chauffeur",
+                  numero: numeroFiche,
+                  titre: `Fiche ${nomAffiche}`,
+                  valeurs: { ...fiche.identite, ...l.chauffeur, permisCategories: fiche.identite.permisCategories.join(" · ") } as unknown as Record<string, unknown>,
+                  /* Corriger le nom change l'adresse de la fiche, qui s'en
+                     dérive : sans ce saut, le rafraîchissement tombait sur
+                     l'ancienne et rendait un 404 (signalé le 15 septembre
+                     2026). On part sur l'identifiant de la table, qui vaut
+                     avant comme après — l'adresse par le nom, elle, ne
+                     répondrait qu'une fois la base écrite, et l'écriture est
+                     encore en vol. */
+                  apresModification: (apres) => {
+                    const suivant = `${String(apres.prenom ?? "")} ${String(apres.nom ?? "")}`.trim();
+                    if (suivant && suivant !== `${l.chauffeur.prenom} ${l.chauffeur.nom}`.trim()) router.replace(`/chauffeurs/${l.chauffeur.id}`);
+                  },
+                })
+              }
               className="bouton-secondaire"
             >
               <Pencil className="size-4 text-texte-2" strokeWidth={1.7} />

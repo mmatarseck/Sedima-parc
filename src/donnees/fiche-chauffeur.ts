@@ -50,16 +50,30 @@ export function faitsChauffeurDepuisJson(j: FicheChauffeurJson, id: string): Fai
   };
 }
 
-/** La fiche d'un chauffeur par son identifiant d'adresse (« moustapha-diaw ») ; nulle hors périmètre. */
+/**
+ * La fiche d'un chauffeur par son identifiant d'adresse (« moustapha-diaw »),
+ * ou par l'identifiant de sa ligne en base ; nulle hors périmètre.
+ *
+ * POURQUOI LES DEUX. L'adresse lisible se dérive du nom : corriger le nom la
+ * change, et l'ancienne cesse d'exister. Le 15 septembre 2026, corriger le nom
+ * d'un conducteur rendait donc un 404 **à la confirmation** — la page se
+ * rafraîchissait sur une adresse que la personne venait de quitter.
+ *
+ * L'identifiant de la table, lui, ne bouge jamais. La fiche y renvoie après un
+ * changement de nom : l'adresse est alors moins jolie, mais elle reste valable
+ * pour toujours. Les listes, elles, continuent de pointer le nom.
+ */
 async function ficheChauffeurServeurBrut(id: string): Promise<FicheChauffeur | null> {
   const lignes = await lignesChauffeurs();
-  const ligne = lignes.find((l) => l.id === id) ?? null;
+  const ligne = lignes.find((l) => l.id === id) ?? lignes.find((l) => l.chauffeur.id === id) ?? null;
   if (!ligne) return null;
   const client = await clientServeur();
-  const lecture = await client.rpc("lire_fiche_chauffeur", { identifiant: id, uuid_devine: uuidDeterministe(`chauffeur:${id}`) }).maybeSingle<FicheChauffeurJson | null>();
+  /* L'adresse lisible de la ligne, et non ce que portait l'URL : la fonction de
+     lecture attend l'identifiant dérivé du nom, pas celui de la table. */
+  const lecture = await client.rpc("lire_fiche_chauffeur", { identifiant: ligne.id, uuid_devine: uuidDeterministe(`chauffeur:${ligne.id}`) }).maybeSingle<FicheChauffeurJson | null>();
   const aujourdhui = new Date().toISOString().slice(0, 10);
   /* Fonction pas encore jouée : la fiche se dresse sur la ligne seule. */
-  const faits = !lecture.error && lecture.data ? faitsChauffeurDepuisJson(lecture.data, id) : { adresse: null, contactUrgence: null, permisDelivrance: null, documents: [], affectations: [], indisponibilites: [], sanctions: [], incidents: [], pleins: [], depenses: [], releves: [] };
+  const faits = !lecture.error && lecture.data ? faitsChauffeurDepuisJson(lecture.data, ligne.id) : { adresse: null, contactUrgence: null, permisDelivrance: null, documents: [], affectations: [], indisponibilites: [], sanctions: [], incidents: [], pleins: [], depenses: [], releves: [] };
   return assemblerFicheChauffeur(ligne, faits, aujourdhui);
 }
 

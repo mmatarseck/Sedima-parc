@@ -13,11 +13,20 @@ type Props = { params: Promise<{ id: string }> };
    ce qu'un rendu statique interdit. */
 export const dynamic = "force-dynamic";
 
+/**
+ * La ligne d'un autre conducteur, par son adresse lisible ou par l'identifiant
+ * de sa table.
+ *
+ * L'adresse se dérive du nom : corriger le nom la change, et l'ancienne cesse
+ * d'exister — d'où un 404 à la confirmation, signalé le 15 septembre 2026.
+ * L'identifiant de la table, lui, ne bouge jamais ; la fiche y renvoie après un
+ * changement de nom. Les listes continuent de pointer le nom.
+ */
 async function ligneDe(id: string) {
   const parametres = await parametresServeur();
   const parcLeger = await parcLegerServeur(parametres);
   const lignes = lignesAttributaires(parcLeger, parametres.parcLeger.forfaitCarburantMensuel);
-  return { ligne: lignes.find((l) => l.id === id) ?? null, parametres };
+  return { ligne: lignes.find((l) => l.id === id) ?? lignes.find((l) => l.attributaire.id === id) ?? null, parametres };
 }
 
 export async function generateMetadata({ params }: Props) {
