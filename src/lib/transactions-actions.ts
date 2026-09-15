@@ -555,6 +555,30 @@ export async function ecrireModification(e: {
      une base pour résoudre. Changer le nom refait le lien — ou l'efface, quand
      le nouveau vendeur n'est pas au référentiel. */
   if (e.type === "vehicule" && "fournisseur" in colonnes) colonnes.fournisseur_id = await prestataireIdDe(client, colonnes.fournisseur);
+  /*
+   * Le site : choisi, il arrive en identifiant ; écrit, il arrive en nom — et
+   * la colonne attend un identifiant.
+   *
+   * Sans cette résolution, changer le site d'un véhicule pour un site nouveau
+   * envoyait son nom dans `site_id` : Postgres refusait, la modification était
+   * perdue, et aucun site n'était créé. La création passait, elle, parce
+   * qu'elle traverse `rattacher()` — d'où un geste qui marchait à la création
+   * et échouait à la modification (signalé le 15 septembre 2026).
+   *
+   * La région et le type se lisent dans les écarts : ils ne sont pas des
+   * colonnes du véhicule, ils ne servent qu'à fonder le site.
+   */
+  if ("site_id" in colonnes) {
+    const ecart = (champ: string) => e.diffs.find((d) => d.champ === champ)?.valeur;
+    const id = await siteIdDe(client, colonnes.site_id, ecart("siteRegion"), ecart("siteType"), moi.utilisateurId);
+    if (!id) {
+      return {
+        issue: "refusee",
+        motif: `Le site « ${String(colonnes.site_id)} » n'existe pas et n'a pas pu être créé : indiquez sa région et son type.`,
+      };
+    }
+    colonnes.site_id = id;
+  }
   /* Tout se repère par `numero`, sauf le véhicule : sa clé est son
      immatriculation — celle d'**avant**, puisqu'une plaque peut être ce qui
      change. La trace, elle, se range sous cette même clé. */

@@ -391,5 +391,25 @@ if ("ligne" in remorque) {
   attendu("la base accepte une énergie vide", n?.energie === null);
 }
 
+/* -- Un site écrit doit être résolu avant d'entrer (15 septembre 2026) ------ */
+/* Le champ Site se crée depuis sa liste : choisi, il porte un identifiant ;
+   écrit, il porte un nom. La colonne, elle, attend un identifiant — et c'est
+   pourquoi l'écriture doit résoudre avant d'écrire, à la création comme à la
+   modification. Ce banc dit ce qui arrive si on l'oublie. */
+
+const siteEcritEnClair = colonnesModification("vehicule", [{ champ: "siteId", valeur: "Dépôt de Kaolack" }]);
+attendu(`un site écrit arrive en clair dans la colonne (${String(siteEcritEnClair.site_id)})`, siteEcritEnClair.site_id === "Dépôt de Kaolack");
+
+let siteNonResolu = false;
+try {
+  await pg.query(`update vehicule set site_id = 'Dépôt de Kaolack' where immatriculation = 'AA032EA'`);
+} catch {
+  siteNonResolu = true;
+}
+attendu("la base refuse un nom de site là où elle attend un identifiant", siteNonResolu);
+
+const siteChoisi = colonnesModification("vehicule", [{ champ: "siteId", valeur: siteChauffeur.id }]);
+attendu("un site choisi passe tel quel", siteChoisi.site_id === siteChauffeur.id);
+
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);
