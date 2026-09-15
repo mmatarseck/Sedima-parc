@@ -11,7 +11,6 @@
 import { cache } from "react";
 import type { AccesCourant } from "@/domaine/acces";
 import type { Role } from "@/domaine/roles";
-import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur, utilisateurCourant } from "@/lib/supabase";
 
 export interface SessionServeur {
@@ -25,7 +24,16 @@ export interface SessionServeur {
 }
 
 /** Ce qu'une page apprend de la session : personne, ou un compte sans profil, ou un compte. */
-export type EtatSession = { etat: "demonstration" } | { etat: "anonyme" } | { etat: "sans-profil"; courriel: string | null } | { etat: "connecte"; session: SessionServeur };
+/**
+ * Trois états, plus de quatrième.
+ *
+ * « démonstration » a été retiré le 15 septembre 2026. Il s'installait dès que
+ * `NEXT_PUBLIC_SUPABASE_URL` manquait — ce qui arrive aussi quand un serveur a
+ * démarré avant que `.env.local` ne porte les clés — et l'application servait
+ * alors des faits inventés sans qu'aucun écran ne le signale. Sans
+ * configuration, elle refuse désormais de s'ouvrir, et dit pourquoi.
+ */
+export type EtatSession = { etat: "anonyme" } | { etat: "sans-profil"; courriel: string | null } | { etat: "connecte"; session: SessionServeur };
 
 /**
  * L'état de la session courante. `getUser()` revalide le jeton auprès de
@@ -34,7 +42,6 @@ export type EtatSession = { etat: "demonstration" } | { etat: "anonyme" } | { et
  * le dit plutôt que de lui montrer des listes vides.
  */
 async function sessionCouranteBrut(): Promise<EtatSession> {
-  if (!authentificationReelle()) return { etat: "demonstration" };
   const client = await clientServeur();
   const {
     data: { user },

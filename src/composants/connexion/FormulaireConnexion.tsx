@@ -4,8 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, LockKeyhole } from "lucide-react";
-import { ROLES } from "@/domaine/roles";
-import { authentificationReelle, fermerSession, ouvrirSession } from "@/lib/session-demo";
+import { fermerSession } from "@/lib/session-demo";
 import { effacerInstantanes, marquerConnexion } from "@/lib/instantanes";
 import { clientNavigateur } from "@/lib/supabase";
 import { ACCROCHE_APPLICATION, NOM_APPLICATION, PRECISION_APPLICATION } from "@/domaine/marque";
@@ -57,14 +56,14 @@ const MOTIFS: Record<string, string> = {
  * repousser le formulaire vers le bas. La marque revient alors au-dessus du
  * titre, et la carte prend l'écran, marge comprise.
  *
- * Tant qu'aucun projet Supabase n'est configuré, le formulaire ne vaut pas
- * authentification et l'entrée se fait par les comptes de démonstration. Cet
- * encart disparaît de lui-même dès que la configuration est présente.
+ * L'entrée se fait par un compte Supabase, et par lui seul. Le choix d'un rôle
+ * sans mot de passe — le « mode démonstration » — a été retiré le 15 septembre
+ * 2026 : il servait des données inventées à qui n'avait pas configuré la base,
+ * et l'a fait un jour sans que rien ne le dise.
  */
 export function FormulaireConnexion() {
   const router = useRouter();
   const parametres = useSearchParams();
-  const reelle = authentificationReelle();
   const [identifiant, setIdentifiant] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [motDePasseVisible, setMotDePasseVisible] = useState(false);
@@ -78,17 +77,13 @@ export function FormulaireConnexion() {
   useEffect(() => {
     if (!motif) return;
     setErreur(MOTIFS[motif] ?? null);
-    if (reelle) void clientNavigateur().auth.signOut();
+    void clientNavigateur().auth.signOut();
     fermerSession();
     effacerInstantanes();
-  }, [motif, reelle]);
+  }, [motif]);
 
   async function soumettre(evenement: React.FormEvent) {
     evenement.preventDefault();
-    if (!reelle) {
-      setErreur("L'authentification n'est pas branchée sur ce poste. Choisissez un compte de démonstration ci-dessous.");
-      return;
-    }
     setErreur(null);
     setInformation(null);
     setEnCours(true);
@@ -123,13 +118,6 @@ export function FormulaireConnexion() {
     const { error } = await clientNavigateur().auth.resetPasswordForEmail(adresse, { redirectTo: `${window.location.origin}/connexion` });
     if (error) setErreur(`Réinitialisation refusée : ${error.message}`);
     else setInformation(`Un lien de réinitialisation a été envoyé à ${adresse}, s'il correspond à un compte.`);
-  }
-
-  function entrer(role: (typeof ROLES)[number]) {
-    ouvrirSession(role.role);
-    marquerConnexion();
-    const suite = parametres.get("suite");
-    router.push(suite && suite.startsWith("/") && !suite.startsWith("//") ? suite : "/flotte");
   }
 
   /* Les champs en pilule, d'après la maquette : rayon plein, fond très clair
@@ -212,16 +200,12 @@ export function FormulaireConnexion() {
             </label>
           </div>
 
-          {/* Le lien d'oubli sous les champs, aligné à droite. Il n'apparaît
-              qu'en authentification réelle : sans projet configuré, il n'y a
-              pas de mot de passe à réinitialiser. */}
-          {reelle ? (
-            <div className="mt-2.5 flex justify-end">
-              <button type="button" className="text-[12.5px] font-medium text-accent-fonce hover:text-accent" onClick={() => void motDePasseOublie()}>
-                Mot de passe oublié&nbsp;?
-              </button>
-            </div>
-          ) : null}
+          {/* Le lien d'oubli sous les champs, aligné à droite. */}
+          <div className="mt-2.5 flex justify-end">
+            <button type="button" className="text-[12.5px] font-medium text-accent-fonce hover:text-accent" onClick={() => void motDePasseOublie()}>
+              Mot de passe oublié&nbsp;?
+            </button>
+          </div>
 
           {erreur ? (
             <div className="mt-4 flex items-start gap-2.5 rounded-[10px] bg-defavorable-fond px-3.5 py-3">
@@ -247,48 +231,6 @@ export function FormulaireConnexion() {
             Double authentification obligatoire pour les administrateurs
           </p>
 
-          {!reelle ? (
-            <>
-              {/* Le séparateur « OU » de la maquette. Là où elle propose
-                  Google et Facebook, on n'a rien à proposer de tel — et on ne
-                  va pas dessiner des boutons qui ne mènent nulle part. Ce qui
-                  vient après, c'est ce que cette application a de second
-                  chemin d'entrée : les comptes de démonstration. */}
-              <div className="mt-7 flex items-center gap-3">
-                <span className="h-px flex-1 bg-bordure" />
-                <span className="text-[11.5px] font-semibold tracking-[0.08em] text-attenue uppercase">ou</span>
-                <span className="h-px flex-1 bg-bordure" />
-              </div>
-
-              <div className="mt-5 mb-3 flex items-baseline">
-                <span className="micro-sur-titre">Mode démonstration</span>
-                <span className="meta ml-auto text-[11.5px]">sans mot de passe</span>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {ROLES.map((role) => (
-                  <button
-                    key={role.role}
-                    type="button"
-                    onClick={() => entrer(role)}
-                    className="flex items-center gap-2.5 rounded-full border border-bordure bg-surface-2 py-1.5 pr-3 pl-1.5 text-left transition-colors hover:border-accent-bordure hover:bg-accent-fond"
-                  >
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface text-[11px] font-semibold text-accent-tres-fonce ring-1 ring-bordure">
-                      {role.initiales}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-[12.5px] font-medium text-texte">{role.libelle}</span>
-                      <span className="meta block truncate text-[11px]">{role.compteTest}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              <p className="meta mt-3 text-[11.5px] leading-[1.5]">
-                En production, le rôle ne se choisit pas ici : il est résolu côté serveur, comme dans SEDIMA Opérations.
-              </p>
-            </>
-          ) : null}
         </form>
 
         {/* Le pied : la maison et ses métiers. Sur un téléphone il passe à la
