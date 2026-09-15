@@ -157,7 +157,7 @@ export function FormulaireConnexion() {
     /* Le fond dégradé occupe toute la page ; la carte blanche flotte dessus
        avec une marge tout autour, si bien que le vert continue de se voir sur
        les quatre côtés. C'est le trait de la maquette qui porte le plus. */
-    <div className="relative flex min-h-screen flex-col justify-center overflow-hidden bg-[#4e7d1a] p-4 sm:p-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(460px,46%)] lg:items-stretch lg:gap-0 lg:p-5">
+    <div className="relative flex min-h-screen flex-col justify-center overflow-hidden bg-[#4e7d1a] p-4 sm:p-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(420px,34%)] lg:items-stretch lg:gap-0 lg:p-5">
       {/* -- Le fond, en trois couches -----------------------------------------
           La photo, le dégradé de marque en transparence, puis un voile sombre
           côté texte. Les trois sont `aria-hidden` et sans interaction : ce
@@ -183,7 +183,7 @@ export function FormulaireConnexion() {
       </section>
 
       {/* -- À droite : la carte blanche ------------------------------------ */}
-      <div className="relative mx-auto flex w-full max-w-[440px] flex-col items-center rounded-[26px] bg-surface px-5 py-8 shadow-flottante sm:px-8 lg:my-0 lg:max-w-none lg:justify-center lg:rounded-[28px] lg:px-8 lg:py-10">
+      <div className="relative mx-auto flex w-full max-w-[440px] flex-col items-center rounded-[26px] bg-surface px-5 py-8 shadow-flottante sm:px-8 lg:my-0 lg:max-w-[380px] lg:justify-center lg:rounded-[28px] lg:px-7 lg:py-10">
         {/* La marque revient ici sous 1024 px, puisque le panneau de gauche
             n'y est pas : sans elle, l'écran ne dirait pas où l'on entre. */}
         <div className="mb-7 flex flex-col items-center gap-2.5 lg:hidden">
