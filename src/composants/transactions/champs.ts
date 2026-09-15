@@ -45,6 +45,56 @@ const DATE = (cle: string, libelle = "Date"): ChampEdition => ({ cle, libelle, t
  * écrit ce qui n'y est pas — et l'application l'apprend. C'est le même geste
  * que pour la marque et le modèle, demandé le 15 septembre 2026 pour l'usage.
  */
+/**
+ * Un site écrit plutôt que choisi ? Alors la table en demande deux choses de
+ * plus.
+ *
+ * `site` exige une région et un type — ni l'une ni l'autre ne se devinent d'un
+ * nom. Les demander ici, seulement quand on crée, vaut mieux que de les
+ * inventer : « Dakar » posé d'office serait faux pour un dépôt de Ziguinchor,
+ * et personne n'irait le corriger.
+ *
+ * Un site choisi dans la liste porte son identifiant ; un site écrit porte son
+ * nom. C'est ce qui les distingue, ici comme à l'écriture.
+ */
+/**
+ * Ce véhicule a-t-il un moteur ?
+ *
+ * Une semi-remorque n'en a pas : lui demander son énergie, puis l'enregistrer
+ * « gasoil » faute de réponse, a donné dix valeurs fausses au parc (signalé le
+ * 15 septembre 2026, corrigé par 0052). Le champ ne se pose donc plus que là
+ * où la question a un sens.
+ */
+export const aUnMoteur = (saisie: Record<string, string | boolean>): boolean => {
+  const famille = String(saisie.categorieFamille ?? saisie.categorie ?? "");
+  return famille !== "semi-remorque";
+};
+
+export const siteEcrit = (saisie: Record<string, string | boolean>): boolean => {
+  const v = String(saisie.siteId ?? "").trim();
+  return v.length > 0 && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+};
+
+const CHAMPS_SITE_NOUVEAU: ChampEdition[] = [
+  { cle: "siteRegion", libelle: "Région du nouveau site", type: "texte", obligatoire: true, visibleSi: siteEcrit },
+  {
+    cle: "siteType",
+    libelle: "Type du nouveau site",
+    type: "choix",
+    options: [
+      { valeur: "usine", libelle: "Usine" },
+      { valeur: "depot", libelle: "Dépôt" },
+      { valeur: "ferme", libelle: "Ferme" },
+      { valeur: "abattoir", libelle: "Abattoir" },
+      { valeur: "siege", libelle: "Siège" },
+      { valeur: "boutique", libelle: "Boutique" },
+      { valeur: "garage", libelle: "Garage" },
+    ],
+    obligatoire: true,
+    visibleSi: siteEcrit,
+  },
+];
+
 function optionsUsages(): { valeur: string; libelle: string }[] {
   return lireParametres().vehicules.usages.map((u) => ({ valeur: u.libelle, libelle: u.libelle }));
 }
@@ -406,7 +456,8 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "nom", libelle: "Nom", type: "texte", obligatoire: true },
     { cle: "matriculeRh", libelle: "Matricule RH", type: "texte" },
     { cle: "contrat", libelle: "Contrat", type: "choix", options: [{ valeur: "salarie", libelle: "Salarié" }, { valeur: "interimaire", libelle: "Intérimaire" }, { valeur: "prestataire", libelle: "Prestataire" }], obligatoire: true },
-    { cle: "siteId", libelle: "Site de rattachement", type: "choix", options: optionsSites() },
+    { cle: "siteId", libelle: "Site de rattachement", type: "suggestion", options: optionsSites() },
+    ...CHAMPS_SITE_NOUVEAU,
     { cle: "telephone", libelle: "Téléphone", type: "texte" },
     { cle: "permisNumero", libelle: "N° de permis", type: "texte" },
     { cle: "permisEcheance", libelle: "Échéance du permis", type: "date" },
@@ -470,7 +521,7 @@ export function champsVehicule(): ChampEdition[] {
       { cle: "immatriculation", libelle: "Immatriculation", type: "texte", obligatoire: true },
       ...champsIdentiteVehicule(),
       { cle: "typeModele", libelle: "Type / modèle (carte grise)", type: "texte" },
-      { cle: "energie", libelle: "Énergie", type: "choix", options: options(ENERGIE), obligatoire: true },
+      { cle: "energie", libelle: "Énergie", type: "choix", options: options(ENERGIE), obligatoire: false, visibleSi: aUnMoteur },
       /* Une adresse d'image se colle ici ; le cadre de l'en-tête, lui, téléverse
          un fichier dans le seau et n'en garde que la référence. */
       { cle: "photo", libelle: "Photo (adresse)", type: "texte" },
@@ -480,7 +531,8 @@ export function champsVehicule(): ChampEdition[] {
       { cle: "categorieFlotte", libelle: "Catégorie de flotte", type: "choix", options: options(CATEGORIE_FLOTTE), obligatoire: true },
       { cle: "usage", libelle: "Usage (vrac, frigorifique, plateau…)", type: "suggestion", options: optionsUsages(), obligatoire: true },
       { cle: "businessUnit", libelle: "Business unit", type: "choix", options: options(BUSINESS_UNIT) },
-      { cle: "siteId", libelle: "Site", type: "choix", options: optionsSites() },
+      { cle: "siteId", libelle: "Site", type: "suggestion", options: optionsSites() },
+        ...CHAMPS_SITE_NOUVEAU,
       { cle: "transportSpecial", libelle: "Transport spécial (denrées, poussins)", type: "oui-non" },
       { cle: "engage", libelle: "Engagé au parc (compte dans D_TDPA)", type: "oui-non" },
     ]),
@@ -588,8 +640,9 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
         { cle: "categorieFlotte", libelle: "Catégorie de flotte", type: "choix", options: options(CATEGORIE_FLOTTE), obligatoire: true },
         { cle: "usage", libelle: "Usage (vrac, frigorifique, plateau…)", type: "suggestion", options: optionsUsages(), obligatoire: true },
         { cle: "businessUnit", libelle: "Business unit", type: "choix", options: options(BUSINESS_UNIT) },
-        { cle: "siteId", libelle: "Site", type: "choix", options: optionsSites() },
-        { cle: "energie", libelle: "Énergie", type: "choix", options: options(ENERGIE), obligatoire: true },
+        { cle: "siteId", libelle: "Site", type: "suggestion", options: optionsSites() },
+        ...CHAMPS_SITE_NOUVEAU,
+        { cle: "energie", libelle: "Énergie", type: "choix", options: options(ENERGIE), obligatoire: false, visibleSi: aUnMoteur },
         { cle: "transportSpecial", libelle: "Transport spécial", type: "oui-non" },
         { cle: "engage", libelle: "Engagé au parc (compte dans D_TDPA)", type: "oui-non" },
         { cle: "premiereMiseEnCirculation", libelle: "1re mise en circulation", type: "date" },

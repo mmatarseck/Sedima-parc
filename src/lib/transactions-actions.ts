@@ -92,6 +92,45 @@ function idLisible(nom: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * Le site d'une saisie : son identifiant s'il a été choisi, sinon celui qui
+ * porte ce nom — et à défaut un site créé sur-le-champ.
+ *
+ * Demande du métier du 15 septembre 2026 : pouvoir créer depuis la liste
+ * déroulante, comme pour la marque ou l'usage. Un site n'est pas une étiquette :
+ * la table en exige une région et un type, que le formulaire demande alors
+ * plutôt que de les inventer. Le code, lui, se dérive du nom — c'est une clé
+ * technique, pas une information qu'on invente.
+ */
+async function siteIdDe(client: SupabaseClient, valeur: unknown, region: unknown, type: unknown, utilisateurId: string): Promise<string | null> {
+  if (typeof valeur !== "string" || !valeur.trim()) return null;
+  const saisi = valeur.trim();
+  if (EST_UUID.test(saisi)) return saisi;
+  const connu = await client.from("site").select("id").ilike("libelle", saisi).limit(1).maybeSingle<{ id: string }>();
+  if (connu.data) return connu.data.id;
+  const libelleRegion = typeof region === "string" ? region.trim() : "";
+  const typeSite = typeof type === "string" ? type.trim() : "";
+  /* Sans région ni type, on ne crée pas : le formulaire les demande dès qu'un
+     nom est écrit, et une ligne posée avec « Dakar » par défaut serait fausse
+     pour un dépôt de Ziguinchor — et personne n'irait la corriger. */
+  if (!libelleRegion || !typeSite) return null;
+  const code = saisi
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 24);
+  const cree = await client.from("site").insert({ code: code || `SITE-${Date.now().toString(36).toUpperCase()}`, libelle: saisi, region: libelleRegion, type: typeSite, cree_par: utilisateurId }).select("id").maybeSingle<{ id: string }>();
+  if (cree.error) {
+    /* Le code est déjà pris : le site existe sous un libellé voisin, on le
+       reprend plutôt que d'en poser un second. */
+    const parCode = await client.from("site").select("id").eq("code", code).maybeSingle<{ id: string }>();
+    return parCode.data?.id ?? null;
+  }
+  return cree.data?.id ?? null;
+}
+
 async function prestataireIdDe(client: SupabaseClient, nom: unknown): Promise<string | null> {
   if (typeof nom !== "string" || !nom.trim()) return null;
   const r = await client.from("prestataire").select("id").ilike("raison_sociale", nom.trim()).limit(1).maybeSingle<{ id: string }>();
@@ -157,7 +196,7 @@ async function libellePieceDe(client: SupabaseClient, numero: unknown): Promise<
   return null;
 }
 
-async function rattacher(client: SupabaseClient, c: Creation): Promise<Rattachement> {
+async function rattacher(client: SupabaseClient, c: Creation, utilisateurId: string): Promise<Rattachement> {
   const s = decomposerSujet(c.sujet);
   const v = c.valeurs;
   const vehiculeId = (await vehiculeIdDe(client, v.vehiculeId)) ?? (s.genre === "vehicule" ? await vehiculeIdDe(client, s.cle) : null);
@@ -186,10 +225,13 @@ async function rattacher(client: SupabaseClient, c: Creation): Promise<Rattachem
   }
   /* Un mouvement de stock ou un pneu cite sa pièce de rechange ; le mouvement nomme qui l'a fait. */
   const pieceId = c.type === "mouvement" || c.type === "pneu" ? await pieceIdDe(client, v.pieceNumero) : null;
+  /* Le site : choisi, retrouvé par son nom, ou créé — c'est le seul référentiel
+     qu'une liste déroulante peut enrichir, parce qu'il tient en trois champs. */
+  const siteId = await siteIdDe(client, v.siteId, v.siteRegion, v.siteType, utilisateurId);
   /* L'attelage lie deux véhicules : celui de la fiche, et celui que le formulaire nomme. */
   const autreVehiculeId = c.type === "attelage" ? await vehiculeIdDe(client, v.autreId) : null;
   if (c.type === "mouvement" && !v.auteur) v.auteur = c.auteur;
-  return { vehiculeId, chauffeurId, prestataireId, camionTiers, affretementId, pieceId, autreVehiculeId };
+  return { vehiculeId, chauffeurId, prestataireId, camionTiers, affretementId, pieceId, autreVehiculeId, siteId };
 }
 
 /** Le numéro suivant du type pour l'année, d'après ce que la table porte déjà. */
@@ -213,7 +255,7 @@ export async function ecrireCreation(c: Creation): Promise<ResultatEcriture> {
   const table = tableDe(c.type);
   if (!table) return { issue: "hors-base" };
 
-  const r = await rattacher(client, c);
+  const r = await rattacher(client, c, moi.utilisateurId);
   if (c.type === "achat" && !c.valeurs.demandeurRole) c.valeurs.demandeurRole = moi.role;
   const prep = ligneCreation(c.type, c.numero, c.valeurs, r);
   if ("refus" in prep) return { issue: "refusee", motif: `Non enregistré en base : ${prep.refus}.` };

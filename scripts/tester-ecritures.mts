@@ -368,5 +368,28 @@ attendu(
 );
 attendu(`un usage livré garde le sien (${libelleUsageCourant("frigorifique", null)})`, libelleUsageCourant("frigorifique", null) === "Frigorifique");
 
+/* -- Une semi-remorque n'a pas d'énergie (0052) ----------------------------- */
+/* « energie » était obligatoire avec « gasoil » par défaut : les dix
+   semi-remorques du parc le portaient, et c'était faux dix fois. */
+
+const remorque = ligneCreation("vehicule", "VEH-2026-90020", { immatriculation: "DK-7777-GG", marque: "Lecitrailer", appellation: "Plateau nu", categorie: "semi-remorque" }, r);
+attendu(
+  `une semi-remorque part sans énergie (${"ligne" in remorque ? String(remorque.ligne.energie) : "refus"})`,
+  "ligne" in remorque && remorque.ligne.energie === null,
+);
+/* Même si le formulaire en portait une : on ne garde pas une réponse à une
+   question qui n'a pas lieu d'être posée. */
+const remorqueForcee = ligneCreation("vehicule", "VEH-2026-90021", { immatriculation: "DK-8888-HH", marque: "Trailor", appellation: "Plateau", categorie: "semi-remorque", energie: "gasoil" }, r);
+attendu("une énergie saisie sur une remorque n'est pas retenue", "ligne" in remorqueForcee && remorqueForcee.ligne.energie === null);
+
+const camion = ligneCreation("vehicule", "VEH-2026-90022", { immatriculation: "DK-9999-II", marque: "Tata", appellation: "LPT 1618", categorie: "camion" }, r);
+attendu(`un camion sans précision reste au gasoil (${"ligne" in camion ? String(camion.ligne.energie) : "refus"})`, "ligne" in camion && camion.ligne.energie === "gasoil");
+
+if ("ligne" in remorque) {
+  await inserer("vehicule", remorque.ligne);
+  const n = (await pg.query(`select energie::text as energie from vehicule where immatriculation = 'DK7777GG'`)).rows[0] as { energie: string | null };
+  attendu("la base accepte une énergie vide", n?.energie === null);
+}
+
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);

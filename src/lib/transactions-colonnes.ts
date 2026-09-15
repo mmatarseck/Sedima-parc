@@ -137,6 +137,8 @@ export interface Rattachement {
   affretementId?: string | null;
   /** La pièce de rechange qu'un mouvement ou un pneu cite, résolue par son numéro. */
   pieceId?: string | null;
+  /** Le site, résolu ou créé par le serveur : la saisie peut porter un nom plutôt qu'un identifiant. */
+  siteId?: string | null;
   /**
    * L'autre moitié d'un attelage : le seul cas où une transaction lie **deux**
    * véhicules. `vehiculeId` reste celui de la fiche d'où l'on saisit.
@@ -644,7 +646,7 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
           prenom,
           matricule_rh: texte(v.matriculeRh),
           contrat: texte(v.contrat) ?? "salarie",
-          site_id: texte(v.siteId),
+          site_id: r.siteId ?? texte(v.siteId),
           telephone: texte(v.telephone),
           permis_numero: texte(v.permisNumero),
           permis_categories: categoriesPermis(v.permisCategories),
@@ -689,9 +691,13 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
           usage: usageSaisi(v),
           usage_metier: usageMetierSaisie(v),
           transport_special: booleen(v.transportSpecial),
-          energie: texte(v.energie) ?? "gasoil",
+          /* Une semi-remorque n'a pas de moteur : son énergie reste vide (0052).
+             Pour le reste, le gasoil est le défaut du parc — dire « gasoil »
+             d'un camion sans précision est raisonnable ; le dire d'une remorque
+             ne l'est pas. */
+          energie: categorie === "semi-remorque" ? null : (texte(v.energie) ?? "gasoil"),
           business_unit: texte(v.businessUnit),
-          site_id: texte(v.siteId),
+          site_id: r.siteId ?? texte(v.siteId),
           statut,
           engage: v.engage === undefined ? true : booleen(v.engage),
           /* Chez qui il a été acheté : le lien quand le référentiel le connaît,

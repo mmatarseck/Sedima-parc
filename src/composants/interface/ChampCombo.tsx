@@ -81,8 +81,22 @@ export function ChampCombo({
   function fermer() {
     setOuvert(false);
     /* Sans création, un texte qui ne correspond à rien revient au dernier choix. */
-    if (!creation) setTexte(choisie?.libelle ?? "");
-    else if (texteNet !== valeur) onChange(texteNet);
+    if (!creation) {
+      setTexte(choisie?.libelle ?? "");
+      return;
+    }
+    /*
+     * Avec création, le texte tapé devient la valeur — sauf si une option est
+     * choisie et qu'on n'a rien changé.
+     *
+     * Sans ce garde, fermer la liste après avoir choisi « Keur Massar »
+     * remplaçait l'identifiant du site par son libellé, et l'écriture ne
+     * retrouvait plus la ligne. Le défaut ne se voyait pas : jusqu'au
+     * 15 septembre 2026, tous les champs créables — marque, modèle,
+     * fournisseur — portaient le libellé comme valeur.
+     */
+    if (choisie && sansAccents(texteNet) === sansAccents(choisie.libelle)) return;
+    if (texteNet !== valeur) onChange(texteNet);
   }
 
   function choisir(o: OptionCombo) {
