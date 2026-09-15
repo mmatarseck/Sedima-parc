@@ -40,6 +40,7 @@ export type CibleAjout =
   | "indisponibilite"
   | "aptitude"
   | "attelage"
+  | "attribution"
   | "visite"
   | "observation";
 

@@ -60,10 +60,10 @@ import {
   POSTE_DEPENSE,
   ROLE_AFFECTATION,
   TYPE_DOCUMENT,
-  USAGE_VEHICULE,
   groupeDuPoste,
   type Ton,
 } from "@/domaine/libelles";
+import { libelleUsageCourant } from "@/domaine/parametres";
 import { libelleMois } from "@/domaine/temps";
 import { date, kilometrage, montant, montantCourt, nombre, pourcentage } from "@/lib/format";
 import { GraphiqueBarresEmpilees } from "./GraphiqueBarresEmpilees";
@@ -343,7 +343,7 @@ export function OngletCaracteristiques({ fiche, detenteur }: { fiche: FicheVehic
             { libelle: "Date d'immatriculation", valeur: date(i.dateImmatriculation) },
             { libelle: "Région", valeur: i.region },
             { libelle: "Catégorie", valeur: libelleCategorie(v) },
-            { libelle: "Usage", valeur: USAGE_VEHICULE[v.usage] },
+            { libelle: "Usage", valeur: libelleUsageCourant(v.usage, v.usageMetier) },
           ]}
         />
       </Carte>

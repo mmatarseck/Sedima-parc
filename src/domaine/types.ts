@@ -124,6 +124,8 @@ export interface Vehicule {
    * reste dans `categorie`. Absente ou nulle : la famille suffit.
    */
   categorieMetier?: string | null;
+  /** L'usage ajouté par le métier (« usa-… », 0051) ; nul quand le véhicule porte un usage livré. */
+  usageMetier?: string | null;
   categorieFlotte: CategorieFlotte;
   /** Coché sur la fiche : vracs, transport de poussins, frigorifiques. Sert à D_TICV. */
   transportSpecial: boolean;

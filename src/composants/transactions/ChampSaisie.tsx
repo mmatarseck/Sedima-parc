@@ -43,16 +43,21 @@ export function ChampSaisie({
     );
   }
   if (champ.type === "choix") {
-    return (
-      <select value={String(v ?? "")} onChange={(e) => onChange(e.target.value)} className={commun}>
-        <option value="">—</option>
-        {champ.options?.map((o) => (
-          <option key={o.valeur} value={o.valeur}>
-            {o.libelle}
-          </option>
-        ))}
-      </select>
-    );
+    /*
+     * On écrit pour filtrer, même là où l'on ne peut pas créer.
+     *
+     * C'était une liste déroulante native : pour trouver un véhicule parmi cent
+     * quatre-vingt-quatre, ou un prestataire parmi cent quatre, il fallait
+     * dérouler. Demande du métier du 15 septembre 2026 — « la possibilité
+     * d'écrire » dans tous les champs à liste.
+     *
+     * Sans `creation` : la valeur reste contrainte à la liste. Beaucoup de ces
+     * listes sont des énumérations de la base — l'usage, l'énergie, le statut,
+     * le poste de dépense —, et une valeur inventée y serait refusée à
+     * l'écriture. Ce qui peut s'enrichir le fait par un champ « suggestion »,
+     * et le dit.
+     */
+    return <ChampCombo valeur={String(v ?? "")} onChange={onChange} options={champ.options ?? []} invalide={invalide} placeholder="Choisir, ou écrire pour filtrer" />;
   }
   if (champ.type === "suggestion") {
     return <ChampCombo valeur={String(v ?? "")} onChange={onChange} options={champ.suggestionsDe ? champ.suggestionsDe(saisie) : (champ.options ?? [])} creation invalide={invalide} placeholder="Choisir, ou écrire pour créer" />;

@@ -74,7 +74,6 @@ import {
   TYPE_SANCTION,
   TYPE_VISITE,
   STATUT_VISITE,
-  USAGE_VEHICULE,
   groupeDuPoste,
   type Ton,
 } from "@/domaine/libelles";
@@ -97,6 +96,7 @@ import { MODE_REMUNERATION } from "@/domaine/flotte-tierce";
 import { ETAT_BUDGET } from "@/domaine/budget";
 import { NIVEAU_PRESTATAIRE, ageDette, avanceOuverte } from "@/domaine/compte-prestataire";
 import { ETAT_LEGER, REGIME_USAGE, depensesForfaitsDe, echeancierPlanCar, type SourceParcLeger } from "@/domaine/parc-leger";
+import { libelleUsageCourant } from "./parametres";
 import { libelleMois } from "@/domaine/temps";
 
 
@@ -211,7 +211,7 @@ function situation(s: SourceRapports, vehiculeId: string): LigneRapport {
     marque: v.marque,
     categorie: CATEGORIE_VEHICULE[v.categorie],
     categorieFlotte: CATEGORIE_FLOTTE[v.categorieFlotte],
-    usage: USAGE_VEHICULE[v.usage],
+    usage: libelleUsageCourant(v.usage, v.usageMetier),
     energie: v.energie ? ENERGIE[v.energie] : null,
     businessUnit: v.businessUnit ? BUSINESS_UNIT[v.businessUnit] : null,
     site: l.site?.libelle ?? null,
@@ -288,7 +288,7 @@ export function resumesFicheDepuisLaSource(s: Omit<SourceRapports, "resumesFiche
         chargeUtile: v.chargeUtile,
         energie: v.energie,
         capaciteReservoir: v.capaciteReservoir,
-        utilisation: USAGE_VEHICULE[v.usage] ?? "—",
+        utilisation: libelleUsageCourant(v.usage, v.usageMetier),
         regimePropriete: v.categorieFlotte === "interne" ? "Propriété SEDIMA" : v.categorieFlotte === "adex" ? "Mise à disposition ADEX" : "Location",
         entite: v.businessUnit ? BUSINESS_UNIT[v.businessUnit] : "SEDIMA SA",
         valeurAcquisition: v.valeurAcquisition,

@@ -22,6 +22,7 @@ import { StatutModifiable } from "./StatutModifiable";
 import type { FicheVehicule as Fiche } from "@/domaine/fiche";
 import type { Personne } from "@/domaine/discussion";
 import type { Transfert } from "@/domaine/transferts";
+import { idAttributaire } from "@/domaine/parc-leger";
 import { BUSINESS_UNIT, STATUT_VEHICULE, TYPE_DOCUMENT, libelleCategorie } from "@/domaine/libelles";
 import { personnesUtilisateurs } from "@/lib/discussion-demo";
 import { date, montantCourt, nombre } from "@/lib/format";
@@ -132,6 +133,10 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
   const statutCourant = immobilisation?.statut ?? statutsCrees[0]?.statut ?? v.statut;
   const i = fiche.indicateurs;
   const titulaire = fiche.affectations.find((a) => a.role === "titulaire" && a.fin === null) ?? null;
+  /* Qui tient ce véhicule, quand ce n'est pas un chauffeur : la liste Flotte le
+     nomme depuis toujours, l'en-tête de la fiche l'ignorait. */
+  const attributaire = fiche.ligne.attributaire ?? null;
+  const leger = Boolean(v.regime && v.regime !== "exploitation");
 
   /* Sans formulaire encore, le menu « Ajouter » ouvre l'onglet qui liste le
      type choisi. Les cibles sans onglet propre (incident, statut) mènent au
@@ -142,6 +147,7 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
     intervention: "maintenance",
     affectation: "affectations",
     attelage: "affectations",
+    attribution: "affectations",
     visite: "conformite",
     observation: "maintenance",
     incident: "incidents",
@@ -159,6 +165,7 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
     intervention: "Nouvelle intervention",
     affectation: "Nouvelle affectation",
     attelage: "Nouvel attelage",
+    attribution: "Attribution",
     visite: "Rendez-vous de visite technique",
     observation: "Observation de visite technique",
     incident: "Déclarer un incident ou un accident",
@@ -305,6 +312,31 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
                   )}
                   {fiche.ligne.nombreSuppleants > 0 ? <span className="text-attenue">+ {fiche.ligne.nombreSuppleants} suppléant</span> : null}
                   <BoutonAffecter onClick={() => ajouter("affectation")} libelle={`Changer l'affectation de ${v.immatriculationAffichee}`} />
+                </span>
+              ) : attributaire ? (
+                /* Un véhicule de service ou de fonction n'a pas de chauffeur :
+                   il a quelqu'un qui le tient. L'en-tête disait « Aucun
+                   chauffeur affecté » là où la liste Flotte nommait
+                   l'attributaire — deux écrans, deux réponses, pour le même
+                   véhicule (corrigé le 15 septembre 2026). */
+                <span className="inline-flex items-center gap-1.5" title="Le véhicule est attribué, non affecté à un chauffeur">
+                  <UserRound className="size-3.5 text-attenue" strokeWidth={1.8} />
+                  {attributaire.pool ? (
+                    <span className="font-medium text-texte-2">{attributaire.nom}</span>
+                  ) : (
+                    <Link href={`/attributaires/${idAttributaire(attributaire.nom)}`} className="font-medium text-texte hover:text-accent-fonce hover:underline">
+                      {attributaire.nom}
+                    </Link>
+                  )}
+                  <BoutonAffecter onClick={() => ajouter("attribution")} libelle={`Changer ou retirer l'attributaire de ${v.immatriculationAffichee}`} />
+                </span>
+              ) : leger ? (
+                /* Léger sans personne : ce qui manque est une attribution, pas
+                   une affectation — et c'est le bon geste qu'on propose. */
+                <span className="inline-flex items-center gap-1.5 text-vigilance">
+                  <UserRound className="size-3.5" strokeWidth={1.8} />
+                  Aucun attributaire
+                  <BoutonAffecter onClick={() => ajouter("attribution")} libelle={`Attribuer ${v.immatriculationAffichee} à quelqu'un`} />
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-vigilance">

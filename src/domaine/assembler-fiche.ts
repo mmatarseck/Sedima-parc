@@ -17,9 +17,10 @@
 
 import type { LivraisonFiche } from "./livraisons";
 import { exigeDocument, immobilisationAdministrative } from "./documents";
+import { libelleUsageCourant } from "./parametres";
 import { echeancesDuPlan, type CompteursVehicule, type DernierPassage, type PlanVehicule, type ProgrammeEntretien } from "./entretien";
 import { agregerCouts, type AffectationFiche, type AttelageFiche, type DepenseFiche, type DocumentFiche, type EcheanceFiche, type EtatDocument, type EvenementJournal, type FicheVehicule, type IndicateursFiche, type Intervention, type PeriodeStatutFiche, type PleinFiche, type ReleveFiche, type ConsommationMensuelle } from "./fiche";
-import { BUSINESS_UNIT, POSTE_DEPENSE, STATUT_VEHICULE, TYPE_DOCUMENT, USAGE_VEHICULE } from "./libelles";
+import { BUSINESS_UNIT, POSTE_DEPENSE, STATUT_VEHICULE, TYPE_DOCUMENT } from "./libelles";
 import { prixEnergie, type Parametres } from "./parametres";
 import { formerNumero } from "./reference";
 import { controlerReleves } from "./releves";
@@ -314,7 +315,7 @@ export function assemblerFiche(l: LigneFlotte, faits: FaitsFiche, parametres: Pa
       chargeUtile: v.chargeUtile,
       energie: v.energie,
       capaciteReservoir: v.capaciteReservoir,
-      utilisation: USAGE_VEHICULE[v.usage] ?? "—",
+      utilisation: libelleUsageCourant(v.usage, v.usageMetier),
       regimePropriete: v.categorieFlotte === "interne" ? "Propriété SEDIMA" : v.categorieFlotte === "adex" ? "Mise à disposition ADEX" : "Location",
       entite: v.businessUnit ? BUSINESS_UNIT[v.businessUnit] : "SEDIMA SA",
       valeurAcquisition: v.valeurAcquisition,

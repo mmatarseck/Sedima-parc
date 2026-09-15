@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Camera, Loader2, X } from "lucide-react";
+import { Camera, FileText, Loader2, X } from "lucide-react";
 import { televerserPhoto, urlPhoto } from "@/lib/photos";
 
 /**
@@ -14,6 +14,7 @@ export function ChampPhoto({ valeur, onChange, dossier, libelle = "Prendre la ph
   const [chargement, setChargement] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [apercu, setApercu] = useState<string | null>(null);
+  const estPdf = Boolean(valeur && /.pdf$/i.test(valeur));
   useEffect(() => {
     let vivant = true;
     void urlPhoto(valeur).then((u) => {
@@ -40,17 +41,21 @@ export function ChampPhoto({ valeur, onChange, dossier, libelle = "Prendre la ph
   return (
     <div className={compact ? "" : "flex flex-col gap-1.5"}>
       <label className={`flex cursor-pointer items-center gap-3 rounded-[12px] border px-3 ${compact ? "h-9 py-0" : "py-3"} ${valeur ? "border-accent-bordure bg-accent-fond" : erreur ? "border-defavorable bg-defavorable-fond" : "border-dashed border-bordure-champ bg-surface-2"}`}>
-        {apercu ? (
+        {apercu && !estPdf ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={apercu} alt="" className={`${compact ? "size-7" : "size-12"} shrink-0 rounded-[8px] object-cover`} />
+        ) : valeur && estPdf ? (
+          /* Un PDF n'a pas de vignette : on le dit par son icône plutôt que de
+             laisser un cadre vide qu'on prendrait pour un envoi manqué. */
+          <FileText className={`${compact ? "size-5" : "size-7"} shrink-0 text-accent-tres-fonce`} strokeWidth={1.8} />
         ) : chargement ? (
           <Loader2 className="size-5 shrink-0 animate-spin text-accent-fonce" strokeWidth={1.8} />
         ) : (
           <Camera className={`size-5 shrink-0 ${valeur ? "text-accent-tres-fonce" : erreur ? "text-defavorable" : "text-attenue"}`} strokeWidth={1.8} />
         )}
         <span className="min-w-0 flex-1">
-          <span className={`block ${compact ? "text-[12.5px]" : "text-[13px]"} font-semibold text-texte`}>{chargement ? "Envoi de la photo…" : valeur ? "Photo jointe" : libelle}</span>
-          {!compact ? <span className="meta block truncate">{erreur ?? (valeur ? "Touchez pour la remplacer" : precision)}</span> : null}
+          <span className={`block ${compact ? "text-[12.5px]" : "text-[13px]"} font-semibold text-texte`}>{chargement ? "Envoi en cours…" : valeur ? (estPdf ? "Document PDF joint" : "Photo jointe") : libelle}</span>
+          {!compact ? <span className="meta block truncate">{erreur ?? (valeur ? "Touchez pour remplacer" : precision)}</span> : null}
         </span>
         {valeur ? (
           <button
@@ -59,13 +64,17 @@ export function ChampPhoto({ valeur, onChange, dossier, libelle = "Prendre la ph
               e.preventDefault();
               onChange(null);
             }}
-            aria-label="Retirer la photo"
+            aria-label="Retirer la pièce"
             className="grid size-7 shrink-0 place-items-center rounded-full text-texte-2 hover:bg-surface-3"
           >
             <X className="size-4" strokeWidth={2} />
           </button>
         ) : null}
-        <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => void choisir(e.target.files?.[0])} />
+        {/* Le PDF est admis depuis le 15 septembre 2026 : une police
+            d'assurance ou un procès-verbal de visite arrive rarement en photo.
+            Plus de `capture` : il forçait l'appareil photo du téléphone et
+            fermait la porte au fichier déjà sur l'appareil. */}
+        <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={(e) => void choisir(e.target.files?.[0])} />
       </label>
       {compact && erreur ? <p className="mt-1 text-[12px] text-defavorable">{erreur}</p> : null}
     </div>

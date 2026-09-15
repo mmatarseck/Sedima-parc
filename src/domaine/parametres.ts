@@ -16,7 +16,7 @@
  * la réglementation lui accorde), et l'échéancier part de là.
  * ==========================================================================*/
 
-import type { CategorieVehicule, TypeDocument } from "./types";
+import type { CategorieVehicule, TypeDocument, UsageVehicule } from "./types";
 import { ALERTES, PREVENANCE_DEFAUT, type FamilleAlerte } from "./alertes";
 import { PASTILLE_PAR_ID, SEUILS_DEFAUT } from "./pastilles";
 import { ROLES, type Role } from "./roles";
@@ -247,9 +247,26 @@ export interface CategorieVehiculeParametree {
   standard: boolean;
 }
 
+export interface UsageVehiculeParametre {
+  /** « vrac » pour un usage livré, « usa-… » pour un usage ajouté par le métier. */
+  id: string;
+  libelle: string;
+  /** Livré avec l'application : il ne se retire pas. */
+  standard: boolean;
+}
+
 export interface ParametresVehicules {
   marques: MarqueVehicule[];
   categories: CategorieVehiculeParametree[];
+  /**
+   * Ce que le véhicule transporte — vrac, frigorifique, plateau.
+   *
+   * Contrairement à la catégorie, l'usage ne commande rien : aucune règle de
+   * l'application ne s'y branche. Un usage ajouté n'a donc pas de famille à
+   * déclarer ; il se range sous « autre » en base (0051) et s'affiche sous le
+   * libellé écrit.
+   */
+  usages: UsageVehiculeParametre[];
 }
 
 export const FAMILLES_VEHICULE: readonly CategorieVehicule[] = ["camion", "tracteur", "semi-remorque", "camionnette", "vehicule-leger", "bus", "moto", "engin"];
@@ -304,9 +321,29 @@ export const MARQUES_DEFAUT: MarqueVehicule[] = [
   { nom: "Nissan", modeles: ["Rogue"] },
 ];
 
+/* Les libellés sont écrits ici plutôt qu'importés de `libelles.ts` : ce module
+   y est déjà importé, et l'inverse fermerait le cercle. Même raison que pour
+   LIBELLE_FAMILLE juste au-dessus. */
+const USAGES_LIVRES: { id: UsageVehicule; libelle: string }[] = [
+  { id: "vrac", libelle: "Vrac" },
+  { id: "frigorifique", libelle: "Frigorifique" },
+  { id: "poussins", libelle: "Poussins" },
+  { id: "plateau", libelle: "Plateau" },
+  { id: "ridelle", libelle: "Ridelle" },
+  { id: "citerne", libelle: "Citerne" },
+  { id: "benne", libelle: "Benne" },
+  { id: "fourgon", libelle: "Fourgon" },
+  { id: "tracteur", libelle: "Tracteur seul" },
+  { id: "utilitaire", libelle: "Utilitaire" },
+  { id: "autre", libelle: "Autre" },
+];
+
+export const USAGES_STANDARD: UsageVehiculeParametre[] = USAGES_LIVRES.map((u) => ({ ...u, standard: true }));
+
 export const VEHICULES_DEFAUT: ParametresVehicules = {
   marques: MARQUES_DEFAUT,
   categories: CATEGORIES_STANDARD,
+  usages: USAGES_STANDARD,
 };
 
 /** Clé de rapprochement d'un nom : « MITSUBISHI », « Mitsubishi » et « mitsubishi  » sont la même marque. */
@@ -339,6 +376,39 @@ export function apprendreMarqueModele(marques: MarqueVehicule[], marque: string,
   if (!existante) return [...marques, { nom, modeles: mod ? [mod] : [] }].sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
   if (!mod || existante.modeles.some((x) => cleNom(x) === cleNom(mod))) return marques;
   return marques.map((m) => (m === existante ? { ...m, modeles: [...m.modeles, mod].sort((a, b) => a.localeCompare(b, "fr")) } : m));
+}
+
+/**
+ * « usa-betaillere » : un identifiant lisible, **déterministe**.
+ *
+ * Pas de suffixe de désambiguïsation, contrairement aux catégories : c'est
+ * l'écriture qui traduit le libellé saisi en identifiant, sans connaître les
+ * paramètres du navigateur. Les deux doivent tomber sur le même résultat, donc
+ * le libellé seul décide. Deux libellés qui se ramènent au même identifiant
+ * sont, pour une étiquette, le même usage — « Bétaillère » et « betaillere ».
+ */
+export function idUsage(libelle: string): string {
+  return `usa-${identifiant(libelle)}`.replace(/-$/, "") || "usa-nouvel";
+}
+
+/**
+ * Apprendre un usage écrit dans un formulaire, comme on apprend une marque.
+ *
+ * Rend la liste inchangée quand l'usage existe déjà — au libellé près, casse et
+ * accents compris : « bétaillère » et « Betaillere » sont le même usage, et en
+ * garder deux ferait deux colonnes dans les rapports.
+ */
+export function apprendreUsage(usages: UsageVehiculeParametre[], libelle: string): UsageVehiculeParametre[] {
+  const nom = libelle.replace(/s+/g, " ").trim();
+  if (!nom) return usages;
+  if (usages.some((u) => cleNom(u.libelle) === cleNom(nom))) return usages;
+  return [...usages, { id: idUsage(nom), libelle: nom, standard: false }];
+}
+
+/** L'identifiant d'un usage d'après ce qui a été écrit ; nul si la liste ne le connaît pas. */
+export function usageConnu(libelle: string, usages: UsageVehiculeParametre[]): UsageVehiculeParametre | null {
+  const cle = cleNom(libelle);
+  return usages.find((u) => cleNom(u.libelle) === cle || u.id === libelle) ?? null;
 }
 
 /** « cat-citerne-eau » : un identifiant lisible, unique parmi les existants. */
@@ -393,7 +463,21 @@ function normaliserVehicules(brut: unknown): ParametresVehicules {
     const libelle = typeof x.libelle === "string" && x.libelle.trim() ? x.libelle.trim() : humaniser(x.id.replace(/^cat-/, ""));
     categories.push({ id: x.id, libelle, famille, standard: false });
   }
-  return { marques: marques.length > 0 ? marques : MARQUES_DEFAUT.map((m) => ({ ...m, modeles: [...m.modeles] })), categories };
+  /* Les usages : les onze livrés toujours présents (renommables, jamais
+     retirés), puis les ajouts du métier. */
+  const usagesBruts = Array.isArray(b.usages) ? b.usages : [];
+  const usages: UsageVehiculeParametre[] = USAGES_STANDARD.map((s) => {
+    const lu = usagesBruts.find((u) => u && typeof u === "object" && (u as UsageVehiculeParametre).id === s.id) as Partial<UsageVehiculeParametre> | undefined;
+    return { ...s, libelle: typeof lu?.libelle === "string" && lu.libelle.trim() ? lu.libelle.trim() : s.libelle };
+  });
+  for (const u of usagesBruts) {
+    if (!u || typeof u !== "object") continue;
+    const x = u as Partial<UsageVehiculeParametre>;
+    if (typeof x.id !== "string" || !x.id.startsWith("usa-") || usages.some((y) => y.id === x.id)) continue;
+    usages.push({ id: x.id, libelle: typeof x.libelle === "string" && x.libelle.trim() ? x.libelle.trim() : humaniser(x.id.replace(/^usa-/, "")), standard: false });
+  }
+
+  return { marques: marques.length > 0 ? marques : MARQUES_DEFAUT.map((m) => ({ ...m, modeles: [...m.modeles] })), categories, usages };
 }
 
 export interface Parametres {
@@ -620,6 +704,23 @@ export function libelleCategorieCourant(famille: CategorieVehicule, categorieMet
     if (ajoutee) return ajoutee.libelle;
   }
   return c.find((x) => x.id === famille)?.libelle ?? LIBELLE_FAMILLE[famille];
+}
+
+/**
+ * Le libellé d'un usage : celui que le métier a écrit quand il en a ajouté un,
+ * celui de l'énumération sinon.
+ *
+ * Sans lui, un véhicule dont l'usage est « Bétaillère » s'afficherait « Autre »
+ * partout — la fiche, la liste, les rapports — puisque c'est ce que
+ * l'énumération porte. Le libellé est la seule chose que l'agent reconnaît.
+ */
+export function libelleUsageCourant(usage: string, usageMetier?: string | null): string {
+  const u = VEHICULES_COURANTS.usages;
+  if (usageMetier) {
+    const ajoute = u.find((x) => x.id === usageMetier);
+    if (ajoute) return ajoute.libelle;
+  }
+  return u.find((x) => x.id === usage)?.libelle ?? USAGES_STANDARD.find((x) => x.id === usage)?.libelle ?? humaniser(usage);
 }
 
 export function libelleDocumentCourant(type: string): string {

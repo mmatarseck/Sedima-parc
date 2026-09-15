@@ -180,7 +180,7 @@ export function EcranVehicules({ parc }: { parc: VehiculeDuParc[] }) {
   }
 
   function reinitialiser() {
-    regler({ marques: VEHICULES_DEFAUT.marques.map((m) => ({ ...m, modeles: [...m.modeles] })), categories: VEHICULES_DEFAUT.categories.map((c) => ({ ...c })) });
+    regler({ marques: VEHICULES_DEFAUT.marques.map((m) => ({ ...m, modeles: [...m.modeles] })), categories: VEHICULES_DEFAUT.categories.map((c) => ({ ...c })), usages: VEHICULES_DEFAUT.usages.map((u) => ({ ...u })) });
     setErreur(null);
   }
 

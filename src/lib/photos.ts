@@ -87,9 +87,34 @@ function lireEnDataUrl(blob: Blob): Promise<string> {
  * « pleins », « depenses ». Rend la référence à garder sur la ligne, ou le
  * motif du refus.
  */
+/** Ce que le seau « pieces » accepte depuis 0049 : les images, et le PDF. */
+const PLAFOND_PIECE = 5 * 1024 * 1024;
+
 export async function televerserPhoto(fichier: File, dossier: string): Promise<{ ref: ReferencePhoto } | { refus: string }> {
-  if (!fichier.type.startsWith("image/")) return { refus: "Ce fichier n'est pas une image." };
+  const pdf = fichier.type === "application/pdf";
+  if (!pdf && !fichier.type.startsWith("image/")) return { refus: "Ce fichier n'est ni une image ni un PDF." };
   try {
+    if (pdf) {
+      /*
+       * LE PDF PART TEL QUEL. Une police d'assurance, un procès-verbal de
+       * visite, une carte grise : ces pièces arrivent en PDF et les découper en
+       * photos obligerait à ouvrir trois fichiers pour lire un document
+       * (demande du métier du 15 septembre 2026).
+       *
+       * Rien ne le réduit — on ne recompresse pas un PDF dans un navigateur —,
+       * d'où le contrôle de taille ici plutôt qu'un refus du seau, dont le
+       * message ne dirait pas quoi faire.
+       */
+      if (!authentificationReelle()) return { refus: "Le dépôt de PDF demande une base branchée." };
+      if (fichier.size > PLAFOND_PIECE) {
+        return { refus: `Ce PDF pèse ${Math.round(fichier.size / 1024 / 1024)} Mo, au-delà des 5 Mo admis. Réduisez-le avant de le joindre.` };
+      }
+      const jour = new Date().toISOString().slice(0, 10);
+      const chemin = `${dossier}/${jour.slice(0, 4)}/${jour.slice(5, 7)}/${jour}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.pdf`;
+      const depot = await clientNavigateur().storage.from("pieces").upload(chemin, fichier, { contentType: "application/pdf", upsert: false });
+      if (depot.error) return { refus: `Document refusé : ${depot.error.message}` };
+      return { ref: `pieces/${chemin}` };
+    }
     if (!authentificationReelle()) {
       const image = await lireEnDataUrl(await reduireImage(fichier, 640, 0.6));
       const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;

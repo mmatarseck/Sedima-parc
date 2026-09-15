@@ -16,7 +16,7 @@
  * fait dès son chargement dans le navigateur, avant le premier rendu.
  * ==========================================================================*/
 
-import { CLES_PARAMETRES, COOKIE_PARAMETRES, PARAMETRES_DEFAUT, PREFIXE_COOKIE_PARAMETRES, TAILLE_MAX_COOKIE, appliquerLibelles, apprendreMarqueModele, encoderValeurCookie, fusionnerParametres, type Parametres } from "@/domaine/parametres";
+import { CLES_PARAMETRES, COOKIE_PARAMETRES, PARAMETRES_DEFAUT, PREFIXE_COOKIE_PARAMETRES, TAILLE_MAX_COOKIE, appliquerLibelles, apprendreMarqueModele, apprendreUsage, encoderValeurCookie, fusionnerParametres, type Parametres } from "@/domaine/parametres";
 import { enregistrerParametres } from "@/lib/parametres-actions";
 import { authentificationReelle } from "@/lib/session-demo";
 
@@ -90,11 +90,15 @@ export async function ecrireParametres(p: Parametres): Promise<string | null> {
  * tout était déjà connu. Un refus du serveur n'empêche pas la création : le
  * véhicule existe, seul le référentiel n'a pas suivi, et l'écran le dit.
  */
-export async function apprendreVehicule(marque: string, modele: string | null): Promise<string | null> {
+export async function apprendreVehicule(marque: string, modele: string | null, usage?: string | null): Promise<string | null> {
   const p = lireParametres();
   const marques = apprendreMarqueModele(p.vehicules.marques, marque, modele);
-  if (marques === p.vehicules.marques) return null;
-  return ecrireParametres({ ...p, vehicules: { ...p.vehicules, marques } });
+  /* L'usage écrit dans le formulaire entre au référentiel comme la marque :
+     sans cela, il faudrait le réécrire à chaque véhicule au lieu de le choisir
+     dans la liste la fois suivante. */
+  const usages = usage ? apprendreUsage(p.vehicules.usages, usage) : p.vehicules.usages;
+  if (marques === p.vehicules.marques && usages === p.vehicules.usages) return null;
+  return ecrireParametres({ ...p, vehicules: { ...p.vehicules, marques, usages } });
 }
 
 /** Les défauts, remis partout. Même contrat que `ecrireParametres`. */

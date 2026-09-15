@@ -15,6 +15,7 @@
  * et servir la fonction serveur comme les tests.
  * ==========================================================================*/
 
+import { USAGES_STANDARD, cleNom, idUsage } from "@/domaine/parametres";
 import type { TypeTransaction } from "@/domaine/reference";
 import { PRODUIT_TRANSPORTE, type ProduitTransporte } from "@/domaine/releve-transport";
 
@@ -196,6 +197,31 @@ const familleSaisie = (v: Record<string, unknown>): string | null => {
   const c = texte(v.categorie);
   if (c && !c.startsWith("cat-")) return c;
   return texte(v.categorieFamille);
+};
+
+/**
+ * L'usage du véhicule, scindé en deux comme la catégorie (0051).
+ *
+ * `usage` est une énumération : un usage ajouté par le métier n'y entre pas. Il
+ * se range dans `usage_metier` — « usa-… » — et l'énumération reçoit « autre ».
+ * Contrairement à la catégorie, aucune règle ne s'y branche : il n'y a donc pas
+ * de famille à demander, et personne à interroger sur une question sans
+ * conséquence.
+ */
+/** L'usage livré qui porte ce libellé, ou cet identifiant ; nul pour un usage du métier. */
+const usageLivre = (saisi: string): string | null => {
+  const cle = cleNom(saisi);
+  return USAGES_STANDARD.find((u) => u.id === saisi || cleNom(u.libelle) === cle)?.id ?? null;
+};
+const usageSaisi = (v: Record<string, unknown>): string => {
+  const u = texte(v.usage);
+  return u ? (usageLivre(u) ?? "autre") : "autre";
+};
+const usageMetierSaisie = (v: Record<string, unknown>): string | null => {
+  const u = texte(v.usage);
+  if (!u) return texte(v.usageMetier) ?? null;
+  if (u.startsWith("usa-")) return u;
+  return usageLivre(u) ? null : idUsage(u);
 };
 
 /** « 2026-09-02T08:00 » ou « 2026-09-02 » → un horodatage complet, en UTC comme tout le jeu de données. */
@@ -660,7 +686,8 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
           categorie_metier: categorieMetierSaisie(v),
           categorie_flotte: texte(v.categorieFlotte) ?? "interne",
           regime: texte(v.regime) ?? "exploitation",
-          usage: texte(v.usage) ?? "autre",
+          usage: usageSaisi(v),
+          usage_metier: usageMetierSaisie(v),
           transport_special: booleen(v.transportSpecial),
           energie: texte(v.energie) ?? "gasoil",
           business_unit: texte(v.businessUnit),
@@ -787,6 +814,7 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
     categorieFlotte: "categorie_flotte",
     regime: "regime",
     usage: "usage",
+    usageMetier: "usage_metier",
     transportSpecial: "transport_special",
     energie: "energie",
     businessUnit: "business_unit",

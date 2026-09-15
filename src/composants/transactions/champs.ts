@@ -18,7 +18,7 @@ import { STATUT_ORDRE } from "@/domaine/maintenance";
 import { REGIME_USAGE } from "@/domaine/parc-leger";
 import { TYPES_GARAGE, TYPE_PRESTATAIRE } from "@/domaine/prestataires";
 import { lireCreations } from "@/lib/clotures-demo";
-import { APTITUDE, BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_OBSERVATION, GRAVITE_OBSERVATION, MISSION_INCIDENT, MOTIF_IMMOBILISATION, MOTIF_INDISPONIBILITE, MOTIF_SORTIE, NATURE_INCIDENT, POSTE_DEPENSE, RESPONSABILITE, ROLE_AFFECTATION, STATUT_DECLARATION, STATUT_OBSERVATION, STATUT_VEHICULE, STATUT_VISITE, TYPE_INCIDENT, TYPE_SANCTION, TYPE_VISITE, USAGE_VEHICULE } from "@/domaine/libelles";
+import { APTITUDE, BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_OBSERVATION, GRAVITE_OBSERVATION, MISSION_INCIDENT, MOTIF_IMMOBILISATION, MOTIF_INDISPONIBILITE, MOTIF_SORTIE, NATURE_INCIDENT, POSTE_DEPENSE, RESPONSABILITE, ROLE_AFFECTATION, STATUT_DECLARATION, STATUT_OBSERVATION, STATUT_VEHICULE, STATUT_VISITE, TYPE_INCIDENT, TYPE_SANCTION, TYPE_VISITE } from "@/domaine/libelles";
 import type { TypeTransaction } from "@/domaine/reference";
 import type { CategorieVehicule } from "@/domaine/types";
 import { cleNom, nomMarqueConnu } from "@/domaine/parametres";
@@ -38,6 +38,17 @@ const DATE = (cle: string, libelle = "Date"): ChampEdition => ({ cle, libelle, t
  * qui existe, on écrit ce qui n'existe pas encore, et la création l'apprend —,
  * catégories en choix, familles et ajouts du métier confondus.
  */
+/**
+ * Les usages proposés : les onze livrés, et ceux que le métier a ajoutés.
+ *
+ * Champ « suggestion » et non « choix » : on choisit dans la liste, ou l'on
+ * écrit ce qui n'y est pas — et l'application l'apprend. C'est le même geste
+ * que pour la marque et le modèle, demandé le 15 septembre 2026 pour l'usage.
+ */
+function optionsUsages(): { valeur: string; libelle: string }[] {
+  return lireParametres().vehicules.usages.map((u) => ({ valeur: u.libelle, libelle: u.libelle }));
+}
+
 export function champsIdentiteVehicule(): ChampEdition[] {
   const { marques, categories } = lireParametres().vehicules;
   /* Les marques que le parc porte déjà sans être au référentiel se proposent
@@ -467,7 +478,7 @@ export function champsVehicule(): ChampEdition[] {
     ...section("Classement", [
       { cle: "regime", libelle: "Régime d'usage", type: "choix", options: Object.entries(REGIME_USAGE).map(([valeur, d]) => ({ valeur, libelle: d.libelle })), obligatoire: true },
       { cle: "categorieFlotte", libelle: "Catégorie de flotte", type: "choix", options: options(CATEGORIE_FLOTTE), obligatoire: true },
-      { cle: "usage", libelle: "Usage (vrac, frigorifique, plateau…)", type: "choix", options: options(USAGE_VEHICULE), obligatoire: true },
+      { cle: "usage", libelle: "Usage (vrac, frigorifique, plateau…)", type: "suggestion", options: optionsUsages(), obligatoire: true },
       { cle: "businessUnit", libelle: "Business unit", type: "choix", options: options(BUSINESS_UNIT) },
       { cle: "siteId", libelle: "Site", type: "choix", options: optionsSites() },
       { cle: "transportSpecial", libelle: "Transport spécial (denrées, poussins)", type: "oui-non" },
@@ -575,7 +586,7 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
         { cle: "photo", libelle: "Photo (adresse)", type: "texte" },
         ...champsIdentiteVehicule(),
         { cle: "categorieFlotte", libelle: "Catégorie de flotte", type: "choix", options: options(CATEGORIE_FLOTTE), obligatoire: true },
-        { cle: "usage", libelle: "Usage (vrac, frigorifique, plateau…)", type: "choix", options: options(USAGE_VEHICULE), obligatoire: true },
+        { cle: "usage", libelle: "Usage (vrac, frigorifique, plateau…)", type: "suggestion", options: optionsUsages(), obligatoire: true },
         { cle: "businessUnit", libelle: "Business unit", type: "choix", options: options(BUSINESS_UNIT) },
         { cle: "siteId", libelle: "Site", type: "choix", options: optionsSites() },
         { cle: "energie", libelle: "Énergie", type: "choix", options: options(ENERGIE), obligatoire: true },

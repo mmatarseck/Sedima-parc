@@ -5,6 +5,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
+import { USAGES_STANDARD, apprendreUsage, idUsage } from "../src/domaine/parametres";
 import { categoriesPermis, cleDe, colonnesModification, ligneCreation, tableDe } from "../src/lib/transactions-colonnes";
 
 const bac = process.env.PGLITE_DIR ?? "";
@@ -322,6 +323,40 @@ try {
   sansMotif = true;
 }
 attendu("un ajustement sans motif ni opération connue est refusé", sansMotif);
+
+/* -- L'usage ajouté par le métier (15 septembre 2026) ----------------------- */
+/* « usage » est une énumération : un usage écrit dans le formulaire n'y entre
+   pas. Il se range dans « usage_metier », et l'énumération reçoit « autre ». */
+
+const usageLivre = ligneCreation("vehicule", "VEH-2026-90010", { immatriculation: "DK-4444-DD", marque: "Tata", appellation: "LPT 1618", categorie: "camion", usage: "Frigorifique" }, r);
+attendu(
+  `un usage livré se range dans l'énumération (${"ligne" in usageLivre ? usageLivre.ligne.usage : "refus"})`,
+  "ligne" in usageLivre && usageLivre.ligne.usage === "frigorifique" && usageLivre.ligne.usage_metier === null,
+);
+
+const usageEcrit = ligneCreation("vehicule", "VEH-2026-90011", { immatriculation: "DK-5555-EE", marque: "Tata", appellation: "LPT 1618", categorie: "camion", usage: "Bétaillère" }, r);
+attendu(
+  `un usage écrit part à part (${"ligne" in usageEcrit ? `${usageEcrit.ligne.usage} + ${usageEcrit.ligne.usage_metier}` : "refus"})`,
+  "ligne" in usageEcrit && usageEcrit.ligne.usage === "autre" && usageEcrit.ligne.usage_metier === "usa-betaillere",
+);
+/* Déterministe : l'écriture et les paramètres doivent tomber sur le même
+   identifiant, sans quoi la fiche afficherait « Autre » au lieu du libellé. */
+attendu("l'identifiant d'un usage ne dépend ni de la casse ni des accents", idUsage("Bétaillère") === idUsage("betaillere"));
+attendu("les paramètres apprennent le même identifiant", apprendreUsage(USAGES_STANDARD, "Bétaillère").find((u) => !u.standard)?.id === "usa-betaillere");
+attendu("un usage déjà connu ne s'apprend pas deux fois", apprendreUsage(USAGES_STANDARD, "Frigorifique").length === USAGES_STANDARD.length);
+
+if ("ligne" in usageEcrit) {
+  await inserer("vehicule", usageEcrit.ligne);
+  const n = (await pg.query(`select usage::text as usage, usage_metier from vehicule where immatriculation = 'DK5555EE'`)).rows[0] as { usage: string; usage_metier: string };
+  attendu(`la base garde les deux (${n?.usage} · ${n?.usage_metier})`, n?.usage === "autre" && n.usage_metier === "usa-betaillere");
+}
+let usageHorsForme = false;
+try {
+  await pg.query(`update vehicule set usage_metier = 'betaillere' where immatriculation = 'DK5555EE'`);
+} catch {
+  usageHorsForme = true;
+}
+attendu("un usage métier sans son préfixe est refusé", usageHorsForme);
 
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);

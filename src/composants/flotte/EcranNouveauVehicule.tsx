@@ -98,10 +98,12 @@ export function EcranNouveauVehicule({ contexte }: { contexte: ContexteNouveauVe
       setIssue({ erreur: resultat.issue === "mois-clos" ? `Le mois ${resultat.mois} est clos : la création attend sa réouverture.` : "La création n'a pas pu être enregistrée." });
       return;
     }
-    /* La marque et le modèle saisis entrent au référentiel ; un refus n'annule pas la création. */
+    /* La marque, le modèle et l'usage saisis entrent au référentiel ; un refus
+       n'annule pas la création. */
     const marque = typeof valeurs.marque === "string" ? valeurs.marque : "";
     const modele = typeof valeurs.appellation === "string" ? valeurs.appellation : null;
-    void apprendreVehicule(marque, modele).then((refus) => {
+    const usageEcrit = typeof valeurs.usage === "string" ? valeurs.usage : null;
+    void apprendreVehicule(marque, modele, usageEcrit).then((refus) => {
       if (refus) setIssue({ erreur: `Le véhicule est créé sous ${resultat.creation.numero}, mais le référentiel n'a pas retenu sa marque : ${refus}` });
     });
     if (suite === "liste") {
