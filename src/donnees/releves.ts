@@ -8,6 +8,7 @@
  * Sinon, le relevé de la démonstration. La forme est celle de l'écran Relevé.
  * ==========================================================================*/
 
+import { lignesLues } from "./lecture";
 import { cache } from "react";
 import { destinationTarifaire } from "@/domaine/flotte-tierce";
 import { afficher } from "@/domaine/immatriculation";
@@ -47,12 +48,8 @@ async function relevesServeurBrut(): Promise<LigneReleve[]> {
       .returns<LigneReleveBase[]>(),
     transporteursServeur(),
   ]);
-  if (lecture.error) {
-    console.warn(`Relevé de transport : lecture impossible (${lecture.error.message}).`);
-    return [];
-  }
   const rattachements = transporteurs.rattachements;
-  return lecture.data.map((t) => {
+  return lignesLues("Relevé de transport", lecture).map((t) => {
     const libre = t.mode === "enlevement-client" || t.mode === "prestataire-ponctuel";
     return {
       numero: t.numero,

@@ -10,6 +10,7 @@
  * se calcule sur les pleins et les relevés du parc lu pour la liste Flotte.
  * ==========================================================================*/
 
+import { lignesLues } from "./lecture";
 import { cache } from "react";
 import { REFERENCE_L100 } from "@/domaine/assembler-fiche";
 import { estCuve, type ConsommationMensuelleFlotte, type LigneCuve, type LignePlein, type SensCuve } from "@/domaine/carburant";
@@ -200,13 +201,10 @@ async function carburantServeurBrut(parametres: Parametres): Promise<CarburantSe
     client.from("mouvement_cuve").select("numero, date, sens, libelle, litres, prix_litre, montant, fournisseur, piece, commentaire, enregistre_par, prestataire (raison_sociale)").order("date", { ascending: false }).limit(5000).returns<LigneCuveBase[]>(),
     parcServeur(),
   ]);
-  if (pleins.error) console.warn(`Pleins : lecture impossible (${pleins.error.message}).`);
-  /* Table pas encore jouée : une cuve sans livraison, pas d'erreur. */
-  if (cuve.error) console.warn(`Cuve : lecture impossible (${cuve.error.message}).`);
-  const lignesPleins = (pleins.data ?? []).map(pleinDepuisLigne);
+  const lignesPleins = lignesLues("Pleins", pleins).map(pleinDepuisLigne);
   return {
     pleins: lignesPleins,
-    cuve: (cuve.data ?? []).map(cuveDepuisLigne),
+    cuve: lignesLues("Mouvements de cuve", cuve).map(cuveDepuisLigne),
     stockInitial,
     consommations: consommationsDepuisLaBase(lignesPleins, parc, parc.aujourdhui),
   };

@@ -15,6 +15,7 @@
  * visite qui les a produites.
  * ==========================================================================*/
 
+import { lignesLues } from "./lecture";
 import { cache } from "react";
 import { appelleUneAction, libelleEcheance } from "@/domaine/entretien";
 import { afficher } from "@/domaine/immatriculation";
@@ -73,11 +74,7 @@ async function interventionsServeurBrut(): Promise<LigneInterventionFlotte[]> {
     .order("date", { ascending: false })
     .limit(3000)
     .returns<LigneInterventionBase[]>();
-  if (lecture.error) {
-    console.warn(`Interventions : lecture impossible (${lecture.error.message}).`);
-    return [];
-  }
-  return lecture.data.map(interventionDepuisLigne);
+  return lignesLues("Interventions", lecture).map(interventionDepuisLigne);
 }
 
 export const interventionsServeur = cache(interventionsServeurBrut);
@@ -188,10 +185,7 @@ async function travauxServeurBrut(parametres: Parametres): Promise<LigneTravail[
     client.from("incident").select("numero, vehicule_id, date_heure, type, immobilisation_jours, description").neq("statut", "clos").limit(2000).returns<IncidentEnCours[]>(),
     client.from("observation_visite").select("numero, vehicule_id, libelle, statut, intervention_numero, visite_technique (date_limite_contre_visite)").neq("statut", "corrigee").limit(2000).returns<ObservationOuverte[]>(),
   ]);
-  if (incidents.error) console.warn(`Incidents en cours : lecture impossible (${incidents.error.message}).`);
-  /* Table pas encore jouée : pas d'observation, pas d'erreur. */
-  if (observations.error) console.warn(`Observations de visite : lecture impossible (${observations.error.message}).`);
-  return travauxDepuisLaBase(lignes, parc, ordres, incidents.data ?? [], parc.aujourdhui, observations.data ?? []);
+  return travauxDepuisLaBase(lignes, parc, ordres, lignesLues("Incidents en cours", incidents), parc.aujourdhui, lignesLues("Observations de visite", observations));
 }
 
 export const travauxServeur = cache(travauxServeurBrut);

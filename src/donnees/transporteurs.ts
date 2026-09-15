@@ -355,12 +355,13 @@ async function transporteursServeurBrut(): Promise<SourceTransporteurs> {
   const client = await clientServeur();
   const lecture = await client.rpc("lire_transporteurs", { depuis: depuisPour(aujourdhui) }).maybeSingle<TransporteursJson | null>();
   if (lecture.error || !lecture.data) {
-    /* Fonction pas encore jouée : les transporteurs du référentiel, sans activité. */
+    /* Fonction pas encore jouée : les transporteurs du référentiel, sans activité.
+       Ce détour-là est légitime — on relit ailleurs, on rend les mêmes noms. */
     if (lecture.error) console.warn(`Transporteurs : lire_transporteurs() indisponible (${lecture.error.message}).`);
-    const tous = await prestataires().catch((e: unknown) => {
-      console.warn(`Transporteurs : référentiel illisible (${e instanceof Error ? e.message : String(e)}).`);
-      return [] as Prestataire[];
-    });
+    /* Le référentiel, lui, ne se rattrape nulle part : s'il est illisible, la
+       page doit le dire. Elle rendait une liste vide, c'est-à-dire « le parc ne
+       travaille avec aucun transporteur » — une phrase fausse et coûteuse. */
+    const tous = await prestataires();
     return { ...sourceDepuisJson(TRANSPORTEURS_VIDE, aujourdhui), prestataires: tous.filter((p) => p.type === "transporteur") };
   }
   return sourceDepuisJson(lecture.data, aujourdhui);

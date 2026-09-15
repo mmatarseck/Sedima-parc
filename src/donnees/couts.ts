@@ -10,6 +10,7 @@
  * démonstration.
  * ==========================================================================*/
 
+import { lignesLues } from "./lecture";
 import { cache } from "react";
 import { REFERENCE_L100 } from "@/domaine/assembler-fiche";
 import type { ConsommationMensuelleFlotte } from "@/domaine/carburant";
@@ -127,8 +128,7 @@ async function coutsServeurBrut(parametres: Parametres): Promise<DonneesVehicule
     interventionsServeur(),
     parcLegerServeur(parametres),
   ]);
-  if (depenses.error) console.warn(`Coûts : dépenses illisibles (${depenses.error.message}).`);
-  return donneesCoutsDepuisLaBase(lignes, depenses.data ?? [], carburant.consommations, interventions, aujourdhui, depensesForfaitsDe(parcLeger, aujourdhui, parametres.parcLeger.forfaitCarburantMensuel));
+  return donneesCoutsDepuisLaBase(lignes, lignesLues("Dépenses des coûts", depenses), carburant.consommations, interventions, aujourdhui, depensesForfaitsDe(parcLeger, aujourdhui, parametres.parcLeger.forfaitCarburantMensuel));
 }
 
 export const coutsServeur = cache(coutsServeurBrut);

@@ -7,6 +7,7 @@
  * téléphone partagent le même résultat.
  * ==========================================================================*/
 
+import { lignesLues } from "./lecture";
 import { cache } from "react";
 import { afficher } from "@/domaine/immatriculation";
 import type { LigneOrdre } from "@/domaine/maintenance";
@@ -72,11 +73,7 @@ async function ordresServeurBrut(): Promise<LigneOrdre[]> {
     .limit(2000)
     .returns<LigneOrdreBase[]>();
   /* Table pas encore jouée : aucun ordre, pas d'erreur. */
-  if (lecture.error) {
-    console.warn(`Ordres de travail : lecture impossible (${lecture.error.message}).`);
-    return [];
-  }
-  return lecture.data.map(ordreDepuisLigne);
+  return lignesLues("Ordres de travail", lecture).map(ordreDepuisLigne);
 }
 
 export const ordresServeur = cache(ordresServeurBrut);

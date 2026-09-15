@@ -10,6 +10,7 @@
  * n'en montre aucune.
  * ==========================================================================*/
 
+import { lignesLues } from "./lecture";
 import { cache } from "react";
 import { avecSolde, type LigneMouvement, type SensCaisse } from "@/domaine/caisse";
 import { afficher } from "@/domaine/immatriculation";
@@ -112,11 +113,8 @@ async function caisseServeurBrut(parametres: Parametres): Promise<CaisseServeur>
     client.from("mouvement_caisse").select("numero, date, sens, libelle, montant, beneficiaire, piece, justificatif, depense_numero, enregistre_par").order("date", { ascending: false }).limit(5000).returns<LigneCaisseBase[]>(),
     client.from("depense").select("numero, date, libelle, montant, poste, beneficiaire, reference, justificatif, vehicule (immatriculation, business_unit, site (libelle))").eq("origine", "caisse").order("date", { ascending: false }).limit(5000).returns<LigneDepenseCaisseBase[]>(),
   ]);
-  /* Table pas encore jouée : un journal vide, pas d'erreur. */
-  if (mouvements.error) console.warn(`Caisse : lecture impossible (${mouvements.error.message}).`);
-  if (depenses.error) console.warn(`Dépenses de caisse : lecture impossible (${depenses.error.message}).`);
-  const lignesCaisse = mouvements.data ?? [];
-  const lignesDepenses = (depenses.data ?? []).map(depenseCaisseDepuisLigne);
+  const lignesCaisse = lignesLues("Mouvements de caisse", mouvements);
+  const lignesDepenses = lignesLues("Dépenses de caisse", depenses).map(depenseCaisseDepuisLigne);
   return { mouvements: journalDepuisLaBase(lignesCaisse, lignesDepenses, p.soldeInitial), depensesARegler: aReglerDepuisLaBase(lignesDepenses, lignesCaisse), soldeInitial: p.soldeInitial, seuil: p.seuil };
 }
 

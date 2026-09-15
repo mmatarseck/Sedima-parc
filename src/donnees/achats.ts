@@ -7,6 +7,7 @@
  * ils attendent leur propre branchement.
  * ==========================================================================*/
 
+import { lignesLues } from "./lecture";
 import { cache } from "react";
 import { lienOrigine, type LigneAchat } from "@/domaine/caisse";
 import { afficher } from "@/domaine/immatriculation";
@@ -93,11 +94,7 @@ async function achatsServeurBrut(): Promise<LigneAchat[]> {
     .limit(3000)
     .returns<LigneAchatBase[]>();
   /* Table pas encore jouée : aucune demande, pas d'erreur. */
-  if (lecture.error) {
-    console.warn(`Demandes d'achat : lecture impossible (${lecture.error.message}).`);
-    return [];
-  }
-  return lecture.data.map(achatDepuisLigne);
+  return lignesLues("Demandes d'achat", lecture).map(achatDepuisLigne);
 }
 
 export const achatsServeur = cache(achatsServeurBrut);

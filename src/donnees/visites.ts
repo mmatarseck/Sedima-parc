@@ -8,6 +8,7 @@
  * numéro de celle-ci.
  * ==========================================================================*/
 
+import { lignesLues } from "./lecture";
 import { cache } from "react";
 import type { ObservationVisite, VisiteTechnique } from "@/domaine/types";
 import { clientServeur } from "@/lib/supabase";
@@ -58,11 +59,8 @@ async function visitesServeurBrut(): Promise<VisitesServeur> {
       .returns<LigneVisiteBase[]>(),
     client.from("observation_visite").select("numero, visite_numero, libelle, categorie, gravite, statut, intervention_numero, corrigee_le, commentaire, vehicule (immatriculation)").limit(5000).returns<LigneObservationBase[]>(),
   ]);
-  /* Tables pas encore jouées : aucune visite, pas d'erreur. */
-  if (visites.error) console.warn(`Visites techniques : lecture impossible (${visites.error.message}).`);
-  if (observations.error) console.warn(`Observations de visite : lecture impossible (${observations.error.message}).`);
   return {
-    visites: (visites.data ?? []).map((v) => ({
+    visites: lignesLues("Visites techniques", visites).map((v) => ({
       id: v.numero,
       numero: v.numero,
       vehiculeId: v.vehicule?.immatriculation ?? "",
@@ -76,7 +74,7 @@ async function visitesServeurBrut(): Promise<VisitesServeur> {
       dateLimiteContreVisite: v.date_limite_contre_visite,
       commentaire: v.commentaire,
     })),
-    observations: (observations.data ?? []).map((o) => ({
+    observations: lignesLues("Observations de visite", observations).map((o) => ({
       id: o.numero,
       numero: o.numero,
       visiteId: o.visite_numero,

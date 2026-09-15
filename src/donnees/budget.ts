@@ -11,6 +11,7 @@
  * Les forfaits carburant du parc léger s'y ajoutent, lus sur les tables 0004.
  * ==========================================================================*/
 
+import { lignesLues } from "./lecture";
 import { cache } from "react";
 import type { DepenseBudget, SourceBudget } from "@/domaine/assembler-budget";
 import type { Enveloppe } from "@/domaine/budget";
@@ -105,10 +106,7 @@ async function budgetServeurBrut(): Promise<SourceBudget> {
     achatsServeur(),
     parcLegerServeur(parametres),
   ]);
-  /* Table pas encore jouée : un budget sans enveloppe, tout hors budget — l'écran le dit. */
-  if (enveloppes.error) console.warn(`Budget : enveloppes illisibles (${enveloppes.error.message}).`);
-  if (depenses.error) console.warn(`Budget : dépenses illisibles (${depenses.error.message}).`);
-  return sourceDepuisLignes(enveloppes.data ?? [], depenses.data ?? [], demandes, aujourdhui, depensesForfaitsDe(parcLeger, aujourdhui, parametres.parcLeger.forfaitCarburantMensuel));
+  return sourceDepuisLignes(lignesLues("Enveloppes budgétaires", enveloppes), lignesLues("Dépenses du budget", depenses), demandes, aujourdhui, depensesForfaitsDe(parcLeger, aujourdhui, parametres.parcLeger.forfaitCarburantMensuel));
 }
 
 export const budgetServeur = cache(budgetServeurBrut);

@@ -6,6 +6,7 @@
  * adressé. Sinon, les demandes de la démonstration. Une lecture par requête.
  * ==========================================================================*/
 
+import { lignesLues } from "./lecture";
 import { cache } from "react";
 import type { Demande, TypeDemande } from "@/domaine/demandes";
 import { afficher } from "@/domaine/immatriculation";
@@ -59,11 +60,7 @@ async function demandesServeurBrut(): Promise<Demande[]> {
     .limit(2000)
     .returns<LigneDemande[]>();
   /* Table pas encore jouée : rien à montrer, pas d'erreur — l'écran dit « aucune demande ». */
-  if (lecture.error) {
-    console.warn(`Demandes : lecture impossible (${lecture.error.message}).`);
-    return [];
-  }
-  return lecture.data.map(demandeDepuisLigne);
+  return lignesLues("Demandes", lecture).map(demandeDepuisLigne);
 }
 
 export const demandesServeur = cache(demandesServeurBrut);

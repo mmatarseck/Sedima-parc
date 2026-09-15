@@ -11,6 +11,7 @@
  * (`depensesForfaitsDe`) est la même des deux côtés.
  * ==========================================================================*/
 
+import { lignesLues } from "./lecture";
 import { cache } from "react";
 import type { Attributaire, EtatLeger, ForfaitCarburant, SourceParcLeger, VehiculeLeger } from "@/domaine/parc-leger";
 import type { Parametres } from "@/domaine/parametres";
@@ -97,10 +98,7 @@ async function parcLegerServeurBrut(parametres: Parametres): Promise<SourceParcL
     client.from("attributaire").select("id, nom, fonction, departement, business_unit, actif").order("nom").limit(2000).returns<LigneAttributaireBase[]>(),
     client.from("forfait_carburant").select("attributaire_id, montant_mensuel, carte").limit(2000).returns<LigneForfaitBase[]>(),
   ]);
-  for (const [nom, lecture] of [["attributions", attributions], ["attributaires", attributaires], ["forfaits", forfaits]] as const) {
-    if (lecture.error) console.warn(`Parc léger — ${nom} : lecture impossible (${lecture.error.message}).`);
-  }
-  return sourceDepuisLignes(lignes, attributions.data ?? [], attributaires.data ?? [], forfaits.data ?? []);
+  return sourceDepuisLignes(lignes, lignesLues("Attributions", attributions), lignesLues("Autres conducteurs", attributaires), lignesLues("Forfaits carburant", forfaits));
 }
 
 export const parcLegerServeur = cache(parcLegerServeurBrut);

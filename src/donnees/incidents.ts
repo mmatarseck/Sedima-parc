@@ -7,6 +7,7 @@
  * (`LigneIncident`) : les rapports la lisent telle quelle.
  * ==========================================================================*/
 
+import { lignesLues } from "./lecture";
 import { cache } from "react";
 import { idChauffeur } from "@/domaine/chauffeur";
 import { afficher } from "@/domaine/immatriculation";
@@ -79,11 +80,7 @@ async function incidentsServeurBrut(): Promise<LigneIncident[]> {
     .order("date_heure", { ascending: false })
     .limit(5000)
     .returns<LigneIncidentBase[]>();
-  if (lecture.error) {
-    console.warn(`Incidents : lecture impossible (${lecture.error.message}).`);
-    return [];
-  }
-  return lecture.data.map(incidentDepuisLigne);
+  return lignesLues("Incidents", lecture).map(incidentDepuisLigne);
 }
 
 export const incidentsServeur = cache(incidentsServeurBrut);

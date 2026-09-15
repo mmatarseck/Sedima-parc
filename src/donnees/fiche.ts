@@ -7,6 +7,7 @@
  * requête.
  * ==========================================================================*/
 
+import { lignesLues } from "./lecture";
 import { cache } from "react";
 import { assemblerFiche, FAITS_VIDES, type FaitsFiche } from "@/domaine/assembler-fiche";
 import type { AttelageFiche, FicheVehicule } from "@/domaine/fiche";
@@ -66,11 +67,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 async function livraisonsDuVehicule(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<LivraisonFiche[]> {
   if (!UUID.test(vehiculeId)) return [];
   const lecture = await client.from("livraison").select("numero, date, site, client, produits, poids_kg, quantites, lignes, transporteur_libelle, chauffeur, source").eq("vehicule_id", vehiculeId).order("date", { ascending: false }).limit(5000).returns<LivraisonBase[]>();
-  if (lecture.error) {
-    console.warn(`Livraisons ${vehiculeId} : lecture impossible (${lecture.error.message}).`);
-    return [];
-  }
-  return lecture.data.map((l) => ({ numero: l.numero, date: l.date, site: l.site, client: l.client, produits: l.produits, poidsKg: l.poids_kg === null ? null : Number(l.poids_kg), quantites: l.quantites ?? {}, lignes: l.lignes, transporteur: l.transporteur_libelle, chauffeur: l.chauffeur, source: l.source }));
+  return lignesLues("Livraisons du véhicule", lecture).map((l) => ({ numero: l.numero, date: l.date, site: l.site, client: l.client, produits: l.produits, poidsKg: l.poids_kg === null ? null : Number(l.poids_kg), quantites: l.quantites ?? {}, lignes: l.lignes, transporteur: l.transporteur_libelle, chauffeur: l.chauffeur, source: l.source }));
 }
 
 interface AttelageBase {
@@ -155,11 +152,9 @@ async function attelagesDuVehicule(
 async function piecesJointesDuVehicule(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<Map<string, string>> {
   if (!UUID.test(vehiculeId)) return new Map();
   const lecture = await client.from("document").select("numero, fichier").eq("vehicule_id", vehiculeId).not("fichier", "is", null).limit(2000).returns<{ numero: string; fichier: string }[]>();
-  if (lecture.error) {
-    console.warn(`Documents ${vehiculeId} : pièces jointes illisibles (${lecture.error.message}).`);
-    return new Map();
-  }
-  return new Map(lecture.data.map((d) => [d.numero, d.fichier]));
+  /* Un dossier qu.on ne peut pas lire ne se montre pas vide : « aucune pièce »
+     est ce que dit un véhicule sans scan, et les deux ne se confondent pas. */
+  return new Map(lignesLues("Pièces jointes du véhicule", lecture).map((d) => [d.numero, d.fichier]));
 }
 
 /**

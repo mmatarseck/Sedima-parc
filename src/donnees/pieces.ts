@@ -7,6 +7,7 @@
  * sont les immatriculations, comme partout.
  * ==========================================================================*/
 
+import { lignesLues } from "./lecture";
 import { cache } from "react";
 import { afficher } from "@/domaine/immatriculation";
 import type { MouvementStock, Piece, Pneu } from "@/domaine/pieces";
@@ -142,11 +143,7 @@ async function piecesServeurBrut(): Promise<SourcePieces> {
     client.from("mouvement_stock").select("numero, date, nature, quantite, ecart, prix_unitaire, demande_numero, ordre_numero, intervention_numero, fournisseur, motif, auteur_nom, piece (numero), vehicule (immatriculation)").order("date", { ascending: false }).limit(20000).returns<LigneMouvementBase[]>(),
     client.from("pneu").select("numero, marque, dimension, numero_serie, etat, position, date_pose, km_pose, date_depose, km_depose, rechapages, commentaire, piece (numero), vehicule (immatriculation)").order("numero").limit(5000).returns<LignePneuBase[]>(),
   ]);
-  /* Tables pas encore jouées : un magasin vide, pas d'erreur. */
-  for (const [nom, lecture] of [["pièces", pieces], ["mouvements", mouvements], ["pneus", pneus]] as const) {
-    if (lecture.error) console.warn(`Pièces de rechange — ${nom} : lecture impossible (${lecture.error.message}).`);
-  }
-  return { pieces: (pieces.data ?? []).map(pieceDepuisLigne), mouvements: (mouvements.data ?? []).map(mouvementDepuisLigne), pneus: (pneus.data ?? []).map(pneuDepuisLigne), aujourdhui };
+  return { pieces: lignesLues("Pièces de rechange", pieces).map(pieceDepuisLigne), mouvements: lignesLues("Mouvements de stock", mouvements).map(mouvementDepuisLigne), pneus: lignesLues("Pneus", pneus).map(pneuDepuisLigne), aujourdhui };
 }
 
 export const piecesServeur = cache(piecesServeurBrut);

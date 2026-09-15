@@ -11,6 +11,7 @@
  * nouvelle : quatre lectures bornées, chacune une fois.
  * ==========================================================================*/
 
+import { lignesLues } from "./lecture";
 import { cache } from "react";
 import { niveauPour, trier, type Echeance } from "@/domaine/conformite";
 import { exigeDocument } from "@/domaine/documents";
@@ -167,13 +168,10 @@ async function conformiteServeurBrut(parametres: Parametres): Promise<Conformite
     client.from("visite_technique").select("numero, vehicule_id, type, centre, date_rendez_vous, heure, statut, numero_pv, date_limite_contre_visite").in("statut", ["rendez-vous", "refusee"]).limit(2000).returns<VisiteEnCoursBase[]>(),
     client.from("observation_visite").select("vehicule_id").neq("statut", "corrigee").limit(2000).returns<ObservationOuverteBase[]>(),
   ]);
-  for (const [nom, lecture] of [["documents", documents], ["licences", licences], ["visites", visites], ["observations", observations]] as const) {
-    if (lecture.error) console.warn(`Conformité — ${nom} : lecture impossible (${lecture.error.message}).`);
-  }
   /* L'identifiant en base de chaque véhicule visible : la liste ne porte que l'immatriculation, le parc déjà lu a les deux. */
   const parc = await parcServeur();
   const uuidParImmat = new Map(parc.vehicules.map((v) => [v.immatriculation, v.id]));
-  const faits: FaitsConformite = { documents: documents.data ?? [], licences: licences.data ?? [], visites: visites.data ?? [], observations: observations.data ?? [] };
+  const faits: FaitsConformite = { documents: lignesLues("Documents des véhicules", documents), licences: lignesLues("Licences de transport", licences), visites: lignesLues("Visites techniques en cours", visites), observations: lignesLues("Observations ouvertes", observations) };
   return { echeances: echeancesDepuisLaBase(lignes, uuidParImmat, faits, fiches, parametres, aujourdhui), aujourdhui };
 }
 
