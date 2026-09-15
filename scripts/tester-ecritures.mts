@@ -5,7 +5,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { cleDe, colonnesModification, ligneCreation, tableDe } from "../src/lib/transactions-colonnes";
+import { categoriesPermis, cleDe, colonnesModification, ligneCreation, tableDe } from "../src/lib/transactions-colonnes";
 
 const bac = process.env.PGLITE_DIR ?? "";
 const require = createRequire(join(bac, "package.json"));
@@ -182,6 +182,68 @@ try {
   motifInvente = true;
 }
 attendu("un motif de sortie hors vocabulaire est refusé", motifInvente);
+
+/* -- La fiche chauffeur elle-même (15 septembre 2026) ----------------------- */
+/* Comme le véhicule : elle se crée et se modifie comme une transaction, mais sa
+   clé n'est pas un numéro. La fiche la nomme « CHA-babacar-ndiaye » — son
+   adresse lisible — et l'écriture la traduit en identifiant de table. */
+
+attendu(`le chauffeur a sa table (${tableDe("chauffeur")})`, tableDe("chauffeur") === "chauffeur");
+attendu(
+  "un chauffeur se repère par son identifiant, débarrassé du préfixe de sa fiche",
+  cleDe("chauffeur", "CHA-babacar-ndiaye").colonne === "id" && cleDe("chauffeur", "CHA-babacar-ndiaye").valeur === "babacar-ndiaye",
+);
+
+/* Les catégories de permis : le formulaire laisse écrire ce qu'on veut, la base
+   attend un tableau. On ne fait recommencer personne pour un séparateur. */
+attendu(`« B · C · E » devient ${JSON.stringify(categoriesPermis("B · C · E"))}`, JSON.stringify(categoriesPermis("B · C · E")) === JSON.stringify(["B", "C", "E"]));
+attendu("« b,c,e » aussi, et sans doublon", JSON.stringify(categoriesPermis("b,c,e,c")) === JSON.stringify(["B", "C", "E"]));
+attendu("ce qui n'est pas une catégorie est écarté plutôt qu'entré de travers", JSON.stringify(categoriesPermis("B et le permis Z")) === JSON.stringify(["B", "E"]));
+
+const siteChauffeur = (await pg.query(`select id from site order by code limit 1`)).rows[0] as { id: string };
+const recrue = ligneCreation(
+  "chauffeur",
+  "CHA-2026-90001",
+  { prenom: "Moussa", nom: "Sarr", matriculeRh: "SED-9001", contrat: "salarie", siteId: siteChauffeur.id, telephone: "77 000 00 01", permisNumero: "DK-999999", permisCategories: "B · C · E", permisEcheance: "2028-04-30", visiteMedicaleEcheance: "2027-03-15", dateEmbauche: "2026-09-01" },
+  r,
+);
+if ("refus" in recrue) attendu(`création d'un chauffeur : ${recrue.refus}`, false);
+else {
+  await inserer("chauffeur", recrue.ligne);
+  const n = (await pg.query(`select nom, prenom, contrat, permis_categories, permis_echeance::text as permis_echeance, aptitude, site_id from chauffeur where matricule_rh = 'SED-9001'`)).rows[0] as {
+    nom: string; prenom: string; contrat: string; permis_categories: string[]; permis_echeance: string; aptitude: string; site_id: string;
+  };
+  attendu(`chauffeur → chauffeur (${n?.prenom} ${n?.nom}, permis ${JSON.stringify(n?.permis_categories)})`, n?.nom === "Sarr" && n.prenom === "Moussa" && JSON.stringify(n.permis_categories) === JSON.stringify(["B", "C", "E"]));
+  attendu(`il naît apte et rattaché à son site (${n?.aptitude})`, n?.aptitude === "apte" && n.site_id === siteChauffeur.id && n.permis_echeance === "2028-04-30");
+}
+
+const sansNom = ligneCreation("chauffeur", "CHA-2026-90002", { prenom: "Moussa", contrat: "salarie" }, r);
+attendu(`un chauffeur sans nom est refusé (${"refus" in sansNom ? sansNom.refus : "accepté"})`, "refus" in sansNom);
+
+/* La modification : corriger une orthographe, prolonger un permis. */
+const correction = colonnesModification("chauffeur", [
+  { champ: "nom", valeur: "Sarre" },
+  { champ: "permisEcheance", valeur: "2029-04-30" },
+  { champ: "permisCategories", valeur: "B · C" },
+]);
+attendu(`la modification vise les bonnes colonnes (${Object.keys(correction).sort().join(", ")})`, correction.nom === "Sarre" && correction.permis_echeance === "2029-04-30");
+await pg.query(`update chauffeur set nom = $1, permis_echeance = $2 where matricule_rh = 'SED-9001'`, [correction.nom, correction.permis_echeance]);
+const apres = (await pg.query(`select nom, permis_echeance::text as permis_echeance from chauffeur where matricule_rh = 'SED-9001'`)).rows[0] as { nom: string; permis_echeance: string };
+attendu(`la correction est passée (${apres?.nom}, permis ${apres?.permis_echeance})`, apres?.nom === "Sarre" && apres.permis_echeance === "2029-04-30");
+
+/* L'aptitude n'a pas de table : ce sont trois colonnes de la fiche, comme le
+   statut est une colonne du véhicule. Elle ne doit donc pas être « branchée ». */
+attendu("l'aptitude n'a pas de table à elle : elle s'écrit sur la fiche", tableDe("aptitude") === null);
+await pg.query(`update chauffeur set aptitude = 'apte-avec-reserve', aptitude_motif = $1, aptitude_date = '2026-09-15' where matricule_rh = 'SED-9001'`, ["Véhicules légers seulement"]);
+const decisionAptitude = (await pg.query(`select aptitude, aptitude_motif, aptitude_date::text as aptitude_date from chauffeur where matricule_rh = 'SED-9001'`)).rows[0] as { aptitude: string; aptitude_motif: string; aptitude_date: string };
+attendu(`une décision d'aptitude tient sur la fiche (${decisionAptitude?.aptitude}, ${decisionAptitude?.aptitude_date})`, decisionAptitude?.aptitude === "apte-avec-reserve" && decisionAptitude.aptitude_motif === "Véhicules légers seulement" && decisionAptitude.aptitude_date === "2026-09-15");
+let aptitudeInventee = false;
+try {
+  await pg.query(`update chauffeur set aptitude = 'peut-etre' where matricule_rh = 'SED-9001'`);
+} catch {
+  aptitudeInventee = true;
+}
+attendu("une aptitude hors vocabulaire est refusée", aptitudeInventee);
 
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);

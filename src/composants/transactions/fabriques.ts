@@ -13,8 +13,7 @@ import type { Creation } from "@/domaine/cloture";
 import type { AffectationFiche, AttelageFiche, DepenseFiche, DocumentFiche, EtatDocument, EvenementJournal, Intervention, PeriodeStatutFiche, PleinFiche, ReleveFiche } from "@/domaine/fiche";
 import { BUSINESS_UNIT, MOTIF_INDISPONIBILITE, STATUT_VEHICULE, TYPE_DOCUMENT, TYPE_INCIDENT } from "@/domaine/libelles";
 import type { BusinessUnit, CategorieFlotte, DeclarationIncident, Indisponibilite, LigneFlotte, ObservationVisite, Sanction, TypeDocument, UsageVehicule, VisiteTechnique } from "@/domaine/types";
-import { listeChauffeurs } from "@/donnees/chauffeurs-demo";
-import { FLOTTE, SITES } from "@/donnees/parc-demo";
+import { lireReferentiels } from "@/lib/referentiels-navigateur";
 import { joursRestants } from "@/lib/format";
 import { echeanceCalculee } from "@/domaine/documents";
 import type { LigneIncident } from "@/domaine/incidents";
@@ -33,8 +32,19 @@ const s = (v: unknown): string | null => (v === null || v === undefined || v ===
 const n = (v: unknown): number | null => (v === null || v === undefined || v === "" ? null : Number(v));
 const b = (v: unknown): boolean => Boolean(v);
 
+/* Le véhicule, le chauffeur et le site d'une ligne saisie ici : cherchés dans
+   le référentiel que le serveur a posé, et non plus dans les fixtures — sans
+   quoi une ligne créée dans l'application nommait un camion qui n'existe pas. */
 function vehiculeDe(id: string | null) {
-  return FLOTTE.find((l) => l.vehicule.id === id) ?? null;
+  return lireReferentiels().vehicules.find((v) => v.id === id) ?? null;
+}
+
+function chauffeurDe(id: string | null) {
+  return lireReferentiels().chauffeurs.find((c) => c.id === id) ?? null;
+}
+
+function siteDe(id: string | null) {
+  return lireReferentiels().sites.find((x) => x.id === id) ?? null;
 }
 
 function etatDocument(echeance: string | null): { etat: EtatDocument; joursRestants: number | null } {
@@ -92,13 +102,13 @@ export function fabriquerReleve(c: Creation): ReleveFiche {
 
 export function fabriquerAffectationVehicule(c: Creation, buSite: string): AffectationFiche {
   const v = c.valeurs;
-  const chauffeur = listeChauffeurs().find((x) => x.id === s(v.chauffeurId)) ?? null;
-  return { numero: c.numero, chauffeur: chauffeur?.nomComplet ?? null, chauffeurId: chauffeur?.id ?? null, initiales: chauffeur?.initiales ?? "—", role: (s(v.role) as AffectationFiche["role"]) ?? "titulaire", debut: s(v.debut) ?? c.date.slice(0, 10), fin: s(v.fin), buSite, kmParcourus: 0, motif: s(v.motif) ?? "Saisie dans l'application" };
+  const chauffeur = chauffeurDe(s(v.chauffeurId));
+  return { numero: c.numero, chauffeur: chauffeur?.nomComplet ?? null, chauffeurId: chauffeur?.id ?? null, initiales: chauffeur ? initialesDe(chauffeur.nomComplet) : "—", role: (s(v.role) as AffectationFiche["role"]) ?? "titulaire", debut: s(v.debut) ?? c.date.slice(0, 10), fin: s(v.fin), buSite, kmParcourus: 0, motif: s(v.motif) ?? "Saisie dans l'application" };
 }
 
 export function fabriquerAttelage(c: Creation, roleDuVehicule: "tracteur" | "remorque"): AttelageFiche {
   const v = c.valeurs;
-  const autre = vehiculeDe(s(v.autreId))?.vehicule ?? null;
+  const autre = vehiculeDe(s(v.autreId));
   return { numero: c.numero, role: roleDuVehicule, autreId: autre?.id ?? "", autreImmatriculation: autre?.immatriculation ?? "", autreImmatriculationAffichee: autre?.immatriculationAffichee ?? "—", autreVehicule: autre ? `${autre.marque} ${autre.appellation}` : "—", debut: s(v.debut) ?? c.date.slice(0, 10), fin: s(v.fin), permanent: b(v.permanent), motif: s(v.motif) };
 }
 
@@ -110,7 +120,7 @@ export function fabriquerPeriodeStatut(c: Creation): PeriodeStatutFiche {
 /** Un incident déclaré depuis la fiche véhicule laisse une entrée au journal. */
 export function fabriquerEvenementIncident(c: Creation): EvenementJournal {
   const v = c.valeurs;
-  const chauffeur = listeChauffeurs().find((x) => x.id === s(v.chauffeurId));
+  const chauffeur = chauffeurDe(s(v.chauffeurId));
   return {
     date: (s(v.dateHeure) ?? c.date).slice(0, 10),
     auteur: c.auteur,
@@ -166,8 +176,8 @@ export function fabriquerAffectationChauffeur(c: Creation): AffectationChauffeur
   const v = c.valeurs;
   const l = vehiculeDe(s(v.vehiculeId));
   if (!l) return null;
-  const bu = l.vehicule.businessUnit ? BUSINESS_UNIT[l.vehicule.businessUnit] : "—";
-  return { id: c.numero, numero: c.numero, vehiculeId: l.vehicule.id, immatriculation: l.vehicule.immatriculation, immatriculationAffichee: l.vehicule.immatriculationAffichee, vehicule: `${l.vehicule.marque} ${l.vehicule.appellation}`, role: (s(v.role) as AffectationChauffeur["role"]) ?? "titulaire", debut: s(v.debut) ?? c.date.slice(0, 10), fin: s(v.fin), buSite: `${bu} · ${l.site?.libelle ?? "—"}`, kmParcourus: 0, motif: s(v.motif) ?? "Saisie dans l'application" };
+  const bu = l.businessUnit ? BUSINESS_UNIT[l.businessUnit] : "—";
+  return { id: c.numero, numero: c.numero, vehiculeId: l.id, immatriculation: l.immatriculation, immatriculationAffichee: l.immatriculationAffichee, vehicule: `${l.marque} ${l.appellation}`, role: (s(v.role) as AffectationChauffeur["role"]) ?? "titulaire", debut: s(v.debut) ?? c.date.slice(0, 10), fin: s(v.fin), buSite: `${bu} · ${l.site ?? "—"}`, kmParcourus: 0, motif: s(v.motif) ?? "Saisie dans l'application" };
 }
 
 export function fabriquerDocumentChauffeur(c: Creation): DocumentFiche {
@@ -179,13 +189,13 @@ export function fabriquerContravention(c: Creation): ContraventionChauffeur | nu
   const v = c.valeurs;
   const l = vehiculeDe(s(v.vehiculeId));
   if (!l) return null;
-  return { id: c.numero, numero: c.numero, date: s(v.date) ?? c.date.slice(0, 10), vehiculeId: l.vehicule.id, immatriculationAffichee: l.vehicule.immatriculationAffichee, libelle: s(v.libelle) ?? "", montant: n(v.montant) ?? 0, reference: s(v.reference), retenue: b(v.retenue) };
+  return { id: c.numero, numero: c.numero, date: s(v.date) ?? c.date.slice(0, 10), vehiculeId: l.id, immatriculationAffichee: l.immatriculationAffichee, libelle: s(v.libelle) ?? "", montant: n(v.montant) ?? 0, reference: s(v.reference), retenue: b(v.retenue) };
 }
 
 export function fabriquerFrais(c: Creation, vehiculeId: string | null): FraisDeRoute | null {
   const v = c.valeurs;
   const l = vehiculeDe(s(v.vehiculeId) ?? vehiculeId);
-  return { id: c.numero, numero: c.numero, date: s(v.date) ?? c.date.slice(0, 10), vehiculeId: l?.vehicule.id ?? "", immatriculationAffichee: l?.vehicule.immatriculationAffichee ?? "—", libelle: s(v.libelle) ?? "", montant: n(v.montant) ?? 0, reference: s(v.reference), justificatif: b(v.justificatif) };
+  return { id: c.numero, numero: c.numero, date: s(v.date) ?? c.date.slice(0, 10), vehiculeId: l?.id ?? "", immatriculationAffichee: l?.immatriculationAffichee ?? "—", libelle: s(v.libelle) ?? "", montant: n(v.montant) ?? 0, reference: s(v.reference), justificatif: b(v.justificatif) };
 }
 
 export function fabriquerIncidentChauffeur(c: Creation, chauffeurId: string): IncidentChauffeur | null {
@@ -195,12 +205,12 @@ export function fabriquerIncidentChauffeur(c: Creation, chauffeurId: string): In
   const declaration: DeclarationIncident = {
     id: c.numero,
     numero: c.numero,
-    vehiculeId: l.vehicule.id,
+    vehiculeId: l.id,
     nature: (s(v.nature) as DeclarationIncident["nature"]) ?? "incident",
     type: (s(v.type) as DeclarationIncident["type"]) ?? "autre",
     dateHeure: `${(s(v.dateHeure) ?? c.date).slice(0, 10)}T08:00:00`,
     lieu: s(v.lieu) ?? "",
-    siteId: l.vehicule.siteId,
+    siteId: l.siteId,
     chauffeurId,
     mission: (s(v.mission) as DeclarationIncident["mission"]) ?? null,
     description: s(v.description) ?? "",
@@ -212,7 +222,7 @@ export function fabriquerIncidentChauffeur(c: Creation, chauffeurId: string): In
     sinistreOuvert: false,
     declarantId: c.auteur,
   };
-  return { declaration, immatriculationAffichee: l.vehicule.immatriculationAffichee, vehicule: `${l.vehicule.marque} ${l.vehicule.appellation}`, cout: 0, immobilisationJours: 0 };
+  return { declaration, immatriculationAffichee: l.immatriculationAffichee, vehicule: `${l.marque} ${l.appellation}`, cout: 0, immobilisationJours: 0 };
 }
 
 export function fabriquerSanction(c: Creation, chauffeurId: string): Sanction {
@@ -237,7 +247,7 @@ export function fabriquerEvenementIndisponibilite(c: Creation): EvenementJournal
 
 /** Le libellé d'un site, pour un identifiant surchargé sur une fiche. */
 export function libelleSite(siteId: string | null): string | null {
-  return SITES.find((x) => x.id === siteId)?.libelle ?? null;
+  return siteDe(siteId)?.libelle ?? null;
 }
 
 /** Libellé d'un type de document, pour les titres de modale. */
@@ -297,7 +307,7 @@ export function fabriquerLigneFlotte(c: Creation): LigneFlotte {
     },
     chauffeurTitulaire: null,
     nombreSuppleants: 0,
-    site: SITES.find((x) => x.id === s(v.siteId)) ?? null,
+    site: siteDe(s(v.siteId)),
     kilometrage: km,
     dateKilometrage: km === null ? null : c.date.slice(0, 10),
     prochaineEcheanceConformite: vt && j !== null ? { type: "visite-technique", echeance: vt, joursRestants: j } : null,
@@ -317,16 +327,16 @@ export function fabriquerLigneIncident(c: Creation): LigneIncident | null {
   const v = c.valeurs;
   const l = vehiculeDe(s(v.vehiculeId));
   if (!l) return null;
-  const chauffeur = listeChauffeurs().find((x) => x.id === s(v.chauffeurId)) ?? null;
+  const chauffeur = chauffeurDe(s(v.chauffeurId));
   const blesses = typeof v.blesses === "boolean" ? v.blesses : Boolean(s(v.blesses) && s(v.blesses) !== "aucun");
   return {
     numero: c.numero,
-    vehiculeId: l.vehicule.id,
-    immatriculation: l.vehicule.immatriculation,
-    immatriculationAffichee: l.vehicule.immatriculationAffichee,
-    vehicule: `${l.vehicule.marque} ${l.vehicule.appellation}`,
-    businessUnit: l.vehicule.businessUnit,
-    site: l.site?.libelle ?? null,
+    vehiculeId: l.id,
+    immatriculation: l.immatriculation,
+    immatriculationAffichee: l.immatriculationAffichee,
+    vehicule: `${l.marque} ${l.appellation}`,
+    businessUnit: l.businessUnit,
+    site: l.site,
     nature: (s(v.nature) as LigneIncident["nature"]) ?? "incident",
     type: (s(v.type) as LigneIncident["type"]) ?? "autre",
     dateHeure: s(v.dateHeure) ?? c.date.slice(0, 16),
@@ -404,12 +414,12 @@ export function fabriquerLigneAchat(c: Creation, prestataires: Prestataire[]): L
     urgence: (s(v.urgence) as LigneAchat["urgence"]) ?? "normale",
     origineNumero,
     origineLibelle: null,
-    origineHref: lienOrigine(origineNumero, l?.vehicule.immatriculation ?? null),
-    vehiculeId: l?.vehicule.id ?? null,
-    immatriculation: l?.vehicule.immatriculation ?? null,
-    immatriculationAffichee: l?.vehicule.immatriculationAffichee ?? null,
-    businessUnit: l?.vehicule.businessUnit ?? null,
-    site: l?.site?.libelle ?? null,
+    origineHref: lienOrigine(origineNumero, l?.immatriculation ?? null),
+    vehiculeId: l?.id ?? null,
+    immatriculation: l?.immatriculation ?? null,
+    immatriculationAffichee: l?.immatriculationAffichee ?? null,
+    businessUnit: l?.businessUnit ?? null,
+    site: l?.site ?? null,
     demandeur: c.auteur,
     /* La création ne retient que le nom de l'auteur ; le rôle s'en déduit, et
        c'est lui qu'on préviendra de la décision. */
@@ -442,12 +452,12 @@ export function fabriquerLigneOrdre(c: Creation): LigneOrdre | null {
   const origineNumero = s(v.origineNumero);
   return {
     numero: c.numero,
-    vehiculeId: l.vehicule.id,
-    immatriculation: l.vehicule.immatriculation,
-    immatriculationAffichee: l.vehicule.immatriculationAffichee,
-    vehicule: `${l.vehicule.marque} ${l.vehicule.appellation}`,
-    businessUnit: l.vehicule.businessUnit,
-    site: l.site?.libelle ?? null,
+    vehiculeId: l.id,
+    immatriculation: l.immatriculation,
+    immatriculationAffichee: l.immatriculationAffichee,
+    vehicule: `${l.marque} ${l.appellation}`,
+    businessUnit: l.businessUnit,
+    site: l.site,
     type: (s(v.type) as LigneOrdre["type"]) ?? "curatif",
     objet: s(v.objet) ?? "",
     origineNumero,
@@ -551,7 +561,7 @@ export function fabriquerLigneChauffeur(c: Creation): LigneChauffeur {
     },
     nomComplet,
     initiales: initialesDe(nomComplet),
-    site: SITES.find((x) => x.id === s(v.siteId)) ?? null,
+    site: siteDe(s(v.siteId)),
     /* Sans affectation, un chauffeur créé est disponible : c'est exactement ce
        que l'écran des affectations doit pouvoir lui proposer. */
     statut: "disponible",

@@ -23,7 +23,8 @@
  * ==========================================================================*/
 
 import type { TypePrestataire } from "@/domaine/prestataires";
-import type { CategorieVehicule } from "@/domaine/types";
+import type { StatutChauffeur } from "@/domaine/chauffeur";
+import type { BusinessUnit, CategorieVehicule, Site, StatutVehicule } from "@/domaine/types";
 
 export interface VehiculeChoix {
   /** L'identifiant de la base : c'est lui que l'écriture attend. */
@@ -33,12 +34,18 @@ export interface VehiculeChoix {
   marque: string;
   appellation: string;
   categorie: CategorieVehicule;
+  siteId: string | null;
+  /* Ce que la recherche globale affiche sous le nom, pour situer d'un coup d'œil. */
+  statut: StatutVehicule;
+  businessUnit: BusinessUnit | null;
+  site: string | null;
+  vin: string | null;
 }
 
 export interface ReferentielsChoix {
   vehicules: VehiculeChoix[];
-  chauffeurs: { id: string; nomComplet: string; actif: boolean }[];
-  sites: { id: string; libelle: string }[];
+  chauffeurs: { id: string; nomComplet: string; actif: boolean; statut: StatutChauffeur; site: string | null; matriculeRh: string | null; telephone: string | null; vehicule: string | null }[];
+  sites: Site[];
   prestataires: { numero: string; raisonSociale: string; ville: string | null; type: TypePrestataire; actif: boolean }[];
   /** Les camions des transporteurs, pour le planning des affectations. */
   camionsTiers: { immatriculation: string; immatriculationAffichee: string; transporteurNumero: string; actif: boolean }[];

@@ -55,12 +55,41 @@ async function vehiculeIdDe(client: SupabaseClient, cle: unknown): Promise<strin
   return d.data?.id ?? null;
 }
 
+/**
+ * Le chauffeur, depuis ce que l'écran en dit : un identifiant de table, ou son
+ * adresse lisible (« babacar-ndiaye »).
+ *
+ * L'adresse se traduit d'abord par l'identifiant dérivé — le jeu de départ les
+ * a posés ainsi, et l'application fait de même à la création. Mais une fiche
+ * saisie directement en base porte un identifiant quelconque : on retombe alors
+ * sur le nom, sans quoi elle serait introuvable depuis l'application et toute
+ * écriture la concernant serait refusée sans qu'on sache pourquoi.
+ */
 async function chauffeurIdDe(client: SupabaseClient, cle: unknown): Promise<string | null> {
   if (typeof cle !== "string" || !cle) return null;
   if (EST_UUID.test(cle)) return cle;
   const devine = uuidDeterministe(`chauffeur:${cle}`);
   const d = await client.from("chauffeur").select("id").eq("id", devine).maybeSingle<{ id: string }>();
-  return d.data?.id ?? null;
+  if (d.data) return d.data.id;
+  /* Par le nom : « babacar-ndiaye » se relit « babacar ndiaye », et la
+     comparaison se fait sur le prénom et le nom accolés, sans accent. */
+  const mots = cle.split("-").filter(Boolean);
+  if (mots.length < 2) return null;
+  const tous = await client.from("chauffeur").select("id, nom, prenom").limit(2000).returns<{ id: string; nom: string; prenom: string }[]>();
+  if (tous.error || !tous.data) return null;
+  const trouves = tous.data.filter((c) => idLisible(`${c.prenom} ${c.nom}`) === cle);
+  /* Deux homonymes : on ne choisit pas au hasard lequel des deux on modifie. */
+  return trouves.length === 1 ? trouves[0]!.id : null;
+}
+
+/** La même transformation que `idChauffeur` du domaine, côté serveur. */
+function idLisible(nom: string): string {
+  return nom
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 async function prestataireIdDe(client: SupabaseClient, nom: unknown): Promise<string | null> {
@@ -179,6 +208,7 @@ export async function ecrireCreation(c: Creation): Promise<ResultatEcriture> {
   if (!moi) return { issue: "refusee", motif: "Session absente : reconnectez-vous." };
 
   if (c.type === "statut") return poserStatut(client, moi.utilisateurId, c);
+  if (c.type === "aptitude") return poserAptitude(client, moi.utilisateurId, c);
   const table = tableDe(c.type);
   if (!table) return { issue: "hors-base" };
 
@@ -191,6 +221,21 @@ export async function ecrireCreation(c: Creation): Promise<ResultatEcriture> {
   /* Un véhicule n'est pas numéroté : sa clé est sa plaque, et deux véhicules ne
      peuvent pas la partager. Un doublon ne se renumérote donc pas — il se dit,
      parce que c'est presque toujours le même camion saisi deux fois. */
+  /* La personne reçoit l'identifiant dérivé de son nom : c'est ce qui permet à
+     l'adresse de sa fiche de la désigner ensuite, et ce qui fait qu'enregistrer
+     deux fois la même personne bute sur la clé primaire au lieu de créer un
+     doublon silencieux. */
+  if (c.type === "chauffeur") {
+    const lisible = idLisible(`${ligne.prenom ?? ""} ${ligne.nom ?? ""}`);
+    const ecriture = await client.from(table).insert({ ...ligne, id: uuidDeterministe(`chauffeur:${lisible}`) }).select("id").maybeSingle<{ id: string }>();
+    if (ecriture.error) {
+      const nom = `${ligne.prenom ?? ""} ${ligne.nom ?? ""}`.trim();
+      return { issue: "refusee", motif: ecriture.error.code === "23505" ? `${nom} a déjà une fiche : ouvrez-la plutôt que d'en créer une seconde.` : `Non enregistré en base : ${ecriture.error.message}` };
+    }
+    revalidatePath("/", "layout");
+    return { issue: "ecrite", numero: `CHA-${lisible}` };
+  }
+
   if (c.type === "vehicule") {
     const ecriture = await client.from(table).insert(ligne).select("id").maybeSingle<{ id: string }>();
     if (ecriture.error) {
@@ -237,6 +282,45 @@ async function entreeAuParc(client: SupabaseClient, vehiculeId: string, utilisat
 }
 
 /* Le statut d'un véhicule : sa ligne change, et la trace garde l'avant. */
+/**
+ * Une décision d'aptitude : apte, apte avec réserve, inapte.
+ *
+ * Elle n'a pas de table — ce sont trois colonnes de la fiche du chauffeur,
+ * comme le statut est une colonne du véhicule. Elle passe donc par son propre
+ * écrivain, et laisse une trace dans `modification` : une inaptitude prononcée
+ * doit pouvoir se relire, avec sa date et son motif.
+ */
+async function poserAptitude(client: SupabaseClient, utilisateurId: string, c: Creation): Promise<ResultatEcriture> {
+  const s = decomposerSujet(c.sujet);
+  const chauffeurId = (await chauffeurIdDe(client, c.valeurs.chauffeurId)) ?? (s.genre === "chauffeur" ? await chauffeurIdDe(client, s.cle) : null);
+  if (!chauffeurId) return { issue: "refusee", motif: "Non enregistré en base : chauffeur introuvable." };
+  const aptitude = typeof c.valeurs.aptitude === "string" ? c.valeurs.aptitude : null;
+  if (!aptitude) return { issue: "refusee", motif: "Non enregistré en base : aptitude absente." };
+  const avant = await client.from("chauffeur").select("nom, prenom, aptitude").eq("id", chauffeurId).maybeSingle<{ nom: string; prenom: string; aptitude: string }>();
+  if (!avant.data) return { issue: "refusee", motif: "Non enregistré en base : chauffeur introuvable." };
+  const motif = typeof c.valeurs.motif === "string" ? c.valeurs.motif : null;
+  const date = typeof c.valeurs.date === "string" ? c.valeurs.date : null;
+  const maj = await client
+    .from("chauffeur")
+    .update({ aptitude, aptitude_motif: motif, aptitude_date: date, modifie_le: new Date().toISOString(), modifie_par: utilisateurId })
+    .eq("id", chauffeurId);
+  if (maj.error) return { issue: "refusee", motif: `Décision non enregistrée : ${maj.error.message}` };
+  const trace = await client.from("modification").insert({
+    table_cible: "chauffeur",
+    numero: chauffeurId,
+    champ: "aptitude",
+    libelle_champ: "Aptitude",
+    avant: avant.data.aptitude,
+    apres: aptitude,
+    motif: motif ?? "Décision d'aptitude",
+    statut: "appliquee",
+    cree_par: utilisateurId,
+  });
+  if (trace.error) return { issue: "refusee", motif: `Enregistrée, mais sans trace : ${trace.error.message}` };
+  revalidatePath("/", "layout");
+  return { issue: "ecrite", numero: c.numero };
+}
+
 async function poserStatut(client: SupabaseClient, utilisateurId: string, c: Creation): Promise<ResultatEcriture> {
   const s = decomposerSujet(c.sujet);
   const vehiculeId = (await vehiculeIdDe(client, c.valeurs.vehiculeId)) ?? (s.genre === "vehicule" ? await vehiculeIdDe(client, s.cle) : null);
@@ -284,6 +368,14 @@ export async function ecrireModification(e: { numero: string; type: TypeTransact
      immatriculation — celle d'**avant**, puisqu'une plaque peut être ce qui
      change. La trace, elle, se range sous cette même clé. */
   const cle = cleDe(e.type, e.numero);
+  /* La fiche d'un chauffeur se nomme « CHA-babacar-ndiaye » : lisible, mais ce
+     n'est pas la clé de la table. On la traduit ici — la base est sous la main,
+     et elle seule sait à qui l'adresse renvoie. */
+  if (e.type === "chauffeur") {
+    const id = await chauffeurIdDe(client, cle.valeur);
+    if (!id) return { issue: "refusee", motif: `Modification non appliquée : ${e.numero} n'est pas en base.` };
+    cle.valeur = id;
+  }
   if (Object.keys(colonnes).length > 0) {
     /* Le relevé n'a pas de colonnes de modification : il se corrige rarement, et la trace suffit. */
     const horodate = table === "releve_kilometrique" ? {} : { modifie_le: new Date().toISOString(), modifie_par: moi.utilisateurId };

@@ -46,7 +46,8 @@ export type TableBranchee =
   | "piece"
   | "mouvement_stock"
   | "pneu"
-  | "vehicule";
+  | "vehicule"
+  | "chauffeur";
 
 const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   releve: "releve_kilometrique",
@@ -80,6 +81,10 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
      transaction, mais sa clé est son immatriculation, pas un numéro — c'est
      `cleDe` qui le dit à l'écriture. */
   vehicule: "vehicule",
+  /* La personne, comme la fiche véhicule : elle se crée et se modifie comme
+     une transaction, mais sa clé n'est pas un numéro — c'est `cleDe` qui le dit
+     à l'écriture. */
+  chauffeur: "chauffeur",
 };
 
 /**
@@ -87,9 +92,28 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
  * par `numero`, sauf le véhicule : sa clé métier est son immatriculation, et la
  * fiche la porte sous la forme « VEH-AA032EA ».
  */
+/**
+ * Les catégories de permis, du texte libre vers le tableau que la base attend.
+ *
+ * Le formulaire laisse écrire « B · C · E », « b,c,e » ou « B C E » : on ne
+ * fait pas recommencer quelqu'un pour un séparateur. Tout ce qui n'est pas une
+ * lettre de catégorie sénégalaise est écarté plutôt qu'entré de travers.
+ */
+export function categoriesPermis(brut: unknown): string[] {
+  if (Array.isArray(brut)) return brut.map(String);
+  if (typeof brut !== "string") return [];
+  const vues = new Set<string>();
+  for (const m of brut.toUpperCase().matchAll(/[A-E]/g)) vues.add(m[0]);
+  return [...vues].sort();
+}
+
 export function cleDe(type: TypeTransaction, numero: string): { colonne: string; valeur: string } {
-  if (type !== "vehicule") return { colonne: "numero", valeur: numero };
-  return { colonne: "immatriculation", valeur: immatriculationCanonique(numero.replace(/^VEH-/i, "")) };
+  if (type === "vehicule") return { colonne: "immatriculation", valeur: immatriculationCanonique(numero.replace(/^VEH-/i, "")) };
+  /* Le chauffeur se repère par son identifiant de table. La fiche le nomme
+     « CHA-babacar-ndiaye » : c'est son adresse lisible, pas sa clé. L'écriture
+     la traduit — elle seule a la base sous la main. */
+  if (type === "chauffeur") return { colonne: "id", valeur: numero.replace(/^CHA-/i, "") };
+  return { colonne: "numero", valeur: numero };
 }
 
 /** La table d'un type ; nulle tant qu'il n'en a pas. Le statut est à part : il s'écrit sur le véhicule. */
@@ -553,6 +577,37 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       if (!texte(v.motif)) return { refus: "sanction sans motif" };
       return { ligne: { numero, chauffeur_id: r.chauffeurId, date: texte(v.date), type: texte(v.type) ?? "avertissement", motif: texte(v.motif), jours: nombre(v.jours) } };
     }
+    /* La personne n'a pas de numéro non plus : sa clé est celle de la table,
+       et l'écriture la dérive de son nom pour que l'adresse lisible de sa
+       fiche — « CHA-babacar-ndiaye » — continue de la désigner. */
+    case "chauffeur": {
+      const prenom = texte(v.prenom);
+      const nom = texte(v.nom);
+      if (!prenom || !nom) return { refus: "chauffeur sans nom ou sans prénom" };
+      return {
+        ligne: {
+          nom,
+          prenom,
+          matricule_rh: texte(v.matriculeRh),
+          contrat: texte(v.contrat) ?? "salarie",
+          site_id: texte(v.siteId),
+          telephone: texte(v.telephone),
+          permis_numero: texte(v.permisNumero),
+          permis_categories: categoriesPermis(v.permisCategories),
+          permis_delivrance: texte(v.permisDelivrance),
+          permis_echeance: texte(v.permisEcheance),
+          visite_medicale_echeance: texte(v.visiteMedicaleEcheance),
+          /* Une fiche naît apte : une réserve ou une inaptitude est une
+             décision datée, qui se prend ensuite et se trace. */
+          aptitude: texte(v.aptitude) ?? "apte",
+          date_naissance: texte(v.dateNaissance),
+          date_embauche: texte(v.dateEmbauche),
+          date_sortie: texte(v.dateSortie),
+          adresse: texte(v.adresse),
+          contact_urgence: texte(v.contactUrgence),
+        },
+      };
+    }
     /* Le véhicule n'a pas de numéro : sa clé métier est son immatriculation, et
        c'est elle qui doit être unique. Le reste se complète sur la fiche. */
     case "vehicule": {
@@ -621,6 +676,28 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   document: { numeroPiece: "numero_piece", emetteur: "emetteur", dateEffet: "date_effet", echeance: "echeance", montant: "montant", fichier: "fichier" },
   incident: { dateHeure: "date_heure", lieu: "lieu", mission: "mission", kilometrage: "kilometrage", responsabilite: "responsabilite", statut: "statut", description: "description" },
   affectation: { debut: "debut", fin: "fin", motif: "motif" },
+  /* La fiche d'une personne. Le nom et le prénom en font partie : on corrige
+     une orthographe, on n'invente pas quelqu'un d'autre — et la trace dit qui
+     a changé quoi. L'aptitude, elle, ne se modifie pas ici : c'est une
+     décision datée, qui a son propre formulaire et sa propre écriture. */
+  chauffeur: {
+    nom: "nom",
+    prenom: "prenom",
+    matriculeRh: "matricule_rh",
+    contrat: "contrat",
+    siteId: "site_id",
+    telephone: "telephone",
+    permisNumero: "permis_numero",
+    permisCategories: "permis_categories",
+    permisDelivrance: "permis_delivrance",
+    permisEcheance: "permis_echeance",
+    visiteMedicaleEcheance: "visite_medicale_echeance",
+    dateNaissance: "date_naissance",
+    dateEmbauche: "date_embauche",
+    dateSortie: "date_sortie",
+    adresse: "adresse",
+    contactUrgence: "contact_urgence",
+  },
   /* Les deux véhicules ne se changent pas après coup : un attelage qui change
      de tracteur est un autre attelage. On clôt et on en saisit un nouveau. */
   attelage: { debut: "debut", fin: "fin", permanent: "permanent", motif: "motif" },

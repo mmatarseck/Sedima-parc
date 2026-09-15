@@ -6,11 +6,10 @@
  * page. Au branchement de la base, il deviendra une route serveur.
  * ==========================================================================*/
 
-import { listeChauffeurs } from "@/donnees/chauffeurs-demo";
-import { FLOTTE } from "@/donnees/parc-demo";
 import { catalogueReferences } from "@/composants/transactions/ChampReference";
 import { fabriquerLigneFlotte } from "@/composants/transactions/fabriques";
 import { lireToutesCreations } from "@/lib/clotures-demo";
+import { lireReferentiels } from "@/lib/referentiels-navigateur";
 import { STATUT_CHAUFFEUR } from "@/domaine/chauffeur";
 import { BUSINESS_UNIT, STATUT_VEHICULE } from "@/domaine/libelles";
 import type { LigneFlotte } from "@/domaine/types";
@@ -36,41 +35,39 @@ export function chercher(terme: string): Resultat[] {
   /* Les véhicules créés dans le navigateur passent devant : on vient de les
      saisir, c'est souvent eux que l'on cherche. */
   const crees: LigneFlotte[] = lireToutesCreations("vehicule").map(fabriquerLigneFlotte);
-  const vehicules: Resultat[] = [...crees, ...FLOTTE].filter((l) =>
-    [l.vehicule.immatriculation, l.vehicule.immatriculationAffichee, l.vehicule.vin ?? "", l.vehicule.marque, l.vehicule.appellation]
-      .join(" ")
-      .toLowerCase()
-      .includes(t),
-  )
+  const referentiels = lireReferentiels();
+  const vehicules: Resultat[] = [
+    ...crees.map((l) => ({
+      id: l.vehicule.id,
+      immatriculation: l.vehicule.immatriculation,
+      immatriculationAffichee: l.vehicule.immatriculationAffichee,
+      marque: l.vehicule.marque,
+      appellation: l.vehicule.appellation,
+      vin: l.vehicule.vin,
+      statut: l.vehicule.statut,
+      businessUnit: l.vehicule.businessUnit,
+      site: l.site?.libelle ?? null,
+    })),
+    ...referentiels.vehicules,
+  ]
+    .filter((v) => [v.immatriculation, v.immatriculationAffichee, v.vin ?? "", v.marque, v.appellation].join(" ").toLowerCase().includes(t))
     .slice(0, LIMITE_PAR_CATEGORIE)
-    .map((l) => ({
-      cle: `v-${l.vehicule.id}`,
+    .map((v) => ({
+      cle: `v-${v.id}`,
       categorie: "Véhicules" as const,
-      titre: `${l.vehicule.immatriculationAffichee} · ${l.vehicule.marque} ${l.vehicule.appellation}`,
-      precision: [
-        STATUT_VEHICULE[l.vehicule.statut].libelle,
-        l.vehicule.businessUnit ? BUSINESS_UNIT[l.vehicule.businessUnit] : null,
-        l.site?.libelle ?? null,
-      ]
-        .filter(Boolean)
-        .join(" · "),
-      href: `/flotte/${l.vehicule.immatriculation}`,
+      titre: `${v.immatriculationAffichee} · ${v.marque} ${v.appellation}`,
+      precision: [STATUT_VEHICULE[v.statut].libelle, v.businessUnit ? BUSINESS_UNIT[v.businessUnit] : null, v.site].filter(Boolean).join(" · "),
+      href: `/flotte/${v.immatriculation}`,
     }));
 
-  const chauffeurs: Resultat[] = listeChauffeurs()
-    .filter((c) => [c.nomComplet, c.chauffeur.matriculeRh ?? "", c.chauffeur.telephone ?? ""].join(" ").toLowerCase().includes(t))
+  const chauffeurs: Resultat[] = referentiels.chauffeurs
+    .filter((c) => [c.nomComplet, c.matriculeRh ?? "", c.telephone ?? ""].join(" ").toLowerCase().includes(t))
     .slice(0, LIMITE_PAR_CATEGORIE)
     .map((c) => ({
       cle: `c-${c.id}`,
       categorie: "Chauffeurs" as const,
       titre: c.nomComplet,
-      precision: [
-        STATUT_CHAUFFEUR[c.statut].libelle,
-        c.vehiculeTitulaire ? `titulaire de ${c.vehiculeTitulaire.immatriculationAffichee}` : c.suppleances.length ? `suppléant de ${c.suppleances[0]!.immatriculationAffichee}` : null,
-        c.site?.libelle ?? null,
-      ]
-        .filter(Boolean)
-        .join(" · "),
+      precision: [STATUT_CHAUFFEUR[c.statut].libelle, c.vehicule ? `véhicule ${c.vehicule}` : null, c.site].filter(Boolean).join(" · "),
       href: `/chauffeurs/${c.id}`,
     }));
 
