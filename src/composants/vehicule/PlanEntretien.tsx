@@ -76,6 +76,9 @@ export function PlanEntretien({ fiche }: { fiche: FicheVehicule }) {
     demander({
       type: "entretien",
       numero: e.numero,
+      /* Le numéro affiché est recalculé à chaque rendu : c'est le code de
+         l'opération qui désigne la ligne en base, avec le véhicule de la fiche. */
+      cleMetier: e.code,
       titre: `Ajuster « ${e.libelle} » pour ce véhicule`,
       valeurs: { km: e.periodicite.km, heures: e.periodicite.heures, mois: e.periodicite.mois, motif: e.motifAjustement ?? "" },
     });

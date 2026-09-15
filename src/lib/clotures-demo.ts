@@ -125,6 +125,21 @@ function ecrireDemandes(liste: DemandeModification[]): void {
 
 export interface Enregistrement {
   numero: string;
+  /**
+   * La fiche d'où part la modification — « vehicule:AA032EA ».
+   *
+   * La création l'a toujours porté ; la modification, non, et cela suffisait
+   * tant que chaque ligne se repérait par son numéro. Une ligne de plan
+   * d'entretien, elle, se repère par le couple véhicule + opération : sans le
+   * sujet, l'écriture ne sait pas de quel véhicule on parle.
+   */
+  sujet?: string;
+  /**
+   * La clé métier de la ligne quand son numéro n'en est pas une : le code de
+   * l'opération pour un plan d'entretien, dont le numéro affiché est recalculé
+   * à chaque rendu et ne désigne rien de stable.
+   */
+  cleMetier?: string;
   type: TypeTransaction;
   titre: string;
   href: string;
@@ -289,7 +304,7 @@ async function synchroniserCreation(creation: Creation): Promise<void> {
 
 async function synchroniserModification(e: Enregistrement, diffs: { champ: string; libelleChamp: string; avant: string; apres: string; valeur: unknown }[]): Promise<void> {
   try {
-    const r = await ecrireModification({ numero: e.numero, type: e.type, motif: e.motif, diffs });
+    const r = await ecrireModification({ numero: e.numero, type: e.type, motif: e.motif, diffs, sujet: e.sujet, cleMetier: e.cleMetier });
     if (r.issue === "refusee") signalerRefus(e.titre, r.motif, e.href);
   } catch (x) {
     signalerRefus(e.titre, `Non enregistré en base : ${x instanceof Error ? x.message : "erreur inconnue"}`, e.href);

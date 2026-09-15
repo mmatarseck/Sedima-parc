@@ -281,5 +281,47 @@ attendu(`un prestataire sans raison sociale est refusé (${"refus" in sansRaison
 const desactivation = colonnesModification("prestataire", [{ champ: "actif", valeur: "non" }, { champ: "note", valeur: "Ne répond plus depuis juin" }]);
 attendu(`on désactive une fiche plutôt que de l'effacer (${JSON.stringify(desactivation.actif)})`, desactivation.actif === false && desactivation.note === "Ne répond plus depuis juin");
 
+/* -- L'ajustement du plan d'entretien (15 septembre 2026) ------------------- */
+/* Dernier type resté sans écriture. Sa clé n'est pas un numéro mais le couple
+   véhicule + opération : le numéro qu'affiche la fiche est recalculé à chaque
+   rendu à partir du rang de l'opération, et ne désigne rien de stable. */
+
+attendu("l'ajustement d'entretien n'a pas de table par numéro", tableDe("entretien") === null);
+const operation = (await pg.query(`select code from operation_entretien order by code limit 1`)).rows[0] as { code: string };
+attendu(`le référentiel des opérations est là (${operation?.code})`, Boolean(operation?.code));
+
+/* Un ajustement est un dépôt, pas une mise à jour : la ligne n'existe pas tant
+   que personne n'a rien écarté du gabarit. */
+await pg.query(
+  `insert into ajustement_entretien (vehicule_id, operation_code, km, mois, motif, cree_par) values ($1, $2, $3, $4, $5, $6)
+   on conflict (vehicule_id, operation_code) do update set km = excluded.km, mois = excluded.mois, motif = excluded.motif`,
+  [v.id, operation.code, 12000, 6, "Tournées courtes : vidange avancée", utilisateur],
+);
+const pose = (await pg.query(`select km, heures, mois, motif, retiree from ajustement_entretien where vehicule_id = $1 and operation_code = $2`, [v.id, operation.code])).rows[0] as {
+  km: number; heures: number | null; mois: number; motif: string; retiree: boolean;
+};
+attendu(`l'ajustement tient sur le couple véhicule + opération (${pose?.km} km, ${pose?.mois} mois)`, pose?.km === 12000 && pose.mois === 6 && pose.retiree === false);
+
+/* Rejouer l'ajustement le remplace au lieu d'en créer un second : la clé
+   primaire est le couple, et un véhicule n'a qu'un écart par opération. */
+await pg.query(
+  `insert into ajustement_entretien (vehicule_id, operation_code, km, mois, motif, cree_par) values ($1, $2, $3, $4, $5, $6)
+   on conflict (vehicule_id, operation_code) do update set km = excluded.km, mois = excluded.mois, motif = excluded.motif`,
+  [v.id, operation.code, 15000, 6, "Révision de l'écart", utilisateur],
+);
+const combien = (await pg.query(`select count(*)::int as n from ajustement_entretien where vehicule_id = $1 and operation_code = $2`, [v.id, operation.code])).rows[0] as { n: number };
+attendu(`un second ajustement remplace le premier (${combien?.n} ligne)`, combien?.n === 1);
+
+/* Le motif est obligatoire, et c'est voulu : une périodicité qui s'écarte du
+   gabarit sans raison écrite est une périodicité que personne ne pourra
+   défendre dans six mois. */
+let sansMotif = false;
+try {
+  await pg.query(`insert into ajustement_entretien (vehicule_id, operation_code, km, cree_par) values ($1, $2, 9000, $3)`, [v.id, "OP-INEXISTANTE-TEST", utilisateur]);
+} catch {
+  sansMotif = true;
+}
+attendu("un ajustement sans motif ni opération connue est refusé", sansMotif);
+
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);

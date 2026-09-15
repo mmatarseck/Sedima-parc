@@ -25,6 +25,11 @@ const ModaleTransaction = dynamic(() => import("./ModaleTransaction").then((m) =
 export interface DemandeEdition {
   type: TypeTransaction;
   numero: string;
+  /**
+   * La clé métier de la ligne quand son numéro n'en est pas une : le code de
+   * l'opération pour une ligne de plan d'entretien.
+   */
+  cleMetier?: string;
   titre: string;
   valeurs: Record<string, unknown>;
   /** Champs à proposer ; ceux du type par défaut. */
@@ -140,6 +145,7 @@ export function FournisseurEdition({ sujet, href, children }: { sujet: string; h
           sujet={sujet}
           type={courante.d.type}
           numero={courante.d.numero}
+          cleMetier={courante.d.cleMetier}
           titre={courante.d.titre}
           champs={courante.d.champs}
           apresModification={courante.d.apresModification}

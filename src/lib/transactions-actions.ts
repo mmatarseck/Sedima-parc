@@ -350,13 +350,89 @@ async function poserStatut(client: SupabaseClient, utilisateurId: string, c: Cre
 }
 
 /** Écrit une modification : la ligne change, et chaque champ changé laisse sa trace. */
-export async function ecrireModification(e: { numero: string; type: TypeTransaction; motif: string; diffs: { champ: string; libelleChamp: string; avant: string; apres: string; valeur: unknown }[] }): Promise<ResultatEcriture> {
+/**
+ * Écarter un véhicule du gabarit d'entretien de sa catégorie.
+ *
+ * L'ajustement n'a pas de numéro : sa clé est le couple véhicule + opération
+ * (`ajustement_entretien`, 0002). Le numéro que la fiche affiche est recalculé
+ * à chaque rendu à partir du rang de l'opération dans le gabarit — il ne
+ * désigne rien de stable, et ne pouvait donc pas servir de clé.
+ *
+ * La ligne n'existe pas tant que personne n'a rien ajusté : c'est un dépôt, pas
+ * une mise à jour. Le motif est obligatoire en base, et c'est voulu — il dit
+ * pourquoi ce véhicule s'écarte du gabarit, ce qu'aucune périodicité ne dira.
+ */
+async function poserAjustementEntretien(
+  client: SupabaseClient,
+  utilisateurId: string,
+  e: { numero: string; motif: string; diffs: { champ: string; libelleChamp: string; valeur: unknown }[]; sujet?: string; cleMetier?: string },
+): Promise<ResultatEcriture> {
+  const s = decomposerSujet(e.sujet ?? "");
+  const vehiculeId = s.genre === "vehicule" ? await vehiculeIdDe(client, s.cle) : null;
+  if (!vehiculeId) return { issue: "refusee", motif: "Non enregistré en base : véhicule introuvable." };
+  const code = e.cleMetier;
+  if (!code) return { issue: "refusee", motif: "Non enregistré en base : opération d'entretien non désignée." };
+
+  const valeur = (champ: string) => e.diffs.find((d) => d.champ === champ)?.valeur;
+  const entier = (x: unknown) => {
+    if (x === undefined || x === null || x === "") return null;
+    const n = Number(String(x).replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+  };
+  /* Le motif durable — celui qui reste sur la ligne — est un champ du
+     formulaire ; à défaut, le motif de la modification fait l'affaire, car la
+     base en exige un. */
+  const motifDurable = (valeur("motif") as string | undefined)?.trim() || e.motif.trim();
+  if (!motifDurable) return { issue: "refusee", motif: "Non enregistré en base : un ajustement doit dire pourquoi." };
+
+  const ancien = await client.from("ajustement_entretien").select("km, heures, mois").eq("vehicule_id", vehiculeId).eq("operation_code", code).maybeSingle<{ km: number | null; heures: number | null; mois: number | null }>();
+  const depot = await client.from("ajustement_entretien").upsert(
+    {
+      vehicule_id: vehiculeId,
+      operation_code: code,
+      /* Un champ que l'agent n'a pas touché garde sa valeur : sans quoi ajuster
+         le kilométrage effacerait la périodicité en mois posée la veille. */
+      km: e.diffs.some((d) => d.champ === "km") ? entier(valeur("km")) : (ancien.data?.km ?? null),
+      heures: e.diffs.some((d) => d.champ === "heures") ? entier(valeur("heures")) : (ancien.data?.heures ?? null),
+      mois: e.diffs.some((d) => d.champ === "mois") ? entier(valeur("mois")) : (ancien.data?.mois ?? null),
+      motif: motifDurable,
+      modifie_le: new Date().toISOString(),
+      modifie_par: utilisateurId,
+      cree_par: utilisateurId,
+    },
+    { onConflict: "vehicule_id,operation_code" },
+  );
+  if (depot.error) return { issue: "refusee", motif: `Ajustement non enregistré : ${depot.error.message}` };
+
+  const trace = await client.from("modification").insert(
+    e.diffs.map((d) => ({ table_cible: "ajustement_entretien", numero: `${vehiculeId}:${code}`, champ: d.champ, libelle_champ: d.libelleChamp, avant: "", apres: String(d.valeur ?? ""), motif: e.motif, statut: "appliquee", cree_par: utilisateurId })),
+  );
+  if (trace.error) return { issue: "refusee", motif: `Ajustée, mais sans trace : ${trace.error.message}` };
+  revalidatePath("/", "layout");
+  return { issue: "ecrite", numero: e.numero };
+}
+
+export async function ecrireModification(e: {
+  numero: string;
+  type: TypeTransaction;
+  motif: string;
+  diffs: { champ: string; libelleChamp: string; avant: string; apres: string; valeur: unknown }[];
+  /** La fiche d'où part la modification, quand la ligne ne se repère pas seule. */
+  sujet?: string;
+  /** La clé métier de la ligne quand son numéro n'en est pas une. */
+  cleMetier?: string;
+}): Promise<ResultatEcriture> {
   if (!authentificationReelle()) return { issue: "hors-base" };
+  const client0 = await clientServeur();
+  const moi0 = await utilisateurCourant(client0);
+  if (!moi0) return { issue: "refusee", motif: "Session absente : reconnectez-vous." };
+  /* L'ajustement d'un plan d'entretien ne se range pas par numéro : sa clé est
+     le couple véhicule + opération, et la ligne n'existe pas toujours encore. */
+  if (e.type === "entretien") return poserAjustementEntretien(client0, moi0.utilisateurId, e);
   const table = tableDe(e.type);
   if (!table) return { issue: "hors-base" };
-  const client = await clientServeur();
-  const moi = await utilisateurCourant(client);
-  if (!moi) return { issue: "refusee", motif: "Session absente : reconnectez-vous." };
+  const client = client0;
+  const moi = moi0;
 
   const colonnes = colonnesModification(e.type, e.diffs);
   /* Le fournisseur d'un véhicule s'écrit en deux colonnes : son nom en clair,

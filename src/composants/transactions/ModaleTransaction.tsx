@@ -58,6 +58,7 @@ export function ModaleTransaction({
   champs: champsDonnes,
   valeurs,
   href,
+  cleMetier,
   onFermer,
   onEnregistre,
   apresCreation,
@@ -79,6 +80,8 @@ export function ModaleTransaction({
   type: TypeTransaction;
   /** Nul à la création : le numéro est attribué à l'enregistrement. */
   numero: string | null;
+  /** La clé métier, quand le numéro n'en est pas une (plan d'entretien). */
+  cleMetier?: string;
   titre: string;
   /** Les champs à proposer ; ceux du type par défaut, relus des paramètres pour un véhicule. */
   champs?: ChampEdition[];
@@ -175,7 +178,7 @@ export function ModaleTransaction({
       return;
     }
 
-    const resultat = enregistrerModification({ numero: numero!, type, titre, href, champs, avant: valeurs, apres, motif: motif.trim() });
+    const resultat = enregistrerModification({ numero: numero!, type, titre, href, champs, avant: valeurs, apres, motif: motif.trim(), sujet, cleMetier });
     setIssue(resultat.issue);
     if (resultat.issue !== "rien") {
       onEnregistre();
