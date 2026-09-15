@@ -455,5 +455,41 @@ else {
   attendu(`la correction est passée (${apres?.fonction}, ${apres?.bu}, actif ${apres?.actif})`, apres?.fonction === "Responsable Logistique" && apres.bu === "siege" && apres.actif === false);
 }
 
+/* -- Remplacer un chauffeur clôt le précédent (15 septembre 2026) ----------- */
+/* L'affectation s'ajoutait sans fermer celle qui courait : le véhicule avait
+   deux titulaires en cours et les écrans montraient le premier venu — donc
+   souvent l'ancien. Rien en base ne l'interdit : c'est à l'écriture de tenir
+   la règle, et au banc de dire qu'elle tient. */
+
+const porteur = (await pg.query(`select a.id, a.vehicule_id, a.chauffeur_id, a.debut::text as debut
+  from affectation a where a.fin is null and a.role = 'titulaire' order by a.debut limit 1`)).rows[0] as
+  { id: string; vehicule_id: string; chauffeur_id: string; debut: string } | undefined;
+attendu("un véhicule avec un titulaire en cours sert de cobaye", Boolean(porteur));
+
+if (porteur) {
+  const remplacant = (await pg.query(`select id from chauffeur where id <> $1 order by nom limit 1`, [porteur.chauffeur_id])).rows[0] as { id: string };
+  const debut = "2026-09-15";
+  const veille = "2026-09-14";
+
+  /* Ce que l'écriture fait : clore, puis ouvrir. */
+  await pg.query(`update affectation set fin = $1 where id = $2`, [veille, porteur.id]);
+  await pg.query(`insert into affectation (numero, vehicule_id, chauffeur_id, role, debut, motif, cree_par) values ($1, $2, $3, 'titulaire', $4, $5, $6)`,
+    ["AFF-2026-95001", porteur.vehicule_id, remplacant.id, debut, "Remplacement", utilisateur]);
+
+  const enCours = (await pg.query(`select chauffeur_id, debut::text as debut from affectation where vehicule_id = $1 and role = 'titulaire' and fin is null`, [porteur.vehicule_id])).rows as { chauffeur_id: string; debut: string }[];
+  attendu(`un seul titulaire en cours après remplacement (${enCours.length})`, enCours.length === 1 && enCours[0]!.chauffeur_id === remplacant.id);
+
+  const ancienne = (await pg.query(`select fin::text as fin from affectation where id = $1`, [porteur.id])).rows[0] as { fin: string };
+  attendu(`l'affectation précédente garde son histoire, close la veille (${ancienne?.fin})`, ancienne?.fin === veille);
+
+  const toutes = (await pg.query(`select count(*)::int as n from affectation where vehicule_id = $1 and role = 'titulaire'`, [porteur.vehicule_id])).rows[0] as { n: number };
+  attendu(`les deux périodes coexistent (${toutes?.n} lignes)`, toutes!.n >= 2);
+}
+
+/* Le chauffeur ne se change pas en modifiant une affectation : la colonne n'est
+   pas modifiable, et une saisie qui ne change rien ne doit pas dire le
+   contraire. */
+attendu("le chauffeur n'est pas une colonne modifiable d'une affectation", Object.keys(colonnesModification("affectation", [{ champ: "chauffeurId", valeur: "x" }])).length === 0);
+
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);

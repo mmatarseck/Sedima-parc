@@ -261,6 +261,31 @@ export async function ecrireCreation(c: Creation): Promise<ResultatEcriture> {
   if ("refus" in prep) return { issue: "refusee", motif: `Non enregistré en base : ${prep.refus}.` };
   const ligne: Record<string, unknown> = { ...prep.ligne, cree_par: moi.utilisateurId };
 
+  /*
+   * Remplacer un chauffeur, c'est en clore un et en ouvrir un autre.
+   *
+   * L'affectation s'ajoutait sans fermer la précédente : le véhicule se
+   * retrouvait avec deux titulaires en cours, et les écrans montraient le
+   * premier venu — donc souvent l'ancien. « Chauffeur remplacé, mais ne tient
+   * pas » (signalé le 15 septembre 2026). Rien en base ne l'interdisait : un
+   * camion peut avoir plusieurs suppléants, mais pas deux titulaires.
+   *
+   * Un suppléant ne clôt rien : on en désigne plusieurs, c'est l'usage.
+   */
+  if (c.type === "affectation" && ligne.role === "titulaire" && typeof ligne.vehicule_id === "string" && typeof ligne.debut === "string") {
+    const veille = new Date(`${ligne.debut}T00:00:00Z`);
+    veille.setUTCDate(veille.getUTCDate() - 1);
+    const fin = veille.toISOString().slice(0, 10);
+    const courante = await client.from("affectation").select("id, debut").eq("vehicule_id", ligne.vehicule_id).eq("role", "titulaire").is("fin", null).maybeSingle<{ id: string; debut: string }>();
+    if (courante.data) {
+      /* Une affectation ouverte le jour même se referme sur son propre début :
+         la veille donnerait une période à l'envers, que la base refuse. */
+      const cloture = courante.data.debut > fin ? courante.data.debut : fin;
+      const fermee = await client.from("affectation").update({ fin: cloture, modifie_le: new Date().toISOString(), modifie_par: moi.utilisateurId }).eq("id", courante.data.id);
+      if (fermee.error) return { issue: "refusee", motif: `Affectation précédente non close : ${fermee.error.message}` };
+    }
+  }
+
   /* Un véhicule n'est pas numéroté : sa clé est sa plaque, et deux véhicules ne
      peuvent pas la partager. Un doublon ne se renumérote donc pas — il se dit,
      parce que c'est presque toujours le même camion saisi deux fois. */
@@ -550,6 +575,18 @@ export async function ecrireModification(e: {
   const moi = moi0;
 
   const colonnes = colonnesModification(e.type, e.diffs);
+  /*
+   * Un écart sur un champ qu'aucune colonne ne porte était **silencieusement
+   * perdu** : la trace s'écrivait, la modale disait « enregistré », et la base
+   * ne bougeait pas. C'est la même faute que le « hors-base » muet corrigé ce
+   * matin — l'écran affirmait ce que la base ignorait.
+   */
+  if (e.diffs.length > 0 && Object.keys(colonnes).length === 0) {
+    return {
+      issue: "refusee",
+      motif: `Rien n'a été enregistré : ${e.diffs.map((d) => d.libelleChamp.toLowerCase()).join(", ")} ne se ${e.diffs.length > 1 ? "modifient" : "modifie"} pas ici.`,
+    };
+  }
   /* Le fournisseur d'un véhicule s'écrit en deux colonnes : son nom en clair,
      que le module pur a déjà posé, et le lien vers le référentiel, qu'il faut
      une base pour résoudre. Changer le nom refait le lien — ou l'efface, quand
