@@ -56,8 +56,13 @@ export function ChampSaisie({
      * le poste de dépense —, et une valeur inventée y serait refusée à
      * l'écriture. Ce qui peut s'enrichir le fait par un champ « suggestion »,
      * et le dit.
+     *
+     * `suggestionsDe` vaut ici ce qu'il vaut pour la suggestion : une liste
+     * **relue à l'ouverture**. Les listes posées dans `CHAMPS` sont construites
+     * à l'import du module et ne bougent plus — ce qui a été créé depuis n'y
+     * apparaît jamais.
      */
-    return <ChampCombo valeur={String(v ?? "")} onChange={onChange} options={champ.options ?? []} invalide={invalide} placeholder="Choisir, ou écrire pour filtrer" />;
+    return <ChampCombo valeur={String(v ?? "")} onChange={onChange} options={champ.suggestionsDe ? champ.suggestionsDe(saisie) : (champ.options ?? [])} invalide={invalide} placeholder="Choisir, ou écrire pour filtrer" />;
   }
   if (champ.type === "suggestion") {
     return <ChampCombo valeur={String(v ?? "")} onChange={onChange} options={champ.suggestionsDe ? champ.suggestionsDe(saisie) : (champ.options ?? [])} creation invalide={invalide} placeholder="Choisir, ou écrire pour créer" />;

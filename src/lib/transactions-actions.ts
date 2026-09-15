@@ -131,6 +131,39 @@ async function siteIdDe(client: SupabaseClient, valeur: unknown, region: unknown
   return cree.data?.id ?? null;
 }
 
+/**
+ * Le conducteur d'une attribution : son identifiant s'il a été choisi dans la
+ * liste, sinon celui qui porte ce nom — et à défaut une fiche créée sur-le-champ.
+ *
+ * Demande du métier du 15 septembre 2026 : « à l'ajout d'un autre conducteur,
+ * pouvoir spécifier pour ne pas le mettre dans la liste des chauffeurs du
+ * parc ». La fiche naît donc **chez les attributaires**, et le nom suffit à la
+ * poser : un attributaire ne doit au parc ni permis, ni visite médicale, ni
+ * aptitude — contrairement au chauffeur, qu'on ne peut pas enregistrer sans.
+ *
+ * La base tient l'unicité sur le nom : deux attributions de suite au même nom
+ * retrouvent la même personne au lieu d'en poser deux.
+ */
+async function attributaireIdDe(client: SupabaseClient, valeur: string, fonction: unknown, departement: unknown, utilisateurId: string): Promise<string | null> {
+  const saisi = valeur.trim();
+  if (!saisi) return null;
+  if (EST_UUID.test(saisi)) return saisi;
+  const connu = await client.from("attributaire").select("id").ilike("nom", saisi).limit(1).maybeSingle<{ id: string }>();
+  if (connu.data) return connu.data.id;
+  const cree = await client
+    .from("attributaire")
+    .insert({ nom: saisi, fonction: typeof fonction === "string" && fonction.trim() ? fonction.trim() : null, departement: typeof departement === "string" && departement.trim() ? departement.trim() : null, cree_par: utilisateurId })
+    .select("id")
+    .maybeSingle<{ id: string }>();
+  if (cree.error) {
+    /* Le nom est déjà pris à la casse près : on reprend la fiche existante
+       plutôt que d'en poser une seconde pour la même personne. */
+    const reprise = await client.from("attributaire").select("id").ilike("nom", saisi).limit(1).maybeSingle<{ id: string }>();
+    return reprise.data?.id ?? null;
+  }
+  return cree.data?.id ?? null;
+}
+
 async function prestataireIdDe(client: SupabaseClient, nom: unknown): Promise<string | null> {
   if (typeof nom !== "string" || !nom.trim()) return null;
   const r = await client.from("prestataire").select("id").ilike("raison_sociale", nom.trim()).limit(1).maybeSingle<{ id: string }>();
@@ -304,6 +337,25 @@ export async function ecrireCreation(c: Creation): Promise<ResultatEcriture> {
     return { issue: "ecrite", numero: `CHA-${lisible}` };
   }
 
+  /*
+   * Un autre conducteur se crée là où on l'ajoute — la liste des conducteurs ou
+   * l'attribution d'un véhicule —, et il entre chez les attributaires, pas chez
+   * les chauffeurs du parc (demande du 15 septembre 2026).
+   *
+   * La table n'a pas de numéro : sa clé est son identifiant, et l'unicité porte
+   * sur le nom. Deux fiches pour la même personne se refusent donc d'elles-mêmes
+   * — encore faut-il le dire autrement que par un code d'erreur Postgres.
+   */
+  if (c.type === "attributaire") {
+    const ecriture = await client.from(table).insert(ligne).select("id").maybeSingle<{ id: string }>();
+    if (ecriture.error) {
+      const nom = String(ligne.nom ?? "").trim();
+      return { issue: "refusee", motif: ecriture.error.code === "23505" ? `${nom} a déjà une fiche : ouvrez-la plutôt que d'en créer une seconde.` : `Non enregistré en base : ${ecriture.error.message}` };
+    }
+    revalidatePath("/", "layout");
+    return { issue: "ecrite", numero: `ATB-${ecriture.data?.id ?? ""}` };
+  }
+
   if (c.type === "vehicule") {
     const ecriture = await client.from(table).insert(ligne).select("id").maybeSingle<{ id: string }>();
     if (ecriture.error) {
@@ -382,6 +434,10 @@ async function poserAttribution(client: SupabaseClient, utilisateurId: string, c
   const choix = typeof c.valeurs.attributaireId === "string" ? c.valeurs.attributaireId.trim() : "";
   const pool = typeof c.valeurs.pool === "string" ? c.valeurs.pool.trim() : "";
   if (choix === "pool" && !pool) return { issue: "refusee", motif: "Non enregistré en base : nommez le pool ou le service." };
+  /* Une personne écrite plutôt que choisie : sa fiche d'autre conducteur naît
+     ici, et nulle part chez les chauffeurs du parc. */
+  const attributaireId = choix === "" || choix === "pool" ? null : await attributaireIdDe(client, choix, c.valeurs.fonction, c.valeurs.departement, utilisateurId);
+  if (choix !== "" && choix !== "pool" && !attributaireId) return { issue: "refusee", motif: `Non enregistré en base : la fiche de ${choix} n'a pas pu être créée.` };
   const debut = typeof c.valeurs.debut === "string" && c.valeurs.debut ? c.valeurs.debut : new Date().toISOString().slice(0, 10);
   /* La veille du nouveau début : deux attributions ne se chevauchent pas d'un
      jour, sans quoi le véhicule aurait deux détenteurs ce jour-là. */
@@ -403,7 +459,7 @@ async function poserAttribution(client: SupabaseClient, utilisateurId: string, c
   if (choix !== "") {
     const ouverture = await client.from("attribution_legere").insert({
       vehicule_id: vehiculeId,
-      attributaire_id: choix === "pool" ? null : choix,
+      attributaire_id: attributaireId,
       pool: choix === "pool" ? pool : null,
       debut,
       commentaire: typeof c.valeurs.motif === "string" && c.valeurs.motif.trim() ? c.valeurs.motif.trim() : null,
@@ -420,7 +476,7 @@ async function poserAttribution(client: SupabaseClient, utilisateurId: string, c
     champ: "attributaire_id",
     libelle_champ: "Attributaire",
     avant: courante.data?.attributaire_id ?? courante.data?.pool ?? "",
-    apres: choix === "pool" ? pool : choix,
+    apres: choix === "pool" ? pool : (attributaireId ?? ""),
     motif: typeof c.valeurs.motif === "string" && c.valeurs.motif.trim() ? c.valeurs.motif.trim() : choix === "" ? "Attribution retirée" : "Changement d'attributaire",
     statut: "appliquee",
     cree_par: utilisateurId,

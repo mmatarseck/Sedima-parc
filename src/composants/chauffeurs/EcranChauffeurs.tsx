@@ -8,7 +8,7 @@ import { TableChauffeurs } from "@/composants/chauffeurs/TableChauffeurs";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { champsCreation } from "@/composants/transactions/champs";
 import { FournisseurEdition, useEdition } from "@/composants/transactions/ContexteEdition";
-import { fabriquerLigneChauffeur } from "@/composants/transactions/fabriques";
+import { fabriquerLigneAttributaire, fabriquerLigneChauffeur } from "@/composants/transactions/fabriques";
 import type { LigneChauffeur } from "@/domaine/chauffeur";
 import type { LigneAttributaire } from "@/domaine/parc-leger";
 
@@ -32,8 +32,17 @@ import type { LigneAttributaire } from "@/domaine/parc-leger";
  * La création passe par la même modale que toute transaction — référence CHA,
  * trace, mois clos. Elle demande le **permis** et sa validité : un chauffeur
  * enregistré sans permis apparaîtrait comme non conforme dès sa première
- * journée, ce qui est vrai mais inutilisable. Un attributaire ne se crée pas
- * ici : il naît de l'attribution d'un véhicule, sur la fiche du véhicule.
+ * journée, ce qui est vrai mais inutilisable.
+ *
+ * LE BOUTON SUIT LE VOLET, DEMANDE DU 15 SEPTEMBRE 2026 : « à l'ajout d'un
+ * autre conducteur, il faut pouvoir spécifier pour ne pas le mettre dans la
+ * liste des chauffeurs du parc ». Ajouter quelqu'un menait toujours chez les
+ * chauffeurs, avec ses pièces obligatoires — la seule façon d'enregistrer un
+ * autre conducteur était donc de le faire passer pour ce qu'il n'est pas.
+ * Depuis le volet « Autres conducteurs », le même bouton ouvre la fiche courte
+ * de l'attributaire : un nom, une fonction, un département. Ce que la personne
+ * tient viendra d'une attribution, sur la fiche du véhicule — le parc ne décide
+ * pas ici qui conduit quoi.
  * ==========================================================================*/
 
 type Volet = "chauffeurs" | "attributaires";
@@ -52,9 +61,23 @@ function Interieur({ lignes, attributaires }: { lignes: LigneChauffeur[]; attrib
   const creees = creations("chauffeur", fabriquerLigneChauffeur);
   const toutes = [...creees, ...lignes];
   const actifs = toutes.filter((l) => l.chauffeur.actif).length;
-  const dotes = attributaires.filter((a) => a.situation !== "sans-vehicule").length;
+  const creesAutres = creations("attributaire", fabriquerLigneAttributaire);
+  const tousAutres = [...creesAutres, ...attributaires];
+  const dotes = tousAutres.filter((a) => a.situation !== "sans-vehicule").length;
 
   function ajouter() {
+    if (volet === "attributaires") {
+      creer({
+        type: "attributaire",
+        titre: "Nouvel autre conducteur",
+        champs: champsCreation("attributaire", { pour: "chauffeur" }),
+        /* Rien à proposer : une fiche d'autre conducteur naît active, et le
+           reste se lit sur la personne — on n'en préremplit aucun champ. */
+        valeurs: {},
+        sujetDe: () => "chauffeurs",
+      });
+      return;
+    }
     creer({
       type: "chauffeur",
       titre: "Nouveau chauffeur",
@@ -66,8 +89,8 @@ function Interieur({ lignes, attributaires }: { lignes: LigneChauffeur[]; attrib
 
   const sousTitre =
     volet === "chauffeurs"
-      ? `${actifs} en activité sur ${toutes.length}${creees.length ? ` dont ${creees.length} créé${creees.length > 1 ? "s" : ""} ici` : ""} · données de démonstration, dérivées des fiches véhicules`
-      : `${dotes} doté${dotes > 1 ? "s" : ""} sur ${attributaires.length} · personnes qui tiennent un véhicule de service ou de fonction`;
+      ? `${actifs} en activité sur ${toutes.length}${creees.length ? ` dont ${creees.length} créé${creees.length > 1 ? "s" : ""} ici` : ""} · conducteurs salariés du parc`
+      : `${dotes} doté${dotes > 1 ? "s" : ""} sur ${tousAutres.length} · personnes qui tiennent un véhicule de service ou de fonction`;
 
   return (
     <div className="flex flex-col gap-5 px-8 py-7 lg:h-full">
@@ -89,7 +112,7 @@ function Interieur({ lignes, attributaires }: { lignes: LigneChauffeur[]; attrib
             </Link>
             <button type="button" onClick={ajouter} className="bouton-principal">
               <Plus className="size-4" strokeWidth={2.2} />
-              Ajouter un chauffeur
+              {volet === "chauffeurs" ? "Ajouter un chauffeur" : "Ajouter un autre conducteur"}
             </button>
           </>
         }
@@ -99,7 +122,7 @@ function Interieur({ lignes, attributaires }: { lignes: LigneChauffeur[]; attrib
         {(
           [
             ["chauffeurs", `Chauffeurs du parc (${toutes.length})`],
-            ["attributaires", `Autres conducteurs (${attributaires.length})`],
+            ["attributaires", `Autres conducteurs (${tousAutres.length})`],
           ] as const
         ).map(([cle, libelle]) => (
           <button
@@ -117,7 +140,7 @@ function Interieur({ lignes, attributaires }: { lignes: LigneChauffeur[]; attrib
         ))}
       </div>
 
-      {volet === "chauffeurs" ? <TableChauffeurs lignes={toutes} /> : <TableAttributaires lignes={attributaires} />}
+      {volet === "chauffeurs" ? <TableChauffeurs lignes={toutes} /> : <TableAttributaires lignes={tousAutres} />}
     </div>
   );
 }

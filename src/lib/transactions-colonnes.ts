@@ -654,6 +654,30 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       };
     }
 
+    /*
+     * Un « autre conducteur » : quelqu'un qui tient un véhicule au titre de sa
+     * fonction, et que le parc suit à ce seul titre.
+     *
+     * Le nom suffit, et c'est tout ce que la table exige. Rien de ce qu'on
+     * demande à un chauffeur du parc — permis, visite médicale, aptitude — n'a
+     * de sens ici : le lui réclamer le ferait paraître non conforme pour des
+     * pièces que personne n'a à lui demander.
+     */
+    case "attributaire": {
+      const nom = texte(v.nom);
+      if (!nom) return { refus: "autre conducteur sans nom" };
+      return {
+        ligne: {
+          nom,
+          fonction: texte(v.fonction),
+          departement: texte(v.departement),
+          business_unit: texte(v.businessUnit),
+          matricule_rh: texte(v.matriculeRh),
+          /* Une fiche naît active : on la désactive ensuite par modification. */
+          actif: v.actif === undefined ? true : booleen(v.actif),
+        },
+      };
+    }
     /* La personne n'a pas de numéro non plus : sa clé est celle de la table,
        et l'écriture la dérive de son nom pour que l'adresse lisible de sa
        fiche — « CHA-babacar-ndiaye » — continue de la désigner. */

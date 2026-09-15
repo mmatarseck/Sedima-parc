@@ -455,6 +455,37 @@ else {
   attendu(`la correction est passée (${apres?.fonction}, ${apres?.bu}, actif ${apres?.actif})`, apres?.fonction === "Responsable Logistique" && apres.bu === "siege" && apres.actif === false);
 }
 
+/* -- Un autre conducteur s'ajoute sans entrer chez les chauffeurs ----------- */
+/* Demande du 15 septembre 2026 : « à l'ajout d'un autre conducteur, il faut
+   pouvoir spécifier pour ne pas le mettre dans la liste des chauffeurs du
+   parc ». Le banc tient les deux moitiés : la ligne entre chez les
+   attributaires, et le nombre de chauffeurs ne bouge pas. */
+
+const chauffeursAvant = Number((await pg.query(`select count(*)::int as n from chauffeur`)).rows[0].n);
+const nouveau = ligneCreation("attributaire", "ATB-90001", { nom: "Aminata Fall", fonction: "Directrice Commerciale", departement: "Commerce", businessUnit: "siege" }, r);
+attendu("un autre conducteur se forme en ligne de table", !("refus" in nouveau));
+if (!("refus" in nouveau)) {
+  attendu(
+    `sa ligne ne porte que ce que la personne est (${Object.keys(nouveau.ligne).sort().join(", ")})`,
+    nouveau.ligne.nom === "Aminata Fall" && nouveau.ligne.business_unit === "siege" && nouveau.ligne.actif === true && !("numero" in nouveau.ligne) && !("permis_numero" in nouveau.ligne),
+  );
+  await inserer("attributaire", nouveau.ligne);
+  const pose = (await pg.query(`select id, fonction from attributaire where nom = 'Aminata Fall'`)).rows[0] as { id: string; fonction: string } | undefined;
+  attendu(`la fiche est chez les attributaires (${pose?.fonction ?? "absente"})`, pose?.fonction === "Directrice Commerciale");
+  attendu("et nulle part chez les chauffeurs du parc", Number((await pg.query(`select count(*)::int as n from chauffeur`)).rows[0].n) === chauffeursAvant);
+
+  /* Le nom est unique : réattribuer un véhicule à la même personne doit
+     retrouver sa fiche, pas en poser une seconde. */
+  let doublon = false;
+  try {
+    await inserer("attributaire", { ...nouveau.ligne });
+    doublon = true;
+  } catch {}
+  attendu("une seconde fiche au même nom est refusée par la base", !doublon);
+}
+
+attendu("un autre conducteur sans nom est refusé", "refus" in ligneCreation("attributaire", "ATB-90002", { fonction: "Directeur" }, r));
+
 /* -- Remplacer un chauffeur clôt le précédent (15 septembre 2026) ----------- */
 /* L'affectation s'ajoutait sans fermer celle qui courait : le véhicule avait
    deux titulaires en cours et les écrans montraient le premier venu — donc

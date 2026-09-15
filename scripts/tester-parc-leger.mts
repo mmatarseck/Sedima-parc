@@ -165,6 +165,21 @@ if (tenu) {
   const plusRien = (await pg.query(`select count(*)::int as n from attribution_legere where vehicule_id = $1 and fin is null`, [tenu.vehicule_id])).rows[0] as { n: number };
   const histoire = (await pg.query(`select count(*)::int as n from attribution_legere where vehicule_id = $1`, [tenu.vehicule_id])).rows[0] as { n: number };
   attendu(`retirer l'attribution ne laisse rien en cours (${plusRien?.n}) mais garde les ${histoire?.n} lignes d'histoire`, plusRien?.n === 0 && histoire?.n === 2);
+
+  /* -- Attribuer à quelqu'un que le parc ne connaît pas (15 septembre 2026) --
+     « À l'ajout d'un autre conducteur, il faut pouvoir spécifier pour ne pas le
+     mettre dans la liste des chauffeurs du parc. » L'écriture crée donc la
+     fiche chez les attributaires. Ce que le banc tient ici, c'est ce dont
+     dépend `attributaireIdDe` : le nom se retrouve sans la casse, ce qui évite
+     une seconde fiche à la deuxième attribution. */
+  const chauffeursAvant = Number((await pg.query(`select count(*)::int as n from chauffeur`)).rows[0].n);
+  await pg.query(`insert into attributaire (nom, fonction) values ('Aminata Fall', 'Directrice Commerciale')`);
+  await pg.query(`insert into attribution_legere (vehicule_id, attributaire_id, debut) values ($1, (select id from attributaire where nom = 'Aminata Fall'), $2)`, [tenu.vehicule_id, "2026-09-21"]);
+  const tenuPar = (await pg.query(`select a.nom from attribution_legere t join attributaire a on a.id = t.attributaire_id where t.vehicule_id = $1 and t.fin is null`, [tenu.vehicule_id])).rows[0] as { nom: string };
+  attendu(`le véhicule est tenu par la personne créée (${tenuPar?.nom})`, tenuPar?.nom === "Aminata Fall");
+  attendu("qui n'est pas entrée chez les chauffeurs du parc", Number((await pg.query(`select count(*)::int as n from chauffeur`)).rows[0].n) === chauffeursAvant);
+  const memeNom = (await pg.query(`select count(*)::int as n from attributaire where nom ilike 'aminata  fall' or nom ilike 'AMINATA FALL'`)).rows[0] as { n: number };
+  attendu("le même nom se retrouve sans la casse plutôt que de poser une seconde fiche", memeNom?.n === 1);
 }
 
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");

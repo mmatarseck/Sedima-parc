@@ -70,9 +70,22 @@ export const aUnMoteur = (saisie: Record<string, string | boolean>): boolean => 
   return famille !== "semi-remorque";
 };
 
+/** Une valeur choisie dans une liste porte l'identifiant de sa table ; une valeur écrite porte son nom. */
+const EST_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const siteEcrit = (saisie: Record<string, string | boolean>): boolean => {
   const v = String(saisie.siteId ?? "").trim();
-  return v.length > 0 && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+  return v.length > 0 && !EST_UUID.test(v);
+};
+
+/**
+ * Un conducteur écrit à la main dans le champ « Attribué à » : ni choisi dans
+ * la liste, ni le pool, ni le retrait. C'est quelqu'un que le parc ne connaît
+ * pas encore, et dont la fiche naîtra de l'attribution.
+ */
+export const conducteurEcrit = (saisie: Record<string, string | boolean>): boolean => {
+  const v = String(saisie.attributaireId ?? "").trim();
+  return v.length > 0 && v !== "pool" && !EST_UUID.test(v);
 };
 
 const CHAMPS_SITE_NOUVEAU: ChampEdition[] = [
@@ -307,11 +320,27 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
    * et les forfaits carburant lisent pour répartir la charge.
    *
    * Le premier champ porte donc les trois gestes : donner à quelqu'un d'autre,
-   * rendre au pool, ou simplement retirer.
+   * rendre au pool, ou simplement retirer. Et un quatrième depuis le
+   * 15 septembre 2026 : **écrire quelqu'un que le parc ne connaît pas encore**.
+   *
+   * CE QUE CELA VEUT DIRE, ET C'EST LA DEMANDE. Une personne créée ici entre
+   * chez les « autres conducteurs » — jamais dans la liste des chauffeurs du
+   * parc. Les deux populations ne se ressemblent pas : le chauffeur du parc
+   * doit son permis, sa visite médicale et son aptitude ; celui qui tient un
+   * véhicule au titre de sa fonction ne doit rien de tout cela. L'enregistrer
+   * comme chauffeur le ferait paraître non conforme dès le premier jour, faute
+   * de pièces que personne n'a à lui réclamer.
+   *
+   * Les listes se relisent à l'ouverture (`suggestionsDe`) : une personne créée
+   * il y a une minute sur un autre véhicule doit s'y retrouver.
    */
   attribution: [
-    { cle: "attributaireId", libelle: "Attribué à", type: "choix", options: optionsAttribution() },
+    { cle: "attributaireId", libelle: "Attribué à", type: "suggestion", suggestionsDe: () => optionsAttribution() },
     { cle: "pool", libelle: "Nom du pool ou du service", type: "texte", visibleSi: (s) => s.attributaireId === "pool" },
+    /* Facultatifs, et c'est voulu : le nom suffit à créer la fiche. Les demander
+       fermement ferait renoncer à l'attribution ou inventer une fonction. */
+    { cle: "fonction", libelle: "Fonction (nouvel autre conducteur)", type: "texte", visibleSi: conducteurEcrit },
+    { cle: "departement", libelle: "Département (nouvel autre conducteur)", type: "texte", visibleSi: conducteurEcrit },
     DATE("debut", "À compter du"),
     { cle: "motif", libelle: "Motif", type: "texte" },
   ],
@@ -466,7 +495,9 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "nom", libelle: "Nom", type: "texte", obligatoire: true },
     { cle: "matriculeRh", libelle: "Matricule RH", type: "texte" },
     { cle: "contrat", libelle: "Contrat", type: "choix", options: [{ valeur: "salarie", libelle: "Salarié" }, { valeur: "interimaire", libelle: "Intérimaire" }, { valeur: "prestataire", libelle: "Prestataire" }], obligatoire: true },
-    { cle: "siteId", libelle: "Site de rattachement", type: "suggestion", options: optionsSites() },
+    /* Relu à l'ouverture et non figé à l'import : un site créé sur un véhicule
+       il y a une minute doit se proposer ici. */
+    { cle: "siteId", libelle: "Site de rattachement", type: "suggestion", suggestionsDe: () => optionsSites() },
     ...CHAMPS_SITE_NOUVEAU,
     { cle: "telephone", libelle: "Téléphone", type: "texte" },
     { cle: "permisNumero", libelle: "N° de permis", type: "texte" },
@@ -726,6 +757,7 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
           .map((c) => (c.cle === "garage" ? { ...c, options: optionsPrestataires(TYPES_GARAGE, typeof window === "undefined" ? undefined : lireCreations) } : c)),
       ];
     case "prestataire":
+    case "attributaire":
       /* Une fiche naît active ; on la désactive ensuite par modification. */
       return base.filter((c) => c.cle !== "actif");
     case "cuve":
@@ -746,4 +778,4 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
   }
 }
 
-export const CHAMPS_CREATION_CONTRAVENTION: ChampEdition[] = [{ cle: "vehiculeId", libelle: "Véhicule", type: "choix", options: optionsVehicules(), obligatoire: true }, ...CHAMPS_CONTRAVENTION];
+export const CHAMPS_CREATION_CONTRAVENTION: ChampEdition[] = [{ cle: "vehiculeId", libelle: "Véhicule", type: "choix", suggestionsDe: () => optionsVehicules(), obligatoire: true }, ...CHAMPS_CONTRAVENTION];

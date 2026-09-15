@@ -10,6 +10,7 @@
 
 import { idChauffeur, initialesDe, type AffectationChauffeur, type ContraventionChauffeur, type EcheanceChauffeur, type FraisDeRoute, type IncidentChauffeur, type LigneChauffeur } from "@/domaine/chauffeur";
 import type { Creation } from "@/domaine/cloture";
+import { idAttributaire, initialesAttributaire, type Attributaire, type LigneAttributaire } from "@/domaine/parc-leger";
 import type { AffectationFiche, AttelageFiche, DepenseFiche, DocumentFiche, EtatDocument, EvenementJournal, Intervention, PeriodeStatutFiche, PleinFiche, ReleveFiche } from "@/domaine/fiche";
 import { BUSINESS_UNIT, MOTIF_INDISPONIBILITE, STATUT_VEHICULE, TYPE_DOCUMENT, TYPE_INCIDENT } from "@/domaine/libelles";
 import type { BusinessUnit, CategorieFlotte, DeclarationIncident, Indisponibilite, LigneFlotte, ObservationVisite, Sanction, TypeDocument, UsageVehicule, VisiteTechnique } from "@/domaine/types";
@@ -508,6 +509,37 @@ export function fabriquerLigneCuve(c: Creation): LigneCuve {
     stockApres: 0,
     enregistrePar: c.auteur,
     creee: true,
+  };
+}
+
+/**
+ * Un autre conducteur créé depuis la liste, mis à la forme d'une ligne.
+ *
+ * Il naît sans véhicule : ce qu'il tiendra viendra d'une attribution, qui se
+ * date et garde son histoire. Aucune échéance ici, et c'est le fond du sujet —
+ * un attributaire ne doit au parc ni permis, ni visite médicale, ni aptitude.
+ */
+export function fabriquerLigneAttributaire(c: Creation): LigneAttributaire {
+  const v = c.valeurs;
+  const nom = s(v.nom) ?? c.numero;
+  const attributaire: Attributaire = {
+    id: idAttributaire(nom),
+    nom,
+    fonction: s(v.fonction),
+    departement: s(v.departement),
+    businessUnit: (s(v.businessUnit) as BusinessUnit | null) ?? null,
+    actif: v.actif === undefined ? true : Boolean(v.actif),
+  };
+  return {
+    attributaire,
+    id: idAttributaire(nom),
+    nom,
+    initiales: initialesAttributaire(nom),
+    situation: "sans-vehicule",
+    vehicules: [],
+    vehiculePrincipal: null,
+    forfait: null,
+    forfaitMensuel: null,
   };
 }
 
