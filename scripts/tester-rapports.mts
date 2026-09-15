@@ -109,6 +109,23 @@ const avecKm = [...affectations.values()].flat().filter((a) => a.kmParcourus > 0
 const totalKm = avecKm.reduce((t, a) => t + a.kmParcourus, 0);
 attendu(`les kilomètres des affectations : ${avecKm.length} période(s) sur ${nbBase} en portent, ${totalKm.toLocaleString("fr-FR")} km au total — plus aucun zéro d'office`, avecKm.length > 0 && totalKm > 0);
 
+/* La clé du tableau des affectations est celle par laquelle on le cherche.
+ *
+ * `affectationsDepuisLeParc()` range par immatriculation ; le rapport de
+ * disponibilité et les pages Affectations et Disponibilité y cherchent par
+ * `vehicule.id`. Les deux coïncident parce qu'un véhicule lu en base porte son
+ * immatriculation comme identifiant (`vehiculeDepuisLaBase`). Si cela changeait,
+ * rien ne casserait : chaque recherche rendrait simplement « rien », et les
+ * trois écrans annonceraient un parc entier sans conducteur — un mensonge
+ * silencieux, du genre qu'on ne découvre qu'en le cherchant. D'où ce garde. */
+const clesAffectations = [...affectations.keys()];
+const idsVehicules = new Set(lignes.map((l) => l.vehicule.id));
+const orphelines = clesAffectations.filter((c) => !idsVehicules.has(c));
+attendu(
+  `les affectations se retrouvent par l'identifiant du véhicule (${clesAffectations.length} clé(s), ${orphelines.length} sans véhicule)`,
+  clesAffectations.length > 0 && orphelines.length === 0,
+);
+
 /* ---- 2. La source mixte et les rapports ---- */
 const sansFiches: Omit<SourceRapports, "resumesFiche"> = { ...demo, aujourdhui, lignes, affectations, couts, pleins, interventions, incidents };
 const resumes = resumesFicheDepuisLaSource(sansFiches);
