@@ -100,7 +100,9 @@ const obs = (await pg.query(`select o.visite_numero, o.statut, t.centre, t.statu
 attendu(`l'observation cite sa visite (${obs?.visite_numero}, ${obs?.centre}, ${obs?.visite}) et attend (${obs?.statut})`, obs?.visite_numero === "VTE-2026-90001" && obs?.visite === "rendez-vous" && obs?.statut === "a-traiter");
 const sansVisite = ligneCreation("observation", "OBS-2026-90002", { libelle: "Pneu usé" }, r);
 attendu(`une observation sans visite est refusée (${"refus" in sansVisite ? sansVisite.refus : "acceptée"})`, "refus" in sansVisite);
-attendu(`un type sans table le dit (${tableDe("prestataire")})`, tableDe("prestataire") === null);
+/* Le plan d'entretien n'a pas encore de table attachée : sa clé est le couple
+   véhicule + opération, et le chemin de modification ne porte pas le véhicule. */
+attendu(`un type sans table le dit (entretien : ${tableDe("entretien")})`, tableDe("entretien") === null);
 
 /* -- La fiche véhicule elle-même (14 septembre 2026) ------------------------- */
 /* Elle se crée et se modifie comme une transaction, mais sa clé est son
@@ -244,6 +246,40 @@ try {
   aptitudeInventee = true;
 }
 attendu("une aptitude hors vocabulaire est refusée", aptitudeInventee);
+
+/* -- La fiche prestataire (15 septembre 2026) -------------------------------- */
+/* Elle non plus n'atteignait pas la base. Sa clé, elle, est bien un numéro :
+   c'est lui que portent les commandes, les factures et les interventions. */
+
+attendu(`le prestataire a sa table (${tableDe("prestataire")})`, tableDe("prestataire") === "prestataire");
+attendu("il se repère par son numéro, comme la plupart", cleDe("prestataire", "PRE-2026-90001").colonne === "numero");
+
+const garage = ligneCreation(
+  "prestataire",
+  "PRE-2026-90001",
+  { raisonSociale: "Garage de la Corniche", type: "garage", contact: "M. Fall", telephone: "33 820 00 00", ville: "Dakar", delaiPaiementJours: 30 },
+  r,
+);
+if ("refus" in garage) attendu(`création d'un prestataire : ${garage.refus}`, false);
+else {
+  await inserer("prestataire", garage.ligne);
+  const n = (await pg.query(`select numero, raison_sociale, type, ville, delai_paiement_jours, actif from prestataire where numero = 'PRE-2026-90001'`)).rows[0] as {
+    numero: string; raison_sociale: string; type: string; ville: string; delai_paiement_jours: number; actif: boolean;
+  };
+  attendu(`prestataire → prestataire (${n?.raison_sociale}, ${n?.type}, ${n?.delai_paiement_jours} j)`, n?.raison_sociale === "Garage de la Corniche" && n.type === "garage" && n.delai_paiement_jours === 30);
+  attendu("une fiche naît active", n?.actif === true);
+}
+
+/* Payer à la commande n'est pas « zéro jour » : c'est une autre règle, et la
+   colonne doit rester vide plutôt que de porter un délai qui n'existe pas. */
+const aLaCommande = ligneCreation("prestataire", "PRE-2026-90002", { raisonSociale: "Station Total Rufisque", type: "station" }, r);
+attendu("un délai de paiement non saisi reste nul", "ligne" in aLaCommande && aLaCommande.ligne.delai_paiement_jours === null);
+
+const sansRaisonSociale = ligneCreation("prestataire", "PRE-2026-90003", { type: "garage" }, r);
+attendu(`un prestataire sans raison sociale est refusé (${"refus" in sansRaisonSociale ? sansRaisonSociale.refus : "accepté"})`, "refus" in sansRaisonSociale);
+
+const desactivation = colonnesModification("prestataire", [{ champ: "actif", valeur: "non" }, { champ: "note", valeur: "Ne répond plus depuis juin" }]);
+attendu(`on désactive une fiche plutôt que de l'effacer (${JSON.stringify(desactivation.actif)})`, desactivation.actif === false && desactivation.note === "Ne répond plus depuis juin");
 
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);

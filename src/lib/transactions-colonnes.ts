@@ -47,7 +47,8 @@ export type TableBranchee =
   | "mouvement_stock"
   | "pneu"
   | "vehicule"
-  | "chauffeur";
+  | "chauffeur"
+  | "prestataire";
 
 const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   releve: "releve_kilometrique",
@@ -85,6 +86,9 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
      une transaction, mais sa clé n'est pas un numéro — c'est `cleDe` qui le dit
      à l'écriture. */
   chauffeur: "chauffeur",
+  /* Le prestataire, lui, porte bien un numéro : sa clé est celle de tout le
+     monde, et les commandes comme les factures le citent ainsi. */
+  prestataire: "prestataire",
 };
 
 /**
@@ -577,6 +581,30 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       if (!texte(v.motif)) return { refus: "sanction sans motif" };
       return { ligne: { numero, chauffeur_id: r.chauffeurId, date: texte(v.date), type: texte(v.type) ?? "avertissement", motif: texte(v.motif), jours: nombre(v.jours) } };
     }
+    case "prestataire": {
+      const raisonSociale = texte(v.raisonSociale);
+      if (!raisonSociale) return { refus: "prestataire sans raison sociale" };
+      return {
+        ligne: {
+          numero,
+          raison_sociale: raisonSociale,
+          type: texte(v.type) ?? "autre",
+          contact: texte(v.contact),
+          telephone: texte(v.telephone),
+          courriel: texte(v.courriel),
+          adresse: texte(v.adresse),
+          ville: texte(v.ville),
+          ninea: texte(v.ninea),
+          /* Nul quand on paie à la commande : ce n'est pas zéro jour, c'est
+             une autre règle — la colonne le dit déjà (0001). */
+          delai_paiement_jours: nombre(v.delaiPaiementJours),
+          /* Une fiche naît active : on la désactive ensuite par modification. */
+          actif: v.actif === undefined ? true : booleen(v.actif),
+          note: texte(v.note),
+        },
+      };
+    }
+
     /* La personne n'a pas de numéro non plus : sa clé est celle de la table,
        et l'écriture la dérive de son nom pour que l'adresse lisible de sa
        fiche — « CHA-babacar-ndiaye » — continue de la désigner. */
@@ -676,6 +704,19 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   document: { numeroPiece: "numero_piece", emetteur: "emetteur", dateEffet: "date_effet", echeance: "echeance", montant: "montant", fichier: "fichier" },
   incident: { dateHeure: "date_heure", lieu: "lieu", mission: "mission", kilometrage: "kilometrage", responsabilite: "responsabilite", statut: "statut", description: "description" },
   affectation: { debut: "debut", fin: "fin", motif: "motif" },
+  prestataire: {
+    raisonSociale: "raison_sociale",
+    type: "type",
+    contact: "contact",
+    telephone: "telephone",
+    courriel: "courriel",
+    adresse: "adresse",
+    ville: "ville",
+    ninea: "ninea",
+    delaiPaiementJours: "delai_paiement_jours",
+    actif: "actif",
+    note: "note",
+  },
   /* La fiche d'une personne. Le nom et le prénom en font partie : on corrige
      une orthographe, on n'invente pas quelqu'un d'autre — et la trace dit qui
      a changé quoi. L'aptitude, elle, ne se modifie pas ici : c'est une
@@ -781,7 +822,10 @@ const NUMERIQUES = new Set([
 ]);
 /* Les colonnes qui gardent leurs décimales : des litres, des tonnes, des quantités. */
 const DECIMALES = new Set(["litres", "tonnage", "tonnage_pese", "tonnage_livre", "carburant_litres", "tonnes_transportees", "quantite"]);
-const BOOLEENS = new Set(["justificatif", "transport_special", "engage"]);
+/* Les colonnes que la base veut en booléen. Une case « oui/non » arrive de la
+   modale en texte : sans cette liste, « non » entrerait tel quel et Postgres le
+   lirait comme vrai — une fiche qu'on croit désactivée resterait proposée. */
+const BOOLEENS = new Set(["justificatif", "transport_special", "engage", "actif", "permanent", "retiree"]);
 const HORODATES = new Set(["date_heure"]);
 const PRODUITS = new Set(["produit"]);
 /* Les colonnes qui portent une plaque : elle se range sous sa forme canonique,
