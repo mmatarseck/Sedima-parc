@@ -232,7 +232,7 @@ export function FichePoste({ fiche }: { fiche: Fiche }) {
             numero={(s) => s.enveloppe.numero || `${s.enveloppe.poste}:${s.enveloppe.businessUnit ?? "parc"}`}
             surModifier={modifierEnveloppe}
             colonnes={[
-              { cle: "bu", libelle: "Business unit", rendu: (s) => <span className="block truncate font-medium text-texte">{libelleBu(s.enveloppe.businessUnit)}</span> },
+              { cle: "bu", libelle: "Business unit", largeur: "170px", rendu: (s) => <span className="block truncate font-medium text-texte">{libelleBu(s.enveloppe.businessUnit)}</span> },
               {
                 cle: "budget",
                 libelle: "Budget",
