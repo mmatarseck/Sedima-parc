@@ -12,6 +12,7 @@
     "generer-seed": "tsx scripts/generer-seed.mts",
     "tester-ecritures": "tsx scripts/tester-ecritures.mts",
     "tester-lectures-muettes": "tsx scripts/tester-lectures-muettes.mts",
+    "sonder-lectures": "tsx scripts/sonder-lectures.mts",
     "tester-fiche": "tsx scripts/tester-fiche.mts",
     "tester-fiche-chauffeur": "tsx scripts/tester-fiche-chauffeur.mts"
   },

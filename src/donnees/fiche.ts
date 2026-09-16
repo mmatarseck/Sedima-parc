@@ -263,14 +263,14 @@ interface FichierBase {
 async function piecesDuVehicule(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<PieceDossier[]> {
   const [visites, interventions, depenses, pleins] = await Promise.all([
     client.from("visite_technique").select("numero, date_passage, date_rendez_vous, centre, numero_pv, fichier").eq("vehicule_id", vehiculeId).not("fichier", "is", null).limit(500).returns<(FichierBase & { date_passage: string | null; date_rendez_vous: string; centre: string; numero_pv: string | null })[]>(),
-    client.from("intervention").select("numero, date, objet, garage, montant, fichier").eq("vehicule_id", vehiculeId).not("fichier", "is", null).limit(2000).returns<(FichierBase & { objet: string; garage: string | null; montant: number })[]>(),
+    client.from("intervention").select("numero, date, objet, montant, fichier, prestataire (raison_sociale)").eq("vehicule_id", vehiculeId).not("fichier", "is", null).limit(2000).returns<(FichierBase & { objet: string; montant: number; prestataire: { raison_sociale: string } | null })[]>(),
     client.from("depense").select("numero, date, libelle, beneficiaire, montant, photo").eq("vehicule_id", vehiculeId).not("photo", "is", null).limit(5000).returns<{ numero: string; date: string; libelle: string; beneficiaire: string | null; montant: number; photo: string }[]>(),
     client.from("plein").select("numero, date, litres, montant, photo").eq("vehicule_id", vehiculeId).not("photo", "is", null).limit(5000).returns<{ numero: string; date: string; litres: number | string; montant: number; photo: string }[]>(),
   ]);
   const francs = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} F`;
   return [
     ...lignesLues("Procès-verbaux de visite", visites).map((v): PieceDossier => ({ numero: v.numero, famille: "visite", libelle: "Procès-verbal de visite technique", precision: [v.centre, v.numero_pv ? `PV ${v.numero_pv}` : null].filter(Boolean).join(" · "), date: v.date_passage ?? v.date_rendez_vous, fichier: v.fichier })),
-    ...lignesLues("Factures d'intervention", interventions).map((i): PieceDossier => ({ numero: i.numero, famille: "cout", libelle: `Intervention · ${i.objet}`, precision: [i.garage, francs(i.montant)].filter(Boolean).join(" · "), date: i.date, fichier: i.fichier })),
+    ...lignesLues("Factures d'intervention", interventions).map((i): PieceDossier => ({ numero: i.numero, famille: "cout", libelle: `Intervention · ${i.objet}`, precision: [i.prestataire?.raison_sociale ?? null, francs(i.montant)].filter(Boolean).join(" · "), date: i.date, fichier: i.fichier })),
     ...lignesLues("Pièces des dépenses", depenses).map((d): PieceDossier => ({ numero: d.numero, famille: "cout", libelle: `Dépense · ${d.libelle}`, precision: [d.beneficiaire, francs(d.montant)].filter(Boolean).join(" · "), date: d.date, fichier: d.photo })),
     ...lignesLues("Pièces des pleins", pleins).map((p): PieceDossier => ({ numero: p.numero, famille: "cout", libelle: `Plein · ${Number(p.litres).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} L`, precision: francs(p.montant), date: p.date, fichier: p.photo })),
   ];
