@@ -155,6 +155,8 @@ export const CHAMP_DATE: Record<TypeTransaction, string> = {
   affectation: "debut",
   attribution: "debut",
   attelage: "debut",
+  /* Un rappel porte une échéance à venir, pas une date de mois clos. */
+  rappel: "",
   incident: "dateHeure",
   sanction: "date",
   indisponibilite: "debut",

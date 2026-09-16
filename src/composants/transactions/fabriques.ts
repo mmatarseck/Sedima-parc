@@ -11,6 +11,7 @@
 import { idChauffeur, initialesDe, type AffectationChauffeur, type ContraventionChauffeur, type EcheanceChauffeur, type FraisDeRoute, type IncidentChauffeur, type LigneChauffeur } from "@/domaine/chauffeur";
 import type { Creation } from "@/domaine/cloture";
 import { idAttributaire, initialesAttributaire, type Attributaire, type LigneAttributaire } from "@/domaine/parc-leger";
+import type { Rappel } from "@/domaine/rappels";
 import type { AffectationFiche, AttelageFiche, DepenseFiche, DocumentFiche, EtatDocument, EvenementJournal, Intervention, PeriodeStatutFiche, PleinFiche, ReleveFiche } from "@/domaine/fiche";
 import { BUSINESS_UNIT, MOTIF_INDISPONIBILITE, STATUT_VEHICULE, TYPE_DOCUMENT, TYPE_INCIDENT } from "@/domaine/libelles";
 import type { BusinessUnit, CategorieFlotte, DeclarationIncident, Indisponibilite, LigneFlotte, ObservationVisite, Sanction, TypeDocument, UsageVehicule, VisiteTechnique } from "@/domaine/types";
@@ -616,5 +617,36 @@ export function fabriquerLigneChauffeur(c: Creation): LigneChauffeur {
     kmDouzeMois: null,
     contraventionsDouzeMois: 0,
     incidentsDouzeMois: 0,
+  };
+}
+
+/**
+ * Un rappel créé depuis la fiche, mis à la forme que la carte affiche — le
+ * temps que la base le confirme. Le libellé du type vient des paramètres,
+ * comme côté serveur ; le porteur est celui de la fiche d'où l'on saisit.
+ */
+export function fabriquerRappel(c: Creation, porteur: { vehicule?: { id: string; immatriculation: string; immatriculationAffichee: string; marque: string; appellation: string } | null; chauffeur?: { id: string; nomComplet: string } | null }): Rappel | null {
+  const v = c.valeurs;
+  const type = s(v.type);
+  const echeance = s(v.echeance);
+  if (!type || !echeance) return null;
+  const def = lireParametres().documents.types.find((t) => t.id === type);
+  return {
+    id: c.numero,
+    numero: c.numero,
+    porteur: porteur.vehicule ? "vehicule" : "chauffeur",
+    vehiculeId: porteur.vehicule?.id ?? null,
+    immatriculation: porteur.vehicule?.immatriculation ?? null,
+    immatriculationAffichee: porteur.vehicule?.immatriculationAffichee ?? null,
+    vehicule: porteur.vehicule ? `${porteur.vehicule.marque} ${porteur.vehicule.appellation}` : null,
+    chauffeurId: porteur.chauffeur?.id ?? null,
+    chauffeur: porteur.chauffeur?.nomComplet ?? null,
+    chauffeurAdresse: porteur.chauffeur ? idChauffeur(porteur.chauffeur.nomComplet) : null,
+    type,
+    libelle: def?.libelle ?? type,
+    echeance,
+    faitLe: s(v.faitLe),
+    documentNumero: s(v.documentNumero),
+    commentaire: s(v.commentaire),
   };
 }

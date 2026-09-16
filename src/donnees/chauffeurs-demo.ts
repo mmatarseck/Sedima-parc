@@ -546,6 +546,8 @@ function construireTout(): Construit[] {
 
     const fiche: FicheChauffeur = {
       ligne,
+      /* La démonstration ne pose pas de rappel : ils naissent en base (0053). */
+      rappels: [],
       identite: {
         dateNaissance,
         age,

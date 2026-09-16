@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import { USAGES_STANDARD, apprendreUsage, idUsage, libelleUsageCourant } from "../src/domaine/parametres";
 import { categoriesPermis, cleDe, colonnesModification, ligneCreation, scinderUsage, tableDe } from "../src/lib/transactions-colonnes";
+import { echeanceProposee, etatRappel } from "../src/domaine/rappels";
 
 const bac = process.env.PGLITE_DIR ?? "";
 const require = createRequire(join(bac, "package.json"));
@@ -527,6 +528,37 @@ if (!("refus" in nouveau)) {
 }
 
 attendu("un autre conducteur sans nom est refusé", "refus" in ligneCreation("attributaire", "ATB-90002", { fonction: "Directeur" }, r));
+
+/* -- Les rappels (16 septembre 2026) ---------------------------------------- */
+/* La prochaine échéance de ce qui se renouvelle, saisie par le métier. Un
+   rappel par porteur et par type ; renouveler avance l'échéance, cela ne crée
+   pas une ligne. Le banc tient la forme de la ligne, les refus, et l'unicité
+   que la base garantit par ses deux index partiels. */
+
+attendu("un rappel sans type est refusé", "refus" in ligneCreation("rappel", "RAP-2026-90001", { echeance: "2027-06-30" }, r));
+attendu("un rappel sans échéance est refusé", "refus" in ligneCreation("rappel", "RAP-2026-90001", { type: "assurance" }, r));
+attendu("un rappel sans véhicule ni chauffeur est refusé", "refus" in ligneCreation("rappel", "RAP-2026-90001", { type: "assurance", echeance: "2027-06-30" }, { vehiculeId: null, chauffeurId: null, prestataireId: null }));
+const rap = ligneCreation("rappel", "RAP-2026-90001", { type: "assurance", echeance: "2027-06-30", faitLe: "2026-06-30", commentaire: "Police renouvelée" }, r);
+attendu("un rappel de véhicule se forme en ligne de table", !("refus" in rap));
+if (!("refus" in rap)) {
+  attendu("il ne porte que le véhicule, jamais les deux porteurs", rap.ligne.vehicule_id === v.id && rap.ligne.chauffeur_id === null);
+  /* Le seed a peut-être déjà posé un rappel d'assurance sur ce véhicule (0053) : on l'écarte pour éprouver l'insertion, puis l'unicité. */
+  await pg.query(`delete from rappel where vehicule_id = $1 and type_document_id = 'assurance'`, [v.id]);
+  await inserer("rappel", rap.ligne);
+  const pose = (await pg.query(`select echeance::text as echeance, fait_le::text as fait_le from rappel where numero = 'RAP-2026-90001'`)).rows[0] as { echeance: string; fait_le: string } | undefined;
+  attendu(`le rappel est en base, échéance ${pose?.echeance}, renouvelé le ${pose?.fait_le}`, pose?.echeance === "2027-06-30" && pose?.fait_le === "2026-06-30");
+  let doublon = false;
+  try { await inserer("rappel", { ...rap.ligne, numero: "RAP-2026-90002" }); doublon = true; } catch {}
+  attendu("un second rappel du même type sur le même véhicule est refusé par la base", !doublon);
+  const modif = colonnesModification("rappel", [{ champ: "echeance", valeur: "2028-06-30" }, { champ: "faitLe", valeur: "2027-06-28" }]);
+  attendu("renouveler vise l'échéance et la date du renouvellement", modif.echeance === "2028-06-30" && modif.fait_le === "2027-06-28");
+  await pg.query(`update rappel set echeance = $1, fait_le = $2 where numero = 'RAP-2026-90001'`, [modif.echeance, modif.fait_le]);
+  const lignesRappel = (await pg.query(`select count(*)::int as n from rappel where vehicule_id = $1 and type_document_id = 'assurance'`, [v.id])).rows[0] as { n: number };
+  attendu(`renouveler ne crée pas de ligne (${lignesRappel.n})`, lignesRappel.n === 1);
+}
+attendu("échu, bientôt, à jour", etatRappel("2026-09-01", "2026-09-16") === "echu" && etatRappel("2026-10-01", "2026-09-16") === "bientot" && etatRappel("2027-01-01", "2026-09-16") === "a-jour");
+attendu("la prochaine échéance proposée suit la validité du type (12 mois)", echeanceProposee({ validiteMois: 12 }, "2026-09-16") === "2027-09-16");
+attendu("sans validité, rien n'est proposé", echeanceProposee({ validiteMois: null }, "2026-09-16") === null);
 
 /* -- Remplacer un chauffeur clôt le précédent (15 septembre 2026) ----------- */
 /* L'affectation s'ajoutait sans fermer celle qui courait : le véhicule avait

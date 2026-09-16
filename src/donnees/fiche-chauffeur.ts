@@ -7,6 +7,8 @@
  * par requête.
  * ==========================================================================*/
 
+import { rappelsDuChauffeurParAdresse } from "./rappels";
+import { parametresServeur } from "@/lib/parametres-serveur";
 import { createHash } from "node:crypto";
 import { cache } from "react";
 import { assemblerFicheChauffeur, type FaitsFicheChauffeur } from "@/domaine/assembler-fiche-chauffeur";
@@ -74,7 +76,10 @@ async function ficheChauffeurServeurBrut(id: string): Promise<FicheChauffeur | n
   const aujourdhui = new Date().toISOString().slice(0, 10);
   /* Fonction pas encore jouée : la fiche se dresse sur la ligne seule. */
   const faits = !lecture.error && lecture.data ? faitsChauffeurDepuisJson(lecture.data, ligne.id) : { adresse: null, contactUrgence: null, permisDelivrance: null, documents: [], affectations: [], indisponibilites: [], sanctions: [], incidents: [], pleins: [], depenses: [], releves: [] };
-  return assemblerFicheChauffeur(ligne, faits, aujourdhui);
+  /* Les rappels, par l'adresse de la fiche et non par un identifiant de table
+     que la ligne ne porte pas — le même piège que sur le véhicule, évité ici. */
+  const rappels = await rappelsDuChauffeurParAdresse(client, ligne.id, await parametresServeur());
+  return assemblerFicheChauffeur(ligne, { ...faits, rappels }, aujourdhui);
 }
 
 export const ficheChauffeurServeur = cache(ficheChauffeurServeurBrut);

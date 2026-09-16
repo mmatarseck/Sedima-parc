@@ -164,6 +164,7 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
     statut: "journal",
     inspection: "maintenance",
     "ordre-de-travail": "maintenance",
+    rappel: "conformite",
   };
   /* Chaque entrée du menu ouvre son formulaire ; à la création, l'onglet qui
      liste ce type s'ouvre pour montrer la ligne nouvelle. */

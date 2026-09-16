@@ -29,6 +29,7 @@ export type TypeTransaction =
   | "affectation"
   | "attribution"
   | "attributaire"
+  | "rappel"
   | "attelage"
   | "incident"
   | "sanction"
@@ -119,6 +120,10 @@ export const TYPE_TRANSACTION: Record<TypeTransaction, DefinitionTypeTransaction
      sa fonction, son département : ce que le parc sait de lui et qu'il faut
      pouvoir corriger, comme on corrige une fiche chauffeur. */
   attributaire: { prefixe: "ATB", libelle: "Fiche attributaire", ongletVehicule: null, ongletChauffeur: null },
+  /* La prochaine échéance de ce qui se renouvelle — assurance, visite,
+     salubrité, permis. Se lit dans Conformité, sur la fiche du véhicule et sur
+     celle du chauffeur (16 septembre 2026). */
+  rappel: { prefixe: "RAP", libelle: "Rappel", ongletVehicule: "conformite", ongletChauffeur: "documents" },
   chauffeur: { prefixe: "CHA", libelle: "Fiche chauffeur", ongletVehicule: null, ongletChauffeur: "identite" },
 };
 

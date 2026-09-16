@@ -14,6 +14,9 @@ import { Carte, Definitions, TableauSimple } from "@/composants/interface/Carte"
 import { Numero } from "@/composants/interface/Numero";
 import { useEdition } from "@/composants/transactions/ContexteEdition";
 import { useAjoutVehicule } from "./ajout";
+import { CHAMPS } from "@/composants/transactions/champs";
+import { lireParametres } from "@/lib/parametres-demo";
+import { ETAT_RAPPEL, echeanceProposee, etatRappel, type Rappel } from "@/domaine/rappels";
 import {
   fabriquerAffectationVehicule,
   fabriquerAttelage,
@@ -26,6 +29,7 @@ import {
   fabriquerObservation,
   fabriquerPlein,
   fabriquerReleve,
+  fabriquerRappel,
   fabriquerVisite,
 } from "@/composants/transactions/fabriques";
 import type { ObservationVisite, VisiteTechnique } from "@/domaine/types";
@@ -623,6 +627,29 @@ export function OngletAffectations({ fiche, transferts = [], cible }: { fiche: F
 export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible?: string }) {
   const ajouter = useAjoutVehicule(fiche);
   const { surcharger, demander, creations } = useEdition();
+  const v = fiche.ligne.vehicule;
+  /*
+   * Les rappels d'abord : c'est ce que la Conformité suit depuis le
+   * 16 septembre 2026 — la prochaine échéance de ce qui se renouvelle, saisie
+   * par le métier. Les documents restent en dessous : ce sont les pièces qui
+   * prouvent, pas ce qui alerte.
+   */
+  const rappels = [...creations("rappel", (c) => fabriquerRappel(c, { vehicule: { id: v.id, immatriculation: v.immatriculation, immatriculationAffichee: v.immatriculationAffichee, marque: v.marque, appellation: v.appellation } })), ...fiche.rappels.map(surcharger)];
+  const aujourdhui = new Date().toISOString().slice(0, 10);
+  const rappelsEchus = rappels.filter((r) => etatRappel(r.echeance, aujourdhui) === "echu").length;
+  const rappelsBientot = rappels.filter((r) => etatRappel(r.echeance, aujourdhui) === "bientot").length;
+  /* Renouveler : la date d'aujourd'hui comme date du renouvellement, et la
+     prochaine échéance proposée d'après la validité du type — modifiable. */
+  function renouveler(r: Rappel) {
+    const def = lireParametres().documents.types.find((t) => t.id === r.type);
+    demander({
+      type: "rappel",
+      numero: r.numero,
+      titre: `Renouveler · ${r.libelle} · ${v.immatriculationAffichee}`,
+      champs: CHAMPS.rappel,
+      valeurs: { echeance: (def ? echeanceProposee(def, aujourdhui) : null) ?? r.echeance, faitLe: aujourdhui, documentNumero: r.documentNumero ?? "", commentaire: r.commentaire ?? "" },
+    });
+  }
   const documents = [...creations("document", (c) => fabriquerDocument(c, fiche.ligne.vehicule.categorie)), ...fiche.documents.map(surcharger)];
   const manquants = documents.filter((d) => d.etat === "manquant").length;
   const echus = documents.filter((d) => d.etat === "echu").length;
@@ -632,6 +659,44 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
   const contreVisitePrise = visites.some((x) => x.type === "contre-visite" && x.statut === "rendez-vous");
   return (
     <div className="flex flex-col gap-5">
+    <Carte
+      titre="Rappels"
+      precision={rappels.length ? `${rappels.length} échéance${rappels.length > 1 ? "s" : ""} suivie${rappels.length > 1 ? "s" : ""}${rappelsEchus ? ` · ${rappelsEchus} échue${rappelsEchus > 1 ? "s" : ""}` : ""}${rappelsBientot ? ` · ${rappelsBientot} sous trente jours` : ""}` : "Aucun rappel — la prochaine échéance d'une assurance, d'une visite ou d'un certificat se saisit ici"}
+      action={
+        <button type="button" onClick={() => ajouter("rappel")} className="bouton-secondaire h-9">
+          <Plus className="size-4" strokeWidth={2} />
+          Nouveau rappel
+        </button>
+      }
+      sansMarge
+    >
+      <TableauSimple<Rappel> reglages="fiche-vehicule.rappels"
+        cle={(r) => r.numero}
+        lignes={rappels}
+        vide="Aucun rappel sur ce véhicule."
+        numero={(r) => r.numero}
+        cible={cible}
+        surModifier={(r) => demander({ type: "rappel", numero: r.numero, titre: `Rappel · ${r.libelle}`, champs: CHAMPS.rappel, valeurs: { echeance: r.echeance, faitLe: r.faitLe ?? "", documentNumero: r.documentNumero ?? "", commentaire: r.commentaire ?? "" } })}
+        colonnes={[
+          { cle: "libelle", libelle: "Rappel", rendu: (r) => <span className="font-medium">{r.libelle}</span> },
+          { cle: "etat", libelle: "État", rendu: (r) => { const e = etatRappel(r.echeance, aujourdhui); return <Echeance ton={ETAT_RAPPEL[e].ton}>{ETAT_RAPPEL[e].libelle}</Echeance>; } },
+          { cle: "echeance", libelle: "Prochaine échéance", rendu: (r) => <span className="code whitespace-nowrap">{date(r.echeance)}</span> },
+          { cle: "faitLe", libelle: "Renouvelé le", rendu: (r) => <span className="code whitespace-nowrap">{r.faitLe ? date(r.faitLe) : "—"}</span> },
+          { cle: "document", libelle: "Pièce", rendu: (r) => (r.documentNumero ? <Numero valeur={r.documentNumero} /> : <span className="text-attenue-2">—</span>) },
+          { cle: "commentaire", libelle: "Commentaire", rendu: (r) => <span className="block max-w-[280px] truncate text-texte-2">{r.commentaire ?? ""}</span> },
+          {
+            cle: "renouveler",
+            libelle: "",
+            rendu: (r) => (
+              <button type="button" onClick={(ev) => { ev.stopPropagation(); renouveler(r); }} className="bouton-discret h-7 px-2 text-[12px]">
+                Renouveler
+              </button>
+            ),
+          },
+        ]}
+      />
+    </Carte>
+
     <Carte
       titre="Documents"
       precision={manquants + echus > 0 ? `${echus} échu${echus > 1 ? "s" : ""} · ${manquants} manquant${manquants > 1 ? "s" : ""}` : "Tous les documents sont à jour"}

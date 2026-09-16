@@ -12,6 +12,24 @@ import { groupeDuPoste } from "./libelles";
 
 export type EtatDocument = "a-jour" | "bientot" | "echu" | "manquant" | "permanent";
 
+/** Une pièce du dossier d'un véhicule : un fichier, et de quoi le nommer. */
+export interface PieceDossier {
+  /** Le numéro de la ligne qui porte le fichier — document, visite, intervention, dépense, plein. */
+  numero: string;
+  famille: "reglementaire" | "visite" | "cout";
+  libelle: string;
+  precision: string;
+  /** « AAAA-MM-JJ », pour trier du plus récent au plus ancien. */
+  date: string | null;
+  fichier: string;
+}
+
+export const FAMILLE_PIECE: Record<PieceDossier["famille"], { libelle: string; precision: string }> = {
+  reglementaire: { libelle: "Pièces réglementaires", precision: "Carte grise, assurance en cours, certificat de salubrité" },
+  visite: { libelle: "Visites techniques", precision: "Les procès-verbaux des centres" },
+  cout: { libelle: "Factures et pièces de coût", precision: "Interventions, dépenses, pleins — ce qui a coûté" },
+};
+
 export interface DocumentFiche {
   numero: string;
   type: TypeDocument;
@@ -290,6 +308,15 @@ export interface FicheVehicule {
   livraisons: import("./livraisons").LivraisonFiche[];
   /** Les incidents et sinistres du véhicule, du plus récent au plus ancien. */
   incidents: import("./incidents").LigneIncident[];
+  /** Les rappels du véhicule — assurance, visite, salubrité — du plus pressé au plus lointain (0053). */
+  rappels: import("./rappels").Rappel[];
+  /**
+   * Les pièces du dossier, en trois familles (16 septembre 2026) : le
+   * réglementaire — carte grise, assurance, salubrité —, les procès-verbaux de
+   * visite, et ce qui a coûté — factures d'intervention, dépenses, pleins. Une
+   * pièce, c'est un fichier dans le seau ; ce qui n'en porte pas n'est pas là.
+   */
+  pieces: PieceDossier[];
   /** Nulle quand tous les documents critiques sont en règle. Voir src/domaine/documents.ts. */
   immobilisationAdministrative: import("./documents").ImmobilisationAdministrative | null;
   planEntretien: PlanEntretienFiche;

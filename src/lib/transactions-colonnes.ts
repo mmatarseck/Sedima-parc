@@ -51,7 +51,8 @@ export type TableBranchee =
   | "vehicule"
   | "chauffeur"
   | "prestataire"
-  | "attributaire";
+  | "attributaire"
+  | "rappel";
 
 const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   releve: "releve_kilometrique",
@@ -93,6 +94,7 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
      monde, et les commandes comme les factures le citent ainsi. */
   prestataire: "prestataire",
   attributaire: "attributaire",
+  rappel: "rappel",
 };
 
 /**
@@ -656,6 +658,16 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       if (!texte(v.auteur)) return { refus: "évaluation sans auteur" };
       return { ligne: { numero, prestataire_id: r.prestataireId, date: texte(v.date), piece_numero: texte(v.pieceNumero), piece_libelle: texte(v.pieceLibelle) ?? texte(v.pieceNumero), qualite, delai, prix, commentaire: texte(v.commentaire), auteur: texte(v.auteur) } };
     }
+    case "rappel": {
+      /* La prochaine échéance de ce qui se renouvelle, sur un véhicule ou un
+         chauffeur — l'un ou l'autre, jamais les deux, et la base le tient. */
+      const type = texte(v.type);
+      const echeance = texte(v.echeance);
+      if (!type) return { refus: "rappel sans type" };
+      if (!echeance) return { refus: "rappel sans échéance" };
+      if (!r.vehiculeId && !r.chauffeurId) return { refus: "rappel sans véhicule ni chauffeur" };
+      return { ligne: { numero, vehicule_id: r.vehiculeId, chauffeur_id: r.vehiculeId ? null : r.chauffeurId, type_document_id: type, echeance, fait_le: texte(v.faitLe), document_numero: texte(v.documentNumero), commentaire: texte(v.commentaire) } };
+    }
     case "sanction": {
       if (!r.chauffeurId) return { refus: "sanction sans chauffeur" };
       if (!texte(v.motif)) return { refus: "sanction sans motif" };
@@ -820,6 +832,15 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
     businessUnit: "business_unit",
     matriculeRh: "matricule_rh",
     actif: "actif",
+  },
+  /* Un rappel se renouvelle par modification : l'échéance avance, la date du
+     renouvellement se note, le document qui le prouve se cite. Le type et le
+     porteur, eux, ne changent pas — un autre type est un autre rappel. */
+  rappel: {
+    echeance: "echeance",
+    faitLe: "fait_le",
+    documentNumero: "document_numero",
+    commentaire: "commentaire",
   },
   prestataire: {
     raisonSociale: "raison_sociale",

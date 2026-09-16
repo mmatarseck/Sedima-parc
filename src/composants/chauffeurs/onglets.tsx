@@ -4,7 +4,10 @@ import Link from "next/link";
 import { FileText, Lock, Plus } from "lucide-react";
 import { Carte, Definitions, TableauSimple } from "@/composants/interface/Carte";
 import { Numero } from "@/composants/interface/Numero";
-import { CHAMPS_CONTRAVENTION, CHAMPS_FRAIS } from "@/composants/transactions/champs";
+import { CHAMPS, CHAMPS_CONTRAVENTION, CHAMPS_FRAIS } from "@/composants/transactions/champs";
+import { fabriquerRappel } from "@/composants/transactions/fabriques";
+import { ETAT_RAPPEL, echeanceProposee, etatRappel, type Rappel } from "@/domaine/rappels";
+import { lireParametres } from "@/lib/parametres-demo";
 import { useEdition } from "@/composants/transactions/ContexteEdition";
 import type { CibleAjout } from "@/composants/vehicule/MenuAjout";
 
@@ -420,7 +423,55 @@ export function OngletDocuments({ fiche, cible, onAjouter }: { fiche: FicheChauf
   const { surcharger, demander, creations } = useEdition();
   const documents = [...creations("document", fabriquerDocumentChauffeur), ...fiche.documents.map(surcharger)];
   const aProbleme = documents.filter((d) => d.etat === "echu" || d.etat === "manquant").length;
+  /*
+   * Les rappels du chauffeur — permis, visite médicale — au-dessus des
+   * documents : c'est ce que la Conformité suit depuis le 16 septembre 2026,
+   * la prochaine échéance saisie par le métier. Le document, en dessous, prouve.
+   */
+  const l = fiche.ligne;
+  const rappels = [...creations("rappel", (c) => fabriquerRappel(c, { chauffeur: { id: l.id, nomComplet: l.nomComplet } })), ...fiche.rappels.map(surcharger)];
+  const aujourdhui = new Date().toISOString().slice(0, 10);
+  const echus = rappels.filter((r) => etatRappel(r.echeance, aujourdhui) === "echu").length;
+  function renouveler(r: Rappel) {
+    const def = lireParametres().documents.types.find((t) => t.id === r.type);
+    demander({
+      type: "rappel",
+      numero: r.numero,
+      titre: `Renouveler · ${r.libelle} · ${l.nomComplet}`,
+      champs: CHAMPS.rappel,
+      valeurs: { echeance: (def ? echeanceProposee(def, aujourdhui) : null) ?? r.echeance, faitLe: aujourdhui, documentNumero: r.documentNumero ?? "", commentaire: r.commentaire ?? "" },
+    });
+  }
   return (
+    <div className="flex flex-col gap-5">
+    <Carte
+      titre="Rappels"
+      precision={rappels.length ? `${rappels.length} échéance${rappels.length > 1 ? "s" : ""} suivie${rappels.length > 1 ? "s" : ""}${echus ? ` · ${echus} échue${echus > 1 ? "s" : ""}` : ""}` : "Aucun rappel — la prochaine échéance du permis ou de la visite médicale se saisit ici"}
+      action={
+        <button type="button" onClick={() => onAjouter?.("rappel")} disabled={!onAjouter} className="bouton-secondaire h-9 disabled:cursor-not-allowed disabled:opacity-50">
+          <Plus className="size-4" strokeWidth={2} />
+          Nouveau rappel
+        </button>
+      }
+      sansMarge
+    >
+      <TableauSimple<Rappel> reglages="fiche-chauffeur.rappels"
+        cle={(r) => r.numero}
+        lignes={rappels}
+        vide="Aucun rappel sur ce chauffeur."
+        numero={(r) => r.numero}
+        cible={cible}
+        surModifier={(r) => demander({ type: "rappel", numero: r.numero, titre: `Rappel · ${r.libelle}`, champs: CHAMPS.rappel, valeurs: { echeance: r.echeance, faitLe: r.faitLe ?? "", documentNumero: r.documentNumero ?? "", commentaire: r.commentaire ?? "" } })}
+        colonnes={[
+          { cle: "libelle", libelle: "Rappel", rendu: (r) => <span className="font-medium">{r.libelle}</span> },
+          { cle: "etat", libelle: "État", rendu: (r) => { const e = etatRappel(r.echeance, aujourdhui); return <Echeance ton={ETAT_RAPPEL[e].ton}>{ETAT_RAPPEL[e].libelle}</Echeance>; } },
+          { cle: "echeance", libelle: "Prochaine échéance", rendu: (r) => <span className="code whitespace-nowrap">{date(r.echeance)}</span> },
+          { cle: "faitLe", libelle: "Renouvelé le", rendu: (r) => <span className="code whitespace-nowrap">{r.faitLe ? date(r.faitLe) : "—"}</span> },
+          { cle: "document", libelle: "Pièce", rendu: (r) => (r.documentNumero ? <Numero valeur={r.documentNumero} /> : <span className="text-attenue-2">—</span>) },
+          { cle: "renouveler", libelle: "", rendu: (r) => (<button type="button" onClick={(ev) => { ev.stopPropagation(); renouveler(r); }} className="bouton-discret h-7 px-2 text-[12px]">Renouveler</button>) },
+        ]}
+      />
+    </Carte>
     <Carte
       titre="Documents"
       precision={aProbleme > 0 ? `${aProbleme} document${aProbleme > 1 ? "s" : ""} à régulariser` : "Permis et visite médicale à jour"}
@@ -462,6 +513,7 @@ export function OngletDocuments({ fiche, cible, onAjouter }: { fiche: FicheChauf
         ]}
       />
     </Carte>
+    </div>
   );
 }
 

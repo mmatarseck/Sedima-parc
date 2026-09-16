@@ -7,7 +7,9 @@ import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { Numero } from "@/composants/interface/Numero";
 import { Echeance as Pilule, Pastille } from "@/composants/interface/Pastille";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
-import { champsCreation } from "@/composants/transactions/champs";
+import { CHAMPS, champsCreation } from "@/composants/transactions/champs";
+import { echeanceProposee } from "@/domaine/rappels";
+import { lireParametres } from "@/lib/parametres-demo";
 import { FournisseurEdition, useEdition } from "@/composants/transactions/ContexteEdition";
 import { NIVEAU, PREAVIS, compter, estAlerte, type Echeance, type NiveauEcheance } from "@/domaine/conformite";
 import { TYPE_DOCUMENT } from "@/domaine/libelles";
@@ -35,7 +37,7 @@ function libelleJours(e: Echeance): string {
 }
 
 function Interieur({ echeances, aujourdhui }: { echeances: Echeance[]; aujourdhui: string }) {
-  const { creer } = useEdition();
+  const { creer, demander } = useEdition();
   const [portee, setPortee] = useState<Portee>("tous");
 
   /* Le type de document, en plus de la portée : « toutes les assurances », « toutes les visites ». */
@@ -75,6 +77,24 @@ function Interieur({ echeances, aujourdhui }: { echeances: Echeance[]; aujourdhu
         champs: champsCreation("visite", { pour: "vehicule" }),
         valeurs: { type: "contre-visite", centre: e.emetteur ?? "CCVA Rufisque", dateRendezVous: aujourdhui, statut: "rendez-vous" },
         sujetDe: () => `${e.sujet}:${e.sujetId}`,
+      });
+      return;
+    }
+    /*
+     * Une ligne de rappel se renouvelle **sur le rappel** (16 septembre 2026) :
+     * la date d'aujourd'hui comme date du renouvellement, et la prochaine
+     * échéance proposée d'après la validité du type — que le métier corrige.
+     * Le document qui le prouve se cite ensuite, quand on l'a ; ce n'est plus
+     * lui qu'on crée pour dire qu'une assurance est renouvelée.
+     */
+    if (e.numero?.startsWith("RAP-")) {
+      const def = lireParametres().documents.types.find((t) => t.id === e.type);
+      demander({
+        type: "rappel",
+        numero: e.numero,
+        titre: `Renouveler · ${e.libelle} · ${e.sujetLibelle}`,
+        champs: CHAMPS.rappel,
+        valeurs: { echeance: (def ? echeanceProposee(def, aujourdhui) : null) ?? e.echeance ?? aujourdhui, faitLe: aujourdhui, documentNumero: e.numeroPiece ?? "", commentaire: "" },
       });
       return;
     }

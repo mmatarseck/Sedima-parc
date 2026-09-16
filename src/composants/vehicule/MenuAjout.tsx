@@ -22,6 +22,7 @@ import {
   Wallet,
   Wrench,
   type LucideIcon,
+  BellRing,
 } from "lucide-react";
 
 export type CibleAjout =
@@ -42,7 +43,8 @@ export type CibleAjout =
   | "attelage"
   | "attribution"
   | "visite"
-  | "observation";
+  | "observation"
+  | "rappel";
 
 export interface EntreeAjout {
   cle: CibleAjout;
@@ -69,6 +71,7 @@ export const ENTREES_VEHICULE: EntreeAjout[] = [
   { cle: "document", libelle: "Document", precision: "Assurance, carte grise, salubrité…", icone: FileText, livre: true },
   { cle: "visite", libelle: "Rendez-vous de visite technique", precision: "Visite ou contre-visite au centre agréé", icone: CalendarCheck, livre: true },
   { cle: "observation", libelle: "Observation de visite technique", precision: "Défaut relevé par le centre, à corriger", icone: ClipboardPen, livre: true },
+  { cle: "rappel", libelle: "Rappel", precision: "Prochaine échéance — assurance, visite, salubrité", icone: BellRing, livre: true },
   { cle: "releve", libelle: "Relevé kilométrique", precision: "Lecture du compteur, contrôlée", icone: Gauge, livre: true },
   { cle: "statut", libelle: "Changement de statut", precision: "Ouvre une période horodatée", icone: ArrowLeftRight, livre: true },
   { cle: "inspection", libelle: "Inspection", precision: "Check-list avant départ ou au retour — Lot 2", icone: ClipboardList, livre: false },

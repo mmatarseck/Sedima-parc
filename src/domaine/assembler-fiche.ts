@@ -17,10 +17,11 @@
 
 import type { LivraisonFiche } from "./livraisons";
 import type { LigneIncident } from "./incidents";
+import type { Rappel } from "./rappels";
 import { exigeDocument, immobilisationAdministrative } from "./documents";
 import { libelleUsageCourant } from "./parametres";
 import { echeancesDuPlan, type CompteursVehicule, type DernierPassage, type PlanVehicule, type ProgrammeEntretien } from "./entretien";
-import { agregerCouts, type AffectationFiche, type AttelageFiche, type DepenseFiche, type DocumentFiche, type EcheanceFiche, type EtatDocument, type EvenementJournal, type FicheVehicule, type IndicateursFiche, type Intervention, type PeriodeStatutFiche, type PleinFiche, type ReleveFiche, type ConsommationMensuelle } from "./fiche";
+import { agregerCouts, type AffectationFiche, type AttelageFiche, type DepenseFiche, type DocumentFiche, type EcheanceFiche, type EtatDocument, type EvenementJournal, type FicheVehicule, type IndicateursFiche, type Intervention, type PeriodeStatutFiche, type PieceDossier, type PleinFiche, type ReleveFiche, type ConsommationMensuelle } from "./fiche";
 import { BUSINESS_UNIT, POSTE_DEPENSE, STATUT_VEHICULE, TYPE_DOCUMENT } from "./libelles";
 import { prixEnergie, type Parametres } from "./parametres";
 import { formerNumero } from "./reference";
@@ -65,6 +66,10 @@ export interface FaitsFiche {
    * liste vide, il ne fait pas échouer la fiche.
    */
   incidents?: LigneIncident[];
+  /** Les rappels du véhicule (0053) ; un lecteur d'avant n'en rend pas. */
+  rappels?: Rappel[];
+  /** Les pièces du dossier, déjà réunies par le lecteur ; un lecteur d'avant n'en rend pas. */
+  pieces?: PieceDossier[];
   /**
    * Les attelages du véhicule (0050), déjà vus de son côté : c'est le lecteur
    * qui sait lequel des deux véhicules est celui de la fiche, et donc quel rôle
@@ -348,6 +353,8 @@ export function assemblerFiche(l: LigneFlotte, faits: FaitsFiche, parametres: Pa
     observationsVisite: (faits.observations ?? []).map((o) => ({ id: o.numero, numero: o.numero, visiteId: o.visiteNumero, vehiculeId: v.id, libelle: o.libelle, categorie: o.categorie, gravite: o.gravite, statut: o.statut, interventionNumero: o.interventionNumero, corrigeeLe: o.corrigeeLe, commentaire: o.commentaire })),
     livraisons: [...(faits.livraisons ?? [])].sort((a, b) => b.date.localeCompare(a.date) || b.numero.localeCompare(a.numero)),
     incidents: [...(faits.incidents ?? [])].sort((a, b) => b.dateHeure.localeCompare(a.dateHeure)),
+    rappels: [...(faits.rappels ?? [])].sort((a, b) => a.echeance.localeCompare(b.echeance)),
+    pieces: [...(faits.pieces ?? [])].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "")),
     immobilisationAdministrative: immobilisation,
     planEntretien: { programmeCode: programme.code, programmeLibelle: programme.libelle, programmePrecision: programme.precision, base: programme.base, aujourdhui, compteurs, echeances: echeancesEntretien },
     prochaineIntervention,

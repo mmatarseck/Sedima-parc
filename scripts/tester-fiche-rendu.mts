@@ -169,11 +169,18 @@ if (!rendues.has("AA019EA")) {
   else {
     const v = ligne.vehicule;
     const fiche = assemblerFiche(ligne, FAITS_VIDES, PARAMETRES_DEFAUT, aujourdhui, { programme: programmeParDefaut(v.categorie), plan: planDuVehicule(v.id, v.categorie), passages: passagesReleves });
+    /* Trois familles depuis le 16 septembre 2026 : le réglementaire, les
+       procès-verbaux de visite, ce qui a coûté. Le lecteur les réunit en une
+       seule forme ; l'onglet ne fait que grouper. On en pose une de chaque,
+       et deux dans la première — la carte grise et l'assurance, ce qu'on
+       cherche au contrôle routier. */
     const garnie = {
       ...fiche,
-      documents: [
-        { ...fiche.documents[0]!, type: "carte-grise" as const, numero: "DOC-2026-90001", fichier: "pieces/documents/2026/09/essai-carte-grise.pdf", justificatif: true, etat: "valide" as const },
-        { ...fiche.documents[0]!, type: "assurance" as const, numero: "DOC-2026-90002", fichier: "pieces/documents/2026/09/essai-police.jpg", justificatif: true, etat: "valide" as const },
+      pieces: [
+        { numero: "DOC-2026-90001", famille: "reglementaire" as const, libelle: "Carte grise", precision: "sans référence", date: "2026-09-01", fichier: "pieces/documents/2026/09/essai-carte-grise.pdf" },
+        { numero: "DOC-2026-90002", famille: "reglementaire" as const, libelle: "Assurance", precision: "AXA · échéance 30/06/2027", date: "2026-07-01", fichier: "pieces/documents/2026/09/essai-police.jpg" },
+        { numero: "VTE-2026-90001", famille: "visite" as const, libelle: "Procès-verbal de visite technique", precision: "CCVA Rufisque · PV 12345", date: "2026-08-15", fichier: "pieces/documents/2026/08/essai-pv.pdf" },
+        { numero: "INT-2026-90001", famille: "cout" as const, libelle: "Intervention · Plaquettes", precision: "Garage SEDIMA · 85 000 F", date: "2026-09-08", fichier: "pieces/pieces/2026/09/essai-facture.jpg" },
       ],
     };
     try {
@@ -181,10 +188,10 @@ if (!rendues.has("AA019EA")) {
         React.createElement(FournisseurEdition, { sujet: `vehicule:${v.immatriculation}`, href: `/flotte/${v.immatriculation}` } as any,
           React.createElement(FicheVehicule, { fiche: garnie, ongletInitial: "dossier", discussionInitiale: false, cible: undefined } as any)),
       );
-      const annonce = html.includes("Dossier (2)");
-      const nomme = html.includes("Carte grise") && html.includes("Assurance");
-      console.log(`${annonce && nomme ? "ok   " : "ÉCHEC"} le dossier garni liste ses deux pièces et les nomme`);
-      if (!annonce || !nomme) echecs++;
+      const familles = html.includes("Pièces réglementaires (2)") && html.includes("Visites techniques (1)") && html.includes("Factures et pièces de coût (1)");
+      const nomme = html.includes("Carte grise") && html.includes("Assurance") && html.includes("Procès-verbal de visite technique") && html.includes("Intervention · Plaquettes");
+      console.log(`${familles && nomme ? "ok   " : "ÉCHEC"} le dossier garni range ses quatre pièces en trois familles et les nomme`);
+      if (!familles || !nomme) echecs++;
     } catch (e) {
       echecs++;
       console.log(`ÉCHEC dossier garni : ${(e as Error).message}`);

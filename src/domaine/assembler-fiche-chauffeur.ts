@@ -11,6 +11,7 @@
  * ==========================================================================*/
 
 import { REFERENCE_L100 } from "./assembler-fiche";
+import type { Rappel } from "./rappels";
 import type { AffectationChauffeur, ConsommationChauffeur, ContraventionChauffeur, FicheChauffeur, FraisDeRoute, IncidentChauffeur, LigneChauffeur, ReleveAttribue } from "./chauffeur";
 import type { DocumentFiche, EtatDocument, EvenementJournal } from "./fiche";
 import { BUSINESS_UNIT, MOTIF_INDISPONIBILITE, TYPE_INCIDENT, TYPE_SANCTION } from "./libelles";
@@ -22,6 +23,8 @@ export interface FaitsFicheChauffeur {
   contactUrgence: string | null;
   permisDelivrance: string | null;
   documents: { numero: string; type: TypeDocument; dateEffet: string | null; echeance: string | null; emetteur: string | null; numeroPiece: string | null; montant: number | null; justificatif: boolean }[];
+  /** Les rappels du chauffeur (0053) ; un lecteur d'avant n'en rend pas. */
+  rappels?: Rappel[];
   affectations: { numero: string; role: "titulaire" | "suppleant"; debut: string; fin: string | null; motif: string; vehicule: { id: string; immatriculation: string; immatriculationAffichee: string; marque: string; appellation: string; categorie: CategorieVehicule; businessUnit: BusinessUnit | null; site: string | null } }[];
   indisponibilites: Indisponibilite[];
   sanctions: (Sanction & { depenseNumero: string | null; incidentNumero: string | null })[];
@@ -194,6 +197,7 @@ export function assemblerFicheChauffeur(ligne: LigneChauffeur, faits: FaitsFiche
     ligne,
     identite: { dateNaissance: c.dateNaissance, age, dateEmbauche: c.dateEmbauche, ancienneteAnnees: anciennete, dateSortie: c.dateSortie, adresse: faits.adresse, contactUrgence: faits.contactUrgence, permisNumero: c.permisNumero, permisDelivrance: faits.permisDelivrance, permisCategories: c.permisCategories },
     documents,
+    rappels: [...(faits.rappels ?? [])].sort((a, b) => a.echeance.localeCompare(b.echeance)),
     affectations,
     consommation,
     contraventions,

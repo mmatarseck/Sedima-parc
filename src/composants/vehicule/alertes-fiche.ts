@@ -1,3 +1,4 @@
+import { joursAvant } from "@/domaine/rappels";
 import { MOTIF_IMMOBILISATION, STATUT_VEHICULE, TYPE_DOCUMENT, TYPE_VISITE, type Ton } from "@/domaine/libelles";
 import type { DocumentFiche, FicheVehicule, ReleveFiche } from "@/domaine/fiche";
 import { date, nombre } from "@/lib/format";
@@ -68,22 +69,32 @@ export function alertesDeLaFiche(
     });
   }
 
-  for (const d of vues.documents.filter((x) => x.etat === "echu" || x.etat === "manquant")) {
-    alertes.push({
-      onglet: "conformite",
-      ton: "defavorable",
-      titre: `${TYPE_DOCUMENT[d.type]} ${d.etat === "manquant" ? "manquante" : "échue"}`,
-      precision: d.etat === "manquant" ? "Document à fournir — le véhicule n'est pas conforme" : `Échue depuis ${Math.abs(d.joursRestants ?? 0)} jours · ${d.emetteur ?? ""}`,
-    });
+  /*
+   * LES RAPPELS, ET NON PLUS LES DOCUMENTS (16 septembre 2026). Ce qui alerte,
+   * c'est la prochaine échéance saisie par le métier — pas le dernier scan
+   * classé. Un document absent n'alerte plus : ce n'est pas une échéance, et
+   * c'est précisément l'immobilisation « pour un papier qu'on n'a pas encore
+   * rangé » que le métier a demandé de retirer la veille.
+   */
+  const aujourdhui = fiche.planEntretien.aujourdhui;
+  for (const r of fiche.rappels) {
+    const j = joursAvant(r.echeance, aujourdhui);
+    if (j < 0) {
+      alertes.push({ onglet: "conformite", ton: "defavorable", titre: `${r.libelle} — échéance dépassée`, precision: `Depuis ${Math.abs(j)} jour${Math.abs(j) > 1 ? "s" : ""}${r.faitLe ? ` · dernier renouvellement le ${date(r.faitLe)}` : ""}` });
+    }
   }
 
   if (!vues.affectations.some((a) => a.role === "titulaire" && a.fin === null)) {
     alertes.push({ onglet: "affectations", ton: "vigilance", titre: "Aucun chauffeur titulaire", precision: "Le véhicule ne peut pas être compté « prêt à charger »" });
   }
 
-  for (const d of vues.documents.filter((x) => x.etat === "bientot")) {
-    alertes.push({ onglet: "conformite", ton: "vigilance", titre: `${TYPE_DOCUMENT[d.type]} à renouveler`, precision: `Échéance dans ${d.joursRestants} jours · ${d.emetteur ?? ""}` });
+  for (const r of fiche.rappels) {
+    const j = joursAvant(r.echeance, aujourdhui);
+    if (j >= 0 && j <= 30) {
+      alertes.push({ onglet: "conformite", ton: "vigilance", titre: `${r.libelle} à renouveler`, precision: j === 0 ? "Échéance aujourd'hui" : `Échéance dans ${j} jour${j > 1 ? "s" : ""} · le ${date(r.echeance)}` });
+    }
   }
+  void vues.documents;
 
   {
     const visites = fiche.visitesTechniques;

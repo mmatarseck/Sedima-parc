@@ -14,7 +14,7 @@
 import { lignesLues } from "./lecture";
 import { cache } from "react";
 import { niveauPour, trier, type Echeance } from "@/domaine/conformite";
-import { exigeDocument } from "@/domaine/documents";
+import { idChauffeur } from "@/domaine/chauffeur";
 import { TYPE_DOCUMENT } from "@/domaine/libelles";
 import type { Parametres } from "@/domaine/parametres";
 import type { FicheChauffeur } from "@/domaine/chauffeur";
@@ -63,11 +63,24 @@ export interface ObservationOuverteBase {
   vehicule_id: string;
 }
 
+interface RappelBase {
+  numero: string;
+  vehicule_id: string | null;
+  chauffeur_id: string | null;
+  type_document_id: string;
+  echeance: string;
+  fait_le: string | null;
+  document_numero: string | null;
+  chauffeur: { nom: string; prenom: string } | null;
+}
+
 export interface FaitsConformite {
   documents: DocumentVehiculeBase[];
   licences: LicenceBase[];
   visites: VisiteEnCoursBase[];
   observations: ObservationOuverteBase[];
+  /** Les rappels (0053) ; un lecteur d'avant la table n'en rend pas. */
+  rappels?: RappelBase[];
 }
 
 export function echeancesDepuisLaBase(lignes: LigneFlotte[], uuidParImmat: Map<string, string>, faits: FaitsConformite, fichesChauffeurs: FicheChauffeur[], parametres: Parametres, aujourdhui: string): Echeance[] {
@@ -75,7 +88,6 @@ export function echeancesDepuisLaBase(lignes: LigneFlotte[], uuidParImmat: Map<s
   const echeances: Echeance[] = [];
   const observationsPar = new Map<string, number>();
   for (const o of faits.observations) observationsPar.set(o.vehicule_id, (observationsPar.get(o.vehicule_id) ?? 0) + 1);
-  const couverts = new Set(faits.licences.flatMap((l) => (l.perimetre === "flotte" ? ["*"] : l.licence_vehicule.map((x) => x.vehicule?.immatriculation ?? ""))));
 
   for (const l of lignes) {
     const v = l.vehicule;
@@ -84,22 +96,22 @@ export function echeancesDepuisLaBase(lignes: LigneFlotte[], uuidParImmat: Map<s
     if (!uuid) continue;
     const precision = `${v.marque} ${v.appellation}${l.site ? ` · ${l.site.libelle}` : ""}`;
     const href = (suite: string) => `/flotte/${v.immatriculation}?onglet=conformite${suite}`;
-    const documents = faits.documents.filter((d) => d.vehicule_id === uuid);
     const commun = { sujet: "vehicule" as const, sujetId: v.id, sujetLibelle: v.immatriculationAffichee, sujetPrecision: precision, site: l.site?.libelle ?? null, repere: null };
 
-    for (const d of documents) {
-      const type = d.type_document_id as TypeDocument;
-      if (type === "licence-transport") continue;
-      const j = joursRestants(d.echeance, reference);
-      const permanent = !d.echeance && !parametres.documents.types.find((t) => t.id === type)?.validiteMois;
-      echeances.push({ ...commun, cle: `v-${v.id}-${d.numero}`, numero: d.numero, sujetHref: href(`&ref=${d.numero}`), type, libelle: TYPE_DOCUMENT[type], numeroPiece: d.numero_piece, emetteur: d.emetteur, echeance: d.echeance, joursRestants: j, niveau: niveauPour(j, false, permanent) });
-    }
-    /* Ce que la fiche exige et qu'elle n'a pas : manquant, il immobilise ou il gêne. */
-    for (const def of parametres.documents.types) {
-      if (def.porteur === "chauffeur" || !exigeDocument(def.id as TypeDocument, v, parametres)) continue;
-      if (documents.some((d) => d.type_document_id === def.id)) continue;
-      if (def.id === "licence-transport" && (couverts.has("*") || couverts.has(v.immatriculation))) continue;
-      echeances.push({ ...commun, cle: `v-${v.id}-manquant-${def.id}`, numero: null, sujetHref: href(""), type: def.id as TypeDocument, libelle: TYPE_DOCUMENT[def.id as TypeDocument], numeroPiece: null, emetteur: null, echeance: null, joursRestants: null, niveau: niveauPour(null, true) });
+    /*
+     * LES RAPPELS, ET NON PLUS LES DOCUMENTS (16 septembre 2026). L'échéance
+     * d'une assurance n'est plus celle du dernier scan enregistré : c'est celle
+     * que le métier a saisie sur le rappel. Le document, quand il arrive, la
+     * prouve — il se cite sur le rappel, et se lit au dossier du véhicule.
+     *
+     * Plus de ligne « manquant » non plus : un document absent n'est pas une
+     * échéance, et immobiliser un véhicule pour un scan qu'on n'a pas encore
+     * classé était précisément ce que le métier a demandé de retirer le 15.
+     */
+    for (const r of (faits.rappels ?? []).filter((x) => x.vehicule_id === uuid)) {
+      const j = joursRestants(r.echeance, reference);
+      const def = parametres.documents.types.find((t) => t.id === r.type_document_id);
+      echeances.push({ ...commun, cle: `v-${v.id}-${r.numero}`, numero: r.numero, sujetHref: href(`&ref=${r.numero}`), type: r.type_document_id as TypeDocument, libelle: def?.libelle ?? TYPE_DOCUMENT[r.type_document_id as TypeDocument] ?? r.type_document_id, numeroPiece: r.document_numero, emetteur: r.fait_le ? `renouvelé le ${r.fait_le.slice(8, 10)}/${r.fait_le.slice(5, 7)}/${r.fait_le.slice(0, 4)}` : null, echeance: r.echeance, joursRestants: j, niveau: niveauPour(j, false) });
     }
     const visites = faits.visites.filter((x) => x.vehicule_id === uuid);
     const refus = visites.find((x) => x.statut === "refusee");
@@ -121,6 +133,16 @@ export function echeancesDepuisLaBase(lignes: LigneFlotte[], uuidParImmat: Map<s
       const jours = p.joursRestants ?? (p.kmRestants !== null ? Math.max(0, Math.round(p.kmRestants / rythme)) : null);
       echeances.push({ ...commun, cle: `v-${v.id}-entretien`, numero: null, sujetHref: `/flotte/${v.immatriculation}?onglet=entretien`, type: "entretien", libelle: p.libelle, numeroPiece: null, emetteur: null, echeance: null, joursRestants: jours, niveau: niveauPour(jours, false), repere: p.kmRestants !== null ? `dans ${fmtKm(Math.max(0, p.kmRestants))} km` : null });
     }
+  }
+
+  /* Les rappels des chauffeurs — permis, visite médicale — sur la même liste.
+     Le nom vient de la lecture ; l'adresse de la fiche s'en dérive. */
+  for (const r of (faits.rappels ?? []).filter((x) => x.chauffeur_id && x.chauffeur)) {
+    const nom = `${r.chauffeur!.prenom} ${r.chauffeur!.nom}`.trim();
+    const adresse = idChauffeur(nom);
+    const j = joursRestants(r.echeance, reference);
+    const def = parametres.documents.types.find((t) => t.id === r.type_document_id);
+    echeances.push({ cle: `c-${adresse}-${r.numero}`, numero: r.numero, sujet: "chauffeur", sujetId: adresse, sujetLibelle: nom, sujetPrecision: "Chauffeur", sujetHref: `/chauffeurs/${adresse}?onglet=documents&ref=${r.numero}`, type: r.type_document_id as TypeDocument, libelle: def?.libelle ?? TYPE_DOCUMENT[r.type_document_id as TypeDocument] ?? r.type_document_id, numeroPiece: r.document_numero, emetteur: r.fait_le ? `renouvelé le ${r.fait_le.slice(8, 10)}/${r.fait_le.slice(5, 7)}/${r.fait_le.slice(0, 4)}` : null, echeance: r.echeance, joursRestants: j, niveau: niveauPour(j, false), repere: null, site: null });
   }
 
   for (const lic of faits.licences) {
@@ -160,18 +182,20 @@ export interface ConformiteServeur {
 async function conformiteServeurBrut(parametres: Parametres): Promise<ConformiteServeur> {
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const client = await clientServeur();
-  const [lignes, fiches, documents, licences, visites, observations] = await Promise.all([
+  const [lignes, fiches, documents, licences, visites, observations, rappelsLus] = await Promise.all([
     lignesFlotte(parametres),
     fichesChauffeursServeur(),
     client.from("document").select("numero, vehicule_id, type_document_id, date_effet, echeance, numero_piece, emetteur").not("vehicule_id", "is", null).limit(5000).returns<DocumentVehiculeBase[]>(),
     client.from("licence_transport").select("numero, libelle, numero_piece, emetteur, perimetre, echeance, licence_vehicule (vehicule (immatriculation))").returns<LicenceBase[]>(),
     client.from("visite_technique").select("numero, vehicule_id, type, centre, date_rendez_vous, heure, statut, numero_pv, date_limite_contre_visite").in("statut", ["rendez-vous", "refusee"]).limit(2000).returns<VisiteEnCoursBase[]>(),
     client.from("observation_visite").select("vehicule_id").neq("statut", "corrigee").limit(2000).returns<ObservationOuverteBase[]>(),
+    client.from("rappel").select("numero, vehicule_id, chauffeur_id, type_document_id, echeance, fait_le, document_numero, chauffeur (nom, prenom)").order("echeance").limit(5000).returns<RappelBase[]>(),
   ]);
   /* L'identifiant en base de chaque véhicule visible : la liste ne porte que l'immatriculation, le parc déjà lu a les deux. */
   const parc = await parcServeur();
   const uuidParImmat = new Map(parc.vehicules.map((v) => [v.immatriculation, v.id]));
   const faits: FaitsConformite = { documents: lignesLues("Documents des véhicules", documents), licences: lignesLues("Licences de transport", licences), visites: lignesLues("Visites techniques en cours", visites), observations: lignesLues("Observations ouvertes", observations) };
+  faits.rappels = lignesLues("Rappels", rappelsLus);
   return { echeances: echeancesDepuisLaBase(lignes, uuidParImmat, faits, fiches, parametres, aujourdhui), aujourdhui };
 }
 

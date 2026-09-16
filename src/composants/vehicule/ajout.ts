@@ -34,6 +34,7 @@ export const TITRE_CREATION: Partial<Record<CibleAjout, string>> = {
   document: "Nouveau document",
   releve: "Nouveau relevé kilométrique",
   statut: "Changement de statut",
+  rappel: "Nouveau rappel",
 };
 
 /**

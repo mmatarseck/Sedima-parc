@@ -483,6 +483,15 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
   vehicule: [],
   /* La fiche d'un attributaire : ce que le parc sait de la personne. Son
      véhicule n'est pas ici — il se change par une attribution, qui se date. */
+  /* Un rappel se renouvelle : l'échéance avance, la date du renouvellement se
+     note, le document qui le prouve se cite. Le type ne change pas — un autre
+     type est un autre rappel (16 septembre 2026). */
+  rappel: [
+    { cle: "echeance", libelle: "Prochaine échéance", type: "date", obligatoire: true },
+    { cle: "faitLe", libelle: "Renouvelé le (visite passée, police renouvelée)", type: "date" },
+    { cle: "documentNumero", libelle: "Document qui le prouve", type: "reference", references: ["document"] },
+    { cle: "commentaire", libelle: "Commentaire", type: "texte" },
+  ],
   attributaire: [
     { cle: "nom", libelle: "Nom complet", type: "texte", obligatoire: true },
     { cle: "fonction", libelle: "Fonction", type: "texte" },
@@ -781,6 +790,16 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
           .filter((c) => !["statut", "dateDebut", "dateCloture", "interventionNumero", "commentaire"].includes(c.cle))
           .map((c) => (c.cle === "garage" ? { ...c, options: optionsPrestataires(TYPES_GARAGE, typeof window === "undefined" ? undefined : lireCreations) } : c)),
       ];
+    case "rappel": {
+      /* Le type se choisit parmi ceux qui donnent lieu à un rappel pour ce
+         porteur (Paramètres › Documents) : un permis sur un véhicule n'a pas de
+         sens, ni une visite technique sur un chauffeur. Relu à l'ouverture. */
+      const porteur = contexte.pour === "chauffeur" ? "chauffeur" : "vehicule";
+      return [
+        { cle: "type", libelle: "Rappel", type: "choix", suggestionsDe: () => lireParametres().documents.types.filter((t) => t.rappel && t.porteur === porteur).map((t) => ({ valeur: t.id, libelle: t.libelle })), obligatoire: true },
+        ...base,
+      ];
+    }
     case "prestataire":
     case "attributaire":
       /* Une fiche naît active ; on la désactive ensuite par modification. */

@@ -3,70 +3,51 @@
 import { useEffect, useMemo, useState } from "react";
 import { ExternalLink, FileText, Image as IconeImage } from "lucide-react";
 import { Carte } from "@/composants/interface/Carte";
-import { TYPE_DOCUMENT } from "@/domaine/libelles";
-import type { FicheVehicule } from "@/domaine/fiche";
+import { FAMILLE_PIECE, type FicheVehicule, type PieceDossier } from "@/domaine/fiche";
 import { date as formaterDate } from "@/lib/format";
 import { urlPhoto } from "@/lib/photos";
 
 /* ============================================================================
- * Le dossier d'un véhicule : ses pièces, ouvertes sur place.
+ * Le dossier d'un véhicule : ses pièces, en trois familles, ouvertes sur place.
  *
- * Les scans étaient bien là — carte grise, assurance, procès-verbal de visite —
- * mais dispersés : une ligne de tableau dans l'onglet Conformité, un bouton
- * « Ouvrir » par ligne, et rien qui dise ce que le véhicule porte en tout.
- * Demande du métier du 15 septembre 2026 : un dossier, et la pièce qui s'ouvre
- * dans la page.
+ * TROIS FAMILLES, DEMANDE DU MÉTIER DU 16 SEPTEMBRE 2026 : « la carte grise,
+ * l'assurance en cours, le certificat de salubrité d'un côté ; les copies des
+ * PV des visites techniques d'un autre ; les factures et autres documents
+ * engendrant des coûts d'une autre part ». Ce n'est pas un rangement de
+ * confort : on ne cherche pas la même chose au contrôle routier, au centre de
+ * visite et en comité de coûts, et on ne veut pas lire les trois listes pour
+ * trouver la bonne.
  *
- * SUR ORDINATEUR SEULEMENT, et c'est la demande. Lire une carte grise sur un
- * écran de téléphone, dans un cadre qui fait le tiers de l'écran, ne rend
- * service à personne : le bouton « Ouvrir » de la Conformité y reste le bon
- * geste, il confie la pièce au lecteur de PDF du téléphone, qui sait la
- * pincer et la tourner. L'onglet est donc masqué sous 1024 px.
+ * Les pièces viennent de cinq sources — documents, visites, interventions,
+ * dépenses, pleins — réunies par le lecteur de la fiche à une seule forme
+ * (`PieceDossier`). L'onglet, lui, ne sait que grouper et ouvrir.
  *
  * LES ADRESSES SE SIGNENT AU CLIC, jamais au chargement. Le seau est privé :
- * chaque pièce s'ouvre par une adresse signée, valable un temps. Signer les
- * trente pièces d'un véhicule pour n'en regarder aucune serait trente appels
- * pour rien — et trente adresses valides qui traînent.
+ * chaque pièce s'ouvre par une adresse signée, valable un temps. Signer
+ * trente pièces pour n'en regarder aucune serait trente appels pour rien.
+ *
+ * À TOUTE LARGEUR depuis le 16 septembre : réservé aux écrans larges la veille,
+ * l'onglet disparaissait sous 1024 px sans qu'aucun message ne le dise. Sur un
+ * écran étroit, la liste passe au-dessus du cadre.
  * ==========================================================================*/
 
-/** Une pièce du dossier, telle que la vignette la montre. */
-interface Piece {
-  numero: string;
-  libelle: string;
-  precision: string;
-  fichier: string;
-  /** Vrai quand la pièce est une image : elle s'affiche alors dans une balise d'image plutôt que dans un cadre. */
-  image: boolean;
-}
+const ORDRE: PieceDossier["famille"][] = ["reglementaire", "visite", "cout"];
 
 function estImage(chemin: string): boolean {
   return /\.(jpe?g|png|webp|gif|avif)$/i.test(chemin);
 }
 
 export function OngletDossier({ fiche }: { fiche: FicheVehicule }) {
-  const pieces = useMemo<Piece[]>(
-    () =>
-      fiche.documents
-        .filter((d): d is typeof d & { fichier: string } => Boolean(d.fichier))
-        .map((d) => ({
-          numero: d.numero,
-          libelle: TYPE_DOCUMENT[d.type] ?? d.type,
-          precision: [d.numeroPiece, d.dateEffet ? `du ${formaterDate(d.dateEffet)}` : null, d.emetteur].filter(Boolean).join(" · ") || "sans référence",
-          fichier: d.fichier,
-          image: estImage(d.fichier),
-        })),
-    [fiche.documents],
-  );
-
-  const [choisie, setChoisie] = useState<Piece | null>(null);
+  const familles = useMemo(() => ORDRE.map((famille) => ({ famille, pieces: fiche.pieces.filter((p) => p.famille === famille) })), [fiche.pieces]);
+  const [choisie, setChoisie] = useState<PieceDossier | null>(null);
   const [url, setUrl] = useState<string | null>(null);
   const [etat, setEtat] = useState<"repos" | "signature" | "refus">("repos");
 
   /* La première pièce s'ouvre d'elle-même : un dossier qui s'ouvre vide
      demanderait un clic pour ne rien apprendre. */
   useEffect(() => {
-    if (!choisie && pieces.length > 0) setChoisie(pieces[0]!);
-  }, [pieces, choisie]);
+    if (!choisie && fiche.pieces.length > 0) setChoisie(fiche.pieces[0]!);
+  }, [fiche.pieces, choisie]);
 
   useEffect(() => {
     if (!choisie) return;
@@ -83,47 +64,53 @@ export function OngletDossier({ fiche }: { fiche: FicheVehicule }) {
     };
   }, [choisie]);
 
-  if (pieces.length === 0) {
+  if (fiche.pieces.length === 0) {
     return (
-      <Carte titre="Dossier" precision="Les pièces scannées de ce véhicule">
+      <Carte titre="Dossier" precision="Les pièces scannées de ce véhicule, en trois familles">
         <p className="text-[13px] leading-[1.5] text-texte-2">
-          Aucune pièce n&apos;est attachée à ce véhicule. Une pièce s&apos;ajoute depuis l&apos;onglet Conformité, sur la ligne du document — « Modifier », puis « Le document ».
+          Aucune pièce n&apos;est attachée à ce véhicule. Une pièce s&apos;ajoute sur la ligne qui la porte — un document dans Conformité, une visite technique, une intervention, une dépense ou un plein — par « Modifier », puis le champ du fichier.
         </p>
       </Carte>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
-      <Carte titre={`Dossier (${pieces.length})`} precision="Les pièces scannées de ce véhicule" sansMarge>
-        <ul className="flex flex-col gap-1 px-3 pb-3">
-          {pieces.map((p) => {
-            const active = choisie?.numero === p.numero;
-            return (
-              <li key={p.numero}>
-                <button
-                  type="button"
-                  onClick={() => setChoisie(p)}
-                  aria-current={active}
-                  className={`flex w-full items-start gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors ${
-                    active ? "bg-accent-fond text-accent-tres-fonce" : "hover:bg-surface-3"
-                  }`}
-                >
-                  {p.image ? <IconeImage className="mt-0.5 size-4 shrink-0 text-attenue" strokeWidth={1.8} /> : <FileText className="mt-0.5 size-4 shrink-0 text-attenue" strokeWidth={1.8} />}
-                  <span className="min-w-0">
-                    <span className="block truncate text-[13px] font-medium">{p.libelle}</span>
-                    <span className="meta block truncate">{p.precision}</span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </Carte>
+    <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
+      <div className="flex flex-col gap-4">
+        {familles.map(({ famille, pieces }) => (
+          <Carte key={famille} titre={`${FAMILLE_PIECE[famille].libelle} (${pieces.length})`} precision={FAMILLE_PIECE[famille].precision} sansMarge>
+            {pieces.length === 0 ? (
+              <p className="px-5 pb-4 text-[12.5px] text-texte-2">Aucune pièce.</p>
+            ) : (
+              <ul className="flex flex-col gap-1 px-3 pb-3">
+                {pieces.map((p) => {
+                  const active = choisie?.numero === p.numero && choisie.fichier === p.fichier;
+                  return (
+                    <li key={`${p.numero}-${p.fichier}`}>
+                      <button
+                        type="button"
+                        onClick={() => setChoisie(p)}
+                        aria-current={active}
+                        className={`flex w-full items-start gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors ${active ? "bg-accent-fond text-accent-tres-fonce" : "hover:bg-surface-3"}`}
+                      >
+                        {estImage(p.fichier) ? <IconeImage className="mt-0.5 size-4 shrink-0 text-attenue" strokeWidth={1.8} /> : <FileText className="mt-0.5 size-4 shrink-0 text-attenue" strokeWidth={1.8} />}
+                        <span className="min-w-0">
+                          <span className="block truncate text-[13px] font-medium">{p.libelle}</span>
+                          <span className="meta block truncate">{[p.date ? formaterDate(p.date) : null, p.precision].filter(Boolean).join(" · ")}</span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Carte>
+        ))}
+      </div>
 
       <Carte
         titre={choisie?.libelle ?? "Pièce"}
-        precision={choisie?.precision}
+        precision={choisie ? [choisie.date ? formaterDate(choisie.date) : null, choisie.precision].filter(Boolean).join(" · ") : undefined}
         action={
           url ? (
             <a href={url} target="_blank" rel="noopener noreferrer" className="bouton-secondaire h-9">
@@ -144,12 +131,10 @@ export function OngletDossier({ fiche }: { fiche: FicheVehicule }) {
             <p className="grid h-full place-items-center px-6 text-center text-[13px] leading-[1.5] text-texte-2">
               Cette pièce n&apos;a pas pu être ouverte. Le fichier a peut-être été retiré du dossier, ou la session n&apos;a plus le droit de le lire.
             </p>
-          ) : choisie?.image ? (
+          ) : choisie && estImage(choisie.fichier) ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={url} alt={choisie.libelle} className="h-full w-full object-contain" />
           ) : (
-            /* Le PDF s'affiche dans le lecteur du navigateur. Le titre porte le
-               libellé de la pièce : c'est ce que les lecteurs d'écran annoncent. */
             <iframe src={url} title={choisie?.libelle ?? "Pièce"} className="h-full w-full" />
           )}
         </div>

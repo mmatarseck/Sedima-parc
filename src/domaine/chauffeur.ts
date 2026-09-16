@@ -9,6 +9,7 @@
  * ==========================================================================*/
 
 import type { DocumentFiche, EvenementJournal } from "./fiche";
+import type { Rappel } from "./rappels";
 import type {
   Chauffeur,
   DeclarationIncident,
@@ -255,6 +256,8 @@ export interface FicheChauffeur {
   ligne: LigneChauffeur;
   identite: IdentiteChauffeur;
   documents: DocumentFiche[];
+  /** Les rappels du chauffeur — permis, visite médicale — du plus pressé au plus lointain (0053). */
+  rappels: Rappel[];
   affectations: AffectationChauffeur[];
   consommation: ConsommationChauffeur[];
   contraventions: ContraventionChauffeur[];

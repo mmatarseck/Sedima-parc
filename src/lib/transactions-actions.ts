@@ -370,6 +370,18 @@ export async function ecrireCreation(c: Creation): Promise<ResultatEcriture> {
     return { issue: "ecrite", numero: `VEH-${ligne.immatriculation}` };
   }
 
+  /* Un rappel par porteur et par type : un second du même type n'est pas un
+     doublon de numéro à renuméroter, c'est le même rappel — on l'ouvre et on
+     avance son échéance. */
+  if (c.type === "rappel") {
+    const pose = await client.from(table).insert(ligne);
+    if (pose.error) {
+      return { issue: "refusee", motif: pose.error.code === "23505" ? "Ce rappel existe déjà pour ce véhicule ou ce chauffeur : ouvrez-le et avancez son échéance plutôt que d'en créer un second." : `Non enregistré en base : ` };
+    }
+    revalidatePath("/", "layout");
+    return { issue: "ecrite", numero: c.numero };
+  }
+
   let ecriture = await client.from(table).insert(ligne);
   let numero = c.numero;
   if (ecriture.error && ecriture.error.code === "23505") {
