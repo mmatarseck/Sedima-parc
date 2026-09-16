@@ -1,31 +1,33 @@
 /* ============================================================================
- * Rattache les bons de commande et factures scannés à leur véhicule.
+ * Attache à chaque dépense ou intervention le bon de commande ou la facture
+ * qui la justifie.
  *
  * Demande du métier du 16 septembre 2026 : « déposer aussi les factures et
- * autres par véhicule ; les DA en PDF et les factures sont dans le dossier ».
+ * autres par véhicule — les DA en PDF et les factures sont dans le dossier »,
+ * puis, en pointant une ligne de l'atelier : « rattacher le document lié ».
  *
- * CE QUE LE DISQUE PORTE. « 61. Gestion Parc/Maintenance/BON DE COMMANDES » :
- * 1 026 PDF — « BC15665 FIRST GARAGE AA 485 DR.pdf », « Bon de Commande -
- * BC17709 SECAA.pdf », « BONCDE2 - 2026-08 SSPI CMD2-26080069.pdf ». Le
- * dossier « Factures » voisin porte les mêmes 1 015 fichiers : une seule
- * source.
+ * CE QUE LE DISQUE PORTE. « 61. Gestion Parc/Maintenance/BON DE COMMANDES »,
+ * 1 026 PDF nommés par leur numéro — « BC15665 FIRST GARAGE AA 485 DR.pdf »,
+ * « BONCDE2 - 2026-08 SSPI CMD2-26080069.pdf ». Le dossier « Factures » voisin
+ * porte les mêmes fichiers.
  *
- * COMMENT ON RETROUVE LE VÉHICULE, ET DANS CET ORDRE.
- *   1. la plaque dans le nom du fichier — certaine ;
- *   2. sinon, le numéro de BC dans le nom, que les demandes d'achat portent en
- *      base (`numero_bon_commande`) : la demande dit son véhicule — certaine
- *      aussi, mais seulement si la demande en a un ;
- *   3. sinon, rien : le fichier est listé, pas deviné.
+ * LA CLÉ, ET ELLE EST CERTAINE. Les dépenses chargées depuis les bons de
+ * commande portent ce numéro en référence — « BC15665 », « CMD2-26080069 » —
+ * et les interventions le portent avant le premier « · » de la leur. Le même
+ * numéro dans le nom du PDF désigne la même pièce : la ligne reçoit son fichier.
+ * Une dépense de caisse, elle, cite un récapitulatif Excel et une ligne : son
+ * justificatif est un reçu papier, il n'est pas sur le disque — il se
+ * photographie depuis la ligne, dans l'application.
  *
- * À BLANC, TOUJOURS, POUR L'INSTANT. Ce script ne dépose rien : il mesure ce
- * qui se rattache tout seul, et sur quelle ligne la pièce irait — la demande
- * d'achat qui porte le BC. La ligne porteuse n'a pas encore de colonne pour un
- * fichier ; c'est la décision qui reste à prendre avant d'écrire.
+ * Un PDF qui nomme plusieurs numéros va à chaque ligne ; une ligne qui a déjà
+ * son fichier est laissée telle quelle ; un PDF sans numéro connu est listé,
+ * pas deviné.
  *
- * Il n'affiche ni clé ni adresse. Les clés viennent de l'environnement ou de
- * `.env.local`.
+ * IL N'ÉCRIT RIEN SANS `--deposer`. Les clés viennent de l'environnement ou de
+ * `.env.local`, jamais d'un argument, jamais affichées.
  *
- * Lancer : npx tsx scripts/attacher-factures.mts
+ * Lancer :  npx tsx scripts/attacher-factures.mts            (à blanc)
+ *           npx tsx scripts/attacher-factures.mts --deposer  (dépose)
  * ==========================================================================*/
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -34,6 +36,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const DOSSIER = "C:/Users/mamadou.seck/OneDrive - SEDIMA S.A/Direction des Operations (DO) - Documents/6. Logistique & Distribution/61. Gestion Parc/Maintenance/BON DE COMMANDES";
 const PLAFOND = 5 * 1024 * 1024;
+const DEPOSER = process.argv.includes("--deposer");
 
 function chargerEnvLocal(): void {
   let texte: string;
@@ -60,72 +63,95 @@ if (!url || !cle) {
 }
 const pg = createClient(url, cle, { auth: { persistSession: false, autoRefreshToken: false } });
 
-function plaqueDuNom(nom: string): string | null {
-  const m = /(AA|AB|DK|DL)[ -]?(\d{3,4})[ -]?([A-Z]{1,2})\b/i.exec(nom);
-  return m ? `${m[1]}${m[2]}${m[3]}`.toUpperCase() : null;
-}
-function bcDuNom(nom: string): string | null {
-  const m = /\bBC[ _-]?(\d{4,6})\b/i.exec(nom);
-  return m ? m[1] : null;
+/** Les numéros de pièce qu'un texte porte : « BC15665 », « CMD2-26080069 » — canoniques, sans espace ni tiret entre lettres et chiffres. */
+function numerosDe(texte: string): string[] {
+  const vus = new Set<string>();
+  /* Le numéro peut coller au nom qui suit — « BC12966STAR PNEUS » — : on ne
+     demande pas de frontière après les chiffres, seulement qu'ils s'arrêtent. */
+  for (const m of texte.toUpperCase().matchAll(/\b(BC)[ _-]?(\d{4,6})(?!\d)/g)) vus.add(`${m[1]}${m[2]}`);
+  for (const m of texte.toUpperCase().matchAll(/\b(CMD\d)[ _-]?(\d{6,10})(?!\d)/g)) vus.add(`${m[1]}-${m[2]}`);
+  return [...vus];
 }
 
 const fichiers = readdirSync(DOSSIER).filter((f) => /\.pdf$/i.test(f)).sort();
 
-const [vehicules, demandes] = await Promise.all([
-  pg.from("vehicule").select("id, immatriculation").limit(2000).returns<{ id: string; immatriculation: string }[]>(),
-  pg.from("demande_achat").select("numero, numero_bon_commande, vehicule_id, objet").limit(5000).returns<{ numero: string; numero_bon_commande: string | null; vehicule_id: string | null; objet: string }[]>(),
+const [depenses, interventions] = await Promise.all([
+  pg.from("depense").select("numero, reference, vehicule_id, photo, libelle").eq("origine", "bon-de-commande").not("reference", "is", null).limit(5000).returns<{ numero: string; reference: string; vehicule_id: string | null; photo: string | null; libelle: string }[]>(),
+  pg.from("intervention").select("numero, reference, vehicule_id, fichier, objet").not("reference", "is", null).limit(5000).returns<{ numero: string; reference: string; vehicule_id: string; fichier: string | null; objet: string }[]>(),
 ]);
-if (vehicules.error || demandes.error) {
-  console.error(`Lecture impossible : ${vehicules.error?.message ?? demandes.error?.message}`);
+if (depenses.error || interventions.error) {
+  console.error(`Lecture impossible : ${depenses.error?.message ?? interventions.error?.message}`);
   process.exit(1);
 }
-const idParPlaque = new Map(vehicules.data.map((v) => [v.immatriculation, v.id]));
-const plaqueParId = new Map(vehicules.data.map((v) => [v.id, v.immatriculation]));
-const demandeParBc = new Map<string, { numero: string; vehicule_id: string | null; objet: string }>();
-for (const d of demandes.data) {
-  const bc = String(d.numero_bon_commande ?? "").replace(/\D/g, "");
-  if (bc) demandeParBc.set(bc, d);
-}
 
-type Sort = "plaque" | "bc" | "bc-sans-vehicule" | "bc-inconnu" | "rien";
-const comptes: Record<Sort, number> = { plaque: 0, bc: 0, "bc-sans-vehicule": 0, "bc-inconnu": 0, rien: 0 };
-const parVehicule = new Map<string, number>();
-const exemples: Record<Sort, string[]> = { plaque: [], bc: [], "bc-sans-vehicule": [], "bc-inconnu": [], rien: [] };
-let tropLourds = 0;
+interface Porteuse {
+  table: "depense" | "intervention";
+  numero: string;
+  colonne: "photo" | "fichier";
+  dejaAttache: boolean;
+  libelle: string;
+}
+const porteusesParNumero = new Map<string, Porteuse[]>();
+const ranger = (cle: string, p: Porteuse) => {
+  const liste = porteusesParNumero.get(cle) ?? [];
+  liste.push(p);
+  porteusesParNumero.set(cle, liste);
+};
+for (const d of depenses.data) for (const n of numerosDe(d.reference)) ranger(n, { table: "depense", numero: d.numero, colonne: "photo", dejaAttache: Boolean(d.photo), libelle: d.libelle });
+for (const i of interventions.data) for (const n of numerosDe(i.reference.split(" · ")[0] ?? "")) ranger(n, { table: "intervention", numero: i.numero, colonne: "fichier", dejaAttache: Boolean(i.fichier), libelle: i.objet });
+
+console.log(`${fichiers.length} PDF au dossier · ${depenses.data.length} dépenses de bon de commande et ${interventions.data.length} interventions référencées en base${DEPOSER ? "" : " — essai à blanc, rien ne sera déposé"}\n`);
+
+let aDeposer = 0;
+let deposees = 0;
+let dejaLa = 0;
+const sansLigne: string[] = [];
+const sansNumero: string[] = [];
+const tropLourds: string[] = [];
+const jour = new Date().toISOString().slice(0, 10);
 
 for (const f of fichiers) {
+  const numeros = numerosDe(f);
+  if (numeros.length === 0) {
+    sansNumero.push(f);
+    continue;
+  }
+  const porteuses = numeros.flatMap((n) => porteusesParNumero.get(n) ?? []);
+  if (porteuses.length === 0) {
+    sansLigne.push(f);
+    continue;
+  }
   const poids = statSync(join(DOSSIER, f)).size;
-  if (poids > PLAFOND) tropLourds++;
-  const plaque = plaqueDuNom(f);
-  const bc = bcDuNom(f);
-  let sort: Sort;
-  let vehiculeId: string | null = null;
-  if (plaque && idParPlaque.has(plaque)) {
-    sort = "plaque";
-    vehiculeId = idParPlaque.get(plaque)!;
-  } else if (bc && demandeParBc.has(bc)) {
-    const d = demandeParBc.get(bc)!;
-    if (d.vehicule_id) {
-      sort = "bc";
-      vehiculeId = d.vehicule_id;
-    } else sort = "bc-sans-vehicule";
-  } else if (bc) sort = "bc-inconnu";
-  else sort = "rien";
-  comptes[sort]++;
-  if (exemples[sort].length < 4) exemples[sort].push(f);
-  if (vehiculeId) parVehicule.set(vehiculeId, (parVehicule.get(vehiculeId) ?? 0) + 1);
+  if (poids > PLAFOND) {
+    tropLourds.push(`${f} : ${Math.round(poids / 1024)} Ko`);
+    continue;
+  }
+  for (const p of porteuses) {
+    if (p.dejaAttache) {
+      dejaLa++;
+      continue;
+    }
+    aDeposer++;
+    if (aDeposer <= 12) console.log(`  ${p.numero.padEnd(16)} ${p.table.padEnd(12)} ← ${f}`);
+    if (!DEPOSER) continue;
+    const cheminSeau = `documents/2026/09/${jour}-${p.numero.toLowerCase()}.pdf`;
+    const depot = await pg.storage.from("pieces").upload(cheminSeau, readFileSync(join(DOSSIER, f)), { contentType: "application/pdf", upsert: false });
+    if (depot.error && !/already exists/i.test(depot.error.message)) {
+      console.error(`    dépôt refusé pour ${p.numero} : ${depot.error.message}`);
+      continue;
+    }
+    const maj = await pg.from(p.table).update({ [p.colonne]: `pieces/${cheminSeau}`, ...(p.table === "depense" ? { justificatif: true } : {}) }).eq("numero", p.numero);
+    if (maj.error) {
+      console.error(`    ligne ${p.numero} non mise à jour : ${maj.error.message}`);
+      continue;
+    }
+    deposees++;
+  }
 }
 
-console.log(`${fichiers.length} PDF au dossier — essai à blanc, rien n'est déposé\n`);
-const ligne = (sort: Sort, libelle: string) => {
-  console.log(`  ${String(comptes[sort]).padStart(5)}  ${libelle}`);
-  for (const e of exemples[sort]) console.log(`           ex. ${e}`);
-};
-ligne("plaque", "rattachés par la plaque du nom");
-ligne("bc", "rattachés par le BC, via la demande d'achat qui nomme son véhicule");
-ligne("bc-sans-vehicule", "BC connu en base, mais la demande d'achat n'a pas de véhicule");
-ligne("bc-inconnu", "BC lu dans le nom, absent des demandes d'achat");
-ligne("rien", "ni plaque ni BC dans le nom");
-console.log(`\n${parVehicule.size} véhicule(s) recevraient des pièces ; les cinq mieux servis :`);
-for (const [id, n] of [...parVehicule.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)) console.log(`  ${plaqueParId.get(id) ?? id}  ${n}`);
-if (tropLourds) console.log(`\n${tropLourds} fichier(s) au-dessus des 5 Mo du seau.`);
+console.log(`${aDeposer > 12 ? `  … et ${aDeposer - 12} autre(s)\n` : ""}`);
+console.log(`${aDeposer} pièce(s) à rattacher${DEPOSER ? ` · ${deposees} déposée(s)` : ""} · ${dejaLa} déjà attachée(s)`);
+console.log(`${sansLigne.length} PDF dont le numéro n'est sur aucune ligne en base · ${sansNumero.length} PDF sans numéro de pièce dans le nom`);
+if (tropLourds.length) console.log(`${tropLourds.length} trop lourd(s) pour le seau :\n  ${tropLourds.join("\n  ")}`);
+if (sansLigne.length) console.log(`\nSans ligne, les premiers :\n  ${sansLigne.slice(0, 8).join("\n  ")}`);
+if (sansNumero.length) console.log(`\nSans numéro, les premiers :\n  ${sansNumero.slice(0, 8).join("\n  ")}`);
