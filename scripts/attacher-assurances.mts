@@ -72,10 +72,22 @@ if (!url || !cle) {
 }
 const pg = createClient(url, cle, { auth: { persistSession: false, autoRefreshToken: false } });
 
+/**
+ * Ce que le métier a tranché le 16 septembre 2026, fichier par fichier :
+ *   * « carte-brune-AA 795 JA » nomme AB 795 JA — une lettre de travers dans le
+ *     nom du fichier ; le véhicule est AB 795 JA au parc ;
+ *   * AA 180 CQ a deux attestations, « CORRIGE » puis « CORRIGEE » : la seconde
+ *     est la corrigée, la première s'écarte.
+ */
+const PLAQUES_CORRIGEES: Record<string, string> = { AA795JA: "AB795JA" };
+const ECARTES = new Set(["ASSURANCE 2026/ASSURANCE CORRIGE AA 180 CQ.pdf"]);
+
 /** La plaque lue dans un nom de fichier, canonique : « carte-brune-AB 551 HS.pdf » → « AB551HS ». */
 function plaqueDuNom(nom: string): string | null {
   const m = /(AA|AB|DK|DL)[ -]?(\d{3,4})[ -]?([A-Z]{1,2})\b/i.exec(nom);
-  return m ? `${m[1]}${m[2]}${m[3]}`.toUpperCase() : null;
+  if (!m) return null;
+  const lue = `${m[1]}${m[2]}${m[3]}`.toUpperCase();
+  return PLAQUES_CORRIGEES[lue] ?? lue;
 }
 
 function marcher(dossier: string, prefixe = ""): string[] {
@@ -97,6 +109,10 @@ interface Piece {
 const pieces: Piece[] = [];
 const memoire: string[] = [];
 for (const f of marcher(DOSSIER)) {
+  if (ECARTES.has(f)) {
+    memoire.push(`${f}  (écartée : la version corrigée existe)`);
+    continue;
+  }
   const plaque = plaqueDuNom(f);
   const nature: Piece["nature"] = /carte[ -]?brune/i.test(f) ? "carte-brune" : /assurance|attestation/i.test(f) ? "attestation" : "police";
   if (!f.startsWith(`${ANNEE_DEPOSEE}/`)) {

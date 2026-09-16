@@ -823,8 +823,9 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
           * compteur, l'immobilisation et le numéro de pièce restent à un clic,
           * dans le choix des colonnes, et ce choix est retenu par profil.
           */}
-        <TableauSimple<LigneAtelier> reglages="fiche-vehicule.atelier.2"
+        <TableauSimple<LigneAtelier> reglages="fiche-vehicule.atelier.3"
           fixe
+          ajustable
           cle={(l) => l.cle}
           lignes={atelier}
           vide="Aucune intervention ni fourniture sur la période."
@@ -852,7 +853,7 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
                 </span>
               ),
             },
-            { cle: "tiers", libelle: "Garage ou fournisseur", largeur: "190px", rendu: (l) => <span className="block truncate" title={l.tiers}>{l.tiers}</span> },
+            { cle: "tiers", libelle: "Garage ou fournisseur", largeur: "240px", rendu: (l) => <span className="block truncate" title={l.tiers}>{l.tiers}</span> },
             { cle: "montant", libelle: "Montant", largeur: "118px", alignee: "droite", rendu: (l) => <span className="font-medium whitespace-nowrap">{montant(l.montant)}</span> },
             { cle: "numero", libelle: "Réf.", largeur: "136px", rendu: (l) => <Numero valeur={l.numero} /> },
             { cle: "origine", libelle: "Origine", largeur: "130px", parDefaut: false, rendu: (l) => (l.origine ? <PastilleOrigine origine={l.origine} /> : <span className="text-attenue-2">—</span>) },
