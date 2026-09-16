@@ -11,8 +11,9 @@
  *
  * CE QU'ON ÉCRIT. Un `document` de type « assurance » par véhicule de la
  * liste qui n'en a pas encore pour 2026 : effet au 1er janvier, échéance au
- * 31 décembre, émetteur AXA Sénégal — celui des attestations déposées —, et
- * en commentaire la feuille, la valeur vénale et la formule. Sans pièce : les
+ * 31 décembre, émetteur AXA Sénégal — celui des attestations déposées. Le
+ * numéro « DOC-2026-P… » dit son origine ; la feuille, la formule et la
+ * valeur vénale restent au compte rendu — la ligne n'a pas de commentaire. Sans pièce : les
  * attestations individuelles se déposent par `attacher-assurances.mts` quand
  * elles arrivent, et complètent alors cette ligne. Sans montant : la prime
  * n'est pas sur la fiche.
@@ -124,14 +125,13 @@ for (const l of lignes) {
     deja++;
     continue;
   }
-  const commentaire = [`Police collective 2026 — fiche de renouvellement, feuille ${l.feuille}`, l.tousRisques ? "tous risques" : null, l.valeurVenale ? `valeur vénale ${l.valeurVenale.toLocaleString("fr-FR")} F` : null].filter(Boolean).join(" · ");
   console.log(`  ${l.plaque.padEnd(8)} ${l.feuille.padEnd(17)} ${l.tousRisques ? "tous risques" : "RC          "}  ${l.marque} ${l.type}`);
   if (!APPLIQUER) {
     crees++;
     continue;
   }
   const numero = `DOC-2026-P${String(crees + 1).padStart(4, "0")}-${l.plaque}`;
-  const ins = await pg.from("document").insert({ numero, type_document_id: "assurance", vehicule_id: v.id, date_effet: EFFET, echeance: ECHEANCE, emetteur: EMETTEUR, justificatif: false, commentaire });
+  const ins = await pg.from("document").insert({ numero, type_document_id: "assurance", vehicule_id: v.id, date_effet: EFFET, echeance: ECHEANCE, emetteur: EMETTEUR, justificatif: false });
   if (ins.error) {
     console.error(`    ${l.plaque} : ligne non créée (${ins.error.message})`);
     continue;
