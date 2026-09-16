@@ -44,7 +44,7 @@
 
 select r.id, r.lot, r.marque, r.modele, r.categorie::text as categorie, r.regime::text as regime,
        r.business_unit::text as business_unit, r.commentaire,
-       (select a.prenom || ' ' || a.nom from attributaire a where a.id = r.attributaire_id) as attendu_pour,
+       (select a.nom || coalesce(' — ' || a.fonction, '') from attributaire a where a.id = r.attributaire_id) as attendu_pour,
        r.recu_le, r.vehicule_id, r.cree_le::timestamp(0) as saisie
   from vehicule_a_recevoir r
  where r.lot in ('Lot 2 - 07', 'Lot 2 - 09')
