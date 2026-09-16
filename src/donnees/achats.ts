@@ -40,6 +40,7 @@ export interface LigneAchatBase {
   montant_reel: number | null;
   date_reglement: string | null;
   depense_numero: string | null;
+  fichier?: string | null;
   commentaire_decision: string | null;
   vehicule: { immatriculation: string; business_unit: BusinessUnit | null; site: { libelle: string } | null } | null;
   prestataire: { numero: string; raison_sociale: string } | null;
@@ -80,6 +81,7 @@ export function achatDepuisLigne(l: LigneAchatBase): LigneAchat {
     montantReel: l.montant_reel === null ? null : Number(l.montant_reel),
     dateReglement: l.date_reglement,
     depenseNumero: l.depense_numero,
+    fichier: l.fichier ?? null,
     commentaireDecision: l.commentaire_decision,
     creee: false,
   };
@@ -89,7 +91,7 @@ async function achatsServeurBrut(): Promise<LigneAchat[]> {
   const client = await clientServeur();
   const lecture = await client
     .from("demande_achat")
-    .select("numero, date, objet, poste, montant_estime, fournisseur, urgence, origine_numero, origine_libelle, demandeur_nom, demandeur_role, etape, visa_par, visa_le, valide_par, validee_le, numero_demande_x3, numero_bon_commande, montant_engage, date_livraison, date_facture, montant_reel, date_reglement, depense_numero, commentaire_decision, vehicule (immatriculation, business_unit, site (libelle)), prestataire (numero, raison_sociale)")
+    .select("numero, date, objet, poste, montant_estime, fournisseur, urgence, origine_numero, origine_libelle, demandeur_nom, demandeur_role, etape, visa_par, visa_le, valide_par, validee_le, numero_demande_x3, numero_bon_commande, montant_engage, date_livraison, date_facture, montant_reel, date_reglement, depense_numero, commentaire_decision, fichier, vehicule (immatriculation, business_unit, site (libelle)), prestataire (numero, raison_sociale)")
     .order("date", { ascending: false })
     .limit(3000)
     .returns<LigneAchatBase[]>();

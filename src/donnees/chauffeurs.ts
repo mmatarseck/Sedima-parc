@@ -44,6 +44,8 @@ interface LigneChauffeurBase {
   date_naissance: string | null;
   date_embauche: string | null;
   date_sortie: string | null;
+  /* La photo (0055) : absente des bases d'avant, d'où l'optionnel. */
+  photo?: string | null;
 }
 
 interface LigneSite {
@@ -145,6 +147,7 @@ function chauffeurDepuisLaBase(c: LigneChauffeurBase, aujourdhui: string): Chauf
     dateNaissance: c.date_naissance,
     dateEmbauche: c.date_embauche,
     dateSortie: c.date_sortie,
+    photo: c.photo ?? null,
     actif: c.date_sortie === null || c.date_sortie > aujourdhui,
   };
 }

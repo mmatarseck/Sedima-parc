@@ -11,6 +11,8 @@ import { Pastille } from "@/composants/interface/Pastille";
 import { useCible } from "@/composants/interface/useCible";
 import { CHAMPS_CREATION_CONTRAVENTION, champsCreation } from "@/composants/transactions/champs";
 import { useEdition } from "@/composants/transactions/ContexteEdition";
+import { PhotoChauffeur } from "@/composants/chauffeurs/PhotoChauffeur";
+import { enregistrerModification } from "@/lib/clotures-demo";
 import { libelleSite } from "@/composants/transactions/fabriques";
 import { TYPE_TRANSACTION, type TypeTransaction } from "@/domaine/reference";
 import { ENTREES_CHAUFFEUR, MenuAjout, type CibleAjout } from "@/composants/vehicule/MenuAjout";
@@ -126,7 +128,7 @@ export function FicheChauffeur({
 
   const l = fiche.ligne;
   const router = useRouter();
-  const { surcharger, creer, demander, creations } = useEdition();
+  const { surcharger, creer, demander, creations, actualiser } = useEdition();
   const numeroFiche = `CHA-${l.id}`;
   const chauffeurSurcharge = surcharger({ numero: numeroFiche, ...l.chauffeur });
   /* Une décision d'aptitude créée dans l'application prime sur celle du jeu de données. */
@@ -215,7 +217,25 @@ export function FicheChauffeur({
         </nav>
 
         <div className="flex flex-wrap items-start gap-4">
-          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-accent-fond text-[15px] font-semibold text-accent-tres-fonce">{l.initiales}</span>
+          {/* La photo, ou les initiales (0055) : un changement se trace comme
+              toute modification de la fiche, et la page se relit. */}
+          <PhotoChauffeur
+            photo={typeof chauffeurSurcharge.photo === "string" && chauffeurSurcharge.photo ? chauffeurSurcharge.photo : null}
+            initiales={l.initiales}
+            nom={l.nomComplet}
+            onChanger={(photo) =>
+              enregistrerModification({
+                numero: numeroFiche,
+                type: "chauffeur",
+                titre: `Fiche ${l.nomComplet}`,
+                href: `/chauffeurs/${l.id}`,
+                champs: [{ cle: "photo", libelle: "Photo", type: "texte" }],
+                avant: { photo: l.chauffeur.photo ?? null },
+                apres: { photo },
+                motif: photo ? "Photo du chauffeur ajoutée" : "Photo du chauffeur retirée",
+              }) && actualiser()
+            }
+          />
           <div className="min-w-0 flex-1 basis-[360px]">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="titre-page whitespace-nowrap">{nomAffiche}</h1>

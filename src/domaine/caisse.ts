@@ -275,6 +275,8 @@ export interface LigneAchat {
   /** Le montant facturé : le coût réel, celui qui compte pour le véhicule. */
   montantReel: number | null;
   dateReglement: string | null;
+  /** Le bon de commande scanné (0055) : une référence dans le seau, relue par `urlPhoto`. */
+  fichier?: string | null;
   /** La dépense DEP portée par le véhicule pour ce coût, quand elle existe. */
   depenseNumero: string | null;
   commentaireDecision: string | null;

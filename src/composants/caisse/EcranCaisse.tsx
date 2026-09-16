@@ -8,6 +8,7 @@ import { ModaleDecision } from "@/composants/caisse/ModaleDecision";
 import { Numero } from "@/composants/interface/Numero";
 import { Echeance, Pastille } from "@/composants/interface/Pastille";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
+import { OuvrirPiece } from "@/composants/interface/OuvrirPiece";
 import { CHAMPS, champsCreation } from "@/composants/transactions/champs";
 import { FournisseurEdition, useEdition } from "@/composants/transactions/ContexteEdition";
 import { fabriquerLigneAchat, fabriquerLigneMouvement } from "@/composants/transactions/fabriques";
@@ -397,6 +398,8 @@ function Interieur({ mouvements, depensesARegler, achats, prestataires, soldeIni
       { cle: "attente", libelle: "En attente de", parDefaut: false, largeur: 210, rendu: (a) => <span className="block truncate text-texte-2">{attenteDe(a)}</span> },
       { cle: "daX3", libelle: "DA Sage X3", parDefaut: false, largeur: 140, rendu: (a) => (a.numeroDemandeX3 ? <span className="code text-[12px]">{a.numeroDemandeX3}</span> : <span className="text-attenue">—</span>) },
       { cle: "bc", libelle: "Bon Sage X3", parDefaut: true, largeur: 110, rendu: (a) => (a.numeroBonCommande ? <span className="code text-[12px]">{a.numeroBonCommande}</span> : <span className="text-attenue">—</span>) },
+      /* Le bon de commande scanné (0055) : ce que le fournisseur a reçu, ouvert d'un clic. */
+      { cle: "piece", libelle: "Bon scanné", parDefaut: true, largeur: 110, texte: (a) => (a.fichier ? "avec pièce" : "sans pièce"), rendu: (a) => (a.fichier ? <OuvrirPiece fichier={a.fichier} titre="Ouvrir le bon de commande scanné" /> : <span className="text-attenue">—</span>) },
       { cle: "demandeur", libelle: "Demandeur", parDefaut: false, largeur: 170, rendu: (a) => a.demandeur },
       { cle: "visa", libelle: "Visa parc", parDefaut: false, largeur: 170, rendu: (a) => (a.visaPar ? `${a.visaPar} · ${dateCourte(a.visaLe)}` : <span className="text-attenue">—</span>) },
       { cle: "validation", libelle: "Validation", parDefaut: false, largeur: 190, rendu: (a) => (a.validePar ? `${a.validePar}${a.valideeLe ? ` · ${dateCourte(a.valideeLe)}` : ""}` : <span className="text-attenue">—</span>) },

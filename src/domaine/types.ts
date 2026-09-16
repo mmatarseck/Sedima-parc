@@ -215,6 +215,8 @@ export interface Chauffeur {
   dateSortie: string | null;
   /** Faux dès que la date de sortie est passée. Un chauffeur inactif ne peut plus être affecté. */
   actif: boolean;
+  /** La photo, pour reconnaître la personne (0055) : une référence dans le seau, relue par `urlPhoto`. */
+  photo?: string | null;
 }
 
 /**

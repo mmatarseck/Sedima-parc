@@ -23,6 +23,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
+import { composerSousPlafond, pages } from "./scans-cartes-grises.mts";
 
 const DOSSIER = "C:/Users/mamadou.seck/OneDrive - SEDIMA S.A/Direction des Operations (DO) - Documents/6. Logistique & Distribution/61. Gestion Parc/MALICK/CARTE GRISE VEHICULES";
 const PLAFOND = 5 * 1024 * 1024;
@@ -100,11 +101,24 @@ for (const f of fichiers.sort()) {
     laisses.push(`${f} : trop lourd pour le seau (${Math.round(poids / 1024)} Ko)`);
     continue;
   }
+  /* Un .docx ne porte que des images (le seau ne le prend pas tel quel) : ses
+     pages sortent en un PDF, comme pour les cartes grises. */
   const docx = /\.docx$/i.test(f);
-  const cheminSeau = `documents/2026/09/${jour}-${plaque.toLowerCase()}-licence.${docx ? "docx" : "pdf"}`;
-  console.log(`  ${plaque.padEnd(8)} → ${cible.numero}${cible.numero_piece ? ` (n° ${cible.numero_piece})` : ""}  ← ${f} (${Math.round(poids / 1024)} Ko)`);
+  const cheminSeau = `documents/2026/09/${jour}-${plaque.toLowerCase()}-licence.pdf`;
+  console.log(`  ${plaque.padEnd(8)} → ${cible.numero}${cible.numero_piece ? ` (n° ${cible.numero_piece})` : ""}  ← ${f} (${Math.round(poids / 1024)} Ko${docx ? ", recomposé en PDF" : ""})`);
   if (!DEPOSER) continue;
-  const depot = await pg.storage.from("pieces").upload(cheminSeau, readFileSync(chemin), { contentType: docx ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "application/pdf", upsert: false });
+  let octets: Uint8Array = readFileSync(chemin);
+  if (docx) {
+    const images = await pages(chemin);
+    const { pdf, posees, palier } = await composerSousPlafond(images, `Licence de transport ${plaque}`);
+    if (posees === 0) {
+      console.error(`    aucune image lisible dans le .docx`);
+      continue;
+    }
+    if (palier) console.log(`    réencodé pour tenir sous le plafond : ${palier}`);
+    octets = pdf;
+  }
+  const depot = await pg.storage.from("pieces").upload(cheminSeau, octets, { contentType: "application/pdf", upsert: false });
   if (depot.error && !/already exists/i.test(depot.error.message)) {
     console.error(`    dépôt refusé : ${depot.error.message}`);
     continue;
