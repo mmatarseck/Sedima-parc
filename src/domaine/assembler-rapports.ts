@@ -156,6 +156,21 @@ export interface SourceRapports {
   budget: SourceBudget;
   /** Le parc léger : ses véhicules, ses attributaires, ses forfaits — le dossier en démonstration, les tables en base. */
   parcLeger: SourceParcLeger;
+  /**
+   * Les pièces réglementaires des véhicules, avec ou sans fichier attaché :
+   * chaque ligne `document` d'un véhicule, et sa licence de transport (type
+   * « licence »). C'est ce que le rapport des pièces attachées lit ; la
+   * démonstration n'en a pas (16 septembre 2026).
+   */
+  pieces: PieceReglementaire[];
+}
+
+export interface PieceReglementaire {
+  vehiculeId: string;
+  /** Le type de document des paramètres, ou « licence » pour la licence de transport. */
+  type: string;
+  echeance: string | null;
+  fichier: string | null;
 }
 
 /** Le budget assemblé une fois par source — trois rapports le lisent. */
@@ -1469,6 +1484,64 @@ function conformiteVehicules(s: SourceRapports, parametres: Parametres): LigneRa
   });
 }
 
+/*
+ * Les pièces réglementaires attachées, véhicule par véhicule (métier,
+ * 16 septembre 2026 : « les documents disponibles en attaché par véhicule :
+ * carte grise, assurance valide, certificat de salubrité, etc. »). Une colonne
+ * par pièce, et un état qui dit ce qu'on a vraiment : le scan est là et vaut
+ * encore ; il est là mais échu ; la ligne existe sans scan ; rien du tout. Une
+ * pièce que le véhicule n'a pas à porter — la salubrité d'un pick-up — est
+ * dite « non requise », pour que le dossier complet se lise sans la chercher.
+ */
+const PIECES_REGLEMENTAIRES: { cle: string; type: string; libelle: string }[] = [
+  { cle: "carteGrise", type: "carte-grise", libelle: "Carte grise" },
+  { cle: "assurance", type: "assurance", libelle: "Assurance" },
+  { cle: "salubrite", type: "certificat-salubrite", libelle: "Certificat de salubrité" },
+  { cle: "carteTransport", type: "carte-transport", libelle: "Carte de transport" },
+  { cle: "licence", type: "licence", libelle: "Licence de transport" },
+];
+
+function piecesReglementaires(s: SourceRapports, parametres: Parametres): LigneRapport[] {
+  const parVehicule = new Map<string, PieceReglementaire[]>();
+  for (const p of s.pieces) parVehicule.set(p.vehiculeId, [...(parVehicule.get(p.vehiculeId) ?? []), p]);
+  return auParc(s).map((l) => {
+    const v = l.vehicule;
+    const siennes = parVehicule.get(v.id) ?? [];
+    let attendues = 0;
+    let attachees = 0;
+    const colonnes: LigneRapport = {};
+    for (const piece of PIECES_REGLEMENTAIRES) {
+      const def = piece.type === "licence" ? null : definitionDocument(piece.type, parametres);
+      /* Requise pour tous, ou pour le transport spécial seulement ; la licence
+         ne vaut que pour un véhicule qui livre. */
+      const requise = piece.type === "licence" ? (!v.regime || v.regime === "exploitation") && v.categorie !== "vehicule-leger" && v.categorie !== "moto" : def ? def.applicabilite === "tous" || (def.applicabilite === "transport-special" && v.transportSpecial) : false;
+      const lignes = siennes.filter((p) => p.type === piece.type);
+      const attachee = lignes.filter((p) => p.fichier);
+      const valide = attachee.find((p) => !p.echeance || p.echeance >= s.aujourdhui) ?? null;
+      let e: ValeurEtat;
+      if (valide) e = etat("Attachée · valide", "favorable", 0);
+      else if (attachee.length) e = etat("Attachée · échue", "vigilance", 1);
+      else if (lignes.length) e = etat("Ligne sans scan", "vigilance", 2);
+      else if (requise) e = etat("Absente", "defavorable", 3);
+      else e = etat("Non requise", "neutre", 4);
+      if (requise) {
+        attendues++;
+        if (valide) attachees++;
+      }
+      colonnes[piece.cle] = e;
+    }
+    return {
+      ...situation(s, v.id),
+      statut: etat(STATUT_VEHICULE[v.statut].libelle, tonStatut(v.statut)),
+      ...colonnes,
+      attachees,
+      attendues,
+      complet: attendues > 0 && attachees === attendues,
+      manquantes: attendues - attachees,
+    };
+  });
+}
+
 function visitesTechniques(s: SourceRapports, c: ContexteRapport): LigneRapport[] {
   const { debut, fin } = resoudrePeriode(c.periode, s.aujourdhui);
   const lignes: LigneRapport[] = [];
@@ -1811,6 +1884,8 @@ export function construireRapportDe(s: SourceRapports, id: string, c: ContexteRa
       return conformiteVehicules(s, parametres);
     case "conformite-visites":
       return visitesTechniques(s, c);
+    case "conformite-pieces":
+      return piecesReglementaires(s, parametres);
     case "incidents-vehicule":
       return sinistraliteVehicules(s, c);
     case "incidents-chauffeur":

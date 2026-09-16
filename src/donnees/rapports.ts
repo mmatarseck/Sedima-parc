@@ -12,11 +12,12 @@
  * ==========================================================================*/
 
 import { cache } from "react";
-import { resumesFicheDepuisLaSource, type SourceRapports } from "@/domaine/assembler-rapports";
+import { resumesFicheDepuisLaSource, type PieceReglementaire, type SourceRapports } from "@/domaine/assembler-rapports";
 import type { AffectationFiche } from "@/domaine/fiche";
 import { BUSINESS_UNIT } from "@/domaine/libelles";
 import { idChauffeur, nomComplet } from "@/domaine/chauffeur";
 import type { Parametres } from "@/domaine/parametres";
+import { clientServeur } from "@/lib/supabase";
 import { achatsServeur } from "./achats";
 import { budgetServeur } from "./budget";
 import { caisseServeur } from "./caisse";
@@ -26,6 +27,7 @@ import { conformiteServeur } from "./conformite";
 import { coutsServeur } from "./couts";
 import { fichesChauffeursServeur } from "./fiche-chauffeur";
 import { lignesFlotte, parcServeur, type ParcBrut } from "./flotte";
+import { lignesLues } from "./lecture";
 import { incidentsServeur } from "./incidents";
 import { interventionsServeur, travauxServeur } from "./maintenance";
 import { ordresServeur } from "./ordres";
@@ -99,6 +101,26 @@ export function affectationsDepuisLeParc(parc: ParcBrut): Map<string, Affectatio
   return resultat;
 }
 
+/**
+ * Les pièces réglementaires des véhicules, avec ou sans fichier : chaque ligne
+ * `document` d'un véhicule, et la licence de transport par le lien (type
+ * « licence »). Deux lectures bornées à ce que le rapport montre — pas les
+ * montants, pas les émetteurs.
+ */
+async function piecesReglementairesServeur(): Promise<PieceReglementaire[]> {
+  const client = await clientServeur();
+  const [documents, licences] = await Promise.all([
+    client.from("document").select("vehicule_id, type_document_id, echeance, fichier").not("vehicule_id", "is", null).limit(10000).returns<{ vehicule_id: string; type_document_id: string; echeance: string | null; fichier: string | null }[]>(),
+    client.from("licence_vehicule").select("vehicule_id, licence_transport (echeance, fichier)").limit(2000).returns<{ vehicule_id: string; licence_transport: { echeance: string | null; fichier: string | null } | null }[]>(),
+  ]);
+  return [
+    ...lignesLues("Pièces des véhicules", documents).map((d) => ({ vehiculeId: d.vehicule_id, type: d.type_document_id, echeance: d.echeance, fichier: d.fichier })),
+    ...lignesLues("Licences des véhicules", licences)
+      .filter((l) => l.licence_transport)
+      .map((l) => ({ vehiculeId: l.vehicule_id, type: "licence", echeance: l.licence_transport!.echeance, fichier: l.licence_transport!.fichier })),
+  ];
+}
+
 async function sourceRapportsServeurBrut(parametres: Parametres): Promise<SourceRapports> {
   const [lignes, conformite, visites, couts, carburant, interventions, ordres, travaux, incidents, chauffeurs, fichesChauffeurs, achats, caisse, prestataires, transporteurs, releves, budget, parcLeger] = await Promise.all([
     lignesFlotte(parametres),
@@ -121,6 +143,7 @@ async function sourceRapportsServeurBrut(parametres: Parametres): Promise<Source
     parcLegerServeur(parametres),
   ]);
   const affectations = affectationsDepuisLeParc(await parcServeur());
+  const pieces = await piecesReglementairesServeur();
   const sansFiches: Omit<SourceRapports, "resumesFiche"> = {
     aujourdhui: conformite.aujourdhui,
     lignes,
@@ -144,6 +167,7 @@ async function sourceRapportsServeurBrut(parametres: Parametres): Promise<Source
     releves,
     budget,
     parcLeger,
+    pieces,
   };
   /* Ce que la fiche apporte, dérivé des lecteurs. */
   return { ...sansFiches, resumesFiche: resumesFicheDepuisLaSource(sansFiches) };

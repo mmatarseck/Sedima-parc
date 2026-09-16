@@ -92,6 +92,7 @@ export function sourceRapportsDemo(parametres: Parametres = PARAMETRES_DEFAUT): 
       releves: relevesTransport(),
       budget: sourceBudgetDemo(),
       parcLeger: sourceParcLegerDemo(),
+      pieces: [],
     };
     CACHE.set(cle, source);
   }
