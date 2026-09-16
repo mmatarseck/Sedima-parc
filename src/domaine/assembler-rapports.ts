@@ -166,7 +166,8 @@ export interface SourceRapports {
 }
 
 export interface PieceReglementaire {
-  vehiculeId: string;
+  /** L'immatriculation canonique : c'est la clé des lignes de flotte (`vehicule.id` y est la plaque, pas l'identifiant de la table). */
+  immatriculation: string;
   /** Le type de document des paramètres, ou « licence » pour la licence de transport. */
   type: string;
   echeance: string | null;
@@ -1503,10 +1504,10 @@ const PIECES_REGLEMENTAIRES: { cle: string; type: string; libelle: string }[] = 
 
 function piecesReglementaires(s: SourceRapports, parametres: Parametres): LigneRapport[] {
   const parVehicule = new Map<string, PieceReglementaire[]>();
-  for (const p of s.pieces) parVehicule.set(p.vehiculeId, [...(parVehicule.get(p.vehiculeId) ?? []), p]);
+  for (const p of s.pieces) parVehicule.set(p.immatriculation, [...(parVehicule.get(p.immatriculation) ?? []), p]);
   return auParc(s).map((l) => {
     const v = l.vehicule;
-    const siennes = parVehicule.get(v.id) ?? [];
+    const siennes = parVehicule.get(v.immatriculation) ?? [];
     let attendues = 0;
     let attachees = 0;
     const colonnes: LigneRapport = {};

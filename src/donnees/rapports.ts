@@ -110,14 +110,16 @@ export function affectationsDepuisLeParc(parc: ParcBrut): Map<string, Affectatio
 async function piecesReglementairesServeur(): Promise<PieceReglementaire[]> {
   const client = await clientServeur();
   const [documents, licences] = await Promise.all([
-    client.from("document").select("vehicule_id, type_document_id, echeance, fichier").not("vehicule_id", "is", null).limit(10000).returns<{ vehicule_id: string; type_document_id: string; echeance: string | null; fichier: string | null }[]>(),
-    client.from("licence_vehicule").select("vehicule_id, licence_transport (echeance, fichier)").limit(2000).returns<{ vehicule_id: string; licence_transport: { echeance: string | null; fichier: string | null } | null }[]>(),
+    client.from("document").select("type_document_id, echeance, fichier, vehicule (immatriculation)").not("vehicule_id", "is", null).limit(10000).returns<{ type_document_id: string; echeance: string | null; fichier: string | null; vehicule: { immatriculation: string } | null }[]>(),
+    client.from("licence_vehicule").select("vehicule (immatriculation), licence_transport (echeance, fichier)").limit(2000).returns<{ vehicule: { immatriculation: string } | null; licence_transport: { echeance: string | null; fichier: string | null } | null }[]>(),
   ]);
   return [
-    ...lignesLues("Pièces des véhicules", documents).map((d) => ({ vehiculeId: d.vehicule_id, type: d.type_document_id, echeance: d.echeance, fichier: d.fichier })),
+    ...lignesLues("Pièces des véhicules", documents)
+      .filter((d) => d.vehicule)
+      .map((d) => ({ immatriculation: d.vehicule!.immatriculation, type: d.type_document_id, echeance: d.echeance, fichier: d.fichier })),
     ...lignesLues("Licences des véhicules", licences)
-      .filter((l) => l.licence_transport)
-      .map((l) => ({ vehiculeId: l.vehicule_id, type: "licence", echeance: l.licence_transport!.echeance, fichier: l.licence_transport!.fichier })),
+      .filter((l) => l.licence_transport && l.vehicule)
+      .map((l) => ({ immatriculation: l.vehicule!.immatriculation, type: "licence", echeance: l.licence_transport!.echeance, fichier: l.licence_transport!.fichier })),
   ];
 }
 
