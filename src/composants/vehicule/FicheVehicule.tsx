@@ -80,11 +80,13 @@ const ONGLETS: { cle: Onglet; libelle: string; ordinateurSeulement?: boolean }[]
   { cle: "caracteristiques", libelle: "Caractéristiques" },
   { cle: "affectations", libelle: "Affectations" },
   { cle: "conformite", libelle: "Conformité" },
-  /* Sur ordinateur seulement (demande du métier, 15 septembre 2026) : lire une
-     carte grise dans un cadre d'un tiers d'écran de téléphone ne rend service à
-     personne, et le bouton « Ouvrir » de la Conformité y reste le bon geste —
-     il confie la pièce au lecteur du téléphone, qui sait la pincer et la tourner. */
-  { cle: "dossier", libelle: "Dossier", ordinateurSeulement: true },
+  /* Partout, depuis le 16 septembre 2026. L'onglet était réservé aux écrans
+     larges à la demande du métier de la veille — et c'est ce qui l'a rendu
+     introuvable dès que la fenêtre passait sous 1024 px, sans qu'aucun message
+     ne le dise. Un dossier qu'on ne trouve pas ne rend service à personne :
+     sur un écran étroit, la liste passe au-dessus du cadre, et la pièce reste
+     ouvrable dans un onglet à part. */
+  { cle: "dossier", libelle: "Dossier" },
   { cle: "incidents", libelle: "Incidents & sinistres" },
   { cle: "maintenance", libelle: "Maintenance" },
   /* Les rappels sur leur propre onglet (15 septembre 2026) : ce qui reste à
