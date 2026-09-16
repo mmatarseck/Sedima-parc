@@ -812,7 +812,18 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
         }
         sansMarge
       >
+        {/*
+          * Six colonnes qui se lisent, quatre en réserve (métier, 16 septembre
+          * 2026 : « réorganiser cette table, taille des colonnes »). Dix colonnes
+          * à largeur libre débordaient de la carte dès que la fenêtre se
+          * resserrait ; la ligne se lisait en défilant. On répond d'abord à la
+          * question qu'on pose à l'atelier — quand, quoi, chez qui, combien —,
+          * l'objet prend la place qui reste et se tronque. L'origine, le
+          * compteur, l'immobilisation et le numéro de pièce restent à un clic,
+          * dans le choix des colonnes, et ce choix est retenu par profil.
+          */}
         <TableauSimple<LigneAtelier> reglages="fiche-vehicule.atelier"
+          fixe
           cle={(l) => l.cle}
           lignes={atelier}
           vide="Aucune intervention ni fourniture sur la période."
@@ -820,20 +831,21 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
           cible={cible}
           surModifier={(l) => l.modifier()}
           colonnes={[
-            { cle: "numero", libelle: "Réf.", rendu: (l) => <Numero valeur={l.numero} /> },
-            { cle: "date", libelle: "Date", rendu: (l) => <span className="code whitespace-nowrap">{date(l.date)}</span> },
+            { cle: "date", libelle: "Date", largeur: "104px", rendu: (l) => <span className="code whitespace-nowrap">{date(l.date)}</span> },
             {
               cle: "nature",
               libelle: "Nature",
+              largeur: "124px",
               rendu: (l) => <Pastille ton={NATURE_ATELIER[l.nature].ton}>{NATURE_ATELIER[l.nature].libelle}</Pastille>,
             },
-            { cle: "objet", libelle: "Objet", rendu: (l) => <span className="block max-w-[360px] font-medium">{l.objet}</span> },
-            { cle: "tiers", libelle: "Garage ou fournisseur", rendu: (l) => <span className="block max-w-[220px] truncate">{l.tiers}</span> },
-            { cle: "origine", libelle: "Origine", rendu: (l) => (l.origine ? <PastilleOrigine origine={l.origine} /> : <span className="text-attenue-2">—</span>) },
-            { cle: "km", libelle: "Km relevé", alignee: "droite", rendu: (l) => <KmReleve km={l.km} motifRejet={l.kmMotifRejet} /> },
-            { cle: "immob", libelle: "Immob.", alignee: "droite", rendu: (l) => (l.immobilisationJours === null ? <span className="text-attenue" title="Une fourniture n'immobilise pas ; pour une intervention, durée non relevée sur la pièce">—</span> : `${l.immobilisationJours} j`) },
-            { cle: "montant", libelle: "Montant", alignee: "droite", rendu: (l) => <span className="font-medium">{montant(l.montant)}</span> },
-            { cle: "ref", libelle: "Pièce", rendu: (l) => <span className="code whitespace-nowrap text-accent-fonce">{l.reference ?? "—"}</span> },
+            { cle: "objet", libelle: "Objet", rendu: (l) => <span className="block truncate font-medium" title={l.objet}>{l.objet}</span> },
+            { cle: "tiers", libelle: "Garage ou fournisseur", largeur: "190px", rendu: (l) => <span className="block truncate" title={l.tiers}>{l.tiers}</span> },
+            { cle: "montant", libelle: "Montant", largeur: "118px", alignee: "droite", rendu: (l) => <span className="font-medium whitespace-nowrap">{montant(l.montant)}</span> },
+            { cle: "numero", libelle: "Réf.", largeur: "136px", rendu: (l) => <Numero valeur={l.numero} /> },
+            { cle: "origine", libelle: "Origine", largeur: "130px", parDefaut: false, rendu: (l) => (l.origine ? <PastilleOrigine origine={l.origine} /> : <span className="text-attenue-2">—</span>) },
+            { cle: "km", libelle: "Km relevé", largeur: "110px", alignee: "droite", parDefaut: false, rendu: (l) => <KmReleve km={l.km} motifRejet={l.kmMotifRejet} /> },
+            { cle: "immob", libelle: "Immob.", largeur: "84px", alignee: "droite", parDefaut: false, rendu: (l) => (l.immobilisationJours === null ? <span className="text-attenue" title="Une fourniture n'immobilise pas ; pour une intervention, durée non relevée sur la pièce">—</span> : `${l.immobilisationJours} j`) },
+            { cle: "ref", libelle: "Pièce", largeur: "130px", parDefaut: false, rendu: (l) => <span className="code whitespace-nowrap text-accent-fonce">{l.reference ?? "—"}</span> },
           ]}
         />
       </Carte>
