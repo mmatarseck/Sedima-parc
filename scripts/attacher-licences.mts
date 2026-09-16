@@ -10,8 +10,9 @@
  *
  * COMMENT. La plaque du nom désigne le véhicule ; ses licences se lisent par le
  * lien ; celle qui reçoit le scan est la première sans pièce, la plus récente
- * d'abord. Un .docx se dépose tel quel : le seau l'accepte, la fiche l'ouvre
- * dans un onglet. Un véhicule sans licence en base est dit et passé.
+ * d'abord. Un .docx ne porte que des images : ses pages sortent en un PDF, comme
+ * pour les cartes grises — le seau ne le prend pas tel quel. Un véhicule sans
+ * licence en base est dit et passé.
  *
  * IL N'ÉCRIT RIEN SANS `--deposer`. Les clés viennent de l'environnement ou de
  * `.env.local`, jamais d'un argument, jamais affichées.
