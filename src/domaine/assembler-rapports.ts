@@ -95,6 +95,7 @@ import { MODE_EXECUTION, PRODUIT_TRANSPORTE, ecartPesee, type LigneReleve } from
 import { MODE_REMUNERATION } from "@/domaine/flotte-tierce";
 import { ETAT_BUDGET } from "@/domaine/budget";
 import { NIVEAU_PRESTATAIRE, ageDette, avanceOuverte } from "@/domaine/compte-prestataire";
+import { estArchive, horsParc } from "@/domaine/hors-parc";
 import { ETAT_LEGER, REGIME_USAGE, depensesForfaitsDe, echeancierPlanCar, type SourceParcLeger } from "@/domaine/parc-leger";
 import { libelleUsageCourant } from "./parametres";
 import { libelleMois } from "@/domaine/temps";
@@ -194,9 +195,27 @@ function arrondir(x: number | null | undefined, decimales = 1): number | null {
 
 const tonStatut = (statut: StatutVehicule): Ton => (STATUT_VEHICULE[statut].operationnel ? "favorable" : "defavorable");
 
-/** Les véhicules de transport — les rapports de la flotte ne comptent pas le parc léger, qui a les siens. */
+/*
+ * Ce que « la flotte » veut dire dans un rapport (16 septembre 2026, quand le
+ * parc léger a rejoint la famille Flotte & véhicules) :
+ *   * `auParc` — tout véhicule qui n'est ni sorti ni archivé, quel que soit
+ *     son régime. C'est le périmètre des rapports qui parlent du parc entier,
+ *     et la facette Régime y sépare l'exploitation du service et de la
+ *     fonction ;
+ *   * `parcTransport` — la seule exploitation, pour les rapports qui n'ont de
+ *     sens que pour un véhicule qui livre : qui le conduit, s'il est prêt à
+ *     charger. Un véhicule de fonction n'a ni chauffeur ni chargement.
+ */
+function auParc(s: SourceRapports): LigneFlotte[] {
+  return s.lignes.filter((l) => !horsParc(l.vehicule));
+}
 function parcTransport(s: SourceRapports): LigneFlotte[] {
-  return s.lignes.filter((l) => !l.vehicule.regime || l.vehicule.regime === "exploitation");
+  return auParc(s).filter((l) => !l.vehicule.regime || l.vehicule.regime === "exploitation");
+}
+
+/** Où en est le véhicule vis-à-vis du parc : présent, sorti, archivé — la facette du détail des véhicules. */
+function presenceDe(v: Vehicule): ValeurEtat {
+  return estArchive(v) ? etat("Archivé", "neutre", 2) : v.statut === "sorti" ? etat("Sorti du parc", "neutre", 1) : etat("Au parc", "favorable", 0);
 }
 
 /** Ce qu'un véhicule apporte à toute ligne qui le cite — les colonnes communes. */
@@ -211,6 +230,7 @@ function situation(s: SourceRapports, vehiculeId: string): LigneRapport {
     marque: v.marque,
     categorie: CATEGORIE_VEHICULE[v.categorie],
     categorieFlotte: CATEGORIE_FLOTTE[v.categorieFlotte],
+    regime: REGIME_USAGE[v.regime ?? "exploitation"].libelle,
     usage: libelleUsageCourant(v.usage, v.usageMetier),
     energie: v.energie ? ENERGIE[v.energie] : null,
     businessUnit: v.businessUnit ? BUSINESS_UNIT[v.businessUnit] : null,
@@ -305,8 +325,11 @@ export function resumesFicheDepuisLaSource(s: Omit<SourceRapports, "resumesFiche
   return resultat;
 }
 
+/* Le référentiel complet : tout le parc, tous régimes, sortis et archivés
+   compris — c'est la colonne « Au parc » qui les distingue, et la facette qui
+   les écarte. Les autres rapports de la famille ne les comptent pas. */
 function detailsVehicules(s: SourceRapports): LigneRapport[] {
-  return parcTransport(s).map((l) => {
+  return s.lignes.map((l) => {
     const v = l.vehicule;
     const r = s.resumesFiche.get(v.id) ?? null;
     const identite = r?.identite ?? null;
@@ -315,6 +338,7 @@ function detailsVehicules(s: SourceRapports): LigneRapport[] {
     const mec = identite?.premiereMiseEnCirculation ?? v.premiereMiseEnCirculation;
     return {
       ...situation(s, v.id),
+      presence: presenceDe(v),
       appellation: v.appellation,
       typeModele: identite?.typeModele ?? v.typeModele,
       vin: v.vin,
@@ -323,7 +347,9 @@ function detailsVehicules(s: SourceRapports): LigneRapport[] {
       immobilisationMotif: immobilisation ? immobilisation.documents.map((d) => `${TYPE_DOCUMENT[d.type]} ${d.etat === "manquant" ? "manquante" : "échue"}`).join(", ") : null,
       transportSpecial: v.transportSpecial,
       engage: v.engage,
-      chauffeur: l.chauffeurTitulaire?.nom ?? null,
+      /* Qui a le véhicule : le chauffeur titulaire d'un camion, la personne ou
+         le pool qui tient un véhicule de service ou de fonction. */
+      chauffeur: l.chauffeurTitulaire?.nom ?? l.attributaire?.nom ?? null,
       suppleants: l.nombreSuppleants,
       kilometrage: l.kilometrage,
       dateKilometrage: l.dateKilometrage,
@@ -424,7 +450,8 @@ function sansIntervention(s: SourceRapports, c: ContexteRapport): LigneRapport[]
   const mois = new Set(moisCouverts(debut, fin));
   const interventions = s.interventions;
   const lignes: LigneRapport[] = [];
-  for (const l of parcTransport(s)) {
+  /* Tout le parc : un pick-up de service s'entretient comme un camion. */
+  for (const l of auParc(s)) {
     const v = l.vehicule;
     if (interventions.some((i) => i.vehiculeId === v.id && dansLaPeriode(i.date, debut, fin))) continue;
     const statutEffectif = s.resumesFiche.get(v.id)?.immobilisation?.statut ?? v.statut;

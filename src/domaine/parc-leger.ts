@@ -40,7 +40,7 @@ export const ETAT_LEGER: Record<EtatLeger, { libelle: string; precision: string;
   pool: { libelle: "Pool", precision: "Disponible pour les missions d'un service ou d'un site", ton: "neutre" },
   panne: { libelle: "En panne", precision: "Immobilisé, réparation à décider ou en cours", ton: "vigilance" },
   "a-reformer": { libelle: "À réformer", precision: "Sortie de parc décidée ou proposée", ton: "defavorable" },
-  "a-recevoir": { libelle: "À recevoir", precision: "Commandé, pas encore livré", ton: "neutre" },
+  "a-recevoir": { libelle: "À recevoir", precision: "Commandé ou en mutation : pas encore en circulation", ton: "neutre" },
 };
 
 /** Une personne à qui un véhicule est attribué — qui n'est pas un chauffeur. */

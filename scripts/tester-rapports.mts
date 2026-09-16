@@ -166,7 +166,10 @@ for (const r of RAPPORTS) {
 }
 attendu(`${rapportsOk} rapports sur ${RAPPORTS.length} se dressent sur la source mixte`, rapportsOk === RAPPORTS.length);
 const details = construireRapportDe(source, "flotte-details", undefined, PARAMETRES_DEFAUT);
-attendu(`le détail des véhicules : ${details.length} lignes (${transport.length} véhicules de transport), coût par km porté`, details.length === transport.length && details.some((l) => typeof l.coutParKm === "number"));
+/* Depuis le 16 septembre 2026, le détail couvre tout le parc, parc léger compris :
+   c'est la facette Régime qui rend les véhicules de transport. */
+const detailsTransport = details.filter((l) => l.regime === "Exploitation");
+attendu(`le détail des véhicules : ${details.length} lignes sur ${lignes.length} au parc, dont ${detailsTransport.length} d'exploitation (${transport.length} attendus), coût par km porté`, details.length === lignes.length && detailsTransport.length === transport.length && details.some((l) => typeof l.coutParKm === "number"));
 const dispo = construireRapportDe(source, "flotte-disponibilite", undefined, PARAMETRES_DEFAUT);
 attendu(`la disponibilité : ${dispo.filter((l) => (l.etat as { libelle: string }).libelle === "Prêt à charger").length} prêts à charger sur ${dispo.length}, conducteurs nommés ${dispo.filter((l) => l.conducteur).length}`, dispo.length === transport.length && dispo.some((l) => l.conducteur));
 const coutsVehicule = construireRapportDe(source, "couts-vehicule", undefined, PARAMETRES_DEFAUT);

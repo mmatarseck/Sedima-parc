@@ -13,6 +13,7 @@
 
 import { lignesLues } from "./lecture";
 import { cache } from "react";
+import { horsParc } from "@/domaine/hors-parc";
 import type { Attributaire, EtatLeger, ForfaitCarburant, SourceParcLeger, VehiculeLeger } from "@/domaine/parc-leger";
 import type { Parametres } from "@/domaine/parametres";
 import type { BusinessUnit, LigneFlotte, StatutVehicule } from "@/domaine/types";
@@ -44,25 +45,42 @@ export interface LigneForfaitBase {
   carte: string | null;
 }
 
-/** Le statut d'un véhicule, relu comme l'état du dossier parc léger. */
-const ETAT_PAR_STATUT: Partial<Record<StatutVehicule, EtatLeger>> = { "en-service": "actif", "en-backup": "pool", "en-reparation": "panne", "retrait-en-cours": "a-reformer", "a-recevoir": "a-recevoir" };
+/**
+ * Le statut d'un véhicule, relu comme l'état du dossier parc léger. Chaque
+ * statut a le sien : « hors service » et « en restauration » ne roulent pas
+ * plus qu'une panne ; « en mutation » entre au parc, comme un véhicule qu'on
+ * attend. Avant le 16 septembre 2026, ces quatre-là retombaient sur « actif »
+ * — un véhicule hors service se lisait actif dans l'inventaire.
+ */
+const ETAT_PAR_STATUT: Record<Exclude<StatutVehicule, "sorti">, EtatLeger> = {
+  "en-service": "actif",
+  "en-backup": "pool",
+  "en-reparation": "panne",
+  "en-restauration": "panne",
+  "hors-service": "panne",
+  "en-mutation": "a-recevoir",
+  "retrait-en-cours": "a-reformer",
+  "a-recevoir": "a-recevoir",
+};
 
 /** La source du parc léger depuis ce que la base a rendu — pure, pour le banc d'essai. */
 export function sourceDepuisLignes(lignes: LigneFlotte[], attributions: LigneAttributionBase[], attributaires: LigneAttributaireBase[], forfaits: LigneForfaitBase[]): SourceParcLeger {
   const parImmat = new Map(attributions.filter((a) => a.vehicule).map((a) => [a.vehicule!.immatriculation, a]));
   const personnes: Attributaire[] = attributaires.map((a) => ({ id: a.id, nom: a.nom, fonction: a.fonction, departement: a.departement, businessUnit: a.business_unit, actif: a.actif }));
   const parNom = new Map(personnes.map((a) => [a.nom, a]));
+  /* Un véhicule sorti ou archivé n'est plus du parc léger — comme il n'est
+     plus de la flotte : ni dans le dossier, ni dans les rapports. */
   const vehicules: VehiculeLeger[] = lignes
-    .filter((l) => l.vehicule.regime && l.vehicule.regime !== "exploitation")
+    .filter((l) => l.vehicule.regime && l.vehicule.regime !== "exploitation" && !horsParc(l.vehicule))
     .map((l) => {
       const v = l.vehicule;
       const attribution = parImmat.get(v.immatriculation) ?? null;
       /* La ligne de flotte nomme la personne ou le pool ; la table dit son identifiant et son plan car. */
       const personne = attribution?.attributaire_id ? (personnes.find((a) => a.id === attribution.attributaire_id) ?? null) : l.attributaire && !l.attributaire.pool ? (parNom.get(l.attributaire.nom) ?? null) : null;
       const pool = attribution?.pool ?? (l.attributaire?.pool ? l.attributaire.nom : null);
-      const statut = v.statut;
-      /* L'état suit le statut, comme le seed l'a posé : un bus de service sans personne nommée reste « actif ». */
-      const etat: EtatLeger = ETAT_PAR_STATUT[statut] ?? "actif";
+      const statut = v.statut as Exclude<StatutVehicule, "sorti">;
+      /* L'état suit le statut : un bus de service sans personne nommée reste « actif ». */
+      const etat: EtatLeger = ETAT_PAR_STATUT[statut];
       const aRecevoir = statut === "a-recevoir";
       /* Le lot du plan de cascade ouvre le commentaire de la table : « Lot 1 - 03 — Neuf… ». */
       const lot = v.commentaire?.match(/^(Lot [0-9]+ - [0-9]+)(?: — (.*))?$/s) ?? null;
