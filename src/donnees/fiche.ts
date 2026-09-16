@@ -269,8 +269,25 @@ interface FichierBase {
 }
 
 async function piecesDuVehicule(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<PieceDossier[]> {
-  const visites = await client.from("visite_technique").select("numero, date_passage, date_rendez_vous, centre, numero_pv, fichier").eq("vehicule_id", vehiculeId).not("fichier", "is", null).limit(500).returns<(FichierBase & { date_passage: string | null; date_rendez_vous: string; centre: string; numero_pv: string | null })[]>();
-  return lignesLues("Procès-verbaux de visite", visites).map((v): PieceDossier => ({ numero: v.numero, type: "visite", champFichier: "fichier", famille: "visite", libelle: "Procès-verbal de visite technique", precision: [v.centre, v.numero_pv ? `PV ${v.numero_pv}` : null].filter(Boolean).join(" · "), date: v.date_passage ?? v.date_rendez_vous, fichier: v.fichier }));
+  const [visites, licences] = await Promise.all([
+    client.from("visite_technique").select("numero, date_passage, date_rendez_vous, centre, numero_pv, fichier").eq("vehicule_id", vehiculeId).not("fichier", "is", null).limit(500).returns<(FichierBase & { date_passage: string | null; date_rendez_vous: string; centre: string; numero_pv: string | null })[]>(),
+    /* La licence de transport du véhicule (0003) : sa pièce est réglementaire
+       au même titre que la carte grise — c'est elle qu'on montre au contrôle.
+       Elle se lit par le lien véhicule-licence ; `lire_fiche()` ne projette
+       pas le fichier. */
+    client
+      .from("licence_vehicule")
+      .select("licence_transport (numero, libelle, numero_piece, emetteur, date_effet, echeance, fichier)")
+      .eq("vehicule_id", vehiculeId)
+      .limit(50)
+      .returns<{ licence_transport: { numero: string; libelle: string; numero_piece: string | null; emetteur: string | null; date_effet: string | null; echeance: string | null; fichier: string | null } | null }[]>(),
+  ]);
+  const pv = lignesLues("Procès-verbaux de visite", visites).map((v): PieceDossier => ({ numero: v.numero, type: "visite", champFichier: "fichier", famille: "visite", libelle: "Procès-verbal de visite technique", precision: [v.centre, v.numero_pv ? `PV ${v.numero_pv}` : null].filter(Boolean).join(" · "), date: v.date_passage ?? v.date_rendez_vous, fichier: v.fichier }));
+  const lic = lignesLues("Licences de transport", licences)
+    .map((x) => x.licence_transport)
+    .filter((l): l is NonNullable<typeof l> => Boolean(l && l.fichier))
+    .map((l): PieceDossier => ({ numero: l.numero, type: "licence", champFichier: "fichier", famille: "reglementaire", libelle: "Licence de transport", precision: [l.numero_piece ? `n° ${l.numero_piece}` : null, l.echeance ? `échéance ${l.echeance}` : null].filter(Boolean).join(" · "), date: l.date_effet, fichier: l.fichier! }));
+  return [...pv, ...lic];
 }
 
 /**

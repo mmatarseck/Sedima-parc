@@ -16,8 +16,13 @@ export type EtatDocument = "a-jour" | "bientot" | "echu" | "manquant" | "permane
 export interface PieceDossier {
   /** Le numéro de la ligne qui porte le fichier — document, visite, intervention, dépense, plein. */
   numero: string;
-  /** La transaction qui porte la ligne : c'est elle qu'on ouvre pour retirer ou remplacer le fichier. */
-  type: "document" | "visite" | "intervention" | "depense" | "plein";
+  /**
+   * La transaction qui porte la ligne : c'est elle qu'on ouvre pour retirer ou
+   * remplacer le fichier. « licence » n'en est pas une : la licence de
+   * transport se tient dans son propre référentiel (0003), et sa pièce se lit
+   * ici sans s'y retirer.
+   */
+  type: "document" | "visite" | "intervention" | "depense" | "plein" | "licence";
   /** La colonne du fichier sur cette ligne — « fichier » ou « photo », selon la table. */
   champFichier: "fichier" | "photo";
   famille: "reglementaire" | "visite";
@@ -32,7 +37,7 @@ export interface PieceDossier {
    dossier pour vivre sur la ligne de dépense qu'elles justifient — c'est là
    qu'on les cherche, à côté du montant. */
 export const FAMILLE_PIECE: Record<PieceDossier["famille"], { libelle: string; precision: string }> = {
-  reglementaire: { libelle: "Pièces réglementaires", precision: "Carte grise, assurance en cours, certificat de salubrité" },
+  reglementaire: { libelle: "Pièces réglementaires", precision: "Carte grise, assurance en cours, certificat de salubrité, licence de transport" },
   visite: { libelle: "Visites techniques", precision: "Les procès-verbaux des centres" },
 };
 

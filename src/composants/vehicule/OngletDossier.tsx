@@ -83,6 +83,9 @@ export function OngletDossier({ fiche }: { fiche: FicheVehicule }) {
   /* Retirer : le formulaire de la ligne porteuse, réduit à son champ de fichier,
      ouvert avec la pièce en place — on l'efface, on enregistre, la trace le dit. */
   function retirer(p: PieceDossier) {
+    /* Une licence n'a pas de transaction porteuse : sa pièce se lit ici, elle
+       se change dans le référentiel des licences. */
+    if (p.type === "licence") return;
     const champ = CHAMPS[p.type].find((c) => c.cle === p.champFichier);
     if (!champ) return;
     demander({ type: p.type, numero: p.numero, titre: `Retirer la pièce · ${p.libelle}`, champs: [champ], valeurs: { [p.champFichier]: p.fichier } });
@@ -145,10 +148,12 @@ export function OngletDossier({ fiche }: { fiche: FicheVehicule }) {
                   Ouvrir dans un onglet
                 </a>
               ) : null}
-              <button type="button" onClick={() => retirer(choisie)} className="bouton-secondaire h-9 text-defavorable" title="Retire le fichier de la ligne ; la ligne reste">
-                <Trash2 className="size-4" strokeWidth={1.7} />
-                Retirer
-              </button>
+              {choisie.type !== "licence" ? (
+                <button type="button" onClick={() => retirer(choisie)} className="bouton-secondaire h-9 text-defavorable" title="Retire le fichier de la ligne ; la ligne reste">
+                  <Trash2 className="size-4" strokeWidth={1.7} />
+                  Retirer
+                </button>
+              ) : null}
             </span>
           ) : null
         }
