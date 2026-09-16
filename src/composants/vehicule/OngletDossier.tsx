@@ -1,43 +1,57 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ExternalLink, FileText, Image as IconeImage } from "lucide-react";
+import { ExternalLink, FileText, Image as IconeImage, Plus, Trash2 } from "lucide-react";
 import { Carte } from "@/composants/interface/Carte";
+import { CHAMPS } from "@/composants/transactions/champs";
+import { useEdition } from "@/composants/transactions/ContexteEdition";
 import { FAMILLE_PIECE, type FicheVehicule, type PieceDossier } from "@/domaine/fiche";
 import { date as formaterDate } from "@/lib/format";
 import { urlPhoto } from "@/lib/photos";
+import { useAjoutVehicule } from "./ajout";
 
 /* ============================================================================
  * Le dossier d'un véhicule : ses pièces, en trois familles, ouvertes sur place.
  *
- * TROIS FAMILLES, DEMANDE DU MÉTIER DU 16 SEPTEMBRE 2026 : « la carte grise,
- * l'assurance en cours, le certificat de salubrité d'un côté ; les copies des
- * PV des visites techniques d'un autre ; les factures et autres documents
- * engendrant des coûts d'une autre part ». Ce n'est pas un rangement de
- * confort : on ne cherche pas la même chose au contrôle routier, au centre de
- * visite et en comité de coûts, et on ne veut pas lire les trois listes pour
- * trouver la bonne.
+ * TROIS FAMILLES, TOUJOURS LÀ. Demande du métier du 16 septembre 2026 : « tous
+ * les véhicules n'ont pas les trois sous-dossiers ». La première version ne
+ * montrait une famille que si elle avait une pièce, et le dossier entier se
+ * taisait quand il n'y en avait aucune. Or un dossier vide dit quelque chose —
+ * il dit ce qui manque —, et c'est depuis chaque famille qu'on dépose ce qui
+ * lui revient. Les trois cartes sont donc là pour chaque véhicule, vides ou
+ * non, chacune avec son bouton « Déposer ».
  *
- * Les pièces viennent de cinq sources — documents, visites, interventions,
- * dépenses, pleins — réunies par le lecteur de la fiche à une seule forme
- * (`PieceDossier`). L'onglet, lui, ne sait que grouper et ouvrir.
+ * DÉPOSER, C'EST CRÉER LA LIGNE QUI PORTE LA PIÈCE. Une pièce n'existe pas
+ * seule : un scan d'assurance est un document, un PV est une visite, une
+ * facture est une dépense ou une intervention. Le bouton ouvre donc le
+ * formulaire de la ligne, avec son champ de fichier — et la pièce arrive au
+ * dossier avec ce qui la nomme.
  *
- * LES ADRESSES SE SIGNENT AU CLIC, jamais au chargement. Le seau est privé :
- * chaque pièce s'ouvre par une adresse signée, valable un temps. Signer
- * trente pièces pour n'en regarder aucune serait trente appels pour rien.
+ * RETIRER, C'EST VIDER LE CHAMP SUR LA LIGNE, pas effacer la ligne : la
+ * dépense reste, la visite reste ; seul le fichier s'en va. Le formulaire
+ * s'ouvre sur ce seul champ, et sa trace dit qui l'a retiré.
  *
- * À TOUTE LARGEUR depuis le 16 septembre : réservé aux écrans larges la veille,
- * l'onglet disparaissait sous 1024 px sans qu'aucun message ne le dise. Sur un
- * écran étroit, la liste passe au-dessus du cadre.
+ * LES ADRESSES SE SIGNENT AU CLIC, jamais au chargement : le seau est privé,
+ * et signer trente pièces pour n'en regarder aucune serait trente appels pour
+ * rien.
  * ==========================================================================*/
 
 const ORDRE: PieceDossier["famille"][] = ["reglementaire", "visite", "cout"];
+
+/** La ligne qu'on crée pour déposer dans une famille. */
+const DEPOT: Record<PieceDossier["famille"], { cible: "document" | "visite" | "depense"; libelle: string }> = {
+  reglementaire: { cible: "document", libelle: "Déposer un document" },
+  visite: { cible: "visite", libelle: "Déposer un procès-verbal" },
+  cout: { cible: "depense", libelle: "Déposer une facture" },
+};
 
 function estImage(chemin: string): boolean {
   return /\.(jpe?g|png|webp|gif|avif)$/i.test(chemin);
 }
 
 export function OngletDossier({ fiche }: { fiche: FicheVehicule }) {
+  const ajouter = useAjoutVehicule(fiche);
+  const { demander } = useEdition();
   const familles = useMemo(() => ORDRE.map((famille) => ({ famille, pieces: fiche.pieces.filter((p) => p.famille === famille) })), [fiche.pieces]);
   const [choisie, setChoisie] = useState<PieceDossier | null>(null);
   const [url, setUrl] = useState<string | null>(null);
@@ -64,23 +78,32 @@ export function OngletDossier({ fiche }: { fiche: FicheVehicule }) {
     };
   }, [choisie]);
 
-  if (fiche.pieces.length === 0) {
-    return (
-      <Carte titre="Dossier" precision="Les pièces scannées de ce véhicule, en trois familles">
-        <p className="text-[13px] leading-[1.5] text-texte-2">
-          Aucune pièce n&apos;est attachée à ce véhicule. Une pièce s&apos;ajoute sur la ligne qui la porte — un document dans Conformité, une visite technique, une intervention, une dépense ou un plein — par « Modifier », puis le champ du fichier.
-        </p>
-      </Carte>
-    );
+  /* Retirer : le formulaire de la ligne porteuse, réduit à son champ de fichier,
+     ouvert avec la pièce en place — on l'efface, on enregistre, la trace le dit. */
+  function retirer(p: PieceDossier) {
+    const champ = CHAMPS[p.type].find((c) => c.cle === p.champFichier);
+    if (!champ) return;
+    demander({ type: p.type, numero: p.numero, titre: `Retirer la pièce · ${p.libelle}`, champs: [champ], valeurs: { [p.champFichier]: p.fichier } });
   }
 
   return (
     <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
       <div className="flex flex-col gap-4">
         {familles.map(({ famille, pieces }) => (
-          <Carte key={famille} titre={`${FAMILLE_PIECE[famille].libelle} (${pieces.length})`} precision={FAMILLE_PIECE[famille].precision} sansMarge>
+          <Carte
+            key={famille}
+            titre={`${FAMILLE_PIECE[famille].libelle} (${pieces.length})`}
+            precision={FAMILLE_PIECE[famille].precision}
+            action={
+              <button type="button" onClick={() => ajouter(DEPOT[famille].cible)} className="bouton-discret h-8 px-2 text-[12px]" title={`${DEPOT[famille].libelle} — la pièce se joint sur la ligne qui la porte`}>
+                <Plus className="size-3.5" strokeWidth={2} />
+                Déposer
+              </button>
+            }
+            sansMarge
+          >
             {pieces.length === 0 ? (
-              <p className="px-5 pb-4 text-[12.5px] text-texte-2">Aucune pièce.</p>
+              <p className="px-5 pb-4 text-[12.5px] text-texte-2">Aucune pièce — « Déposer » ouvre la ligne qui la portera.</p>
             ) : (
               <ul className="flex flex-col gap-1 px-3 pb-3">
                 {pieces.map((p) => {
@@ -110,19 +133,29 @@ export function OngletDossier({ fiche }: { fiche: FicheVehicule }) {
 
       <Carte
         titre={choisie?.libelle ?? "Pièce"}
-        precision={choisie ? [choisie.date ? formaterDate(choisie.date) : null, choisie.precision].filter(Boolean).join(" · ") : undefined}
+        precision={choisie ? [choisie.date ? formaterDate(choisie.date) : null, choisie.precision].filter(Boolean).join(" · ") : "Choisissez une pièce dans une famille, ou déposez-en une"}
         action={
-          url ? (
-            <a href={url} target="_blank" rel="noopener noreferrer" className="bouton-secondaire h-9">
-              <ExternalLink className="size-4 text-texte-2" strokeWidth={1.7} />
-              Ouvrir dans un onglet
-            </a>
+          choisie ? (
+            <span className="flex items-center gap-2">
+              {url ? (
+                <a href={url} target="_blank" rel="noopener noreferrer" className="bouton-secondaire h-9">
+                  <ExternalLink className="size-4 text-texte-2" strokeWidth={1.7} />
+                  Ouvrir dans un onglet
+                </a>
+              ) : null}
+              <button type="button" onClick={() => retirer(choisie)} className="bouton-secondaire h-9 text-defavorable" title="Retire le fichier de la ligne ; la ligne reste">
+                <Trash2 className="size-4" strokeWidth={1.7} />
+                Retirer
+              </button>
+            </span>
           ) : null
         }
         sansMarge
       >
         <div className="mx-5 mb-5 h-[70vh] min-h-[420px] overflow-hidden rounded-[12px] border border-bordure bg-surface-2">
-          {etat === "signature" ? (
+          {!choisie ? (
+            <p className="grid h-full place-items-center px-6 text-center text-[13px] leading-[1.5] text-texte-2">Aucune pièce n&apos;est attachée à ce véhicule.</p>
+          ) : etat === "signature" ? (
             <p className="grid h-full place-items-center text-[13px] text-texte-2">Ouverture de la pièce…</p>
           ) : etat === "refus" || !url ? (
             /* Pièce illisible : le seau a refusé de signer, ou la ligne cite un
@@ -131,11 +164,11 @@ export function OngletDossier({ fiche }: { fiche: FicheVehicule }) {
             <p className="grid h-full place-items-center px-6 text-center text-[13px] leading-[1.5] text-texte-2">
               Cette pièce n&apos;a pas pu être ouverte. Le fichier a peut-être été retiré du dossier, ou la session n&apos;a plus le droit de le lire.
             </p>
-          ) : choisie && estImage(choisie.fichier) ? (
+          ) : estImage(choisie.fichier) ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={url} alt={choisie.libelle} className="h-full w-full object-contain" />
           ) : (
-            <iframe src={url} title={choisie?.libelle ?? "Pièce"} className="h-full w-full" />
+            <iframe src={url} title={choisie.libelle} className="h-full w-full" />
           )}
         </div>
       </Carte>

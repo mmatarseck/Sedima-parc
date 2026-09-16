@@ -224,6 +224,8 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
         .filter((d): d is typeof d & { fichier: string } => Boolean(d.fichier))
         .map((d) => ({
           numero: d.numero,
+          type: "document" as const,
+          champFichier: "fichier" as const,
           famille: familleDuDocument(d.type),
           libelle: libelles.get(d.type) ?? d.type,
           precision: [d.numeroPiece, d.emetteur, d.echeance ? `échéance ${d.echeance.slice(8, 10)}/${d.echeance.slice(5, 7)}/${d.echeance.slice(0, 4)}` : null].filter(Boolean).join(" · ") || "sans référence",
@@ -269,10 +271,10 @@ async function piecesDuVehicule(client: Awaited<ReturnType<typeof clientServeur>
   ]);
   const francs = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} F`;
   return [
-    ...lignesLues("Procès-verbaux de visite", visites).map((v): PieceDossier => ({ numero: v.numero, famille: "visite", libelle: "Procès-verbal de visite technique", precision: [v.centre, v.numero_pv ? `PV ${v.numero_pv}` : null].filter(Boolean).join(" · "), date: v.date_passage ?? v.date_rendez_vous, fichier: v.fichier })),
-    ...lignesLues("Factures d'intervention", interventions).map((i): PieceDossier => ({ numero: i.numero, famille: "cout", libelle: `Intervention · ${i.objet}`, precision: [i.prestataire?.raison_sociale ?? null, francs(i.montant)].filter(Boolean).join(" · "), date: i.date, fichier: i.fichier })),
-    ...lignesLues("Pièces des dépenses", depenses).map((d): PieceDossier => ({ numero: d.numero, famille: "cout", libelle: `Dépense · ${d.libelle}`, precision: [d.beneficiaire, francs(d.montant)].filter(Boolean).join(" · "), date: d.date, fichier: d.photo })),
-    ...lignesLues("Pièces des pleins", pleins).map((p): PieceDossier => ({ numero: p.numero, famille: "cout", libelle: `Plein · ${Number(p.litres).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} L`, precision: francs(p.montant), date: p.date, fichier: p.photo })),
+    ...lignesLues("Procès-verbaux de visite", visites).map((v): PieceDossier => ({ numero: v.numero, type: "visite", champFichier: "fichier", famille: "visite", libelle: "Procès-verbal de visite technique", precision: [v.centre, v.numero_pv ? `PV ${v.numero_pv}` : null].filter(Boolean).join(" · "), date: v.date_passage ?? v.date_rendez_vous, fichier: v.fichier })),
+    ...lignesLues("Factures d'intervention", interventions).map((i): PieceDossier => ({ numero: i.numero, type: "intervention", champFichier: "fichier", famille: "cout", libelle: `Intervention · ${i.objet}`, precision: [i.prestataire?.raison_sociale ?? null, francs(i.montant)].filter(Boolean).join(" · "), date: i.date, fichier: i.fichier })),
+    ...lignesLues("Pièces des dépenses", depenses).map((d): PieceDossier => ({ numero: d.numero, type: "depense", champFichier: "photo", famille: "cout", libelle: `Dépense · ${d.libelle}`, precision: [d.beneficiaire, francs(d.montant)].filter(Boolean).join(" · "), date: d.date, fichier: d.photo })),
+    ...lignesLues("Pièces des pleins", pleins).map((p): PieceDossier => ({ numero: p.numero, type: "plein", champFichier: "photo", famille: "cout", libelle: `Plein · ${Number(p.litres).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} L`, precision: francs(p.montant), date: p.date, fichier: p.photo })),
   ];
 }
 

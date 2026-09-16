@@ -297,6 +297,8 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "immobilisationJours", libelle: "Immobilisation", type: "nombre", unite: "j" },
     { cle: "montant", libelle: "Montant", type: "nombre", unite: "F", obligatoire: true },
     { cle: "reference", libelle: "Pièce", type: "texte" },
+    /* La facture ou le rapport d'atelier : le dossier du véhicule l'ouvre (0053). */
+    { cle: "fichier", libelle: "La facture", type: "photo", dossier: "documents", precision: "Facture du garage ou rapport d'atelier, en image ou en PDF" },
   ],
   document: [
     { cle: "numeroPiece", libelle: "N° de pièce", type: "texte" },
@@ -399,6 +401,8 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "datePassage", libelle: "Passée le", type: "date" },
     { cle: "numeroPv", libelle: "N° de procès-verbal", type: "texte" },
     { cle: "dateLimiteContreVisite", libelle: "Contre-visite avant le", type: "date" },
+    /* Le procès-verbal du centre : le dossier du véhicule l'ouvre (0053). */
+    { cle: "fichier", libelle: "Le procès-verbal", type: "photo", dossier: "documents", precision: "Le PV du centre agréé, en image ou en PDF" },
     { cle: "commentaire", libelle: "Commentaire", type: "texte-long" },
   ],
   observation: [
