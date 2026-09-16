@@ -16,6 +16,7 @@
  * ==========================================================================*/
 
 import { CATEGORIES_PERMIS } from "@/domaine/chauffeur";
+import { provisoireDepuisVin } from "@/domaine/immatriculation";
 import { USAGES_STANDARD, cleNom, idUsage } from "@/domaine/parametres";
 import type { TypeTransaction } from "@/domaine/reference";
 import { PRODUIT_TRANSPORTE, type ProduitTransporte } from "@/domaine/releve-transport";
@@ -755,14 +756,20 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
     /* Le véhicule n'a pas de numéro : sa clé métier est son immatriculation, et
        c'est elle qui doit être unique. Le reste se complète sur la fiche. */
     case "vehicule": {
-      const immatriculation = immatriculationCanonique(texte(v.immatriculation) ?? "");
-      if (!immatriculation) return { refus: "véhicule sans immatriculation" };
+      /* Sans plaque, le châssis tient lieu d'immatriculation et le véhicule
+         entre « en mutation » (16 septembre 2026) — la même règle que le
+         formulaire, tenue ici pour tout chemin qui n'y passerait pas. */
+      const sansPlaque = !texte(v.immatriculation);
+      const vinSaisi = texte(v.vin);
+      const immatriculation = sansPlaque ? (vinSaisi && vinSaisi.length >= 6 ? provisoireDepuisVin(vinSaisi) : "") : immatriculationCanonique(texte(v.immatriculation) ?? "");
+      if (!immatriculation) return { refus: "véhicule sans immatriculation ni numéro de châssis" };
       const marque = texte(v.marque);
       const appellation = texte(v.appellation);
       if (!marque || !appellation) return { refus: "véhicule sans marque ou sans modèle" };
       const categorie = familleSaisie(v);
       if (!categorie) return { refus: "véhicule sans catégorie" };
-      const statut = texte(v.statut) ?? "en-service";
+      const statutSaisi = texte(v.statut) ?? "en-service";
+      const statut = sansPlaque && statutSaisi === "en-service" ? "en-mutation" : statutSaisi;
       const dateSortie = texte(v.dateSortie);
       if (statut === "sorti" && !dateSortie) return { refus: "véhicule sorti sans date de sortie" };
       return {

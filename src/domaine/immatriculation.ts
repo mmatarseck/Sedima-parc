@@ -25,9 +25,33 @@ export function normaliser(brut: string): string {
  * qui n'est pas une plaque (« CHARIOT ») est rendu tel quel.
  */
 export function afficher(canonique: string): string {
+  if (estProvisoire(canonique)) return `VIN …${canonique.slice(-6)}`;
   const m = /^([A-Z]+)(\d+)([A-Z]*)$/.exec(canonique);
   if (!m) return canonique;
   return [m[1], m[2], m[3]].filter(Boolean).join("-");
+}
+
+/* -- La plaque provisoire ------------------------------------------------------
+ *
+ * Un véhicule neuf arrive avant sa carte grise (métier, 16 septembre 2026 :
+ * « les plaques ne sont pas encore dispo, nous avons les VIN »). Il faut
+ * pourtant l'entrer au parc — l'assurer, le déposer, le suivre. Sa clé, en
+ * attendant, est son numéro de châssis, sous une forme que rien ne peut
+ * confondre avec une plaque : « VIN » suivi du châssis. Le jour où la carte
+ * grise arrive, on renseigne la plaque sur la fiche : la clé change, la fiche
+ * suit sa nouvelle adresse, l'historique reste — c'est le mécanisme d'une
+ * plaque refaite.
+ */
+const PREFIXE_PROVISOIRE = "VIN";
+
+/** La clé provisoire d'un véhicule sans plaque, depuis son châssis : « MMBJNLC10SH083912 » → « VINMMBJNLC10SH083912 ». */
+export function provisoireDepuisVin(vin: string): string {
+  return PREFIXE_PROVISOIRE + normaliser(vin);
+}
+
+/** Vrai pour une clé provisoire — le véhicule attend encore sa carte grise. */
+export function estProvisoire(canonique: string): boolean {
+  return new RegExp(`^${PREFIXE_PROVISOIRE}[A-Z0-9]{6,20}$`).test(canonique) && !/^[A-Z]+\d+[A-Z]*$/.test(canonique);
 }
 
 /** Vrai si les deux écritures désignent le même véhicule. */

@@ -50,7 +50,10 @@ export function sectionsNouveauVehicule(contexte: ContexteNouveauVehicule): Sect
           titre: "Identification",
           precision: "Marque et modèle se choisissent dans la liste ; ce qui n'y est pas se crée sur place et entre au référentiel",
           champs: [
-            { cle: "immatriculation", libelle: "Immatriculation", type: "texte", obligatoire: true },
+            /* Facultative depuis le 16 septembre 2026 : un véhicule neuf entre
+               avant sa carte grise. Sans plaque, le châssis en tient lieu — le
+               formulaire l'exige alors, et pose le véhicule « en mutation ». */
+            { cle: "immatriculation", libelle: "Immatriculation — vide tant que la carte grise n'est pas là", type: "texte" },
             ...champsIdentiteVehicule(),
             { cle: "typeModele", libelle: "Type / modèle (carte grise)", type: "texte" },
             { cle: "energie", libelle: "Énergie", type: "choix", options: options(ENERGIE), obligatoire: true },

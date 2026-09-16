@@ -8,6 +8,7 @@ import { ChampSaisie } from "@/composants/transactions/ChampSaisie";
 import { champsDesSections, sectionsNouveauVehicule, type ContexteNouveauVehicule, type SectionFormulaire } from "@/composants/flotte/sections-vehicule";
 import { Numero } from "@/composants/interface/Numero";
 import { enregistrerCreation } from "@/lib/clotures-demo";
+import { provisoireDepuisVin } from "@/domaine/immatriculation";
 import { familleDe } from "@/domaine/parametres";
 import { apprendreVehicule, lireParametres } from "@/lib/parametres-demo";
 
@@ -88,6 +89,19 @@ export function EcranNouveauVehicule({ contexte }: { contexte: ContexteNouveauVe
     }
     const valeurs: Record<string, unknown> = {};
     for (const c of champs) valeurs[c.cle] = valeurSortie(c.type, saisie[c.cle] ?? "");
+    /* Sans plaque, le châssis tient lieu d'immatriculation (16 septembre 2026)
+       et le véhicule entre « en mutation » : sa carte grise est en cours. Le
+       statut choisi est respecté s'il dit déjà autre chose qu'« en service ». */
+    if (typeof valeurs.immatriculation !== "string" || !valeurs.immatriculation) {
+      const vin = typeof valeurs.vin === "string" ? valeurs.vin.trim() : "";
+      if (vin.length < 6) {
+        setCourante("details");
+        setIssue({ erreur: "Sans immatriculation, le numéro de châssis (VIN) est obligatoire : c'est lui qui tient lieu de plaque jusqu'à la carte grise." });
+        return;
+      }
+      valeurs.immatriculation = provisoireDepuisVin(vin);
+      if (valeurs.statut === "en-service") valeurs.statut = "en-mutation";
+    }
     /* La catégorie s'écrit en deux colonnes : la **famille** décide des règles —
        documents, plafond kilométrique, entretien, silhouette —, et la catégorie
        ajoutée par le métier ne fait que la nommer. Cet écran connaît les

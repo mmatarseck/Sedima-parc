@@ -8,7 +8,7 @@ import { lireParametres } from "@/lib/parametres-demo";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { normaliser } from "@/domaine/immatriculation";
+import { estProvisoire, normaliser } from "@/domaine/immatriculation";
 import { Archive, ArchiveRestore, Link2, Lock, MapPin, Pencil, Radio, UserRound } from "lucide-react";
 import { BoutonDiscussion, PanneauDiscussion } from "@/composants/discussion/PanneauDiscussion";
 import { BandeauKpi } from "@/composants/interface/BandeauKpi";
@@ -303,6 +303,36 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
               {v.transportSpecial ? (
                 <span className="inline-flex h-6 items-center rounded-full bg-surface-3 px-2.5 text-[12px] font-medium text-texte-2">
                   Transport spécial
+                </span>
+              ) : null}
+              {/* Sans plaque : le châssis tient lieu de clé jusqu'à la carte
+                  grise (16 septembre 2026). Le bouton ouvre la seule saisie
+                  utile ; la fiche suit sa nouvelle adresse, l'historique reste. */}
+              {estProvisoire(v.immatriculation) ? (
+                <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-vigilance-fond px-2.5 text-[12px] font-medium text-vigilance" title="La carte grise n'est pas encore là : le véhicule est entré sous son numéro de châssis">
+                  Sans plaque · VIN <span className="code">{v.vin ?? v.immatriculation.slice(3)}</span>
+                  <button
+                    type="button"
+                    className="ml-1 underline decoration-dotted underline-offset-2 hover:text-texte"
+                    onClick={() =>
+                      demander({
+                        type: "vehicule",
+                        numero: numeroFiche,
+                        titre: `Immatriculer · ${v.marque} ${v.appellation}`,
+                        champs: [
+                          { cle: "immatriculation", libelle: "Immatriculation (carte grise)", type: "texte", obligatoire: true },
+                          { cle: "dateImmatriculation", libelle: "Date d'immatriculation", type: "date" },
+                        ],
+                        valeurs: { immatriculation: "", dateImmatriculation: v.dateImmatriculation ?? "" },
+                        apresModification: (apres) => {
+                          const suivante = normaliser(String(apres.immatriculation ?? ""));
+                          if (suivante && suivante !== v.immatriculation) router.replace(`/flotte/${suivante}`);
+                        },
+                      })
+                    }
+                  >
+                    Renseigner la plaque
+                  </button>
                 </span>
               ) : null}
               {v.archiveLe ? (
