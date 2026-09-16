@@ -50,6 +50,14 @@ export interface DefinitionDocument {
   validiteMois: number | null;
   /** Manquant ou échu, il immobilise le véhicule (ou interdit de conduire). */
   critique: boolean;
+  /**
+   * Donne lieu à un rappel : la Conformité suit sa prochaine échéance, saisie
+   * par le métier (16 septembre 2026). Vrai pour ce qui se renouvelle —
+   * assurance, visite technique, salubrité, permis, visite médicale — ; faux
+   * pour ce qui ne périme pas, comme la carte grise. Un type ajouté dans les
+   * paramètres se coche ici pour rejoindre la liste des rappels.
+   */
+  rappel: boolean;
   /** Livré avec l'application : connu du code (processus, interdictions). */
   standard: boolean;
   /**
@@ -563,14 +571,14 @@ export const PARAMETRES_DEFAUT: Parametres = {
   cuve: CUVE_DEFAUT,
   documents: {
     types: [
-      standard({ id: "carte-grise", libelle: "Carte grise", porteur: "vehicule", applicabilite: "tous", validiteMois: null, critique: true }),
-      standard({ id: "assurance", libelle: "Assurance", porteur: "vehicule", applicabilite: "tous", validiteMois: 12, critique: true }),
-      standard({ id: "visite-technique", libelle: "Visite technique", porteur: "vehicule", applicabilite: "tous", validiteMois: 12, critique: true }),
-      standard({ id: "licence-transport", libelle: "Licence de transport", porteur: "flotte", applicabilite: "lourds-et-camionnettes", validiteMois: 24, critique: true }),
-      standard({ id: "certificat-salubrite", libelle: "Certificat de salubrité", porteur: "vehicule", applicabilite: "transport-special", validiteMois: 12, critique: true }),
-      standard({ id: "carte-transport", libelle: "Carte de transport", porteur: "vehicule", applicabilite: "transport-special", validiteMois: 12, critique: false }),
-      standard({ id: "permis", libelle: "Permis de conduire", porteur: "chauffeur", applicabilite: "tous", validiteMois: 60, critique: true }),
-      standard({ id: "visite-medicale", libelle: "Visite médicale", porteur: "chauffeur", applicabilite: "tous", validiteMois: 12, critique: true }),
+      standard({ id: "carte-grise", libelle: "Carte grise", porteur: "vehicule", applicabilite: "tous", validiteMois: null, critique: true, rappel: false }),
+      standard({ id: "assurance", libelle: "Assurance", porteur: "vehicule", applicabilite: "tous", validiteMois: 12, critique: true, rappel: true }),
+      standard({ id: "visite-technique", libelle: "Visite technique", porteur: "vehicule", applicabilite: "tous", validiteMois: 12, critique: true, rappel: true }),
+      standard({ id: "licence-transport", libelle: "Licence de transport", porteur: "flotte", applicabilite: "lourds-et-camionnettes", validiteMois: 24, critique: true, rappel: false }),
+      standard({ id: "certificat-salubrite", libelle: "Certificat de salubrité", porteur: "vehicule", applicabilite: "transport-special", validiteMois: 12, critique: true, rappel: true }),
+      standard({ id: "carte-transport", libelle: "Carte de transport", porteur: "vehicule", applicabilite: "transport-special", validiteMois: 12, critique: false, rappel: true }),
+      standard({ id: "permis", libelle: "Permis de conduire", porteur: "chauffeur", applicabilite: "tous", validiteMois: 60, critique: true, rappel: true }),
+      standard({ id: "visite-medicale", libelle: "Visite médicale", porteur: "chauffeur", applicabilite: "tous", validiteMois: 12, critique: true, rappel: true }),
     ],
   },
 };
@@ -591,6 +599,9 @@ function normaliser(brut: unknown): DefinitionDocument | null {
     applicabilite: APPLICABILITES.includes(b.applicabilite as ApplicabiliteDocument) ? (b.applicabilite as ApplicabiliteDocument) : (defaut?.applicabilite ?? "tous"),
     validiteMois: typeof b.validiteMois === "number" && Number.isFinite(b.validiteMois) && b.validiteMois > 0 ? Math.round(b.validiteMois) : null,
     critique: typeof b.critique === "boolean" ? b.critique : (defaut?.critique ?? false),
+    /* Un type enregistré avant le paramètre suit sa validité : ce qui expire se
+       rappelle, ce qui ne périme pas non. */
+    rappel: typeof b.rappel === "boolean" ? b.rappel : (defaut?.rappel ?? (typeof b.validiteMois === "number" && b.validiteMois > 0)),
     standard: Boolean(defaut),
     ...(b.suivi === false ? { suivi: false } : {}),
   };

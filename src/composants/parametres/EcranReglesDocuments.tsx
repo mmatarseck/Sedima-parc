@@ -79,7 +79,7 @@ export function EcranReglesDocuments() {
   function ajouter() {
     const id = nouvelIdDocument("nouveau", types);
     /* Un ajout naît non critique : critique et exigé, il immobiliserait tout véhicule qui ne l'a pas. */
-    reglerTypes([...types, { id, libelle: "", porteur: "vehicule", applicabilite: "tous", validiteMois: 12, critique: false, standard: false }]);
+    reglerTypes([...types, { id, libelle: "", porteur: "vehicule", applicabilite: "tous", validiteMois: 12, critique: false, rappel: true, standard: false }]);
     setAFocaliser(id);
   }
 
@@ -179,6 +179,7 @@ export function EcranReglesDocuments() {
                   <th className="en-tete-colonne h-10 border-y border-bordure bg-surface-2 px-3 text-left">S&apos;applique à</th>
                   <th className="en-tete-colonne h-10 border-y border-bordure bg-surface-2 px-3 text-right whitespace-nowrap">Validité (mois)</th>
                   <th className="en-tete-colonne h-10 border-y border-bordure bg-surface-2 px-3 text-left">Critique</th>
+                  <th className="en-tete-colonne h-10 border-y border-bordure bg-surface-2 px-3 text-left">Rappel</th>
                   <th className="en-tete-colonne h-10 border-y border-bordure bg-surface-2 px-3 text-left" />
                 </tr>
               </thead>
@@ -251,6 +252,11 @@ export function EcranReglesDocuments() {
                       </td>
                       <td className={CELLULE}>
                         <Interrupteur actif={t.critique} disabled={!habilite} onChange={(v) => reglerType(t.id, { critique: v })} libelle={t.critique ? (chauffeur ? "Interdit de conduire" : "Immobilise") : "Alerte seule"} />
+                      </td>
+                      <td className={CELLULE}>
+                        {/* Ce qui se renouvelle donne lieu à un rappel dans la Conformité : sa
+                            prochaine échéance s'y saisit et s'y suit (16 septembre 2026). */}
+                        <Interrupteur actif={t.rappel} disabled={!habilite || t.porteur === "flotte"} onChange={(v) => reglerType(t.id, { rappel: v })} libelle={t.porteur === "flotte" ? "Sans objet" : t.rappel ? "Échéance suivie" : "Pas de rappel"} />
                       </td>
                       <td className={`${CELLULE} text-right`}>
                         {habilite ? (
