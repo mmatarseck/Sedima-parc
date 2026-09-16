@@ -1,9 +1,10 @@
 "use client";
 
+import { LienRetour } from "@/composants/interface/LienRetour";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarOff, ChevronLeft, MapPin, Pencil, Phone, Trophy } from "lucide-react";
+import { CalendarOff, MapPin, Pencil, Phone, Trophy } from "lucide-react";
 import { PanneauDiscussion, BoutonDiscussion } from "@/composants/discussion/PanneauDiscussion";
 import { BandeauKpi } from "@/composants/interface/BandeauKpi";
 import { Pastille } from "@/composants/interface/Pastille";
@@ -210,10 +211,7 @@ export function FicheChauffeur({
       {/* ---- En-tête fixe ---- */}
       <div className="flex shrink-0 flex-col gap-4 border-b border-bordure px-8 pt-6 pb-0">
         <nav aria-label="Fil d'Ariane" className="flex items-center gap-1.5 text-[12.5px] text-attenue">
-          <Link href="/chauffeurs" className="inline-flex items-center gap-1 font-medium text-texte-2 hover:text-accent-fonce">
-            <ChevronLeft className="size-3.5" strokeWidth={1.8} />
-            Chauffeurs
-          </Link>
+          <LienRetour href="/chauffeurs" libelle="Chauffeurs" />
         </nav>
 
         <div className="flex flex-wrap items-start gap-4">

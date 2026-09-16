@@ -127,6 +127,53 @@ export function TableListe<T>({
   /* Tri par clic sur un en-tête : croissant, décroissant, puis l'ordre d'origine. */
   const [tri, setTri] = useState<Tri | null>(null);
 
+  /*
+   * LA LISTE SE SOUVIENT D'OÙ ELLE EN ÉTAIT, le temps de l'onglet.
+   *
+   * Demande du métier du 16 septembre 2026 : « au retour, on doit retourner à
+   * la vue précédente, avec la bonne page ». Tout ce qui précède vivait en
+   * mémoire du composant : ouvrir une fiche l'effaçait, et le retour rendait
+   * la liste à neuf — première page, sans filtre ni tri. Cent quatre-vingts
+   * véhicules à retraverser à chaque fiche.
+   *
+   * `sessionStorage`, et non `localStorage` : c'est un état de navigation, pas
+   * une préférence. Il vaut pour cet onglet et s'oublie avec lui — une session
+   * de demain repart au début, ce qui est ce qu'on attend d'une liste. Les
+   * colonnes et leurs largeurs, elles, restent des préférences rattachées au
+   * compte, rangées ailleurs.
+   *
+   * Lu après le montage : au rendu serveur il n'y a pas de navigateur, et lire
+   * dans l'initialisation de l'état ferait différer les deux rendus.
+   */
+  const cleSession = `sedima.parc.liste.${ecran}`;
+  const [etatRepris, setEtatRepris] = useState(false);
+  useEffect(() => {
+    try {
+      const brut = sessionStorage.getItem(cleSession);
+      if (brut) {
+        const e = JSON.parse(brut) as Partial<{ recherche: string; filtre: string; filtreSecondaire: string; taillePage: number; page: number; tri: Tri | null }>;
+        if (typeof e.recherche === "string") setRecherche(e.recherche);
+        if (typeof e.filtre === "string" && filtres.some((f) => f.cle === e.filtre)) setFiltre(e.filtre);
+        if (typeof e.filtreSecondaire === "string" && filtresSecondaires?.some((f) => f.cle === e.filtreSecondaire)) setFiltreSecondaire(e.filtreSecondaire);
+        if (typeof e.taillePage === "number" && (TAILLES_PAGE as readonly number[]).includes(e.taillePage)) setTaillePage(e.taillePage);
+        if (typeof e.page === "number" && e.page >= 1) setPage(e.page);
+        if (e.tri && typeof e.tri === "object") setTri(e.tri);
+      }
+    } catch {
+      /* Stockage indisponible ou valeur d'une autre version : on repart au début. */
+    }
+    setEtatRepris(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cleSession]);
+  useEffect(() => {
+    if (!etatRepris) return;
+    try {
+      sessionStorage.setItem(cleSession, JSON.stringify({ recherche, filtre, filtreSecondaire, taillePage, page, tri }));
+    } catch {
+      /* Rien à faire : la liste marche sans mémoire. */
+    }
+  }, [etatRepris, cleSession, recherche, filtre, filtreSecondaire, taillePage, page, tri]);
+
   /* Largeurs par défaut de tout ce qui se règle : la colonne figée, les fixes, les autres. */
   const largeursParDefaut = useMemo<Record<string, number>>(() => {
     const d: Record<string, number> = { [identifiant.cle]: identifiant.largeur };
@@ -194,6 +241,49 @@ export function TableListe<T>({
 
   /* Défilement latéral par flèches, calé sur les bords de colonne. */
   const zoneDefilement = useRef<HTMLDivElement>(null);
+
+  /* Le défilement aussi : revenir à la bonne page sans revenir à la bonne
+     ligne obligerait encore à chercher. Repris une fois les lignes rendues,
+     retenu à chaque arrêt du défilement, sous sa propre clé — il change bien
+     plus souvent que les filtres, et n'a pas à les réécrire. */
+  const cleDefilement = `${cleSession}.defilement`;
+  const defilementRepris = useRef(false);
+  useEffect(() => {
+    if (!etatRepris || defilementRepris.current) return;
+    const zone = zoneDefilement.current;
+    if (!zone) return;
+    defilementRepris.current = true;
+    try {
+      const brut = sessionStorage.getItem(cleDefilement);
+      if (!brut) return;
+      const { haut, gauche } = JSON.parse(brut) as { haut: number; gauche: number };
+      /* Au rendu suivant : les lignes de la page reprise doivent être là pour
+         que la hauteur existe. */
+      requestAnimationFrame(() => zone.scrollTo({ top: haut, left: gauche }));
+    } catch {
+      /* Sans mémoire, la liste s'ouvre en haut. */
+    }
+  }, [etatRepris, cleDefilement]);
+  useEffect(() => {
+    const zone = zoneDefilement.current;
+    if (!zone) return;
+    let minuteur: ReturnType<typeof setTimeout> | null = null;
+    const retenir = () => {
+      if (minuteur) clearTimeout(minuteur);
+      minuteur = setTimeout(() => {
+        try {
+          sessionStorage.setItem(cleDefilement, JSON.stringify({ haut: zone.scrollTop, gauche: zone.scrollLeft }));
+        } catch {
+          /* Rien à faire. */
+        }
+      }, 150);
+    };
+    zone.addEventListener("scroll", retenir, { passive: true });
+    return () => {
+      if (minuteur) clearTimeout(minuteur);
+      zone.removeEventListener("scroll", retenir);
+    };
+  }, [cleDefilement]);
   const [peutReculer, setPeutReculer] = useState(false);
   const [peutAvancer, setPeutAvancer] = useState(false);
 

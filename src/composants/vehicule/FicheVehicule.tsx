@@ -1,5 +1,6 @@
 "use client";
 
+import { LienRetour } from "@/composants/interface/LienRetour";
 import { prixEnergie } from "@/domaine/parametres";
 import { jourCourant } from "@/domaine/temps";
 import { lireParametres } from "@/lib/parametres-demo";
@@ -8,7 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 import { normaliser } from "@/domaine/immatriculation";
-import { ChevronLeft, Link2, Lock, MapPin, Pencil, Radio, UserRound } from "lucide-react";
+import { Link2, Lock, MapPin, Pencil, Radio, UserRound } from "lucide-react";
 import { BoutonDiscussion, PanneauDiscussion } from "@/composants/discussion/PanneauDiscussion";
 import { BandeauKpi } from "@/composants/interface/BandeauKpi";
 import { useCible } from "@/composants/interface/useCible";
@@ -242,10 +243,7 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
       {/* ---- En-tête fixe ---- */}
       <div className="flex shrink-0 flex-col gap-4 border-b border-bordure px-8 pt-6 pb-0">
         <nav aria-label="Fil d'Ariane" className="flex items-center gap-1.5 text-[12.5px] text-attenue">
-          <Link href="/flotte" className="inline-flex items-center gap-1 font-medium text-texte-2 hover:text-accent-fonce">
-            <ChevronLeft className="size-3.5" strokeWidth={1.8} />
-            Flotte
-          </Link>
+          <LienRetour href="/flotte" libelle="Flotte" />
         </nav>
 
         <div className="flex flex-wrap items-start gap-4">

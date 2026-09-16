@@ -1,5 +1,6 @@
+import { LienRetour } from "@/composants/interface/LienRetour";
 import Link from "next/link";
-import { Building2, ChevronLeft, Fuel } from "lucide-react";
+import { Building2, Fuel } from "lucide-react";
 import { Carte, Definitions } from "@/composants/interface/Carte";
 import { BoutonFicheAttributaire } from "./BoutonFicheAttributaire";
 import { Pastille } from "@/composants/interface/Pastille";
@@ -36,10 +37,7 @@ export function FicheAttributaire({ ligne, regles, aujourdhui }: { ligne: LigneA
       {/* ---- En-tête ---- */}
       <div className="flex shrink-0 flex-col gap-4 border-b border-bordure px-8 pt-6 pb-5">
         <nav aria-label="Fil d'Ariane" className="flex items-center gap-1.5 text-[12.5px] text-attenue">
-          <Link href="/chauffeurs" className="inline-flex items-center gap-1 font-medium text-texte-2 hover:text-accent-fonce">
-            <ChevronLeft className="size-3.5" strokeWidth={1.8} />
-            Chauffeurs
-          </Link>
+          <LienRetour href="/chauffeurs" libelle="Chauffeurs" />
         </nav>
 
         <div className="flex flex-wrap items-start gap-4">

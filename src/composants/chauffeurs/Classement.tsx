@@ -1,8 +1,9 @@
 "use client";
 
+import { LienRetour } from "@/composants/interface/LienRetour";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ChevronLeft, Lock, Minus, Trophy, TrendingDown, TrendingUp } from "lucide-react";
+import { Lock, Minus, Trophy, TrendingDown, TrendingUp } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { Carte, TableauSimple } from "@/composants/interface/Carte";
 import { Echeance, Pastille } from "@/composants/interface/Pastille";
@@ -84,10 +85,7 @@ export function Classement({
   return (
     <div className="defilement-discret flex flex-col gap-5 px-8 py-7 lg:h-full lg:overflow-y-auto">
       <nav aria-label="Fil d'Ariane" className="flex items-center gap-1.5 text-[12.5px] text-attenue">
-        <Link href="/chauffeurs" className="inline-flex items-center gap-1 font-medium text-texte-2 hover:text-accent-fonce">
-          <ChevronLeft className="size-3.5" strokeWidth={1.8} />
-          Chauffeurs
-        </Link>
+        <LienRetour href="/chauffeurs" libelle="Chauffeurs" />
       </nav>
 
       <TitreEcran
