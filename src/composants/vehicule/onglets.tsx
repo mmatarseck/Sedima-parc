@@ -21,7 +21,6 @@ import {
   fabriquerAffectationVehicule,
   fabriquerAttelage,
   fabriquerDepense,
-  fabriquerDocument,
   fabriquerEvenementIncident,
   fabriquerEvenementStatut,
   fabriquerIntervention,
@@ -41,8 +40,6 @@ import type {
   AffectationFiche,
   AttelageFiche,
   DepenseFiche,
-  DocumentFiche,
-  EtatDocument,
   EvenementJournal,
   FicheVehicule,
   PeriodeStatutFiche,
@@ -62,7 +59,6 @@ import {
   MOTIF_SORTIE,
   POSTE_DEPENSE,
   ROLE_AFFECTATION,
-  TYPE_DOCUMENT,
   groupeDuPoste,
   type Ton,
 } from "@/domaine/libelles";
@@ -75,22 +71,6 @@ import { PlanEntretien } from "./PlanEntretien";
 /* ========================================================================== */
 /* Pièces communes                                                            */
 /* ========================================================================== */
-
-const TON_ETAT: Record<EtatDocument, Ton> = {
-  "a-jour": "favorable",
-  bientot: "vigilance",
-  echu: "defavorable",
-  manquant: "defavorable",
-  permanent: "neutre",
-};
-
-const LIBELLE_ETAT: Record<EtatDocument, string> = {
-  "a-jour": "À jour",
-  bientot: "Bientôt",
-  echu: "Échue",
-  manquant: "Manquant",
-  permanent: "Permanent",
-};
 
 const LIBELLE_ORIGINE_RELEVE: Record<ReleveFiche["origine"], string> = {
   saisie: "Saisie",
@@ -105,13 +85,6 @@ const LIBELLE_ORIGINE: Record<DepenseFiche["origine"], string> = {
   "bon-de-commande": "Bon de commande",
   facture: "Facture",
 };
-
-function etatDocumentLibelle(d: DocumentFiche): string {
-  if (d.etat === "echu" && d.joursRestants !== null) return `échue de ${Math.abs(d.joursRestants)} j`;
-  if (d.etat === "bientot" && d.joursRestants !== null) return `dans ${d.joursRestants} j`;
-  if (d.etat === "a-jour" && d.joursRestants !== null) return `dans ${d.joursRestants} j`;
-  return LIBELLE_ETAT[d.etat].toLowerCase();
-}
 
 /** Cellule « Km relevé » : barrée et signalée quand le contrôle l'a écartée. */
 function KmReleve({ km, motifRejet }: { km: number | null; motifRejet: string | null }) {
@@ -650,18 +623,22 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
       valeurs: { echeance: (def ? echeanceProposee(def, aujourdhui) : null) ?? r.echeance, faitLe: aujourdhui, documentNumero: r.documentNumero ?? "", commentaire: r.commentaire ?? "" },
     });
   }
-  const documents = [...creations("document", (c) => fabriquerDocument(c, fiche.ligne.vehicule.categorie)), ...fiche.documents.map(surcharger)];
-  const manquants = documents.filter((d) => d.etat === "manquant").length;
-  const echus = documents.filter((d) => d.etat === "echu").length;
-  const visites = [...creations("visite", (c) => fabriquerVisite(c, fiche.ligne.vehicule.id)), ...fiche.visitesTechniques.map(surcharger)].sort((a, b) => b.dateRendezVous.localeCompare(a.dateRendezVous));
-  const observations = [...creations("observation", (c) => fabriquerObservation(c, fiche.ligne.vehicule.id)), ...fiche.observationsVisite.map(surcharger)];
-  const refusEnCours = visites.find((x) => x.statut === "refusee") ?? null;
-  const contreVisitePrise = visites.some((x) => x.type === "contre-visite" && x.statut === "rendez-vous");
+  /*
+   * UNE SEULE LISTE, ET RIEN DE PLUS (métier, 16 septembre 2026) : le type de
+   * document, sa validité, l'échéance de renouvellement. Les documents
+   * eux-mêmes vivent au Dossier ; les visites techniques — un processus, pas
+   * une échéance — ont rejoint l'atelier, où leurs observations étaient déjà.
+   * La validité vient du type (Paramètres › Documents), relue à l'ouverture.
+   */
+  const validiteDe = (type: string): string => {
+    const def = lireParametres().documents.types.find((t) => t.id === type);
+    return def?.validiteMois ? `${def.validiteMois} mois` : "—";
+  };
   return (
     <div className="flex flex-col gap-5">
     <Carte
-      titre="Rappels"
-      precision={rappels.length ? `${rappels.length} échéance${rappels.length > 1 ? "s" : ""} suivie${rappels.length > 1 ? "s" : ""}${rappelsEchus ? ` · ${rappelsEchus} échue${rappelsEchus > 1 ? "s" : ""}` : ""}${rappelsBientot ? ` · ${rappelsBientot} sous trente jours` : ""}` : "Aucun rappel — la prochaine échéance d'une assurance, d'une visite ou d'un certificat se saisit ici"}
+      titre="Conformité"
+      precision={rappels.length ? `${rappels.length} échéance${rappels.length > 1 ? "s" : ""} suivie${rappels.length > 1 ? "s" : ""}${rappelsEchus ? ` · ${rappelsEchus} échue${rappelsEchus > 1 ? "s" : ""}` : ""}${rappelsBientot ? ` · ${rappelsBientot} sous trente jours` : ""}` : "Aucune échéance suivie — l'assurance, la visite technique ou le certificat se saisissent ici"}
       action={
         <button type="button" onClick={() => ajouter("rappel")} className="bouton-secondaire h-9">
           <Plus className="size-4" strokeWidth={2} />
@@ -678,12 +655,21 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
         cible={cible}
         surModifier={(r) => demander({ type: "rappel", numero: r.numero, titre: `Rappel · ${r.libelle}`, champs: CHAMPS.rappel, valeurs: { echeance: r.echeance, faitLe: r.faitLe ?? "", documentNumero: r.documentNumero ?? "", commentaire: r.commentaire ?? "" } })}
         colonnes={[
-          { cle: "libelle", libelle: "Rappel", rendu: (r) => <span className="font-medium">{r.libelle}</span> },
-          { cle: "etat", libelle: "État", rendu: (r) => { const e = etatRappel(r.echeance, aujourdhui); return <Echeance ton={ETAT_RAPPEL[e].ton}>{ETAT_RAPPEL[e].libelle}</Echeance>; } },
-          { cle: "echeance", libelle: "Prochaine échéance", rendu: (r) => <span className="code whitespace-nowrap">{date(r.echeance)}</span> },
-          { cle: "faitLe", libelle: "Renouvelé le", rendu: (r) => <span className="code whitespace-nowrap">{r.faitLe ? date(r.faitLe) : "—"}</span> },
-          { cle: "document", libelle: "Pièce", rendu: (r) => (r.documentNumero ? <Numero valeur={r.documentNumero} /> : <span className="text-attenue-2">—</span>) },
-          { cle: "commentaire", libelle: "Commentaire", rendu: (r) => <span className="block max-w-[280px] truncate text-texte-2">{r.commentaire ?? ""}</span> },
+          { cle: "document", libelle: "Document", rendu: (r) => <span className="font-medium">{r.libelle}</span> },
+          { cle: "validite", libelle: "Validité", rendu: (r) => <span className="text-texte-2">{validiteDe(r.type)}</span> },
+          {
+            cle: "echeance",
+            libelle: "Échéance de renouvellement",
+            rendu: (r) => {
+              const e = etatRappel(r.echeance, aujourdhui);
+              return (
+                <span className="flex items-center gap-2">
+                  <span className="code whitespace-nowrap">{date(r.echeance)}</span>
+                  <Echeance ton={ETAT_RAPPEL[e].ton}>{ETAT_RAPPEL[e].libelle}</Echeance>
+                </span>
+              );
+            },
+          },
           {
             cle: "renouveler",
             libelle: "",
@@ -693,77 +679,6 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
               </button>
             ),
           },
-        ]}
-      />
-    </Carte>
-
-    <Carte
-      titre="Documents"
-      precision={manquants + echus > 0 ? `${echus} échu${echus > 1 ? "s" : ""} · ${manquants} manquant${manquants > 1 ? "s" : ""}` : "Tous les documents sont à jour"}
-      action={
-        <button type="button" onClick={() => ajouter("document")} className="bouton-secondaire h-9">
-          <Plus className="size-4" strokeWidth={2} />
-          Ajouter un document
-        </button>
-      }
-      sansMarge
-    >
-      <TableauSimple<DocumentFiche> reglages="fiche-vehicule.documents"
-        cle={(d) => d.numero}
-        lignes={documents}
-        numero={(d) => d.numero}
-        cible={cible}
-        surModifier={(d) => demander({ type: "document", numero: d.numero, titre: `Document · ${TYPE_DOCUMENT[d.type]}`, valeurs: d as unknown as Record<string, unknown> })}
-        colonnes={[
-          { cle: "numero", libelle: "Réf.", rendu: (d) => <Numero valeur={d.numero} /> },
-          {
-            cle: "type",
-            libelle: "Document",
-            rendu: (d) => (
-              <span className="flex flex-col">
-                <span className="font-medium">{TYPE_DOCUMENT[d.type]}</span>
-                {d.portee ? <span className="meta">{d.portee}</span> : null}
-              </span>
-            ),
-          },
-          { cle: "piece", libelle: "N° de pièce", rendu: (d) => <span className="code whitespace-nowrap text-texte-2">{d.numeroPiece ?? "—"}</span> },
-          { cle: "emetteur", libelle: "Émetteur", rendu: (d) => d.emetteur ?? "—" },
-          { cle: "effet", libelle: "Effet", rendu: (d) => <span className="code">{date(d.dateEffet)}</span> },
-          { cle: "echeance", libelle: "Échéance", rendu: (d) => <span className="code">{date(d.echeance)}</span> },
-          { cle: "montant", libelle: "Montant", alignee: "droite", rendu: (d) => montant(d.montant) },
-          { cle: "justificatif", libelle: "Justificatif", rendu: (d) => (d.justificatif ? <Justificatif present fichier={d.fichier} /> : <span className="text-attenue-2">à fournir</span>) },
-          { cle: "etat", libelle: "État", rendu: (d) => <Echeance ton={TON_ETAT[d.etat]}>{etatDocumentLibelle(d)}</Echeance> },
-        ]}
-      />
-    </Carte>
-
-    <Carte
-      titre="Visites techniques"
-      precision={
-        refusEnCours && !contreVisitePrise
-          ? `Dernière visite refusée${refusEnCours.dateLimiteContreVisite ? ` — contre-visite à passer avant le ${date(refusEnCours.dateLimiteContreVisite)}` : ""} · ${observations.filter((o) => o.statut !== "corrigee").length} observation${observations.filter((o) => o.statut !== "corrigee").length > 1 ? "s" : ""} à corriger`
-          : "Rendez-vous, passages, résultats — le document n'est renouvelé qu'à l'acceptation ; les observations d'un refus sont suivies dans Entretien"
-      }
-      sansMarge
-    >
-      <TableauSimple<VisiteTechnique> reglages="fiche-vehicule.visites"
-        cle={(x) => x.numero}
-        lignes={visites}
-        vide="Aucune visite technique enregistrée."
-        numero={(x) => x.numero}
-        cible={cible}
-        surModifier={(x) => demander({ type: "visite", numero: x.numero, titre: `${TYPE_VISITE[x.type]} technique · ${date(x.dateRendezVous)}`, valeurs: x as unknown as Record<string, unknown> })}
-        colonnes={[
-          { cle: "numero", libelle: "Réf.", rendu: (x) => <Numero valeur={x.numero} /> },
-          { cle: "type", libelle: "Type", rendu: (x) => <span className="font-medium">{TYPE_VISITE[x.type]}</span> },
-          { cle: "rdv", libelle: "Rendez-vous", rendu: (x) => <span className="code whitespace-nowrap">{date(x.dateRendezVous)}{x.heure ? ` ${x.heure}` : ""}</span> },
-          { cle: "centre", libelle: "Centre", rendu: (x) => x.centre },
-          { cle: "passage", libelle: "Passée le", rendu: (x) => <span className="code">{x.datePassage ? date(x.datePassage) : "—"}</span> },
-          { cle: "statut", libelle: "Résultat", rendu: (x) => <Pastille ton={STATUT_VISITE[x.statut].ton}>{STATUT_VISITE[x.statut].libelle}</Pastille> },
-          { cle: "pv", libelle: "N° de PV", rendu: (x) => <span className="code whitespace-nowrap text-texte-2">{x.numeroPv ?? "—"}</span> },
-          { cle: "limite", libelle: "Contre-visite avant", rendu: (x) => (x.dateLimiteContreVisite ? <Echeance ton={x.statut === "refusee" && !contreVisitePrise ? "defavorable" : "neutre"}>{date(x.dateLimiteContreVisite)}</Echeance> : <span className="text-attenue-2">—</span>) },
-          { cle: "obs", libelle: "Observations", alignee: "droite", rendu: (x) => { const n = observations.filter((o) => o.visiteId === x.id).length; return n ? `${n}` : <span className="text-attenue-2">0</span>; } },
-          { cle: "commentaire", libelle: "Commentaire", rendu: (x) => <span className="block max-w-[280px] truncate text-texte-2">{x.commentaire ?? "—"}</span> },
         ]}
       />
     </Carte>
@@ -835,6 +750,12 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
   const observations = [...creations("observation", (c) => fabriquerObservation(c, fiche.ligne.vehicule.id)), ...fiche.observationsVisite.map(surcharger)];
   const observationsOuvertes = observations.filter((o) => o.statut !== "corrigee");
   const visitesParId = new Map([...creations("visite", (c) => fabriquerVisite(c, fiche.ligne.vehicule.id)), ...fiche.visitesTechniques].map((x) => [x.id, x]));
+  /* Les visites techniques, venues de l'onglet Conformité le 16 septembre 2026 :
+     un processus — rendez-vous, passage, résultat —, pas une échéance. Elles
+     vivent ici avec les observations qu'elles produisent. */
+  const visites = [...creations("visite", (c) => fabriquerVisite(c, fiche.ligne.vehicule.id)), ...fiche.visitesTechniques.map(surcharger)].sort((a, b) => b.dateRendezVous.localeCompare(a.dateRendezVous));
+  const refusEnCours = visites.find((x) => x.statut === "refusee") ?? null;
+  const contreVisitePrise = visites.some((x) => x.type === "contre-visite" && x.statut === "rendez-vous");
 
   const atelier: LigneAtelier[] = [
     ...interventions.map(
@@ -941,6 +862,37 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
           ]}
         />
       </Carte>
+
+    <Carte
+      titre="Visites techniques"
+      precision={
+        refusEnCours && !contreVisitePrise
+          ? `Dernière visite refusée${refusEnCours.dateLimiteContreVisite ? ` — contre-visite à passer avant le ${date(refusEnCours.dateLimiteContreVisite)}` : ""} · ${observations.filter((o) => o.statut !== "corrigee").length} observation${observations.filter((o) => o.statut !== "corrigee").length > 1 ? "s" : ""} à corriger`
+          : "Rendez-vous, passages, résultats — le document n'est renouvelé qu'à l'acceptation ; les observations d'un refus sont suivies dans Entretien"
+      }
+      sansMarge
+    >
+      <TableauSimple<VisiteTechnique> reglages="fiche-vehicule.visites"
+        cle={(x) => x.numero}
+        lignes={visites}
+        vide="Aucune visite technique enregistrée."
+        numero={(x) => x.numero}
+        cible={cible}
+        surModifier={(x) => demander({ type: "visite", numero: x.numero, titre: `${TYPE_VISITE[x.type]} technique · ${date(x.dateRendezVous)}`, valeurs: x as unknown as Record<string, unknown> })}
+        colonnes={[
+          { cle: "numero", libelle: "Réf.", rendu: (x) => <Numero valeur={x.numero} /> },
+          { cle: "type", libelle: "Type", rendu: (x) => <span className="font-medium">{TYPE_VISITE[x.type]}</span> },
+          { cle: "rdv", libelle: "Rendez-vous", rendu: (x) => <span className="code whitespace-nowrap">{date(x.dateRendezVous)}{x.heure ? ` ${x.heure}` : ""}</span> },
+          { cle: "centre", libelle: "Centre", rendu: (x) => x.centre },
+          { cle: "passage", libelle: "Passée le", rendu: (x) => <span className="code">{x.datePassage ? date(x.datePassage) : "—"}</span> },
+          { cle: "statut", libelle: "Résultat", rendu: (x) => <Pastille ton={STATUT_VISITE[x.statut].ton}>{STATUT_VISITE[x.statut].libelle}</Pastille> },
+          { cle: "pv", libelle: "N° de PV", rendu: (x) => <span className="code whitespace-nowrap text-texte-2">{x.numeroPv ?? "—"}</span> },
+          { cle: "limite", libelle: "Contre-visite avant", rendu: (x) => (x.dateLimiteContreVisite ? <Echeance ton={x.statut === "refusee" && !contreVisitePrise ? "defavorable" : "neutre"}>{date(x.dateLimiteContreVisite)}</Echeance> : <span className="text-attenue-2">—</span>) },
+          { cle: "obs", libelle: "Observations", alignee: "droite", rendu: (x) => { const n = observations.filter((o) => o.visiteId === x.id).length; return n ? `${n}` : <span className="text-attenue-2">0</span>; } },
+          { cle: "commentaire", libelle: "Commentaire", rendu: (x) => <span className="block max-w-[280px] truncate text-texte-2">{x.commentaire ?? "—"}</span> },
+        ]}
+      />
+    </Carte>
 
     </div>
   );
