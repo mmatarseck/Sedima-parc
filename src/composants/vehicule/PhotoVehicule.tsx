@@ -138,7 +138,8 @@ export function PhotoVehicule({
     {agrandie && url && onChanger ? (
       <Agrandissement
         url={url}
-        immatriculation={immatriculation}
+        sujet={immatriculation}
+        alt={`Véhicule ${immatriculation}`}
         charge={charge}
         onRemplacer={() => champ.current?.click()}
         onRetirer={() => {
@@ -157,16 +158,19 @@ export function PhotoVehicule({
  * y sont écrites en toutes lettres plutôt qu'en icônes au survol : on n'y arrive
  * que délibérément, et retirer une photo ne doit pas se faire d'un frôlement.
  */
-function Agrandissement({
+export function Agrandissement({
   url,
-  immatriculation,
+  sujet,
+  alt,
   charge,
   onRemplacer,
   onRetirer,
   onFermer,
 }: {
   url: string;
-  immatriculation: string;
+  /** Ce que le titre nomme : une immatriculation, le nom d'une personne. */
+  sujet: string;
+  alt: string;
   charge: boolean;
   onRemplacer: () => void;
   onRetirer: () => void;
@@ -183,11 +187,11 @@ function Agrandissement({
   return (
     <>
       <button type="button" aria-label="Fermer" onClick={onFermer} className="fixed inset-0 z-50 cursor-default bg-encre/70" />
-      <div role="dialog" aria-modal="true" aria-label={`Photo de ${immatriculation}`} className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div role="dialog" aria-modal="true" aria-label={`Photo de ${sujet}`} className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="pointer-events-auto flex max-h-[92vh] w-full max-w-[720px] flex-col overflow-hidden rounded-[16px] border border-bordure bg-surface shadow-modale" style={{ animation: "apparition 160ms ease-out" }}>
           <div className="flex items-center gap-3 border-b border-bordure px-5 py-3">
             <h2 className="titre-bloc min-w-0 flex-1 truncate">
-              Photo · <span className="code">{immatriculation}</span>
+              Photo · <span className="code">{sujet}</span>
             </h2>
             <button type="button" onClick={onFermer} aria-label="Fermer" className="grid size-7 shrink-0 place-items-center rounded-[8px] text-attenue hover:bg-surface-3 hover:text-texte">
               <X className="size-4" strokeWidth={2} />
@@ -195,7 +199,7 @@ function Agrandissement({
           </div>
           <div className="min-h-0 flex-1 bg-surface-2 p-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt={`Véhicule ${immatriculation}`} className="mx-auto max-h-[62vh] w-auto rounded-[10px] object-contain" />
+            <img src={url} alt={alt} className="mx-auto max-h-[62vh] w-auto rounded-[10px] object-contain" />
           </div>
           <div className="flex flex-wrap items-center gap-2.5 border-t border-bordure px-5 py-3">
             <p className="meta min-w-0 flex-1">Remplacer ou retirer la photo se trace comme toute modification de la fiche.</p>
