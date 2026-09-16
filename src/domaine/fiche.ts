@@ -20,7 +20,7 @@ export interface PieceDossier {
   type: "document" | "visite" | "intervention" | "depense" | "plein";
   /** La colonne du fichier sur cette ligne — « fichier » ou « photo », selon la table. */
   champFichier: "fichier" | "photo";
-  famille: "reglementaire" | "visite" | "cout";
+  famille: "reglementaire" | "visite";
   libelle: string;
   precision: string;
   /** « AAAA-MM-JJ », pour trier du plus récent au plus ancien. */
@@ -28,10 +28,12 @@ export interface PieceDossier {
   fichier: string;
 }
 
+/* Deux familles depuis le 16 septembre 2026 au soir : les factures ont quitté le
+   dossier pour vivre sur la ligne de dépense qu'elles justifient — c'est là
+   qu'on les cherche, à côté du montant. */
 export const FAMILLE_PIECE: Record<PieceDossier["famille"], { libelle: string; precision: string }> = {
   reglementaire: { libelle: "Pièces réglementaires", precision: "Carte grise, assurance en cours, certificat de salubrité" },
   visite: { libelle: "Visites techniques", precision: "Les procès-verbaux des centres" },
-  cout: { libelle: "Factures et autres dépenses", precision: "Interventions, dépenses, pleins — ce qui a coûté" },
 };
 
 export interface DocumentFiche {
@@ -146,6 +148,8 @@ export interface DepenseFiche {
   reference: string | null;
   origine: "caisse" | "bon-de-commande" | "facture";
   justificatif: boolean;
+  /** La facture ou le reçu, dans le seau : posé sur la ligne, ouvert depuis elle (16 septembre 2026). */
+  photo?: string | null;
   /** Compteur relevé au moment de la dépense — chaque dépense est une occasion de le lire. */
   km: number | null;
   /** Renseigné quand le relevé a été écarté par le contrôle de cohérence. */

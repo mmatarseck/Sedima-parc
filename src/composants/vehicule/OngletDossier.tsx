@@ -11,21 +11,24 @@ import { urlPhoto } from "@/lib/photos";
 import { useAjoutVehicule } from "./ajout";
 
 /* ============================================================================
- * Le dossier d'un véhicule : ses pièces, en trois familles, ouvertes sur place.
+ * Le dossier d'un véhicule : ses pièces, en deux familles, ouvertes sur place.
  *
- * TROIS FAMILLES, TOUJOURS LÀ. Demande du métier du 16 septembre 2026 : « tous
- * les véhicules n'ont pas les trois sous-dossiers ». La première version ne
- * montrait une famille que si elle avait une pièce, et le dossier entier se
- * taisait quand il n'y en avait aucune. Or un dossier vide dit quelque chose —
- * il dit ce qui manque —, et c'est depuis chaque famille qu'on dépose ce qui
- * lui revient. Les trois cartes sont donc là pour chaque véhicule, vides ou
- * non, chacune avec son bouton « Déposer ».
+ * DEUX FAMILLES, TOUJOURS LÀ. Le réglementaire — carte grise, assurance,
+ * salubrité — et les procès-verbaux de visite. Les cartes sont là pour chaque
+ * véhicule, vides ou non (métier, 16 septembre 2026 : « tous les véhicules
+ * n'ont pas les sous-dossiers ») : un dossier vide dit ce qui manque, et c'est
+ * depuis chaque famille qu'on dépose ce qui lui revient.
+ *
+ * LES FACTURES N'Y SONT PLUS. Elles y ont vécu quelques heures, en troisième
+ * famille ; le métier les a voulues « sur chaque ligne de dépense équivalente »
+ * et a retiré la rubrique le soir même. C'est plus juste : une facture se
+ * cherche à côté du montant qu'elle justifie, pas dans un classeur à part. Elle
+ * s'ouvre depuis la ligne, dans l'atelier et dans les dépenses.
  *
  * DÉPOSER, C'EST CRÉER LA LIGNE QUI PORTE LA PIÈCE. Une pièce n'existe pas
- * seule : un scan d'assurance est un document, un PV est une visite, une
- * facture est une dépense ou une intervention. Le bouton ouvre donc le
- * formulaire de la ligne, avec son champ de fichier — et la pièce arrive au
- * dossier avec ce qui la nomme.
+ * seule : un scan d'assurance est un document, un PV est une visite. Le bouton
+ * ouvre donc le formulaire de la ligne, avec son champ de fichier — et la
+ * pièce arrive au dossier avec ce qui la nomme.
  *
  * RETIRER, C'EST VIDER LE CHAMP SUR LA LIGNE, pas effacer la ligne : la
  * dépense reste, la visite reste ; seul le fichier s'en va. Le formulaire
@@ -36,13 +39,12 @@ import { useAjoutVehicule } from "./ajout";
  * rien.
  * ==========================================================================*/
 
-const ORDRE: PieceDossier["famille"][] = ["reglementaire", "visite", "cout"];
+const ORDRE: PieceDossier["famille"][] = ["reglementaire", "visite"];
 
 /** La ligne qu'on crée pour déposer dans une famille. */
 const DEPOT: Record<PieceDossier["famille"], { cible: "document" | "visite" | "depense"; libelle: string }> = {
   reglementaire: { cible: "document", libelle: "Déposer un document" },
   visite: { cible: "visite", libelle: "Déposer un procès-verbal" },
-  cout: { cible: "depense", libelle: "Déposer une facture" },
 };
 
 function estImage(chemin: string): boolean {

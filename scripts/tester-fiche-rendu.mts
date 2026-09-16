@@ -180,7 +180,6 @@ if (!rendues.has("AA019EA")) {
         { numero: "DOC-2026-90001", type: "document" as const, champFichier: "fichier" as const, famille: "reglementaire" as const, libelle: "Carte grise", precision: "sans référence", date: "2026-09-01", fichier: "pieces/documents/2026/09/essai-carte-grise.pdf" },
         { numero: "DOC-2026-90002", type: "document" as const, champFichier: "fichier" as const, famille: "reglementaire" as const, libelle: "Assurance", precision: "AXA · échéance 30/06/2027", date: "2026-07-01", fichier: "pieces/documents/2026/09/essai-police.jpg" },
         { numero: "VTE-2026-90001", type: "visite" as const, champFichier: "fichier" as const, famille: "visite" as const, libelle: "Procès-verbal de visite technique", precision: "CCVA Rufisque · PV 12345", date: "2026-08-15", fichier: "pieces/documents/2026/08/essai-pv.pdf" },
-        { numero: "INT-2026-90001", type: "intervention" as const, champFichier: "fichier" as const, famille: "cout" as const, libelle: "Intervention · Plaquettes", precision: "Garage SEDIMA · 85 000 F", date: "2026-09-08", fichier: "pieces/pieces/2026/09/essai-facture.jpg" },
       ],
     };
     try {
@@ -188,9 +187,9 @@ if (!rendues.has("AA019EA")) {
         React.createElement(FournisseurEdition, { sujet: `vehicule:${v.immatriculation}`, href: `/flotte/${v.immatriculation}` } as any,
           React.createElement(FicheVehicule, { fiche: garnie, ongletInitial: "dossier", discussionInitiale: false, cible: undefined } as any)),
       );
-      const familles = html.includes("Pièces réglementaires (2)") && html.includes("Visites techniques (1)") && html.includes("Factures et autres dépenses (1)");
-      const nomme = html.includes("Carte grise") && html.includes("Assurance") && html.includes("Procès-verbal de visite technique") && html.includes("Intervention · Plaquettes");
-      console.log(`${familles && nomme ? "ok   " : "ÉCHEC"} le dossier garni range ses quatre pièces en trois familles et les nomme`);
+      const familles = html.includes("Pièces réglementaires (2)") && html.includes("Visites techniques (1)") && !html.includes("Factures et autres dépenses");
+      const nomme = html.includes("Carte grise") && html.includes("Assurance") && html.includes("Procès-verbal de visite technique");
+      console.log(`${familles && nomme ? "ok   " : "ÉCHEC"} le dossier garni range ses trois pièces en deux familles et les nomme`);
       if (!familles || !nomme) echecs++;
     } catch (e) {
       echecs++;

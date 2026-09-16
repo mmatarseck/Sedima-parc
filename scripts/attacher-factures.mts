@@ -1,6 +1,5 @@
 /* ============================================================================
- * Attache à chaque dépense ou intervention le bon de commande ou la facture
- * qui la justifie.
+ * Attache à chaque dépense le bon de commande ou la facture qui la justifie.
  *
  * Demande du métier du 16 septembre 2026 : « déposer aussi les factures et
  * autres par véhicule — les DA en PDF et les factures sont dans le dossier »,
@@ -12,9 +11,11 @@
  * porte les mêmes fichiers.
  *
  * LA CLÉ, ET ELLE EST CERTAINE. Les dépenses chargées depuis les bons de
- * commande portent ce numéro en référence — « BC15665 », « CMD2-26080069 » —
- * et les interventions le portent avant le premier « · » de la leur. Le même
- * numéro dans le nom du PDF désigne la même pièce : la ligne reçoit son fichier.
+ * commande portent ce numéro en référence — « BC15665 », « CMD2-26080069 ». Le
+ * même numéro dans le nom du PDF désigne la même pièce : la ligne reçoit son
+ * fichier. SUR LA DÉPENSE SEULEMENT : le métier l'a demandé ainsi le
+ * 16 septembre au soir — « les factures dans chaque ligne de dépense
+ * équivalente » —, et l'intervention née du même bon n'en porte pas de copie.
  * Une dépense de caisse, elle, cite un récapitulatif Excel et une ligne : son
  * justificatif est un reçu papier, il n'est pas sur le disque — il se
  * photographie depuis la ligne, dans l'application.
@@ -75,12 +76,11 @@ function numerosDe(texte: string): string[] {
 
 const fichiers = readdirSync(DOSSIER).filter((f) => /\.pdf$/i.test(f)).sort();
 
-const [depenses, interventions] = await Promise.all([
+const [depenses] = await Promise.all([
   pg.from("depense").select("numero, reference, vehicule_id, photo, libelle").eq("origine", "bon-de-commande").not("reference", "is", null).limit(5000).returns<{ numero: string; reference: string; vehicule_id: string | null; photo: string | null; libelle: string }[]>(),
-  pg.from("intervention").select("numero, reference, vehicule_id, fichier, objet").not("reference", "is", null).limit(5000).returns<{ numero: string; reference: string; vehicule_id: string; fichier: string | null; objet: string }[]>(),
 ]);
-if (depenses.error || interventions.error) {
-  console.error(`Lecture impossible : ${depenses.error?.message ?? interventions.error?.message}`);
+if (depenses.error) {
+  console.error(`Lecture impossible : ${depenses.error.message}`);
   process.exit(1);
 }
 
@@ -98,9 +98,8 @@ const ranger = (cle: string, p: Porteuse) => {
   porteusesParNumero.set(cle, liste);
 };
 for (const d of depenses.data) for (const n of numerosDe(d.reference)) ranger(n, { table: "depense", numero: d.numero, colonne: "photo", dejaAttache: Boolean(d.photo), libelle: d.libelle });
-for (const i of interventions.data) for (const n of numerosDe(i.reference.split(" · ")[0] ?? "")) ranger(n, { table: "intervention", numero: i.numero, colonne: "fichier", dejaAttache: Boolean(i.fichier), libelle: i.objet });
 
-console.log(`${fichiers.length} PDF au dossier · ${depenses.data.length} dépenses de bon de commande et ${interventions.data.length} interventions référencées en base${DEPOSER ? "" : " — essai à blanc, rien ne sera déposé"}\n`);
+console.log(`${fichiers.length} PDF au dossier · ${depenses.data.length} dépenses de bon de commande référencées en base${DEPOSER ? "" : " — essai à blanc, rien ne sera déposé"}\n`);
 
 let aDeposer = 0;
 let deposees = 0;

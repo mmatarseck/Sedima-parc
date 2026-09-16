@@ -715,6 +715,8 @@ interface LigneAtelier {
   reference: string | null;
   /** Caisse, bon de commande ou facture — une fourniture seulement. */
   origine: DepenseFiche["origine"] | null;
+  /** La facture ou le reçu de la dépense, dans le seau : s'ouvre depuis la ligne (16 septembre 2026). */
+  fichier: string | null;
   modifier: () => void;
 }
 
@@ -755,6 +757,7 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
         montant: i.montant,
         reference: i.reference,
         origine: null,
+        fichier: null,
         modifier: () => demander({ type: "intervention", numero: i.numero, titre: `Intervention · ${i.objet}`, valeurs: i as unknown as Record<string, unknown> }),
       }),
     ),
@@ -777,6 +780,7 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
         montant: d.montant,
         reference: d.reference,
         origine: d.origine,
+        fichier: d.photo ?? null,
         modifier: () => demander({ type: "depense", numero: d.numero, titre: `Dépense · ${d.libelle}`, valeurs: d as unknown as Record<string, unknown> }),
       }),
     ),
@@ -828,7 +832,10 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
             { cle: "origine", libelle: "Origine", largeur: "130px", parDefaut: false, rendu: (l) => (l.origine ? <PastilleOrigine origine={l.origine} /> : <span className="text-attenue-2">—</span>) },
             { cle: "km", libelle: "Km relevé", largeur: "110px", alignee: "droite", parDefaut: false, rendu: (l) => <KmReleve km={l.km} motifRejet={l.kmMotifRejet} /> },
             { cle: "immob", libelle: "Immob.", largeur: "84px", alignee: "droite", parDefaut: false, rendu: (l) => (l.immobilisationJours === null ? <span className="text-attenue" title="Une fourniture n'immobilise pas ; pour une intervention, durée non relevée sur la pièce">—</span> : `${l.immobilisationJours} j`) },
-            { cle: "ref", libelle: "Pièce", largeur: "130px", parDefaut: false, rendu: (l) => <span className="code whitespace-nowrap text-accent-fonce">{l.reference ?? "—"}</span> },
+            /* La facture s'ouvre depuis la ligne (métier, 16 septembre 2026) : pour une
+               dépense, le justificatif signé au clic ; pour une intervention, la
+               référence de sa pièce. */
+            { cle: "ref", libelle: "Pièce", largeur: "130px", rendu: (l) => (l.fichier ? <Justificatif present fichier={l.fichier} /> : <span className="code whitespace-nowrap text-accent-fonce">{l.reference ?? "—"}</span>) },
           ]}
         />
       </Carte>

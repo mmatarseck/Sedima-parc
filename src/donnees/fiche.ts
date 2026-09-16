@@ -194,7 +194,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
    */
   const parc = await parcServeur();
   const vehiculeId = parc.vehicules.find((v) => v.immatriculation === ligne.vehicule.immatriculation)?.id ?? null;
-  const [lecture, livraisons, piecesJointes, attelages, incidents, rappels, piecesHorsDocuments] = await Promise.all([
+  const [lecture, livraisons, piecesJointes, attelages, incidents, rappels, piecesHorsDocuments, photosDepenses] = await Promise.all([
     client.rpc("lire_fiche", { immat: canonique }).maybeSingle<FicheJson | null>(),
     vehiculeId ? livraisonsDuVehicule(client, vehiculeId) : Promise.resolve([]),
     vehiculeId ? piecesJointesDuVehicule(client, vehiculeId) : Promise.resolve(new Map<string, string>()),
@@ -202,6 +202,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
     vehiculeId ? incidentsDuVehicule(client, vehiculeId) : Promise.resolve([]),
     vehiculeId ? rappelsDuVehicule(client, vehiculeId, parametres) : Promise.resolve([]),
     vehiculeId ? piecesDuVehicule(client, vehiculeId) : Promise.resolve([]),
+    vehiculeId ? photosDesDepenses(client, vehiculeId) : Promise.resolve(new Map<string, string>()),
   ]);
   /* Fonction pas encore jouée : la fiche se dresse sur la ligne seule, sans historique — pas d'erreur. */
   if (lecture.error) console.warn(`Fiche ${canonique} : lire_fiche() indisponible (${lecture.error.message}), fiche dressée sans historique.`);
@@ -216,6 +217,8 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
        ne la projette pas, et réécrire la fonction entière pour une colonne
        coûterait plus qu'une requête bornée au véhicule. */
     const documents = faits.documents.map((d) => ({ ...d, fichier: piecesJointes.get(d.numero) ?? null }));
+    /* La facture d'une dépense vit sur sa ligne : on la pose ici, comme la pièce jointe d'un document. */
+    const depenses = faits.depenses.map((d) => ({ ...d, photo: photosDepenses.get(d.numero) ?? null }));
     /* Les documents qui portent un scan rejoignent le dossier, avec les pièces
        des visites, des interventions, des dépenses et des pleins. */
     const libelles = new Map(parametres.documents.types.map((t) => [t.id, t.libelle]));
@@ -234,7 +237,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
         })),
       ...piecesHorsDocuments,
     ];
-    return assemblerFiche(ligne, { ...faits, documents, livraisons, incidents, rappels, pieces, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
+    return assemblerFiche(ligne, { ...faits, documents, depenses, livraisons, incidents, rappels, pieces, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
   } catch (e) {
     console.error(`Fiche ${canonique} : assemblage impossible sur l'historique lu — ${e instanceof Error ? e.stack ?? e.message : String(e)}`);
     return assemblerFiche(ligne, { ...FAITS_VIDES, livraisons, incidents, rappels, pieces: piecesHorsDocuments, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
@@ -263,19 +266,21 @@ interface FichierBase {
 }
 
 async function piecesDuVehicule(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<PieceDossier[]> {
-  const [visites, interventions, depenses, pleins] = await Promise.all([
-    client.from("visite_technique").select("numero, date_passage, date_rendez_vous, centre, numero_pv, fichier").eq("vehicule_id", vehiculeId).not("fichier", "is", null).limit(500).returns<(FichierBase & { date_passage: string | null; date_rendez_vous: string; centre: string; numero_pv: string | null })[]>(),
-    client.from("intervention").select("numero, date, objet, montant, fichier, prestataire (raison_sociale)").eq("vehicule_id", vehiculeId).not("fichier", "is", null).limit(2000).returns<(FichierBase & { objet: string; montant: number; prestataire: { raison_sociale: string } | null })[]>(),
-    client.from("depense").select("numero, date, libelle, beneficiaire, montant, photo").eq("vehicule_id", vehiculeId).not("photo", "is", null).limit(5000).returns<{ numero: string; date: string; libelle: string; beneficiaire: string | null; montant: number; photo: string }[]>(),
-    client.from("plein").select("numero, date, litres, montant, photo").eq("vehicule_id", vehiculeId).not("photo", "is", null).limit(5000).returns<{ numero: string; date: string; litres: number | string; montant: number; photo: string }[]>(),
-  ]);
-  const francs = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} F`;
-  return [
-    ...lignesLues("Procès-verbaux de visite", visites).map((v): PieceDossier => ({ numero: v.numero, type: "visite", champFichier: "fichier", famille: "visite", libelle: "Procès-verbal de visite technique", precision: [v.centre, v.numero_pv ? `PV ${v.numero_pv}` : null].filter(Boolean).join(" · "), date: v.date_passage ?? v.date_rendez_vous, fichier: v.fichier })),
-    ...lignesLues("Factures d'intervention", interventions).map((i): PieceDossier => ({ numero: i.numero, type: "intervention", champFichier: "fichier", famille: "cout", libelle: `Intervention · ${i.objet}`, precision: [i.prestataire?.raison_sociale ?? null, francs(i.montant)].filter(Boolean).join(" · "), date: i.date, fichier: i.fichier })),
-    ...lignesLues("Pièces des dépenses", depenses).map((d): PieceDossier => ({ numero: d.numero, type: "depense", champFichier: "photo", famille: "cout", libelle: `Dépense · ${d.libelle}`, precision: [d.beneficiaire, francs(d.montant)].filter(Boolean).join(" · "), date: d.date, fichier: d.photo })),
-    ...lignesLues("Pièces des pleins", pleins).map((p): PieceDossier => ({ numero: p.numero, type: "plein", champFichier: "photo", famille: "cout", libelle: `Plein · ${Number(p.litres).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} L`, precision: francs(p.montant), date: p.date, fichier: p.photo })),
-  ];
+  const visites = await client.from("visite_technique").select("numero, date_passage, date_rendez_vous, centre, numero_pv, fichier").eq("vehicule_id", vehiculeId).not("fichier", "is", null).limit(500).returns<(FichierBase & { date_passage: string | null; date_rendez_vous: string; centre: string; numero_pv: string | null })[]>();
+  return lignesLues("Procès-verbaux de visite", visites).map((v): PieceDossier => ({ numero: v.numero, type: "visite", champFichier: "fichier", famille: "visite", libelle: "Procès-verbal de visite technique", precision: [v.centre, v.numero_pv ? `PV ${v.numero_pv}` : null].filter(Boolean).join(" · "), date: v.date_passage ?? v.date_rendez_vous, fichier: v.fichier }));
+}
+
+/**
+ * La pièce de chaque dépense du véhicule, par numéro — la facture ou le reçu.
+ *
+ * Elle ne va plus au dossier : depuis le 16 septembre 2026 au soir, la facture
+ * vit sur la ligne de dépense qu'elle justifie, et s'ouvre depuis elle, à côté
+ * du montant. `lire_fiche()` ne projette pas la colonne : une lecture bornée au
+ * véhicule, comme pour les pièces jointes des documents.
+ */
+async function photosDesDepenses(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<Map<string, string>> {
+  const lecture = await client.from("depense").select("numero, photo").eq("vehicule_id", vehiculeId).not("photo", "is", null).limit(5000).returns<{ numero: string; photo: string }[]>();
+  return new Map(lignesLues("Pièces des dépenses", lecture).map((d) => [d.numero, d.photo]));
 }
 
 /** La famille d'un document, d'après son type : les visites d'un côté, tout le reste est réglementaire. */
