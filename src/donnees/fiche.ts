@@ -172,7 +172,10 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
   const canonique = normaliser(brut);
   const lignes = await lignesFlotte(parametres);
   /* Par immatriculation, ou par numéro de lot pour un véhicule à recevoir : sans plaque encore, il a sa fiche complète comme les autres — c'est la seule fiche de l'application. */
-  const ligne = lignes.find((l) => l.vehicule.immatriculation === canonique || l.vehicule.id === brut.toLowerCase()) ?? null;
+  /* La clé de la ligne se compare normalisée, comme l'adresse : une clé
+     entrée sale — « (NOUVEAUVRAC1) », d'avant la règle unique du 16 septembre
+     2026 — ouvre encore sa fiche, d'où l'on corrige la plaque. */
+  const ligne = lignes.find((l) => normaliser(l.vehicule.immatriculation) === canonique || l.vehicule.id === brut.toLowerCase()) ?? null;
   if (!ligne) return null;
   const client = await clientServeur();
   /*

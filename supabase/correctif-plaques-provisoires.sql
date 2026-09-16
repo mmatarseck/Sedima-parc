@@ -48,30 +48,36 @@ select v.id, v.immatriculation, v.vin, v.marque, v.appellation, v.statut::text a
 -- PARTIE 2 — la correction. À jouer après avoir lu la partie 1.
 -- ---------------------------------------------------------------------------
 
+-- Sans expression régulière ni chaîne de CTE : la première version, jouée le
+-- 16 septembre au soir, n'a touché aucune ligne — « '^\(' » se lit « ^( »
+-- selon le réglage de l'éditeur, et l'expression échoue. Deux mises à jour
+-- lisibles, gardées sur l'identifiant, la parenthèse ouvrante et le châssis.
+
 begin;
 
-with cibles as (
-  select v.id, v.immatriculation as avant, 'VIN' || upper(regexp_replace(v.vin, '[^A-Za-z0-9]', '', 'g')) as apres
-    from vehicule v
-   where v.id in ('eef375e0-13e4-4b7e-a42c-ab81d154e50c',
-                  'c666a237-7668-4796-9734-9c45165429f6',
-                  '193ed330-54ab-4696-9791-573d9f6d12a7',
-                  'af6187a4-06da-4efd-954a-f74db763a5b6')
-     and v.immatriculation ~ '^\('
-     and v.vin is not null
-),
-journal as (
-  update modification m
-     set numero = c.apres
-    from cibles c
-   where m.table_cible = 'vehicule' and m.numero = c.avant
-  returning m.id
-)
+-- 2a. Le journal d'abord : il cite l'ancienne clé, qu'on va changer.
+update modification m
+   set numero = 'VIN' || upper(regexp_replace(v.vin, '[^A-Za-z0-9]', '', 'g'))
+  from vehicule v
+ where m.table_cible = 'vehicule'
+   and m.numero = v.immatriculation
+   and v.id in ('eef375e0-13e4-4b7e-a42c-ab81d154e50c',
+                'c666a237-7668-4796-9734-9c45165429f6',
+                '193ed330-54ab-4696-9791-573d9f6d12a7',
+                'af6187a4-06da-4efd-954a-f74db763a5b6')
+   and left(v.immatriculation, 1) = '('
+   and v.vin is not null;
+
+-- 2b. Les véhicules.
 update vehicule v
-   set immatriculation = c.apres,
+   set immatriculation = 'VIN' || upper(regexp_replace(v.vin, '[^A-Za-z0-9]', '', 'g')),
        modifie_le = now()
-  from cibles c
- where v.id = c.id;
+ where v.id in ('eef375e0-13e4-4b7e-a42c-ab81d154e50c',
+                'c666a237-7668-4796-9734-9c45165429f6',
+                '193ed330-54ab-4696-9791-573d9f6d12a7',
+                'af6187a4-06da-4efd-954a-f74db763a5b6')
+   and left(v.immatriculation, 1) = '('
+   and v.vin is not null;
 
 commit;
 
@@ -89,4 +95,4 @@ select v.immatriculation, v.vin, v.marque, v.appellation, v.statut::text as stat
                 'af6187a4-06da-4efd-954a-f74db763a5b6')
  order by v.cree_le;
 
-select count(*) as cles_entre_parentheses from vehicule where immatriculation ~ '^\(';
+select count(*) as cles_entre_parentheses from vehicule where left(immatriculation, 1) = '(';
