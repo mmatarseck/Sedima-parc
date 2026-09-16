@@ -17,6 +17,7 @@ import { useAjoutVehicule } from "./ajout";
 import { CHAMPS } from "@/composants/transactions/champs";
 import { lireParametres } from "@/lib/parametres-demo";
 import { ETAT_RAPPEL, echeanceProposee, etatRappel, type Rappel } from "@/domaine/rappels";
+import { apparierAtelier } from "@/domaine/atelier";
 import {
   fabriquerAffectationVehicule,
   fabriquerAttelage,
@@ -39,6 +40,7 @@ import type {
   DepenseFiche,
   EvenementJournal,
   FicheVehicule,
+  Intervention,
   PeriodeStatutFiche,
   PleinFiche,
   ReleveFiche,
@@ -740,28 +742,37 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
    * groupe. Elle n'apparaissait donc **sur aucun onglet de la fiche**.
    */
   const fournitures = [...depensesCreees, ...fiche.depenses.map(surcharger)].filter((d) => groupeDuPoste(d.poste) === "maintenance");
-  const total = interventions.reduce((s, i) => s + i.montant, 0) + fournitures.reduce((s, d) => s + d.montant, 0);
 
+  /*
+   * UNE LIGNE PAR FAIT (métier, 16 septembre 2026, décision « A »). Le
+   * chargeur des bons de commande a créé une intervention et une dépense par
+   * bon, jumelles par leur suffixe ; la base a raison de tenir les deux — la
+   * dépense est la maille des coûts —, l'écran n'a pas à les montrer deux
+   * fois. La paire devient une ligne : le geste, chez qui, au compteur, la
+   * durée viennent de l'intervention ; le montant, l'origine et la facture
+   * viennent de la dépense. « Modifier » ouvre l'intervention.
+   */
+  const { paires, interventionsSeules, depensesSeules } = apparierAtelier(interventions, fournitures);
+  const ligneIntervention = (i: Intervention, d: DepenseFiche | null): LigneAtelier => ({
+    cle: `int-${i.numero}`,
+    numero: i.numero,
+    date: i.date,
+    nature: i.type === "preventif" ? "preventif" : "curatif",
+    objet: i.objet,
+    tiers: i.garage,
+    km: i.km,
+    kmMotifRejet: null,
+    immobilisationJours: i.immobilisationJours,
+    montant: d ? d.montant : i.montant,
+    reference: i.reference,
+    origine: d ? d.origine : null,
+    fichier: d?.photo ?? null,
+    modifier: () => demander({ type: "intervention", numero: i.numero, titre: `Intervention · ${i.objet}`, valeurs: i as unknown as Record<string, unknown> }),
+  });
   const atelier: LigneAtelier[] = [
-    ...interventions.map(
-      (i): LigneAtelier => ({
-        cle: `int-${i.numero}`,
-        numero: i.numero,
-        date: i.date,
-        nature: i.type === "preventif" ? "preventif" : "curatif",
-        objet: i.objet,
-        tiers: i.garage,
-        km: i.km,
-        kmMotifRejet: null,
-        immobilisationJours: i.immobilisationJours,
-        montant: i.montant,
-        reference: i.reference,
-        origine: null,
-        fichier: null,
-        modifier: () => demander({ type: "intervention", numero: i.numero, titre: `Intervention · ${i.objet}`, valeurs: i as unknown as Record<string, unknown> }),
-      }),
-    ),
-    ...fournitures.map(
+    ...paires.map(({ intervention, depense }) => ligneIntervention(intervention, depense)),
+    ...interventionsSeules.map((i) => ligneIntervention(i, null)),
+    ...depensesSeules.map(
       (d): LigneAtelier => ({
         cle: `dep-${d.id}`,
         numero: d.numero,
@@ -785,12 +796,15 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
       }),
     ),
   ].sort((a, b) => b.date.localeCompare(a.date));
+  /* Le total se lit sur les lignes fusionnées : une paire compte son montant une
+     fois, pas deux — c'est le même franc sur l'intervention et sur la dépense. */
+  const total = atelier.reduce((s, l) => s + l.montant, 0);
 
   return (
     <div className="flex flex-col gap-5">
       <Carte
         titre="Atelier"
-        precision={`${interventions.length} intervention${interventions.length > 1 ? "s" : ""} · ${fournitures.length} fourniture${fournitures.length > 1 ? "s" : ""} · ${montant(total)} sur 12 mois`}
+        precision={`${atelier.length} ligne${atelier.length > 1 ? "s" : ""}${paires.length ? ` · ${paires.length} intervention${paires.length > 1 ? "s" : ""} avec leur dépense sur une seule ligne` : ""} · ${montant(total)} sur 12 mois`}
         action={
           <button type="button" onClick={() => ajouter("intervention")} className="bouton-secondaire h-9">
             <Wrench className="size-4" strokeWidth={1.8} />

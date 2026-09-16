@@ -13,6 +13,7 @@
     "tester-ecritures": "tsx scripts/tester-ecritures.mts",
     "tester-lectures-muettes": "tsx scripts/tester-lectures-muettes.mts",
     "sonder-lectures": "tsx scripts/sonder-lectures.mts",
+    "tester-atelier": "tsx scripts/tester-atelier.mts",
     "tester-fiche": "tsx scripts/tester-fiche.mts",
     "tester-fiche-chauffeur": "tsx scripts/tester-fiche-chauffeur.mts"
   },
