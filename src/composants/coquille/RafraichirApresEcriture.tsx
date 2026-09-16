@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { EVENEMENT_BASE_ECRITE } from "@/lib/clotures-demo";
+import { relireReferentiels } from "@/lib/referentiels-actions";
+import { poserReferentiels } from "@/lib/referentiels-navigateur";
 
 /* ============================================================================
  * Redemander la page quand la base a pris une écriture.
@@ -42,6 +44,13 @@ export function RafraichirApresEcriture() {
       minuteur = setTimeout(() => {
         minuteur = null;
         router.refresh();
+        /* Et les référentiels eux-mêmes, relus et posés sans attendre ce que
+           le rafraîchissement rejoue : la liste qui s'ouvre ensuite porte ce
+           qui vient d'être écrit (16 septembre 2026, chauffeur créé absent de
+           la liste d'affectation). */
+        void relireReferentiels().then((r) => {
+          if (r) poserReferentiels(r);
+        });
       }, REPOS);
     };
     window.addEventListener(EVENEMENT_BASE_ECRITE, surEcriture);
