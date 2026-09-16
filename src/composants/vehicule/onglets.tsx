@@ -25,13 +25,10 @@ import {
   fabriquerEvenementStatut,
   fabriquerIntervention,
   fabriquerPeriodeStatut,
-  fabriquerObservation,
   fabriquerPlein,
   fabriquerReleve,
   fabriquerRappel,
-  fabriquerVisite,
 } from "@/composants/transactions/fabriques";
-import type { ObservationVisite, VisiteTechnique } from "@/domaine/types";
 import type { Creation } from "@/domaine/cloture";
 import { agregerCouts } from "@/domaine/fiche";
 import { controlerReleves } from "@/domaine/releves";
@@ -48,13 +45,8 @@ import type {
 } from "@/domaine/fiche";
 import {
   BUSINESS_UNIT,
-  CATEGORIE_OBSERVATION,
   libelleCategorie,
-  GRAVITE_OBSERVATION,
   GROUPE_CHARGE,
-  STATUT_OBSERVATION,
-  STATUT_VISITE,
-  TYPE_VISITE,
   MOTIF_IMMOBILISATION,
   MOTIF_SORTIE,
   POSTE_DEPENSE,
@@ -747,15 +739,6 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
    */
   const fournitures = [...depensesCreees, ...fiche.depenses.map(surcharger)].filter((d) => groupeDuPoste(d.poste) === "maintenance");
   const total = interventions.reduce((s, i) => s + i.montant, 0) + fournitures.reduce((s, d) => s + d.montant, 0);
-  const observations = [...creations("observation", (c) => fabriquerObservation(c, fiche.ligne.vehicule.id)), ...fiche.observationsVisite.map(surcharger)];
-  const observationsOuvertes = observations.filter((o) => o.statut !== "corrigee");
-  const visitesParId = new Map([...creations("visite", (c) => fabriquerVisite(c, fiche.ligne.vehicule.id)), ...fiche.visitesTechniques].map((x) => [x.id, x]));
-  /* Les visites techniques, venues de l'onglet Conformité le 16 septembre 2026 :
-     un processus — rendez-vous, passage, résultat —, pas une échéance. Elles
-     vivent ici avec les observations qu'elles produisent. */
-  const visites = [...creations("visite", (c) => fabriquerVisite(c, fiche.ligne.vehicule.id)), ...fiche.visitesTechniques.map(surcharger)].sort((a, b) => b.dateRendezVous.localeCompare(a.dateRendezVous));
-  const refusEnCours = visites.find((x) => x.statut === "refusee") ?? null;
-  const contreVisitePrise = visites.some((x) => x.type === "contre-visite" && x.statut === "rendez-vous");
 
   const atelier: LigneAtelier[] = [
     ...interventions.map(
@@ -849,62 +832,6 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
           ]}
         />
       </Carte>
-
-      <Carte
-        titre="Observations de visite technique"
-        precision={observationsOuvertes.length ? `${observationsOuvertes.length} action${observationsOuvertes.length > 1 ? "s" : ""} corrective${observationsOuvertes.length > 1 ? "s" : ""} à clôturer avant la contre-visite` : observations.length ? "Toutes les observations sont corrigées" : "Aucune observation — les défauts relevés par le centre se suivent ici jusqu'à leur clôture"}
-        sansMarge
-      >
-        <TableauSimple<ObservationVisite> reglages="fiche-vehicule.observations"
-          cle={(o) => o.numero}
-          lignes={observations}
-          vide="Aucune observation de visite technique."
-          numero={(o) => o.numero}
-          cible={cible}
-          surModifier={(o) => demander({ type: "observation", numero: o.numero, titre: `Observation · ${o.libelle}`, valeurs: o as unknown as Record<string, unknown> })}
-          colonnes={[
-            { cle: "numero", libelle: "Réf.", rendu: (o) => <Numero valeur={o.numero} /> },
-            { cle: "visite", libelle: "Visite", rendu: (o) => { const vt = visitesParId.get(o.visiteId); return vt ? <span className="code whitespace-nowrap">{date(vt.datePassage ?? vt.dateRendezVous)}</span> : "—"; } },
-            { cle: "libelle", libelle: "Observation", rendu: (o) => <span className="block max-w-[360px] font-medium">{o.libelle}</span> },
-            { cle: "categorie", libelle: "Catégorie", rendu: (o) => CATEGORIE_OBSERVATION[o.categorie] },
-            { cle: "gravite", libelle: "Gravité", rendu: (o) => <Pastille ton={o.gravite === "majeure" ? "defavorable" : "neutre"}>{GRAVITE_OBSERVATION[o.gravite]}</Pastille> },
-            { cle: "statut", libelle: "Suivi", rendu: (o) => <Pastille ton={STATUT_OBSERVATION[o.statut].ton}>{STATUT_OBSERVATION[o.statut].libelle}</Pastille> },
-            { cle: "intervention", libelle: "Intervention", rendu: (o) => (o.interventionNumero ? <Numero valeur={o.interventionNumero} /> : <span className="text-attenue-2">—</span>) },
-            { cle: "corrigee", libelle: "Corrigée le", rendu: (o) => <span className="code">{o.corrigeeLe ? date(o.corrigeeLe) : "—"}</span> },
-          ]}
-        />
-      </Carte>
-
-    <Carte
-      titre="Visites techniques"
-      precision={
-        refusEnCours && !contreVisitePrise
-          ? `Dernière visite refusée${refusEnCours.dateLimiteContreVisite ? ` — contre-visite à passer avant le ${date(refusEnCours.dateLimiteContreVisite)}` : ""} · ${observations.filter((o) => o.statut !== "corrigee").length} observation${observations.filter((o) => o.statut !== "corrigee").length > 1 ? "s" : ""} à corriger`
-          : "Rendez-vous, passages, résultats — le document n'est renouvelé qu'à l'acceptation ; les observations d'un refus sont suivies dans Entretien"
-      }
-      sansMarge
-    >
-      <TableauSimple<VisiteTechnique> reglages="fiche-vehicule.visites"
-        cle={(x) => x.numero}
-        lignes={visites}
-        vide="Aucune visite technique enregistrée."
-        numero={(x) => x.numero}
-        cible={cible}
-        surModifier={(x) => demander({ type: "visite", numero: x.numero, titre: `${TYPE_VISITE[x.type]} technique · ${date(x.dateRendezVous)}`, valeurs: x as unknown as Record<string, unknown> })}
-        colonnes={[
-          { cle: "numero", libelle: "Réf.", rendu: (x) => <Numero valeur={x.numero} /> },
-          { cle: "type", libelle: "Type", rendu: (x) => <span className="font-medium">{TYPE_VISITE[x.type]}</span> },
-          { cle: "rdv", libelle: "Rendez-vous", rendu: (x) => <span className="code whitespace-nowrap">{date(x.dateRendezVous)}{x.heure ? ` ${x.heure}` : ""}</span> },
-          { cle: "centre", libelle: "Centre", rendu: (x) => x.centre },
-          { cle: "passage", libelle: "Passée le", rendu: (x) => <span className="code">{x.datePassage ? date(x.datePassage) : "—"}</span> },
-          { cle: "statut", libelle: "Résultat", rendu: (x) => <Pastille ton={STATUT_VISITE[x.statut].ton}>{STATUT_VISITE[x.statut].libelle}</Pastille> },
-          { cle: "pv", libelle: "N° de PV", rendu: (x) => <span className="code whitespace-nowrap text-texte-2">{x.numeroPv ?? "—"}</span> },
-          { cle: "limite", libelle: "Contre-visite avant", rendu: (x) => (x.dateLimiteContreVisite ? <Echeance ton={x.statut === "refusee" && !contreVisitePrise ? "defavorable" : "neutre"}>{date(x.dateLimiteContreVisite)}</Echeance> : <span className="text-attenue-2">—</span>) },
-          { cle: "obs", libelle: "Observations", alignee: "droite", rendu: (x) => { const n = observations.filter((o) => o.visiteId === x.id).length; return n ? `${n}` : <span className="text-attenue-2">0</span>; } },
-          { cle: "commentaire", libelle: "Commentaire", rendu: (x) => <span className="block max-w-[280px] truncate text-texte-2">{x.commentaire ?? "—"}</span> },
-        ]}
-      />
-    </Carte>
 
     </div>
   );
