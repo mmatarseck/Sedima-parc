@@ -209,12 +209,12 @@ export function FichePoste({ fiche }: { fiche: Fiche }) {
         * scroll »). La courbe prend le reste et ne dépasse pas la hauteur d'une
         * carte de chiffres.
         */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(440px,500px)]">
         <Carte
           titre="La consommation, mois par mois"
           precision={`Le cumul dépensé depuis janvier, contre le rythme que le budget prévoyait à la même date — ${bu === "toutes" ? "tout le poste, business units confondues" : bu === "parc" ? "le parc, hors business unit" : libelleBu(bu)}`}
         >
-          <CourbeCumul parMois={parMoisVus} budget={vue.enveloppe.montant} vue={vue} exercice={fiche.exercice} aujourdhui={fiche.aujourdhui} />
+          <CourbeCumul parMois={parMoisVus} budget={vue.enveloppe.montant} vue={vue} exercice={fiche.exercice} aujourdhui={fiche.aujourdhui} depenses={depensesVues} />
         </Carte>
 
         <Carte titre="La ventilation" precision="La maille des enveloppes : le carburant de l'Aliment ne se compense pas avec les pneumatiques de l'Abattoir. Chaque ligne se corrige ici, ou se pose quand elle manque" sansMarge>
@@ -372,14 +372,40 @@ function BoutonBu({ actif, onClick, libelle, compte, alerte }: { actif: boolean;
  * chaque mois pour lui-même : le cumul lisse, elles montrent le mois qui a
  * pesé.
  *
+ * LA COURBE SE LIT AU CURSEUR (métier, 16 septembre 2026 : « en mettant le
+ * curseur, je dois pouvoir voir des infos détaillées ») : le mois le plus
+ * proche se marque d'un guide vertical, et une bulle dit ce qu'il porte — le
+ * cumul, l'attendu, l'écart, ce qui a été dépensé dans le mois, en combien de
+ * dépenses, et la plus grosse. Sur un écran tactile, un appui fait de même.
+ *
  * LES CHIFFRES SOUS LA COURBE sont ceux qu'un suivi budgétaire demande à
- * chaque revue (métier, 16 septembre 2026 : « des données statistiques et
- * autres infos utiles pour un suivi budgétaire ») : le rythme mensuel tenu
- * contre celui que le budget permet, le mois le plus lourd, où l'on finirait à
- * ce rythme, le taux engagé-consommé, et ce qu'il reste à dépenser par mois
- * pour tenir. Tout suit le filtre par business unit, comme la courbe.
+ * chaque revue : le rythme mensuel tenu contre celui que le budget permet, le
+ * mois le plus lourd, où l'on finirait à ce rythme, le taux engagé-consommé,
+ * et ce qu'il reste à dépenser par mois pour tenir. Tout suit le filtre par
+ * business unit, comme la courbe.
  * --------------------------------------------------------------------------*/
-function CourbeCumul({ parMois, budget, vue, exercice, aujourdhui }: { parMois: Fiche["parMois"]; budget: number; vue: SuiviEnveloppe; exercice: string; aujourdhui: string }) {
+interface DetailMois {
+  nombre: number;
+  total: number;
+  plusGrosse: { libelle: string; montant: number; immatriculation: string | null } | null;
+}
+
+function detailsParMois(depenses: DepenseBudget[]): Map<string, DetailMois> {
+  const m = new Map<string, DetailMois>();
+  for (const d of depenses) {
+    const mois = d.date.slice(0, 7);
+    const x = m.get(mois) ?? { nombre: 0, total: 0, plusGrosse: null };
+    x.nombre++;
+    x.total += d.montant;
+    if (!x.plusGrosse || d.montant > x.plusGrosse.montant) x.plusGrosse = { libelle: d.libelle, montant: d.montant, immatriculation: d.immatriculationAffichee };
+    m.set(mois, x);
+  }
+  return m;
+}
+
+function CourbeCumul({ parMois, budget, vue, exercice, aujourdhui, depenses }: { parMois: Fiche["parMois"]; budget: number; vue: SuiviEnveloppe; exercice: string; aujourdhui: string; depenses: DepenseBudget[] }) {
+  const [survol, setSurvol] = useState<number | null>(null);
+  const details = useMemo(() => detailsParMois(depenses), [depenses]);
   if (parMois.length === 0) return <p className="meta">Aucun mois écoulé sur l&apos;exercice.</p>;
 
   /* Le rapport de la boîte de dessin suit celui de la carte — large et basse —
@@ -421,6 +447,21 @@ function CourbeCumul({ parMois, budget, vue, exercice, aujourdhui }: { parMois: 
   const aire = `${trace("consomme")} L${x(n - 1).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`;
   const traceProjection = n < 12 ? `M${x(n - 1).toFixed(1)},${y(dernier.consomme).toFixed(1)} L${x(11).toFixed(1)},${y(projection).toFixed(1)}` : null;
 
+  /* Le mois sous le curseur : le pas le plus proche, parmi les mois écoulés. */
+  function viser(e: React.MouseEvent<SVGRectElement> | React.TouchEvent<SVGRectElement>) {
+    const svg = e.currentTarget.ownerSVGElement;
+    if (!svg) return;
+    const boite = svg.getBoundingClientRect();
+    const clientX = "touches" in e ? (e.touches[0]?.clientX ?? 0) : e.clientX;
+    const px = ((clientX - boite.left) / boite.width) * largeur;
+    const i = Math.max(0, Math.min(n - 1, Math.round((px - gauche) / pas)));
+    setSurvol(i);
+  }
+  const vise = survol === null ? null : parMois[survol]!;
+  const detail = vise ? (details.get(vise.mois) ?? { nombre: 0, total: mensuels[survol!]!.montant, plusGrosse: null }) : null;
+  const ecart = vise ? vise.consomme - vise.attendu : 0;
+  const bulleADroite = survol !== null && survol < 7;
+
   const stats: { libelle: string; valeur: string; precision: string; ton?: "defavorable" | "favorable" }[] = [
     { libelle: "Rythme mensuel", valeur: montantCourt(moyenne), precision: permisParMois === null ? `sur ${n} mois écoulé${n > 1 ? "s" : ""}` : `le budget permet ${montantCourt(permisParMois)} par mois` },
     { libelle: "Mois le plus lourd", valeur: montantCourt(plusFort.montant), precision: `en ${libelleMois(plusFort.mois)}` },
@@ -436,60 +477,102 @@ function CourbeCumul({ parMois, budget, vue, exercice, aujourdhui }: { parMois: 
 
   return (
     <div className="flex flex-col gap-3">
-      <svg viewBox={`0 0 ${largeur} ${hauteur}`} className="w-full" role="img" aria-label="Consommation cumulée contre le rythme attendu, et projection à fin d'exercice">
-        <defs>
-          <linearGradient id="degradeBudget" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.26" />
-            <stop offset="100%" stopColor="var(--color-accent)" stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
+      <div className="relative">
+        <svg viewBox={`0 0 ${largeur} ${hauteur}`} className="w-full" role="img" aria-label="Consommation cumulée contre le rythme attendu, et projection à fin d'exercice">
+          <defs>
+            <linearGradient id="degradeBudget" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.26" />
+              <stop offset="100%" stopColor="var(--color-accent)" stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
 
-        {/* L'axe des montants : trois graduations suffisent à donner l'ordre de grandeur. */}
-        {[0, 0.5, 1].map((f) => (
-          <g key={f}>
-            <line x1={gauche} y1={y(maxi * f)} x2={largeur - droite} y2={y(maxi * f)} stroke="var(--color-bordure)" strokeWidth="1" />
-            <text x={gauche - 8} y={y(maxi * f) + 3} textAnchor="end" className="fill-attenue text-[10px]">
-              {montantCourt(maxi * f)}
-            </text>
-          </g>
-        ))}
+          {/* L'axe des montants : trois graduations suffisent à donner l'ordre de grandeur. */}
+          {[0, 0.5, 1].map((f) => (
+            <g key={f}>
+              <line x1={gauche} y1={y(maxi * f)} x2={largeur - droite} y2={y(maxi * f)} stroke="var(--color-bordure)" strokeWidth="1" />
+              <text x={gauche - 8} y={y(maxi * f) + 3} textAnchor="end" className="fill-attenue text-[10px]">
+                {montantCourt(maxi * f)}
+              </text>
+            </g>
+          ))}
 
-        {/* Le budget de l'exercice : la ligne qu'on ne veut pas franchir. */}
-        {budget > 0 ? (
-          <>
-            <line x1={gauche} y1={y(budget)} x2={largeur - droite} y2={y(budget)} stroke="var(--color-defavorable)" strokeWidth="1" strokeDasharray="2 3" opacity="0.7" />
-            <text x={largeur - droite} y={y(budget) - 5} textAnchor="end" className="fill-defavorable text-[10px]">
-              budget {montantCourt(budget)}
+          {/* Le budget de l'exercice : la ligne qu'on ne veut pas franchir. */}
+          {budget > 0 ? (
+            <>
+              <line x1={gauche} y1={y(budget)} x2={largeur - droite} y2={y(budget)} stroke="var(--color-defavorable)" strokeWidth="1" strokeDasharray="2 3" opacity="0.7" />
+              <text x={largeur - droite} y={y(budget) - 5} textAnchor="end" className="fill-defavorable text-[10px]">
+                budget {montantCourt(budget)}
+              </text>
+            </>
+          ) : null}
+
+          {/* Chaque mois pour lui-même, derrière le cumul. */}
+          {mensuels.map((m, i) => (
+            <rect key={m.mois} x={x(i) - largeurBarre / 2} y={y(m.montant)} width={largeurBarre} height={Math.max(0, y(0) - y(m.montant))} fill="var(--color-accent)" opacity={survol === i ? 0.32 : 0.16} rx="1.5" />
+          ))}
+
+          <path d={aire} fill="url(#degradeBudget)" />
+          <path d={trace("attendu")} fill="none" stroke="var(--color-attenue)" strokeWidth="1.5" strokeDasharray="4 3" />
+          {traceProjection ? <path d={traceProjection} fill="none" stroke={projection > budget && budget > 0 ? "var(--color-defavorable)" : "var(--color-accent)"} strokeWidth="1.5" strokeDasharray="1.5 4" strokeLinecap="round" opacity="0.8" /> : null}
+          <path d={trace("consomme")} fill="none" stroke="var(--color-accent)" strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
+
+          {/* Le guide du mois visé. */}
+          {survol !== null ? (
+            <>
+              <line x1={x(survol)} y1={haut} x2={x(survol)} y2={hauteur - bas} stroke="var(--color-texte-2)" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
+              <circle cx={x(survol)} cy={y(parMois[survol]!.attendu)} r={4} fill="var(--color-surface)" stroke="var(--color-attenue)" strokeWidth="1.5" />
+            </>
+          ) : null}
+
+          {parMois.map((p, i) => (
+            <circle key={p.mois} cx={x(i)} cy={y(p.consomme)} r={survol === i ? 5.5 : i === n - 1 ? 4 : 2.5} fill="var(--color-accent)" stroke={survol === i ? "var(--color-surface)" : "none"} strokeWidth="2" />
+          ))}
+          {traceProjection ? <circle cx={x(11)} cy={y(projection)} r={3} fill="none" stroke={projection > budget && budget > 0 ? "var(--color-defavorable)" : "var(--color-accent)"} strokeWidth="1.5" /> : null}
+
+          {Array.from({ length: 12 }, (_, i) => (
+            <text key={i} x={x(i)} y={hauteur - 8} textAnchor="middle" className={`text-[10px] ${survol === i ? "fill-texte font-semibold" : "fill-attenue"}`} opacity={i < n ? 1 : 0.5}>
+              {MOIS_COURT[i]}
             </text>
-          </>
+          ))}
+
+          {/* La surface qui écoute le curseur, par-dessus tout le reste. */}
+          <rect x={gauche - pas / 2} y={0} width={(n - 1) * pas + pas} height={hauteur} fill="transparent" style={{ cursor: "crosshair" }} onMouseMove={viser} onMouseLeave={() => setSurvol(null)} onTouchStart={viser} onTouchMove={viser} />
+        </svg>
+
+        {vise && detail ? (
+          <div
+            role="status"
+            className="pointer-events-none absolute top-2 z-10 w-[240px] rounded-[12px] border border-bordure bg-surface p-3 text-[12px] shadow-modale"
+            style={{ left: `${(x(survol!) / largeur) * 100}%`, transform: bulleADroite ? "translateX(12px)" : "translateX(calc(-100% - 12px))" }}
+          >
+            <p className="font-semibold text-texte">
+              {libelleMois(vise.mois)} {exercice}
+            </p>
+            <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+              <dt className="text-texte-2">Consommé cumulé</dt>
+              <dd className="code text-right font-medium">{montant(vise.consomme)}</dd>
+              <dt className="text-texte-2">Attendu à date</dt>
+              <dd className="code text-right">{montant(vise.attendu)}</dd>
+              <dt className="text-texte-2">Écart au rythme</dt>
+              <dd className={`code text-right font-medium ${ecart > 0 ? "text-defavorable" : "text-favorable"}`}>
+                {ecart > 0 ? "+" : ""}
+                {montant(ecart)}
+                {vise.attendu > 0 ? ` (${ecart > 0 ? "+" : ""}${Math.round((ecart / vise.attendu) * 100)} %)` : ""}
+              </dd>
+              <dt className="text-texte-2">Dépensé dans le mois</dt>
+              <dd className="code text-right">{montant(detail.total)}</dd>
+              <dt className="text-texte-2">Dépenses</dt>
+              <dd className="code text-right">{detail.nombre}</dd>
+            </dl>
+            {detail.plusGrosse ? (
+              <p className="meta mt-1.5 truncate" title={detail.plusGrosse.libelle}>
+                La plus grosse : {montantCourt(detail.plusGrosse.montant)}
+                {detail.plusGrosse.immatriculation ? ` · ${detail.plusGrosse.immatriculation}` : ""} — {detail.plusGrosse.libelle}
+              </p>
+            ) : null}
+          </div>
         ) : null}
-
-        {/* Chaque mois pour lui-même, derrière le cumul. */}
-        {mensuels.map((m, i) => (
-          <rect key={m.mois} x={x(i) - largeurBarre / 2} y={y(m.montant)} width={largeurBarre} height={Math.max(0, y(0) - y(m.montant))} fill="var(--color-accent)" opacity="0.16" rx="1.5">
-            <title>{`${libelleMois(m.mois)} — dépensé dans le mois ${montant(m.montant)}`}</title>
-          </rect>
-        ))}
-
-        <path d={aire} fill="url(#degradeBudget)" />
-        <path d={trace("attendu")} fill="none" stroke="var(--color-attenue)" strokeWidth="1.5" strokeDasharray="4 3" />
-        {traceProjection ? <path d={traceProjection} fill="none" stroke={projection > budget && budget > 0 ? "var(--color-defavorable)" : "var(--color-accent)"} strokeWidth="1.5" strokeDasharray="1.5 4" strokeLinecap="round" opacity="0.8" /> : null}
-        <path d={trace("consomme")} fill="none" stroke="var(--color-accent)" strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
-
-        {parMois.map((p, i) => (
-          <g key={p.mois}>
-            <circle cx={x(i)} cy={y(p.consomme)} r={i === n - 1 ? 4 : 2.5} fill="var(--color-accent)" />
-            <title>{`${libelleMois(p.mois)} — consommé ${montant(p.consomme)} · attendu ${montant(p.attendu)}`}</title>
-          </g>
-        ))}
-        {traceProjection ? <circle cx={x(11)} cy={y(projection)} r={3} fill="none" stroke={projection > budget && budget > 0 ? "var(--color-defavorable)" : "var(--color-accent)"} strokeWidth="1.5" /> : null}
-
-        {Array.from({ length: 12 }, (_, i) => (
-          <text key={i} x={x(i)} y={hauteur - 8} textAnchor="middle" className="fill-attenue text-[10px]" opacity={i < n ? 1 : 0.5}>
-            {MOIS_COURT[i]}
-          </text>
-        ))}
-      </svg>
+      </div>
 
       <p className="meta flex flex-wrap items-center gap-x-4 gap-y-1">
         <span className="inline-flex items-center gap-1.5">
@@ -506,6 +589,7 @@ function CourbeCumul({ parMois, budget, vue, exercice, aujourdhui }: { parMois: 
         <span className="inline-flex items-center gap-1.5">
           <span className="h-3 w-2 rounded-[2px] bg-accent/20" /> dépensé dans le mois
         </span>
+        <span className="text-attenue">· survolez un mois pour le détail</span>
       </p>
 
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-bordure pt-3 sm:grid-cols-3 2xl:grid-cols-5">
