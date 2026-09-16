@@ -169,6 +169,9 @@ export function FicheChauffeur({
   );
 
   const TITRE_CREATION: Partial<Record<CibleAjout, string>> = {
+    /* Le rappel du permis ou de la visite médicale se pose depuis la carte
+       « Rappels » de l'onglet Documents (16 septembre 2026). */
+    rappel: "Nouveau rappel",
     affectation: "Nouvelle affectation",
     document: "Nouveau document",
     indisponibilite: "Nouvelle indisponibilité",
