@@ -80,17 +80,6 @@ export function FichePoste({ fiche }: { fiche: Fiche }) {
     return change ? { ...fiche.suivi, parBu, cumul: cumulDuPoste(fiche.exercice, fiche.poste, parBu) } : fiche.suivi;
   }, [fiche, posees, surcharger]);
   const cumul = suivi.cumul;
-  /* La courbe suit l'enveloppe corrigée : l'attendu se recalcule sur le nouveau montant. */
-  const parMois = useMemo(() => {
-    if (cumul === fiche.suivi.cumul) return fiche.parMois;
-    const moisCourant = Number(fiche.aujourdhui.slice(5, 7));
-    return fiche.parMois.map((p, i) => {
-      const m = i + 1;
-      const joursDuMoisM = new Date(Date.UTC(Number(fiche.exercice), m, 0)).getUTCDate();
-      const jourM = m === moisCourant ? Number(fiche.aujourdhui.slice(8, 10)) : joursDuMoisM;
-      return { ...p, attendu: attenduADate(cumul.enveloppe, m, jourM, joursDuMoisM) };
-    });
-  }, [fiche, cumul]);
 
   function modifierEnveloppe(s: SuiviEnveloppe) {
     const e = s.enveloppe;
@@ -118,6 +107,31 @@ export function FichePoste({ fiche }: { fiche: Fiche }) {
 
   const depensesVues = useMemo(() => depenses.filter((d) => retient(d.businessUnit)), [depenses, bu]);
   const engagementsVus = useMemo(() => engagements.filter((g) => retient(g.businessUnit)), [engagements, bu]);
+
+  /*
+   * La courbe suit le filtre, comme les chiffres et les listes (métier, 16
+   * septembre 2026 : « connecter la courbe aux différents filtres »). Le serveur
+   * livre le cumul du poste entier ; ici on le recompose depuis les dépenses
+   * retenues, mois par mois sur les mois écoulés, et l'attendu se recalcule sur
+   * l'enveloppe du périmètre — corrigée depuis la page s'il y a lieu. Quand le
+   * filtre est « Toutes », ce calcul redonne la série du serveur.
+   */
+  const parMoisVus = useMemo(() => {
+    const moisCourant = Number(fiche.aujourdhui.slice(5, 7));
+    const parMoisDepense = new Map<string, number>();
+    for (const d of depensesVues) {
+      const m = d.date.slice(0, 7);
+      parMoisDepense.set(m, (parMoisDepense.get(m) ?? 0) + d.montant);
+    }
+    let cumule = 0;
+    return fiche.parMois.map((p, i) => {
+      const m = i + 1;
+      cumule += parMoisDepense.get(p.mois) ?? 0;
+      const joursDuMoisM = new Date(Date.UTC(Number(fiche.exercice), m, 0)).getUTCDate();
+      const jourM = m === moisCourant ? Number(fiche.aujourdhui.slice(8, 10)) : joursDuMoisM;
+      return { mois: p.mois, consomme: cumule, attendu: attenduADate(vue.enveloppe, m, jourM, joursDuMoisM) };
+    });
+  }, [fiche, depensesVues, vue.enveloppe]);
 
   return (
     <div className="defilement-discret flex flex-col gap-5 px-8 py-7 lg:h-full lg:overflow-y-auto">
@@ -187,24 +201,33 @@ export function FichePoste({ fiche }: { fiche: Fiche }) {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_400px]">
-        <Carte titre="La consommation, mois par mois" precision="Le cumul dépensé depuis janvier, contre le rythme que le budget prévoyait à la même date — tout le poste, business units confondues">
-          <CourbeCumul parMois={parMois} budget={cumul.enveloppe.montant} />
+      {/*
+        * La courbe et la ventilation côte à côte dès les écrans moyens, et la
+        * ventilation à largeur bornée : elle prenait 400 px fixes et ses colonnes
+        * débordaient, si bien qu'on la lisait en défilant à l'horizontale
+        * (métier, 16 septembre 2026 : « mieux voir la ventilation à droite sans
+        * scroll »). La courbe prend le reste et ne dépasse pas la hauteur d'une
+        * carte de chiffres.
+        */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]">
+        <Carte
+          titre="La consommation, mois par mois"
+          precision={`Le cumul dépensé depuis janvier, contre le rythme que le budget prévoyait à la même date — ${bu === "toutes" ? "tout le poste, business units confondues" : bu === "parc" ? "le parc, hors business unit" : libelleBu(bu)}`}
+        >
+          <CourbeCumul parMois={parMoisVus} budget={vue.enveloppe.montant} vue={vue} exercice={fiche.exercice} aujourdhui={fiche.aujourdhui} />
         </Carte>
 
         <Carte titre="La ventilation" precision="La maille des enveloppes : le carburant de l'Aliment ne se compense pas avec les pneumatiques de l'Abattoir. Chaque ligne se corrige ici, ou se pose quand elle manque" sansMarge>
           <TableauSimple<(typeof suivi.parBu)[number]>
-            reglages="budget.ventilation"
+            reglages="budget.ventilation.2"
             cle={(s) => s.enveloppe.businessUnit ?? "parc"}
             lignes={suivi.parBu}
-            /* Six colonnes de chiffres débordent du cadre sur un écran ordinaire.
-               Un en-tête figé dans la page interdit au conteneur de défiler — il
-               deviendrait sa propre zone de défilement et décrocherait l'en-tête —,
-               si bien que les dernières colonnes étaient coupées net au bord de la
-               carte. Huit lignes n'ont pas besoin d'un en-tête qui suit : le
-               tableau défile en largeur dans sa carte (métier, 14 septembre 2026). */
+            /* Quatre colonnes à largeur fixée, la business unit prenant le reste :
+               le tableau tient dans sa carte au lieu d'y défiler en largeur. Huit
+               lignes n'ont pas besoin d'un en-tête qui suit la page. */
             figerEnTete={false}
             filtrable={false}
+            fixe
             vide="Aucune ventilation."
             numero={(s) => s.enveloppe.numero || `${s.enveloppe.poste}:${s.enveloppe.businessUnit ?? "parc"}`}
             surModifier={modifierEnveloppe}
@@ -214,12 +237,14 @@ export function FichePoste({ fiche }: { fiche: Fiche }) {
                 cle: "budget",
                 libelle: "Budget",
                 alignee: "droite",
+                largeur: "88px",
                 rendu: (s) => (s.enveloppe.montant > 0 ? <span className="code">{montantCourt(s.enveloppe.montant)}</span> : <span className="text-attenue-2">aucun</span>),
               },
-              { cle: "consomme", libelle: "Consommé", alignee: "droite", rendu: (s) => <span className="code">{montantCourt(s.consomme)}</span> },
+              { cle: "consomme", libelle: "Consommé", alignee: "droite", largeur: "92px", rendu: (s) => <span className="code">{montantCourt(s.consomme)}</span> },
               {
                 cle: "etat",
                 libelle: "État",
+                largeur: "104px",
                 rendu: (s) => <Pastille ton={ETAT_BUDGET[s.etat].ton}>{ETAT_BUDGET[s.etat].libelle}</Pastille>,
               },
             ]}
@@ -333,14 +358,28 @@ function BoutonBu({ actif, onClick, libelle, compte, alerte }: { actif: boolean;
 }
 
 /* ----------------------------------------------------------------------------
- * La courbe du cumul contre le rythme attendu.
+ * La courbe du cumul contre le rythme attendu — et ce qu'elle annonce.
  *
  * Deux traits sur la même échelle — le consommé en plein, l'attendu en
  * pointillé — parce que c'est leur écart, et lui seul, qui dit si l'enveloppe
  * tiendra. Le trait horizontal est le budget de l'exercice : quand le plein le
  * franchit, l'année est jouée.
+ *
+ * L'AXE VA JUSQU'À DÉCEMBRE, même en septembre : c'est la fin de l'exercice
+ * qui juge, pas le mois courant. Au-delà du dernier mois écoulé, un trait
+ * léger prolonge le consommé au rythme tenu depuis janvier — la projection —
+ * et rencontre, ou non, la ligne du budget. Sous la courbe, les barres disent
+ * chaque mois pour lui-même : le cumul lisse, elles montrent le mois qui a
+ * pesé.
+ *
+ * LES CHIFFRES SOUS LA COURBE sont ceux qu'un suivi budgétaire demande à
+ * chaque revue (métier, 16 septembre 2026 : « des données statistiques et
+ * autres infos utiles pour un suivi budgétaire ») : le rythme mensuel tenu
+ * contre celui que le budget permet, le mois le plus lourd, où l'on finirait à
+ * ce rythme, le taux engagé-consommé, et ce qu'il reste à dépenser par mois
+ * pour tenir. Tout suit le filtre par business unit, comme la courbe.
  * --------------------------------------------------------------------------*/
-function CourbeCumul({ parMois, budget }: { parMois: Fiche["parMois"]; budget: number }) {
+function CourbeCumul({ parMois, budget, vue, exercice, aujourdhui }: { parMois: Fiche["parMois"]; budget: number; vue: SuiviEnveloppe; exercice: string; aujourdhui: string }) {
   if (parMois.length === 0) return <p className="meta">Aucun mois écoulé sur l&apos;exercice.</p>;
 
   const largeur = 640;
@@ -350,17 +389,51 @@ function CourbeCumul({ parMois, budget }: { parMois: Fiche["parMois"]; budget: n
   const haut = 14;
   const bas = 28;
 
-  const maxi = Math.max(budget, ...parMois.map((p) => Math.max(p.consomme, p.attendu)), 1);
-  const x = (i: number) => gauche + (parMois.length === 1 ? (largeur - gauche - droite) / 2 : (i * (largeur - gauche - droite)) / (parMois.length - 1));
+  /* Ce que les mois écoulés disent. */
+  const n = parMois.length;
+  const dernier = parMois[n - 1]!;
+  const mensuels = parMois.map((p, i) => ({ mois: p.mois, montant: p.consomme - (parMois[i - 1]?.consomme ?? 0) }));
+  const plusFort = mensuels.reduce((m, x) => (x.montant > m.montant ? x : m), mensuels[0]!);
+  const moyenne = Math.round(dernier.consomme / n);
+  const permisParMois = budget > 0 ? Math.round(budget / 12) : null;
+
+  /* La projection : le consommé à date, ramené à l'année au prorata des jours
+     écoulés. Un exercice achevé ne se projette plus — il est ce qu'il est. */
+  const annee = Number(exercice);
+  const joursAnnee = (Date.UTC(annee + 1, 0, 1) - Date.UTC(annee, 0, 1)) / 86_400_000;
+  const enCours = aujourdhui.startsWith(exercice);
+  const jourAnnee = enCours ? Math.round((Date.UTC(annee, Number(aujourdhui.slice(5, 7)) - 1, Number(aujourdhui.slice(8, 10))) - Date.UTC(annee, 0, 1)) / 86_400_000) + 1 : joursAnnee;
+  const projection = enCours && jourAnnee < joursAnnee && n < 12 ? Math.round((dernier.consomme * joursAnnee) / jourAnnee) : dernier.consomme;
+  const moisRestants = 12 - n;
+  const resteParMois = budget > 0 && moisRestants > 0 ? Math.round(Math.max(0, vue.disponible) / moisRestants) : null;
+
+  /* Douze pas sur l'axe, quoi qu'il ait été consommé : la fin de l'exercice est toujours en vue. */
+  const maxi = Math.max(budget, projection, ...parMois.map((p) => Math.max(p.consomme, p.attendu)), 1);
+  const pas = (largeur - gauche - droite) / 11;
+  const x = (i: number) => gauche + i * pas;
   const y = (v: number) => haut + (1 - v / maxi) * (hauteur - haut - bas);
+  const largeurBarre = pas * 0.42;
 
   const trace = (cle: "consomme" | "attendu") => parMois.map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p[cle]).toFixed(1)}`).join(" ");
-  const aire = `${trace("consomme")} L${x(parMois.length - 1).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`;
-  const dernier = parMois[parMois.length - 1]!;
+  const aire = `${trace("consomme")} L${x(n - 1).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`;
+  const traceProjection = n < 12 ? `M${x(n - 1).toFixed(1)},${y(dernier.consomme).toFixed(1)} L${x(11).toFixed(1)},${y(projection).toFixed(1)}` : null;
+
+  const stats: { libelle: string; valeur: string; precision: string; ton?: "defavorable" | "favorable" }[] = [
+    { libelle: "Rythme mensuel", valeur: montantCourt(moyenne), precision: permisParMois === null ? `sur ${n} mois écoulé${n > 1 ? "s" : ""}` : `le budget permet ${montantCourt(permisParMois)} par mois` },
+    { libelle: "Mois le plus lourd", valeur: montantCourt(plusFort.montant), precision: `en ${libelleMois(plusFort.mois)}` },
+    {
+      libelle: "Projection fin d'exercice",
+      valeur: montantCourt(projection),
+      precision: budget === 0 ? "sans enveloppe pour comparer" : projection > budget ? `dépasserait le budget de ${montantCourt(projection - budget)}` : `resterait sous le budget de ${montantCourt(budget - projection)}`,
+      ton: budget === 0 ? undefined : projection > budget ? "defavorable" : "favorable",
+    },
+    { libelle: "Taux de consommation", valeur: vue.tauxConsommation === null ? "—" : pourcentage(vue.tauxConsommation, 0), precision: `consommé et engagé ${montantCourt(vue.consomme + vue.engage)}` },
+    { libelle: "Reste par mois", valeur: resteParMois === null ? "—" : montantCourt(resteParMois), precision: moisRestants > 0 ? `pour tenir sur ${moisRestants} mois` : "exercice achevé" },
+  ];
 
   return (
     <div className="flex flex-col gap-3">
-      <svg viewBox={`0 0 ${largeur} ${hauteur}`} className="w-full" role="img" aria-label="Consommation cumulée contre le rythme attendu">
+      <svg viewBox={`0 0 ${largeur} ${hauteur}`} className="max-h-[250px] w-full" role="img" aria-label="Consommation cumulée contre le rythme attendu, et projection à fin d'exercice">
         <defs>
           <linearGradient id="degradeBudget" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.26" />
@@ -388,18 +461,30 @@ function CourbeCumul({ parMois, budget }: { parMois: Fiche["parMois"]; budget: n
           </>
         ) : null}
 
+        {/* Chaque mois pour lui-même, derrière le cumul. */}
+        {mensuels.map((m, i) => (
+          <rect key={m.mois} x={x(i) - largeurBarre / 2} y={y(m.montant)} width={largeurBarre} height={Math.max(0, y(0) - y(m.montant))} fill="var(--color-accent)" opacity="0.16" rx="1.5">
+            <title>{`${libelleMois(m.mois)} — dépensé dans le mois ${montant(m.montant)}`}</title>
+          </rect>
+        ))}
+
         <path d={aire} fill="url(#degradeBudget)" />
         <path d={trace("attendu")} fill="none" stroke="var(--color-attenue)" strokeWidth="1.5" strokeDasharray="4 3" />
+        {traceProjection ? <path d={traceProjection} fill="none" stroke={projection > budget && budget > 0 ? "var(--color-defavorable)" : "var(--color-accent)"} strokeWidth="1.5" strokeDasharray="1.5 4" strokeLinecap="round" opacity="0.8" /> : null}
         <path d={trace("consomme")} fill="none" stroke="var(--color-accent)" strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
 
         {parMois.map((p, i) => (
           <g key={p.mois}>
-            <circle cx={x(i)} cy={y(p.consomme)} r={i === parMois.length - 1 ? 4 : 2.5} fill="var(--color-accent)" />
-            <text x={x(i)} y={hauteur - 8} textAnchor="middle" className="fill-attenue text-[10px]">
-              {libelleMois(p.mois)}
-            </text>
+            <circle cx={x(i)} cy={y(p.consomme)} r={i === n - 1 ? 4 : 2.5} fill="var(--color-accent)" />
             <title>{`${libelleMois(p.mois)} — consommé ${montant(p.consomme)} · attendu ${montant(p.attendu)}`}</title>
           </g>
+        ))}
+        {traceProjection ? <circle cx={x(11)} cy={y(projection)} r={3} fill="none" stroke={projection > budget && budget > 0 ? "var(--color-defavorable)" : "var(--color-accent)"} strokeWidth="1.5" /> : null}
+
+        {Array.from({ length: 12 }, (_, i) => (
+          <text key={i} x={x(i)} y={hauteur - 8} textAnchor="middle" className="fill-attenue text-[10px]" opacity={i < n ? 1 : 0.5}>
+            {MOIS_COURT[i]}
+          </text>
         ))}
       </svg>
 
@@ -410,7 +495,27 @@ function CourbeCumul({ parMois, budget }: { parMois: Fiche["parMois"]; budget: n
         <span className="inline-flex items-center gap-1.5">
           <span className="h-px w-4 border-t border-dashed border-attenue" /> rythme attendu — {montant(dernier.attendu)}
         </span>
+        {traceProjection ? (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-px w-4 border-t border-dotted border-accent" /> projection à décembre — {montant(projection)}
+          </span>
+        ) : null}
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-3 w-2 rounded-[2px] bg-accent/20" /> dépensé dans le mois
+        </span>
       </p>
+
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-bordure pt-3 sm:grid-cols-3 2xl:grid-cols-5">
+        {stats.map((s) => (
+          <div key={s.libelle} className="min-w-0">
+            <dt className="label-champ">{s.libelle}</dt>
+            <dd className={`code mt-0.5 text-[15px] font-bold ${s.ton === "defavorable" ? "text-defavorable" : s.ton === "favorable" ? "text-favorable" : "text-texte"}`}>{s.valeur}</dd>
+            <dd className="meta mt-0.5 truncate" title={s.precision}>
+              {s.precision}
+            </dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }
