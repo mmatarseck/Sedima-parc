@@ -70,9 +70,7 @@ const lectures: [string, () => PromiseLike<{ error: { message: string } | null; 
   ["rappels des chauffeurs", () => pg.from("rappel").select(CHAMPS_RAPPEL).not("chauffeur_id", "is", null).limit(50)],
   ["rappels (Conformité)", () => pg.from("rappel").select("numero, vehicule_id, chauffeur_id, type_document_id, echeance, fait_le, document_numero, chauffeur (nom, prenom)").limit(50)],
   ["PV de visite (dossier)", () => pg.from("visite_technique").select("numero, date_passage, date_rendez_vous, centre, numero_pv, fichier").eq("vehicule_id", uuid).not("fichier", "is", null).limit(50)],
-  ["factures d'intervention (dossier)", () => pg.from("intervention").select("numero, date, objet, montant, fichier, prestataire (raison_sociale)").eq("vehicule_id", uuid).not("fichier", "is", null).limit(50)],
-  ["pièces des dépenses (dossier)", () => pg.from("depense").select("numero, date, libelle, beneficiaire, montant, photo").eq("vehicule_id", uuid).not("photo", "is", null).limit(50)],
-  ["pièces des pleins (dossier)", () => pg.from("plein").select("numero, date, litres, montant, photo").eq("vehicule_id", uuid).not("photo", "is", null).limit(50)],
+  ["photos des dépenses (ligne)", () => pg.from("depense").select("numero, photo").eq("vehicule_id", uuid).not("photo", "is", null).limit(50)],
   ["lire_fiche()", () => pg.rpc("lire_fiche", { immat: plaque }).maybeSingle()],
 ];
 

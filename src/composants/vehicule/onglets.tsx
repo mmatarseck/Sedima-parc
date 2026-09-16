@@ -823,7 +823,7 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
           * compteur, l'immobilisation et le numéro de pièce restent à un clic,
           * dans le choix des colonnes, et ce choix est retenu par profil.
           */}
-        <TableauSimple<LigneAtelier> reglages="fiche-vehicule.atelier"
+        <TableauSimple<LigneAtelier> reglages="fiche-vehicule.atelier.2"
           fixe
           cle={(l) => l.cle}
           lignes={atelier}
@@ -839,7 +839,19 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
               largeur: "124px",
               rendu: (l) => <Pastille ton={NATURE_ATELIER[l.nature].ton}>{NATURE_ATELIER[l.nature].libelle}</Pastille>,
             },
-            { cle: "objet", libelle: "Objet", rendu: (l) => <span className="block truncate font-medium" title={l.objet}>{l.objet}</span> },
+            /* La facture s'ouvre sur la ligne, à côté de l'objet — pas dans une colonne
+               qu'un réglage peut masquer (métier, 16 septembre 2026 : « je ne sais
+               pas ouvrir le fichier attaché par ligne »). */
+            {
+              cle: "objet",
+              libelle: "Objet",
+              rendu: (l) => (
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="min-w-0 truncate font-medium" title={l.objet}>{l.objet}</span>
+                  {l.fichier ? <Justificatif present fichier={l.fichier} /> : null}
+                </span>
+              ),
+            },
             { cle: "tiers", libelle: "Garage ou fournisseur", largeur: "190px", rendu: (l) => <span className="block truncate" title={l.tiers}>{l.tiers}</span> },
             { cle: "montant", libelle: "Montant", largeur: "118px", alignee: "droite", rendu: (l) => <span className="font-medium whitespace-nowrap">{montant(l.montant)}</span> },
             { cle: "numero", libelle: "Réf.", largeur: "136px", rendu: (l) => <Numero valeur={l.numero} /> },
