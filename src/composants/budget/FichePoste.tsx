@@ -37,6 +37,10 @@ function libelleMois(mois: string): string {
 
 const libelleBu = (bu: BusinessUnit | null) => (bu ? BUSINESS_UNIT[bu] : "tout le parc");
 
+/* La pastille de la ventilation tient sur un mot : « Sous-consommé » débordait
+   de sa colonne (métier, 16 septembre 2026). Le libellé entier reste en infobulle. */
+const ETAT_COURT: Record<keyof typeof ETAT_BUDGET, string> = { depasse: "Dépassé", tendu: "Tendu", conforme: "Conforme", "sous-consomme": "En retard", "sans-budget": "Hors budget" };
+
 /** Une enveloppe posée depuis la page, à la forme du domaine. */
 function fabriquerEnveloppe(exercice: string, poste: PosteDepense) {
   return (c: Creation): Enveloppe | null => {
@@ -244,8 +248,12 @@ export function FichePoste({ fiche }: { fiche: Fiche }) {
               {
                 cle: "etat",
                 libelle: "État",
-                largeur: "104px",
-                rendu: (s) => <Pastille ton={ETAT_BUDGET[s.etat].ton}>{ETAT_BUDGET[s.etat].libelle}</Pastille>,
+                largeur: "112px",
+                rendu: (s) => (
+                  <span title={`${ETAT_BUDGET[s.etat].libelle} — ${ETAT_BUDGET[s.etat].precision}`}>
+                    <Pastille ton={ETAT_BUDGET[s.etat].ton}>{ETAT_COURT[s.etat]}</Pastille>
+                  </span>
+                ),
               },
             ]}
           />
@@ -412,7 +420,9 @@ function CourbeCumul({ parMois, budget, vue, exercice, aujourdhui, depenses }: {
      sinon le SVG, à hauteur plafonnée, se centrait avec de larges marges vides
      de chaque côté (métier, 16 septembre 2026 : « éviter tout le vide autour »). */
   const largeur = 960;
-  const hauteur = 240;
+  /* Plus haute que large ne l'exigerait : dans la colonne réduite, la courbe
+     grandit vers le bas et la bande de chiffres descend (16 septembre 2026). */
+  const hauteur = 380;
   const gauche = 58;
   const droite = 16;
   const haut = 14;
