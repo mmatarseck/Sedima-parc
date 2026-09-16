@@ -382,8 +382,11 @@ function BoutonBu({ actif, onClick, libelle, compte, alerte }: { actif: boolean;
 function CourbeCumul({ parMois, budget, vue, exercice, aujourdhui }: { parMois: Fiche["parMois"]; budget: number; vue: SuiviEnveloppe; exercice: string; aujourdhui: string }) {
   if (parMois.length === 0) return <p className="meta">Aucun mois écoulé sur l&apos;exercice.</p>;
 
-  const largeur = 640;
-  const hauteur = 220;
+  /* Le rapport de la boîte de dessin suit celui de la carte — large et basse —
+     sinon le SVG, à hauteur plafonnée, se centrait avec de larges marges vides
+     de chaque côté (métier, 16 septembre 2026 : « éviter tout le vide autour »). */
+  const largeur = 960;
+  const hauteur = 240;
   const gauche = 58;
   const droite = 16;
   const haut = 14;
@@ -433,7 +436,7 @@ function CourbeCumul({ parMois, budget, vue, exercice, aujourdhui }: { parMois: 
 
   return (
     <div className="flex flex-col gap-3">
-      <svg viewBox={`0 0 ${largeur} ${hauteur}`} className="max-h-[250px] w-full" role="img" aria-label="Consommation cumulée contre le rythme attendu, et projection à fin d'exercice">
+      <svg viewBox={`0 0 ${largeur} ${hauteur}`} className="w-full" role="img" aria-label="Consommation cumulée contre le rythme attendu, et projection à fin d'exercice">
         <defs>
           <linearGradient id="degradeBudget" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.26" />
