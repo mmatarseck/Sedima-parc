@@ -96,7 +96,7 @@ export const STATUT_VEHICULE: Record<StatutVehicule, DefinitionStatut> = {
     libelle: "En mutation",
     couleur: "var(--color-statut-mutation)",
     operationnel: false,
-    precision: "En transfert entre sites ou entités",
+    precision: "Entrant : la carte grise passe au nom de SEDIMA",
   },
   "retrait-en-cours": {
     libelle: "Retrait en cours",

@@ -7,13 +7,14 @@ import { lireParametres } from "@/lib/parametres-demo";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { normaliser } from "@/domaine/immatriculation";
-import { Link2, Lock, MapPin, Pencil, Radio, UserRound } from "lucide-react";
+import { Archive, ArchiveRestore, Link2, Lock, MapPin, Pencil, Radio, UserRound } from "lucide-react";
 import { BoutonDiscussion, PanneauDiscussion } from "@/composants/discussion/PanneauDiscussion";
 import { BandeauKpi } from "@/composants/interface/BandeauKpi";
 import { useCible } from "@/composants/interface/useCible";
-import { champsCreation } from "@/composants/transactions/champs";
+import { CHAMPS, champsCreation } from "@/composants/transactions/champs";
+import { peutCourant } from "@/lib/acces-courant";
 import { useEdition } from "@/composants/transactions/ContexteEdition";
 import { FormulaireDeclaration } from "@/composants/incidents/FormulaireDeclaration";
 import { OngletIncidents } from "@/composants/vehicule/OngletIncidents";
@@ -120,6 +121,20 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
   const [declaration, setDeclaration] = useState(false);
   const [nombreMessages, setNombreMessages] = useState<number | null>(null);
   const { surcharger, creer, demander, creations, actualiser } = useEdition();
+
+  /* Archiver relève de la gestion de la flotte, comme créer un véhicule : le
+     bouton ne promet rien à qui n'en a que la saisie ou la lecture. */
+  const [peutGerer, setPeutGerer] = useState(false);
+  useEffect(() => setPeutGerer(peutCourant("flotte", "gestion")), []);
+  function archiver() {
+    const vehicule = fiche.ligne.vehicule;
+    creer({
+      type: "archive",
+      titre: `${vehicule.archiveLe ? "Désarchiver" : "Archiver"} · ${vehicule.immatriculationAffichee}`,
+      champs: CHAMPS.archive,
+      valeurs: { date: jourCourant() },
+    });
+  }
 
   /* La fiche elle-même se modifie et se trace comme une transaction : ses
      valeurs surchargées s'affichent ici, dans l'en-tête, et dans Caractéristiques. */
@@ -290,6 +305,16 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
                   Transport spécial
                 </span>
               ) : null}
+              {v.archiveLe ? (
+                <span
+                  title={`Archivé le ${date(v.archiveLe.slice(0, 10))}${v.archiveMotif ? ` — ${v.archiveMotif}` : ""}. Le véhicule ne figure plus dans les listes ni dans les choix ; « Désarchiver » l'y remet.`}
+                  className="inline-flex h-6 items-center gap-1.5 rounded-full bg-surface-3 px-2.5 text-[12px] font-medium text-texte-2"
+                >
+                  <Archive className="size-3" strokeWidth={2} />
+                  Archivé le {date(v.archiveLe.slice(0, 10))}
+                  {v.archiveMotif ? ` · ${v.archiveMotif}` : ""}
+                </span>
+              ) : null}
             </div>
             <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13.5px] text-texte-2">
               <span className="font-medium text-texte">
@@ -405,6 +430,20 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
               <Pencil className="size-4 text-texte-2" strokeWidth={1.7} />
               Modifier
             </button>
+            {/* Archiver n'est pas sortir (0054) : le véhicule quitte les listes
+                sans qu'on affirme rien sur son sort, et y revient d'un clic. Le
+                geste relève de la gestion de la flotte, comme créer un véhicule. */}
+            {peutGerer ? (
+              <button
+                type="button"
+                onClick={archiver}
+                className="bouton-secondaire"
+                title={fiche.ligne.vehicule.archiveLe ? "Remet le véhicule dans les listes — rien n'a été perdu" : "Retire le véhicule des listes et des choix sans rien effacer : sa fiche et son historique restent"}
+              >
+                {fiche.ligne.vehicule.archiveLe ? <ArchiveRestore className="size-4 text-texte-2" strokeWidth={1.7} /> : <Archive className="size-4 text-texte-2" strokeWidth={1.7} />}
+                {fiche.ligne.vehicule.archiveLe ? "Désarchiver" : "Archiver"}
+              </button>
+            ) : null}
             <BoutonDiscussion nombre={nombreMessages} ouvert={discussionOuverte} onClick={() => setDiscussionOuverte((o) => !o)} />
             <BoutonQr immatriculation={v.immatriculation} immatriculationAffichee={v.immatriculationAffichee} libelle={`${v.marque} ${v.appellation}`} />
             <MenuAjout onChoix={ajouter} />

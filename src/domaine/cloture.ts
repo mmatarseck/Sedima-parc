@@ -161,6 +161,7 @@ export const CHAMP_DATE: Record<TypeTransaction, string> = {
   sanction: "date",
   indisponibilite: "debut",
   statut: "debut",
+  archive: "date",
   aptitude: "date",
   visite: "dateRendezVous",
   caisse: "date",

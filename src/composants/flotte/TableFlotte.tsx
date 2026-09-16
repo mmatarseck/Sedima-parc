@@ -6,6 +6,7 @@ import { Echeance } from "@/composants/interface/Pastille";
 import { StatutModifiable } from "@/composants/vehicule/StatutModifiable";
 import { ChauffeurDeLaLigne } from "@/composants/vehicule/ChauffeurDeLaLigne";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
+import { estArchive, horsParc } from "@/domaine/hors-parc";
 import { REGIME_USAGE } from "@/domaine/parc-leger";
 import { PhotoVehicule } from "@/composants/vehicule/PhotoVehicule";
 import {
@@ -33,25 +34,31 @@ import { dateCourte, kilometrage, montantCourt } from "@/lib/format";
 /** Le statut affiché : effectif si la page l'a calculé, saisi sinon. */
 const statutDe = (l: LigneFlotte) => l.statutEffectif ?? l.vehicule.statut;
 
-/* Un véhicule sorti a quitté le parc : il n'est plus du sujet quand on lit
-   « la flotte », et il fausserait tout compte fait sur la liste. Il reste
-   consultable — sa fiche, son historique, ses coûts —, par son filtre et par
-   la recherche, qui le trouve à sa plaque. C'est « Tous » qui le tait, pas
-   l'application qui l'efface. */
+/* Un véhicule sorti a quitté le parc, un véhicule archivé a quitté les listes
+   (0054) : ni l'un ni l'autre n'est du sujet quand on lit « la flotte », et
+   chacun fausserait tout compte fait sur la liste. Ils restent consultables —
+   fiche, historique, coûts —, par leur filtre et par la recherche, qui les
+   trouve à leur plaque. C'est « Tous » qui les tait, pas l'application qui
+   les efface. */
 const sorti = (l: LigneFlotte) => l.vehicule.statut === "sorti";
+const tu = (l: LigneFlotte) => horsParc(l.vehicule);
 
 const FILTRES: FiltreListe<LigneFlotte>[] = [
-  { cle: "tous", libelle: "Tous", retient: (l) => !sorti(l) },
-  { cle: "operationnels", libelle: "Opérationnels", retient: (l) => !sorti(l) && STATUT_VEHICULE[statutDe(l)].operationnel },
+  { cle: "tous", libelle: "Tous", retient: (l) => !tu(l) },
+  { cle: "operationnels", libelle: "Opérationnels", retient: (l) => !tu(l) && STATUT_VEHICULE[statutDe(l)].operationnel },
   {
     cle: "immobilises",
     libelle: "Immobilisés",
     retient: (l) => statutDe(l) === "en-reparation" || statutDe(l) === "en-restauration" || statutDe(l) === "hors-service",
   },
-  { cle: "sortants", libelle: "Sortants", retient: (l) => l.vehicule.statut === "en-mutation" || l.vehicule.statut === "retrait-en-cours" },
-  { cle: "non-conformes", libelle: "Non conformes", retient: (l) => !sorti(l) && (l.prochaineEcheanceConformite?.joursRestants ?? 1) < 0 },
-  { cle: "a-recevoir", libelle: "À recevoir", retient: (l) => l.vehicule.statut === "a-recevoir" },
+  /* « En mutation », c'est la carte grise qui passe au nom de SEDIMA : le
+     véhicule entre, il ne sort pas (métier, 16 septembre 2026). Il se lit
+     avec ceux qu'on attend ; seul le retrait en cours est sortant. */
+  { cle: "sortants", libelle: "Sortants", retient: (l) => l.vehicule.statut === "retrait-en-cours" },
+  { cle: "non-conformes", libelle: "Non conformes", retient: (l) => !tu(l) && (l.prochaineEcheanceConformite?.joursRestants ?? 1) < 0 },
+  { cle: "entrants", libelle: "Entrants", retient: (l) => l.vehicule.statut === "a-recevoir" || l.vehicule.statut === "en-mutation" },
   { cle: "sortis", libelle: "Sortis du parc", retient: sorti },
+  { cle: "archives", libelle: "Archivés", retient: (l) => estArchive(l.vehicule) },
 ];
 
 /* Le second jeu de pilules, croisé avec l'état : le régime d'usage. Le parc

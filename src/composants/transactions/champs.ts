@@ -387,6 +387,10 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     DATE("debut", "À compter du"),
     { cle: "commentaire", libelle: "Commentaire", type: "texte" },
   ],
+  /* Archiver n'est pas sortir (0054) : rien à dater, rien à affirmer — un
+     motif en clair, facultatif, et le geste se fait ou se défait selon l'état
+     de la ligne. C'est le serveur qui sait dans quel sens il va. */
+  archive: [{ cle: "motif", libelle: "Motif", type: "texte" }],
   aptitude: [
     { cle: "aptitude", libelle: "Aptitude", type: "choix", options: optionsAptitude(), obligatoire: true },
     DATE("date", "Date de la décision"),

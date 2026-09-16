@@ -71,6 +71,9 @@ interface LigneVehicule {
   fournisseur?: string | null;
   date_sortie?: string | null;
   motif_sortie?: Vehicule["motifSortie"];
+  /* L'archivage (0054), même réserve. */
+  archive_le?: string | null;
+  archive_motif?: string | null;
 }
 
 interface LigneAttribution {
@@ -358,6 +361,8 @@ export function vehiculeDepuisLaBase(v: LigneVehicule): Vehicule {
     fournisseur: v.fournisseur ?? null,
     dateSortie: v.date_sortie ?? null,
     motifSortie: v.motif_sortie ?? null,
+    archiveLe: v.archive_le ?? null,
+    archiveMotif: v.archive_motif ?? null,
     valeurAcquisition: v.valeur_acquisition,
     dureeAmortissementAnnees: v.duree_amortissement_annees,
     commentaire: v.commentaire,

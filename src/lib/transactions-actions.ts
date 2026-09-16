@@ -283,6 +283,7 @@ export async function ecrireCreation(c: Creation): Promise<ResultatEcriture> {
   if (!moi) return { issue: "refusee", motif: "Session absente : reconnectez-vous." };
 
   if (c.type === "statut") return poserStatut(client, moi.utilisateurId, c);
+  if (c.type === "archive") return poserArchive(client, moi.utilisateurId, c);
   if (c.type === "aptitude") return poserAptitude(client, moi.utilisateurId, c);
   if (c.type === "attribution") return poserAttribution(client, moi.utilisateurId, c);
   /* « Personne — retirer le chauffeur » : on clôt sans rouvrir. Ce n'est pas
@@ -586,6 +587,42 @@ async function poserAptitude(client: SupabaseClient, utilisateurId: string, c: C
     cree_par: utilisateurId,
   });
   if (trace.error) return { issue: "refusee", motif: `Enregistrée, mais sans trace : ${trace.error.message}` };
+  revalidatePath("/", "layout");
+  return { issue: "ecrite", numero: c.numero };
+}
+
+/*
+ * Archiver n'est pas sortir (0054) : rien n'est affirmé sur le véhicule, il
+ * quitte seulement les listes de travail — et y revient d'un clic. Le même
+ * geste fait l'un et l'autre, selon l'état de la ligne ; la trace dit lequel,
+ * quand, par qui, et pourquoi si le motif a été donné.
+ */
+async function poserArchive(client: SupabaseClient, utilisateurId: string, c: Creation): Promise<ResultatEcriture> {
+  const s = decomposerSujet(c.sujet);
+  const vehiculeId = s.genre === "vehicule" ? await vehiculeIdDe(client, s.cle) : null;
+  if (!vehiculeId) return { issue: "refusee", motif: "Non enregistré en base : véhicule introuvable." };
+  const avant = await client.from("vehicule").select("immatriculation, archive_le").eq("id", vehiculeId).maybeSingle<{ immatriculation: string; archive_le: string | null }>();
+  if (!avant.data) return { issue: "refusee", motif: "Non enregistré en base : véhicule introuvable." };
+  const archiver = !avant.data.archive_le;
+  const maintenant = new Date().toISOString();
+  const motif = typeof c.valeurs.motif === "string" && c.valeurs.motif.trim() ? c.valeurs.motif.trim() : null;
+  const maj = await client
+    .from("vehicule")
+    .update({ archive_le: archiver ? maintenant : null, archive_motif: archiver ? motif : null, modifie_le: maintenant, modifie_par: utilisateurId })
+    .eq("id", vehiculeId);
+  if (maj.error) return { issue: "refusee", motif: `${archiver ? "Archivage" : "Désarchivage"} refusé : ${maj.error.message}` };
+  const trace = await client.from("modification").insert({
+    table_cible: "vehicule",
+    numero: avant.data.immatriculation,
+    champ: "archive_le",
+    libelle_champ: "Archivage",
+    avant: avant.data.archive_le,
+    apres: archiver ? maintenant : null,
+    motif: motif ?? (archiver ? `Archivé (${c.numero})` : `Désarchivé (${c.numero})`),
+    statut: "appliquee",
+    cree_par: utilisateurId,
+  });
+  if (trace.error) return { issue: "refusee", motif: `${archiver ? "Archivé" : "Désarchivé"}, mais sans trace : ${trace.error.message}` };
   revalidatePath("/", "layout");
   return { issue: "ecrite", numero: c.numero };
 }

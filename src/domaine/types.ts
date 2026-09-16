@@ -153,6 +153,13 @@ export interface Vehicule {
   dateSortie?: string | null;
   /** Pourquoi : cédé, réformé, détruit, volé, fin de location, autre. */
   motifSortie?: MotifSortie | null;
+  /**
+   * Archivé (0054) : retiré des listes et des choix sans rien affirmer sur
+   * son sort — un doublon, une saisie par erreur, un engin plus suivi. Ce
+   * n'est pas une sortie de parc, et cela se défait d'un clic.
+   */
+  archiveLe?: string | null;
+  archiveMotif?: string | null;
   valeurAcquisition: number | null;
   dureeAmortissementAnnees: number | null;
   commentaire: string | null;

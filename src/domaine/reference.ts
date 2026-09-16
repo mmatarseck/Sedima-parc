@@ -35,6 +35,7 @@ export type TypeTransaction =
   | "sanction"
   | "indisponibilite"
   | "statut"
+  | "archive"
   | "aptitude"
   | "visite"
   | "observation"
@@ -92,6 +93,8 @@ export const TYPE_TRANSACTION: Record<TypeTransaction, DefinitionTypeTransaction
   sanction: { prefixe: "SAN", libelle: "Sanction", ongletVehicule: null, ongletChauffeur: "incidents" },
   indisponibilite: { prefixe: "IND", libelle: "Indisponibilité", ongletVehicule: null, ongletChauffeur: "journal" },
   statut: { prefixe: "STA", libelle: "Changement de statut", ongletVehicule: "journal", ongletChauffeur: null },
+  /* Archiver ou désarchiver un véhicule (0054) : le même geste, selon l'état de la ligne. */
+  archive: { prefixe: "ARC", libelle: "Archivage", ongletVehicule: "journal", ongletChauffeur: null },
   aptitude: { prefixe: "APT", libelle: "Décision d'aptitude", ongletVehicule: null, ongletChauffeur: "identite" },
   visite: { prefixe: "VTE", libelle: "Visite technique", ongletVehicule: "conformite", ongletChauffeur: null },
   observation: { prefixe: "OBS", libelle: "Observation de visite technique", ongletVehicule: "entretien", ongletChauffeur: null },

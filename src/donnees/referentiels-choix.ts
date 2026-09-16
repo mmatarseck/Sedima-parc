@@ -12,6 +12,7 @@
  * ==========================================================================*/
 
 import { cache } from "react";
+import { horsParc } from "@/domaine/hors-parc";
 import type { Parametres } from "@/domaine/parametres";
 import { REFERENTIELS_VIDES, type ReferentielsChoix } from "@/lib/referentiels-navigateur";
 import { lignesChauffeurs } from "./chauffeurs";
@@ -30,10 +31,11 @@ async function referentielsChoixBrut(parametres: Parametres): Promise<Referentie
       parcLegerServeur(parametres),
     ]);
     return {
-      /* Un véhicule sorti du parc ne s'attelle ni ne se remplit : il n'a rien à
-         faire dans une liste de saisie, mais reste consultable sur sa fiche. */
+      /* Un véhicule sorti du parc ou archivé ne s'attelle ni ne se remplit :
+         il n'a rien à faire dans une liste de saisie, mais reste consultable
+         sur sa fiche. */
       vehicules: flotte
-        .filter((l) => l.vehicule.statut !== "sorti")
+        .filter((l) => !horsParc(l.vehicule))
         .map((l) => ({
           id: l.vehicule.id,
           immatriculation: l.vehicule.immatriculation,
