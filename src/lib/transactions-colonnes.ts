@@ -16,7 +16,7 @@
  * ==========================================================================*/
 
 import { CATEGORIES_PERMIS } from "@/domaine/chauffeur";
-import { provisoireDepuisVin } from "@/domaine/immatriculation";
+import { normaliser, provisoireDepuisVin } from "@/domaine/immatriculation";
 import { USAGES_STANDARD, cleNom, idUsage } from "@/domaine/parametres";
 import type { TypeTransaction } from "@/domaine/reference";
 import { PRODUIT_TRANSPORTE, type ProduitTransporte } from "@/domaine/releve-transport";
@@ -1026,7 +1026,13 @@ export function decomposerSujet(sujet: string): { genre: "vehicule" | "chauffeur
 
 export const EST_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** L'immatriculation canonique d'un sujet : sans espace ni tiret, en capitales. */
+/**
+ * L'immatriculation canonique d'un sujet — la règle du domaine, et elle seule.
+ * Cette fonction n'ôtait que les espaces et les tirets ; « (NOUVEAU VRAC 1) »
+ * entrait donc en base avec ses parenthèses, quand l'adresse de la fiche
+ * était normalisée sans elles : le véhicule créé était introuvable
+ * (16 septembre 2026). Une clé, une règle.
+ */
 export function immatriculationCanonique(cle: string): string {
-  return cle.replace(/[\s-]/g, "").toUpperCase();
+  return normaliser(cle);
 }
