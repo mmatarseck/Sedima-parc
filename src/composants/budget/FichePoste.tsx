@@ -209,7 +209,7 @@ export function FichePoste({ fiche }: { fiche: Fiche }) {
         * scroll »). La courbe prend le reste et ne dépasse pas la hauteur d'une
         * carte de chiffres.
         */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(440px,500px)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(560px,680px)]">
         <Carte
           titre="La consommation, mois par mois"
           precision={`Le cumul dépensé depuis janvier, contre le rythme que le budget prévoyait à la même date — ${bu === "toutes" ? "tout le poste, business units confondues" : bu === "parc" ? "le parc, hors business unit" : libelleBu(bu)}`}
