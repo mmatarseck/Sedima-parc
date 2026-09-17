@@ -223,7 +223,7 @@ for (const [k, arr] of releves) {
     crees++;
     continue;
   }
-  const ins = await pg.from("chauffeur").insert({ prenom, nom, matricule_rh: s.matricule, contrat: s.contrat ?? "cdi", telephone: s.telephone, permis_categories: s.permis.length ? s.permis : null, aptitude: "apte" });
+  const ins = await pg.from("chauffeur").insert({ prenom, nom, matricule_rh: s.matricule, contrat: s.contrat ?? "cdi", telephone: s.telephone, permis_categories: s.permis, aptitude: "apte" });
   if (ins.error) {
     console.error(`    refusé : ${ins.error.message}`);
     continue;
