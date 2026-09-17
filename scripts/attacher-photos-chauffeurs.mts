@@ -30,6 +30,7 @@ const DEPOSER = process.argv.includes("--deposer");
 const GRAPHIES: Record<string, string> = {
   "MORY DJITE": "MORY DJITTE",
   "SAMBA THIOUBOU": "SAMBA THIOUB",
+  "ABLAYE DIEYE": "ABDOULAYE DIEYE",
 };
 
 function chargerEnvLocal(): void {
