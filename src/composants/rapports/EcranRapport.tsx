@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowUpDown, Bookmark, ChevronDown, ChevronUp, Download, PencilLine, Search, Trash2, X } from "lucide-react";
@@ -202,16 +202,22 @@ export function EcranRapport({
   }
 
   /*
-   * L'export reprend ce que l'on voit : les colonnes choisies dans leur ordre,
-   * le tri et les filtres du moment. Exporter autre chose serait une surprise.
+   * L'export reprend ce que l'on voit — les colonnes choisies dans leur ordre,
+   * le tri et les filtres du moment — ou, au choix, **toutes les colonnes du
+   * rapport**, masquées comprises (métier, 17 septembre 2026) : les visibles
+   * d'abord, dans l'ordre de l'écran, puis les autres dans l'ordre du
+   * catalogue. Le cartouche dit lequel des deux a été pris.
    *
    * Le classeur porte en tête **les conditions du tableau** — période, filtres
    * posés, tri, qui a exporté et quand. Un tableau sans ses conditions ne se
    * relit pas trois mois plus tard, et deux exports du même rapport ne se
    * distinguent plus l'un de l'autre.
    */
-  function exporter() {
-    const colonnesClasseur: ColonneClasseur[] = colonnes.map((c) => ({
+  function exporter(portee: "visibles" | "toutes") {
+    setMenuExport(false);
+    const prises = portee === "toutes" ? [...colonnes, ...rapport.colonnes.filter((c) => !visibles.includes(c.cle))] : colonnes;
+    const totauxPris = prises.map((c) => totalDe(triees, c));
+    const colonnesClasseur: ColonneClasseur[] = prises.map((c) => ({
       entete: c.precision ? `${c.libelle} (${c.precision})` : c.libelle,
       format: FORMAT_CLASSEUR[c.type],
       largeurPx: c.largeur,
@@ -234,12 +240,16 @@ export function EcranRapport({
       cartouche.push({ libelle: "Tri", valeur: `${col?.libelle ?? tri.cle}, ${tri.sens === "asc" ? "croissant" : "décroissant"}` });
     }
     cartouche.push({ libelle: "Lignes", valeur: `${nombre(triees.length)} ${rapport.unite}${triees.length !== lignes.length ? ` sur ${nombre(lignes.length)}` : ""}` });
+    cartouche.push({
+      libelle: "Colonnes",
+      valeur: portee === "toutes" ? `toutes les ${prises.length} colonnes du rapport, dont ${prises.length - colonnes.length} masquée${prises.length - colonnes.length > 1 ? "s" : ""} à l'écran` : `les ${colonnes.length} colonnes visibles à l'écran`,
+    });
     cartouche.push({ libelle: "Exporté", valeur: `par ${trouverRole(compte === "invite" ? null : (compte as Role)).nom}, le ${formaterDate(new Date().toISOString())}` });
 
     /* La ligne de totaux du pied part avec le reste : c'est elle qu'on recopie
        dans une note de synthèse, et la retaper serait une occasion de se tromper. */
-    const totauxClasseur: (ValeurCellule | null)[] = colonnes.map((_, i) =>
-      totaux[i] !== null ? { type: "nombre", valeur: totaux[i]! } : i === 0 ? { type: "texte", valeur: "Total" } : null,
+    const totauxClasseur: (ValeurCellule | null)[] = prises.map((_, i) =>
+      totauxPris[i] !== null ? { type: "nombre", valeur: totauxPris[i]! } : i === 0 ? { type: "texte", valeur: "Total" } : null,
     );
 
     telecharger(
@@ -249,8 +259,8 @@ export function EcranRapport({
         sousTitre: rapport.description,
         cartouche,
         colonnes: colonnesClasseur,
-        lignes: triees.map((l) => colonnes.map((c) => valeurClasseur(l[c.cle] ?? null, c))),
-        totaux: aDesTotaux ? totauxClasseur : undefined,
+        lignes: triees.map((l) => prises.map((c) => valeurClasseur(l[c.cle] ?? null, c))),
+        totaux: totauxPris.some((t) => t !== null) ? totauxClasseur : undefined,
       }),
       `${perso ? perso.nom.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : rapport.id}-${aujourdhui}.xlsx`,
     );
@@ -271,6 +281,25 @@ export function EcranRapport({
     setPanneauVues(false);
     poserPeriode(v.periode, v.perimetre);
   }
+
+  /* Le menu d'export se ferme d'un clic dehors ou d'Échap, comme les facettes. */
+  const [menuExport, setMenuExport] = useState(false);
+  const zoneExport = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuExport) return;
+    function dehors(e: MouseEvent) {
+      if (zoneExport.current && !zoneExport.current.contains(e.target as Node)) setMenuExport(false);
+    }
+    function echap(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuExport(false);
+    }
+    document.addEventListener("mousedown", dehors);
+    document.addEventListener("keydown", echap);
+    return () => {
+      document.removeEventListener("mousedown", dehors);
+      document.removeEventListener("keydown", echap);
+    };
+  }, [menuExport]);
 
   const resolue = resoudrePeriode(periodeAdresse, aujourdhui);
   const totaux = colonnes.map((c) => totalDe(triees, c));
@@ -414,10 +443,31 @@ export function EcranRapport({
           onChanger={setVisibles}
           onRetablir={() => setVisibles(colonnesInitiales(rapport.colonnes, identifiant))}
         />
-        <button type="button" onClick={exporter} disabled={triees.length === 0} className="bouton-secondaire h-8 disabled:cursor-not-allowed disabled:text-attenue-2">
-          <Download className="size-4" strokeWidth={1.8} />
-          Exporter
-        </button>
+        {/* Deux exports, pas un : ce qu'on voit, ou tout le rapport. Le choix
+            se fait ici plutôt que par une case à cocher qu'on oublierait. */}
+        <div ref={zoneExport} className="relative">
+          <button type="button" onClick={() => setMenuExport((m) => !m)} aria-expanded={menuExport} disabled={triees.length === 0} className="bouton-secondaire h-8 disabled:cursor-not-allowed disabled:text-attenue-2">
+            <Download className="size-4" strokeWidth={1.8} />
+            Exporter
+            <ChevronDown className={`size-3.5 text-attenue transition-transform ${menuExport ? "rotate-180" : ""}`} strokeWidth={2} />
+          </button>
+          {menuExport ? (
+            <div role="menu" className="absolute top-full right-0 z-40 mt-1.5 w-[300px] overflow-hidden rounded-[12px] border border-bordure bg-surface py-1 shadow-modale">
+              <button type="button" role="menuitem" onClick={() => exporter("visibles")} className="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-surface-3">
+                <span className="text-[13px] font-medium text-texte">Les colonnes visibles</span>
+                <span className="meta">
+                  {colonnes.length} colonne{colonnes.length > 1 ? "s" : ""}, dans l&apos;ordre de l&apos;écran
+                </span>
+              </button>
+              <button type="button" role="menuitem" onClick={() => exporter("toutes")} className="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-surface-3">
+                <span className="text-[13px] font-medium text-texte">Toutes les colonnes du rapport</span>
+                <span className="meta">
+                  {rapport.colonnes.length} colonne{rapport.colonnes.length > 1 ? "s" : ""}, masquées comprises
+                </span>
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {/* ---- La table ---- */}
