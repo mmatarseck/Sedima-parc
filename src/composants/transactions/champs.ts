@@ -19,7 +19,7 @@ import { STATUT_ORDRE } from "@/domaine/maintenance";
 import { REGIME_USAGE } from "@/domaine/parc-leger";
 import { TYPES_GARAGE, TYPE_PRESTATAIRE } from "@/domaine/prestataires";
 import { lireCreations } from "@/lib/clotures-demo";
-import { APTITUDE, BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_OBSERVATION, GRAVITE_OBSERVATION, MISSION_INCIDENT, MOTIF_IMMOBILISATION, MOTIF_INDISPONIBILITE, MOTIF_SORTIE, NATURE_INCIDENT, POSTE_DEPENSE, RESPONSABILITE, ROLE_AFFECTATION, STATUT_DECLARATION, STATUT_OBSERVATION, STATUT_VEHICULE, STATUT_VISITE, TYPE_INCIDENT, TYPE_SANCTION, TYPE_VISITE } from "@/domaine/libelles";
+import { APTITUDE, BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_OBSERVATION, CONTRAT_CHAUFFEUR, GRAVITE_OBSERVATION, MISSION_INCIDENT, MOTIF_IMMOBILISATION, MOTIF_INDISPONIBILITE, MOTIF_SORTIE, NATURE_INCIDENT, POSTE_DEPENSE, RESPONSABILITE, ROLE_AFFECTATION, STATUT_DECLARATION, STATUT_OBSERVATION, STATUT_VEHICULE, STATUT_VISITE, TYPE_INCIDENT, TYPE_SANCTION, TYPE_VISITE } from "@/domaine/libelles";
 import type { TypeTransaction } from "@/domaine/reference";
 import type { CategorieVehicule } from "@/domaine/types";
 import { cleNom, nomMarqueConnu } from "@/domaine/parametres";
@@ -512,7 +512,8 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "prenom", libelle: "Prénom", type: "texte", obligatoire: true },
     { cle: "nom", libelle: "Nom", type: "texte", obligatoire: true },
     { cle: "matriculeRh", libelle: "Matricule RH", type: "texte" },
-    { cle: "contrat", libelle: "Contrat", type: "choix", options: [{ valeur: "salarie", libelle: "Salarié" }, { valeur: "interimaire", libelle: "Intérimaire" }, { valeur: "prestataire", libelle: "Prestataire" }], obligatoire: true },
+    /* CDI, CDD, journalier d'abord — les contrats que les RH nomment (0056) ; les trois d'origine restent choisissables. */
+    { cle: "contrat", libelle: "Contrat", type: "choix", options: options(CONTRAT_CHAUFFEUR), obligatoire: true },
     /* Relu à l'ouverture et non figé à l'import : un site créé sur un véhicule
        il y a une minute doit se proposer ici. */
     { cle: "siteId", libelle: "Site de rattachement", type: "suggestion", suggestionsDe: () => optionsSites() },

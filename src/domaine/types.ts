@@ -197,7 +197,8 @@ export interface Chauffeur {
   matriculeRh: string | null;
   nom: string;
   prenom: string;
-  contrat: "salarie" | "interimaire" | "prestataire";
+  /** CDI, CDD, journalier (0056) — les trois d'origine restent : « salarié » d'avant la distinction, intérimaire, prestataire. */
+  contrat: "cdi" | "cdd" | "journalier" | "salarie" | "interimaire" | "prestataire";
   siteId: string | null;
   permisNumero: string | null;
   permisCategories: string[];

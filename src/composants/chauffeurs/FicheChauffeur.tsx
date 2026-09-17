@@ -245,7 +245,8 @@ export function FicheChauffeur({
                   <Pastille ton={APTITUDE[c.aptitude].ton}>{APTITUDE[c.aptitude].libelle}</Pastille>
                 </span>
               ) : null}
-              {c.contrat !== "salarie" ? (
+              {/* Le CDI est la norme : la pastille ne dit que ce qui s'en écarte. */}
+              {c.contrat !== "salarie" && c.contrat !== "cdi" ? (
                 <span className="inline-flex h-6 items-center rounded-full bg-surface-3 px-2.5 text-[12px] font-medium text-texte-2">{CONTRAT_CHAUFFEUR[c.contrat]}</span>
               ) : null}
               {/* Le rang du mois révolu, toujours visible : c'est la première chose

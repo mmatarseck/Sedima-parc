@@ -269,6 +269,9 @@ export const APTITUDE: Record<Aptitude, { libelle: string; ton: Ton }> = {
 };
 
 export const CONTRAT_CHAUFFEUR: Record<Chauffeur["contrat"], string> = {
+  cdi: "CDI",
+  cdd: "CDD",
+  journalier: "Journalier",
   salarie: "Salarié",
   interimaire: "Intérimaire",
   prestataire: "Prestataire",
