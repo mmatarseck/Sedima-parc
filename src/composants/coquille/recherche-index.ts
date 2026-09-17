@@ -14,13 +14,10 @@ import { STATUT_CHAUFFEUR } from "@/domaine/chauffeur";
 import { BUSINESS_UNIT, STATUT_VEHICULE } from "@/domaine/libelles";
 import type { LigneFlotte } from "@/domaine/types";
 
-export interface Resultat {
-  cle: string;
-  categorie: "Transactions" | "Véhicules" | "Chauffeurs";
-  titre: string;
-  precision: string;
-  href: string;
-}
+import type { ResultatRecherche } from "@/domaine/recherche";
+
+/** Le même résultat que la recherche serveur : l'index local en rend pour la démonstration et pour ce qui vient d'être créé. */
+export type Resultat = ResultatRecherche;
 
 const LIMITE_PAR_CATEGORIE = 5;
 
