@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { FileText, Lock, Plus } from "lucide-react";
 import { Carte, Definitions, TableauSimple } from "@/composants/interface/Carte";
+import { DossierPieces } from "@/composants/interface/DossierPieces";
+import { OuvrirPiece } from "@/composants/interface/OuvrirPiece";
 import { Numero } from "@/composants/interface/Numero";
 import { CHAMPS, CHAMPS_CONTRAVENTION, CHAMPS_FRAIS } from "@/composants/transactions/champs";
 import { fabriquerRappel } from "@/composants/transactions/fabriques";
@@ -472,6 +474,27 @@ export function OngletDocuments({ fiche, cible, onAjouter }: { fiche: FicheChauf
         ]}
       />
     </Carte>
+    {/* Le dossier, comme celui du véhicule (métier, 17 septembre 2026) : le
+        scan du permis et de la visite médicale, ouvert sur place, déposé ou
+        retiré depuis la ligne qui le porte. */}
+    <DossierPieces
+      familles={[
+        {
+          cle: "chauffeur",
+          libelle: "Pièces du chauffeur",
+          precision: "Permis de conduire, visite médicale — le scan de chaque pièce, joint sur son document",
+          pieces: documents
+            .filter((d): d is DocumentFiche & { fichier: string } => Boolean(d.fichier))
+            .map((d) => ({ numero: d.numero, type: "document", champFichier: "fichier", famille: "reglementaire", libelle: TYPE_DOCUMENT[d.type], precision: [d.numeroPiece ? `n° ${d.numeroPiece}` : null, d.emetteur, d.echeance ? `échéance ${date(d.echeance)}` : null].filter(Boolean).join(" · "), date: d.dateEffet, fichier: d.fichier })),
+          deposer: onAjouter ? { libelle: "Déposer un document", onClick: () => onAjouter("document") } : undefined,
+        },
+      ]}
+      onRetirer={(p) => {
+        const champ = CHAMPS.document.find((c) => c.cle === "fichier");
+        if (champ) demander({ type: "document", numero: p.numero, titre: `Retirer la pièce · ${p.libelle}`, champs: [champ], valeurs: { fichier: p.fichier } });
+      }}
+      vide={`Aucune pièce n'est attachée à ${l.nomComplet}.`}
+    />
     <Carte
       titre="Documents"
       precision={aProbleme > 0 ? `${aProbleme} document${aProbleme > 1 ? "s" : ""} à régulariser` : "Permis et visite médicale à jour"}
@@ -500,8 +523,10 @@ export function OngletDocuments({ fiche, cible, onAjouter }: { fiche: FicheChauf
             cle: "justificatif",
             libelle: "Justificatif",
             rendu: (d) =>
-              d.justificatif ? (
-                <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-texte-2" title="La pièce est déclarée fournie. Sa consultation viendra avec le stockage des fichiers — rien n'en tient encore le contenu.">
+              d.fichier ? (
+                <OuvrirPiece fichier={d.fichier} libelle="Ouvrir" titre="Ouvrir la pièce attachée" />
+              ) : d.justificatif ? (
+                <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-texte-2" title="La pièce est déclarée fournie, mais aucun fichier n'y est attaché : « Modifier » permet de l'ajouter.">
                   <FileText className="size-3.5 text-attenue" strokeWidth={1.8} />
                   Fourni
                 </span>

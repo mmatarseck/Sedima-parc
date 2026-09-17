@@ -17,6 +17,7 @@ import { afficher } from "@/domaine/immatriculation";
 import type { BusinessUnit, CategorieVehicule, DeclarationIncident, Indisponibilite, Sanction, TypeDocument } from "@/domaine/types";
 import { clientServeur } from "@/lib/supabase";
 import { lignesChauffeurs } from "./chauffeurs";
+import { lignesLues } from "./lecture";
 
 interface FicheChauffeurJson {
   chauffeur: { adresse: string | null; contact_urgence: string | null; permis_delivrance: string | null };
@@ -52,6 +53,13 @@ export function faitsChauffeurDepuisJson(j: FicheChauffeurJson, id: string): Fai
   };
 }
 
+/** Le scan de chaque document du chauffeur, par numéro — `lire_fiche_chauffeur()` ne le projette pas (17 septembre 2026). */
+async function piecesJointesDuChauffeur(client: Awaited<ReturnType<typeof clientServeur>>, numeros: string[]): Promise<Map<string, string>> {
+  if (numeros.length === 0) return new Map();
+  const lecture = await client.from("document").select("numero, fichier").in("numero", numeros).not("fichier", "is", null).limit(500).returns<{ numero: string; fichier: string }[]>();
+  return new Map(lignesLues("Pièces jointes du chauffeur", lecture).map((d) => [d.numero, d.fichier]));
+}
+
 /**
  * La fiche d'un chauffeur par son identifiant d'adresse (« moustapha-diaw »),
  * ou par l'identifiant de sa ligne en base ; nulle hors périmètre.
@@ -79,7 +87,12 @@ async function ficheChauffeurServeurBrut(id: string): Promise<FicheChauffeur | n
   /* Les rappels, par l'adresse de la fiche et non par un identifiant de table
      que la ligne ne porte pas — le même piège que sur le véhicule, évité ici. */
   const rappels = await rappelsDuChauffeurParAdresse(client, ligne.id, await parametresServeur());
-  return assemblerFicheChauffeur(ligne, { ...faits, rappels }, aujourdhui);
+  /* Le scan de chaque document — le permis, la visite médicale —, que
+     `lire_fiche_chauffeur()` ne projette pas : une lecture bornée aux numéros
+     que la fiche porte, sans identifiant de table (17 septembre 2026). */
+  const pieces = await piecesJointesDuChauffeur(client, faits.documents.map((d) => d.numero));
+  const documents = faits.documents.map((d) => ({ ...d, fichier: pieces.get(d.numero) ?? null }));
+  return assemblerFicheChauffeur(ligne, { ...faits, documents, rappels }, aujourdhui);
 }
 
 export const ficheChauffeurServeur = cache(ficheChauffeurServeurBrut);
