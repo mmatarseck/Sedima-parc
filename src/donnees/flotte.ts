@@ -63,6 +63,8 @@ interface LigneVehicule {
   capacite_reservoir: number | null;
   valeur_acquisition: number | null;
   duree_amortissement_annees: number | null;
+  date_acquisition?: string | null;
+  reference_immobilisation?: string | null;
   photo: string | null;
   commentaire: string | null;
   regime: Vehicule["regime"];
@@ -365,6 +367,8 @@ export function vehiculeDepuisLaBase(v: LigneVehicule): Vehicule {
     archiveMotif: v.archive_motif ?? null,
     valeurAcquisition: v.valeur_acquisition,
     dureeAmortissementAnnees: v.duree_amortissement_annees,
+    dateAcquisition: v.date_acquisition ?? null,
+    referenceImmobilisation: v.reference_immobilisation ?? null,
     commentaire: v.commentaire,
     photo: v.photo,
     regime: v.regime ?? "exploitation",

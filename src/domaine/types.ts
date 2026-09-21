@@ -162,6 +162,14 @@ export interface Vehicule {
   archiveMotif?: string | null;
   valeurAcquisition: number | null;
   dureeAmortissementAnnees: number | null;
+  /**
+   * Le jour où l'amortissement commence (0057). Vide, la première mise en
+   * circulation en tient lieu — juste pour un véhicule acheté neuf, faux pour
+   * une occasion.
+   */
+  dateAcquisition?: string | null;
+  /** Le numéro de l'immobilisation en comptabilité (IMM-201-…). */
+  referenceImmobilisation?: string | null;
   commentaire: string | null;
   /**
    * Photo du véhicule, pour le reconnaître d'un coup d'œil — demande du métier

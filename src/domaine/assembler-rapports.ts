@@ -94,6 +94,7 @@ import type { LigneInterventionFlotte, LigneOrdre, LigneTravail } from "@/domain
 import { MODE_EXECUTION, PRODUIT_TRANSPORTE, ecartPesee, type LigneReleve } from "@/domaine/releve-transport";
 import { MODE_REMUNERATION } from "@/domaine/flotte-tierce";
 import { ETAT_BUDGET } from "@/domaine/budget";
+import { amortissementDe, tableauAmortissement } from "@/domaine/amortissement";
 import { NIVEAU_PRESTATAIRE, ageDette, avanceOuverte } from "@/domaine/compte-prestataire";
 import { estArchive, horsParc } from "@/domaine/hors-parc";
 import { ETAT_LEGER, REGIME_USAGE, depensesForfaitsDe, echeancierPlanCar, type SourceParcLeger } from "@/domaine/parc-leger";
@@ -265,17 +266,6 @@ function immobilisationDe(l: LigneFlotte): { statut: StatutVehicule; motif: stri
   return { statut: l.statutEffectif, motif: pieces.map((d) => `${TYPE_DOCUMENT[d.type]} ${d.etat === "manquant" ? "manquante" : "échue"}`).join(", ") };
 }
 
-/** La valeur nette comptable et la fin d'amortissement, comme la fiche les calcule. */
-function amortissementDe(v: Vehicule, aujourdhui: string): { valeurNetteComptable: number | null; finAmortissement: string | null } {
-  const mec = v.premiereMiseEnCirculation;
-  const duree = v.dureeAmortissementAnnees;
-  const ageAnnees = mec ? (Date.parse(`${aujourdhui}T00:00:00Z`) - Date.parse(`${mec}T00:00:00Z`)) / (365.25 * 86_400_000) : null;
-  return {
-    valeurNetteComptable: v.valeurAcquisition !== null && duree && ageAnnees !== null ? Math.max(0, Math.round(v.valeurAcquisition * (1 - Math.min(1, ageAnnees / duree)))) : v.valeurAcquisition,
-    finAmortissement: mec && duree ? `${Number(mec.slice(0, 4)) + duree}${mec.slice(4)}` : null,
-  };
-}
-
 /** Les échéances d'un véhicule, les plus proches d'abord ; les pièces manquantes n'ont pas d'échéance, elles ont un retard. */
 function echeancesDuVehicule(s: SourceRapports, v: Vehicule): Echeance[] {
   return s.echeances.filter((e) => e.sujet === "vehicule" && (e.sujetId === v.id || e.sujetId === v.immatriculation)).sort((a, b) => (a.joursRestants ?? 1e9) - (b.joursRestants ?? 1e9));
@@ -328,6 +318,8 @@ export function resumesFicheDepuisLaSource(s: Omit<SourceRapports, "resumesFiche
         regimePropriete: v.categorieFlotte === "interne" ? "Propriété SEDIMA" : v.categorieFlotte === "adex" ? "Mise à disposition ADEX" : "Location",
         entite: v.businessUnit ? BUSINESS_UNIT[v.businessUnit] : "SEDIMA SA",
         valeurAcquisition: v.valeurAcquisition,
+        dateAcquisition: v.dateAcquisition ?? null,
+        referenceImmobilisation: v.referenceImmobilisation ?? null,
         dureeAmortissementAnnees: v.dureeAmortissementAnnees,
         ...amortissementDe(v, s.aujourdhui),
         gpsActif: false,
@@ -497,6 +489,49 @@ function sansIntervention(s: SourceRapports, c: ContexteRapport): LigneRapport[]
 function bilans(s: SourceRapports, c: ContexteRapport): BilanVehicule[] {
   const { debut, fin } = resoudrePeriode(c.periode, s.aujourdhui);
   return qualifier(s.couts.map((d) => bilanVehicule(d, moisCouverts(debut, fin), c.perimetre)));
+}
+
+/**
+ * Le tableau des immobilisations, refait depuis les fiches : les véhicules en
+ * propriété, archivés exclus. Un véhicule sans valeur d'acquisition y figure
+ * aussi — « à valoriser » —, pour que ce qui manque se voie au lieu de se taire.
+ */
+function immobilisations(s: SourceRapports, c: ContexteRapport): LigneRapport[] {
+  const { debut, fin } = resoudrePeriode(c.periode, s.aujourdhui);
+  return s.lignes
+    .filter((l) => l.vehicule.categorieFlotte === "interne" && !l.vehicule.archiveLe)
+    .map((l) => {
+      const v = l.vehicule;
+      const t = tableauAmortissement(v, debut, fin);
+      const depart = v.dateAcquisition ?? v.premiereMiseEnCirculation;
+      const etatAmortissement =
+        v.valeurAcquisition === null
+          ? etat("À valoriser", "neutre", 3)
+          : t.cumulFin === null
+            ? etat("Date ou durée manquante", "vigilance", 2)
+            : t.valeurNetteFin === 0
+              ? etat("Amorti", "neutre", 1)
+              : etat("En cours", "favorable", 0);
+      return {
+        ...situation(s, v.id),
+        statut: etat(STATUT_VEHICULE[v.statut].libelle, tonStatut(v.statut)),
+        reference: v.referenceImmobilisation ?? null,
+        fournisseur: v.fournisseur ?? null,
+        dateAcquisition: v.dateAcquisition ?? null,
+        miseEnCirculation: v.premiereMiseEnCirculation,
+        valeurAcquisition: v.valeurAcquisition,
+        cumulDebut: t.cumulDebut,
+        dotation: t.dotation,
+        cumulFin: t.cumulFin,
+        finAmortissement: t.finAmortissement,
+        duree: v.dureeAmortissementAnnees,
+        taux: t.tauxPct,
+        valeurNette: v.valeurAcquisition === null ? null : t.valeurNetteFin,
+        etatAmortissement,
+        age: depart ? arrondir((Date.parse(`${fin}T00:00:00Z`) - Date.parse(`${depart}T00:00:00Z`)) / (365.25 * 86_400_000)) : null,
+      };
+    })
+    .sort((a, b) => String(a.dateAcquisition ?? a.miseEnCirculation ?? "9999").localeCompare(String(b.dateAcquisition ?? b.miseEnCirculation ?? "9999")));
 }
 
 function coutsParVehicule(s: SourceRapports, c: ContexteRapport): LigneRapport[] {
@@ -1829,6 +1864,8 @@ export function construireRapportDe(s: SourceRapports, id: string, c: ContexteRa
       return sansIntervention(s, c);
     case "couts-vehicule":
       return coutsParVehicule(s, c);
+    case "couts-immobilisations":
+      return immobilisations(s, c);
     case "couts-poste-mois":
       return coutsParPoste(s, c);
     case "couts-business-unit":
@@ -2070,16 +2107,33 @@ function chargesLegerParBu(s: SourceRapports, c: ContexteRapport, parametres: Pa
     .map(([bu, x]) => ({ businessUnit: bu, vehicules: x.vehicules, service: x.service, fonction: x.fonction, cartes: x.cartes.size, forfaitMensuel: x.forfaitMensuel, montant: x.montant, part: total > 0 ? arrondir((x.montant / total) * 100) : null }));
 }
 
+/** L'année du renouvellement : celle du rapport, qui la porte dans son nom. */
+const ANNEE_RENOUVELLEMENT = 2026;
+
+/**
+ * Les véhicules **neufs** de l'année : immatriculés, et mis en circulation
+ * pour la première fois en 2026. Une occasion achetée en 2026 (le Jeep de
+ * 2017, les Hilux de 2019) n'en est pas ; un véhicule encore « à recevoir »
+ * non plus, tant qu'il n'a pas sa plaque ; et les véhicules que la cascade
+ * libère puis réattribue ne sont pas du renouvellement, mais sa conséquence.
+ */
 function renouvellementLeger(s: SourceRapports): LigneRapport[] {
   const parId = new Map(s.parcLeger.attributaires.map((a) => [a.id, a]));
+  const flotte = new Map(s.lignes.map((l) => [l.vehicule.id, l.vehicule]));
   return s.parcLeger.vehicules
-    .filter((v) => v.lot !== null)
-    .sort((a, b) => a.lot!.localeCompare(b.lot!) || a.etat.localeCompare(b.etat))
+    .filter((v) => v.immatriculation !== null && v.annee === ANNEE_RENOUVELLEMENT)
+    .sort((a, b) => (a.lot ?? "~").localeCompare(b.lot ?? "~") || a.immatriculation!.localeCompare(b.immatriculation!))
     .map((v) => {
       const a = v.attributaireId ? (parId.get(v.attributaireId) ?? null) : null;
+      const f = flotte.get(v.immatriculation!) ?? null;
       return {
         lot: v.lot,
-        vehicule: `${v.immatriculation ? v.immatriculationAffichee + " · " : ""}${v.marque} ${v.modele}`,
+        immatriculation: v.immatriculationAffichee,
+        immatriculationCanonique: v.immatriculation,
+        vehicule: `${v.marque} ${v.modele}`,
+        miseEnCirculation: f?.premiereMiseEnCirculation ?? null,
+        valeurAcquisition: f?.valeurAcquisition ?? null,
+        fournisseur: f?.fournisseur ?? null,
         etat: tonEtatLeger(v.etat),
         beneficiaire: a?.nom ?? v.pool ?? null,
         fonction: a?.fonction ?? null,

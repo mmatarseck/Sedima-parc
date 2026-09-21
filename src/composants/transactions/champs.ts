@@ -628,7 +628,9 @@ export function champsVehicule(): ChampEdition[] {
          alors le nom sans lien. */
       { cle: "fournisseur", libelle: "Fournisseur (vendeur du véhicule)", type: "suggestion", options: optionsPrestataires(["garage", "pieces", "autre", "transporteur"]) },
       { cle: "valeurAcquisition", libelle: "Valeur d'acquisition", type: "nombre", unite: "F" },
+      { cle: "dateAcquisition", libelle: "Date d'acquisition", type: "date" },
       { cle: "dureeAmortissementAnnees", libelle: "Durée d'amortissement", type: "nombre", unite: "ans" },
+      { cle: "referenceImmobilisation", libelle: "Référence d'immobilisation", type: "texte" },
     ]),
     ...section("Notes", [{ cle: "commentaire", libelle: "Commentaire", type: "texte-long" }]),
   ];

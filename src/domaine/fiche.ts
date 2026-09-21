@@ -255,6 +255,8 @@ export interface IdentiteFiche {
   regimePropriete: string;
   entite: string;
   valeurAcquisition: number | null;
+  dateAcquisition: string | null;
+  referenceImmobilisation: string | null;
   dureeAmortissementAnnees: number | null;
   valeurNetteComptable: number | null;
   finAmortissement: string | null;

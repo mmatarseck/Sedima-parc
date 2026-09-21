@@ -316,6 +316,8 @@ export function fabriquerLigneFlotte(c: Creation): LigneFlotte {
       statut,
       valeurAcquisition: n(v.valeurAcquisition),
       dureeAmortissementAnnees: n(v.dureeAmortissementAnnees),
+      dateAcquisition: s(v.dateAcquisition),
+      referenceImmobilisation: s(v.referenceImmobilisation),
       commentaire: s(v.commentaire),
     },
     chauffeurTitulaire: null,

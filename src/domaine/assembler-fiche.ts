@@ -18,6 +18,7 @@
 import type { LivraisonFiche } from "./livraisons";
 import type { LigneIncident } from "./incidents";
 import type { Rappel } from "./rappels";
+import { amortissementDe } from "./amortissement";
 import { exigeDocument, immobilisationAdministrative } from "./documents";
 import { libelleUsageCourant } from "./parametres";
 import { echeancesDuPlan, type CompteursVehicule, type DernierPassage, type PlanVehicule, type ProgrammeEntretien } from "./entretien";
@@ -311,9 +312,7 @@ export function assemblerFiche(l: LigneFlotte, faits: FaitsFiche, parametres: Pa
   /* ---- Identité ---- */
   const mec = v.premiereMiseEnCirculation;
   const duree = v.dureeAmortissementAnnees;
-  const ageAnnees = mec ? (Date.parse(`${aujourdhui}T00:00:00Z`) - Date.parse(`${mec}T00:00:00Z`)) / (365.25 * 86_400_000) : null;
-  const vnc = v.valeurAcquisition !== null && duree && ageAnnees !== null ? Math.max(0, Math.round(v.valeurAcquisition * (1 - Math.min(1, ageAnnees / duree)))) : v.valeurAcquisition;
-  const finAmortissement = mec && duree ? `${Number(mec.slice(0, 4)) + duree}${mec.slice(4)}` : null;
+  const { valeurNetteComptable: vnc, finAmortissement } = amortissementDe(v, aujourdhui);
 
   return {
     ligne: l,
@@ -334,6 +333,8 @@ export function assemblerFiche(l: LigneFlotte, faits: FaitsFiche, parametres: Pa
       regimePropriete: v.categorieFlotte === "interne" ? "Propriété SEDIMA" : v.categorieFlotte === "adex" ? "Mise à disposition ADEX" : "Location",
       entite: v.businessUnit ? BUSINESS_UNIT[v.businessUnit] : "SEDIMA SA",
       valeurAcquisition: v.valeurAcquisition,
+      dateAcquisition: v.dateAcquisition ?? null,
+      referenceImmobilisation: v.referenceImmobilisation ?? null,
       dureeAmortissementAnnees: duree,
       valeurNetteComptable: vnc,
       finAmortissement,

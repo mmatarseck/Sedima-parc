@@ -133,6 +133,10 @@ export function sectionsNouveauVehicule(contexte: ContexteNouveauVehicule): Sect
           champs: [
             { cle: "fournisseur", libelle: "Fournisseur (vendeur du véhicule)", type: "suggestion", options: contexte.fournisseurs },
             { cle: "valeurAcquisition", libelle: "Valeur d'acquisition", type: "nombre", unite: "F" },
+            /* Le jour où l'amortissement commence (0057) : pour une occasion, ce
+               n'est pas la première mise en circulation. */
+            { cle: "dateAcquisition", libelle: "Date d'acquisition", type: "date" },
+            { cle: "referenceImmobilisation", libelle: "Référence d'immobilisation", type: "texte" },
             { cle: "commentaire", libelle: "Notes", type: "texte-long" },
           ],
         },

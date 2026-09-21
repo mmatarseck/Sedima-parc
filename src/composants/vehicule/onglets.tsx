@@ -386,6 +386,8 @@ export function OngletCaracteristiques({ fiche, detenteur }: { fiche: FicheVehic
           elements={[
             { libelle: "Fournisseur", valeur: v.fournisseur ?? null },
             { libelle: "Valeur d'acquisition", valeur: montant(i.valeurAcquisition) },
+            { libelle: "Date d'acquisition", valeur: i.dateAcquisition ? date(i.dateAcquisition) : null },
+            { libelle: "Référence d'immobilisation", valeur: i.referenceImmobilisation },
             { libelle: "Durée d'amortissement", valeur: i.dureeAmortissementAnnees ? `${i.dureeAmortissementAnnees} ans` : null },
             { libelle: "Valeur nette comptable", valeur: montant(i.valeurNetteComptable) },
             { libelle: "Fin d'amortissement", valeur: i.finAmortissement ? date(i.finAmortissement) : null },

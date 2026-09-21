@@ -812,6 +812,8 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
           capacite_reservoir: entier(v.capaciteReservoir),
           valeur_acquisition: entier(v.valeurAcquisition),
           duree_amortissement_annees: entier(v.dureeAmortissementAnnees),
+          date_acquisition: texte(v.dateAcquisition),
+          reference_immobilisation: texte(v.referenceImmobilisation),
           photo: texte(v.photo),
           commentaire: texte(v.commentaire),
         },
@@ -952,6 +954,8 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
     capaciteReservoir: "capacite_reservoir",
     valeurAcquisition: "valeur_acquisition",
     dureeAmortissementAnnees: "duree_amortissement_annees",
+    dateAcquisition: "date_acquisition",
+    referenceImmobilisation: "reference_immobilisation",
     /* Le nom du fournisseur seulement : le lien vers le référentiel se résout
        en base, que ce module pur ne connaît pas — `ecrireModification` s'en
        charge, comme `rattacher` le fait à la création. */

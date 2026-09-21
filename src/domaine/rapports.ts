@@ -446,14 +446,22 @@ export const RAPPORTS: DefinitionRapport[] = [
   {
     id: "parc-leger-renouvellement",
     libelle: "Renouvellement 2026",
-    description: "Le plan de cascade des vingt véhicules neufs : le lot, qui reçoit quoi, ce qu'il libère, et ce qu'il en advient.",
+    /* Métier, 21 septembre 2026 : le rapport ne liste que les véhicules
+       **neufs**, immatriculés pour la première fois en 2026 — ni les véhicules
+       que la cascade libère et réattribue, ni les occasions achetées dans
+       l'année, ni ceux qui n'ont pas encore leur plaque. */
+    description: "Les véhicules neufs du parc léger, immatriculés pour la première fois en 2026 : le lot, qui l'a reçu, et ce qu'il a coûté.",
     famille: "flotte",
-    unite: "mouvements",
+    unite: "véhicules",
     periode: false,
-    identifiant: "lot",
+    lien: (l) => lienVehicule(l),
     colonnes: [
       txt("lot", "Lot", { parDefaut: true, largeur: 110 }),
+      IMMAT,
       txt("vehicule", "Véhicule", { parDefaut: true, largeur: 220, filtrable: false }),
+      dte("miseEnCirculation", "1re mise en circulation", { parDefaut: true, largeur: 170 }),
+      mnt("valeurAcquisition", "Valeur d'acquisition", { parDefaut: true, largeur: 165 }),
+      txt("fournisseur", "Vendeur", { largeur: 220 }),
       eta("etat", "État", { parDefaut: true, largeur: 130 }),
       txt("beneficiaire", "Bénéficiaire", { parDefaut: true, largeur: 200, filtrable: false }),
       txt("fonction", "Fonction", { parDefaut: true, largeur: 240, filtrable: false }),
@@ -536,6 +544,43 @@ export const RAPPORTS: DefinitionRapport[] = [
       dur("immobilisation", "Immobilisation", { largeur: 150, precision: "en jours" }),
       num("age", "Âge", { largeur: 90, total: "moyenne", precision: "en années" }),
       mnt("valeurAcquisition", "Valeur d'acquisition", { largeur: 165 }),
+    ],
+  },
+  {
+    id: "couts-immobilisations",
+    libelle: "Immobilisations et amortissements",
+    /* Le tableau que la comptabilité tient pour le « matériel de transport »
+       (RECAP 31082026, feuille AMORTS), refait depuis les fiches : mêmes
+       colonnes, pour la période demandée. Métier, 21 septembre 2026. */
+    description: "Le prix et la date d'achat de chaque véhicule, et son amortissement sur la période : cumul au début, dotation, cumul à la fin, valeur nette — les colonnes du tableau des immobilisations de la comptabilité.",
+    famille: "couts",
+    unite: "véhicules",
+    periode: true,
+    precisionPeriode: "la dotation calculée, au prorata des jours",
+    lien: (l) => lienVehicule(l),
+    colonnes: [
+      txt("reference", "Référence", { parDefaut: true, largeur: 140, filtrable: false }),
+      IMMAT,
+      VEHICULE,
+      MARQUE,
+      CATEGORIE,
+      REGIME,
+      BU,
+      SITE,
+      STATUT,
+      txt("fournisseur", "Vendeur", { largeur: 220 }),
+      dte("dateAcquisition", "Date d'acquisition", { parDefaut: true, largeur: 150 }),
+      dte("miseEnCirculation", "1re mise en circulation", { largeur: 170 }),
+      mnt("valeurAcquisition", "Valeur d'acquisition", { parDefaut: true, largeur: 165 }),
+      mnt("cumulDebut", "Cumul amort. début", { parDefaut: true, largeur: 160 }),
+      mnt("dotation", "Dotation de la période", { parDefaut: true, largeur: 175 }),
+      mnt("cumulFin", "Cumul amort. fin", { parDefaut: true, largeur: 150 }),
+      dte("finAmortissement", "Fin d'amortissement", { parDefaut: true, largeur: 165 }),
+      num("duree", "Durée", { parDefaut: true, largeur: 90, total: "moyenne", precision: "en années" }),
+      pct("taux", "Taux", { parDefaut: true, largeur: 90 }),
+      mnt("valeurNette", "Valeur nette fin", { parDefaut: true, largeur: 150 }),
+      eta("etatAmortissement", "Amortissement", { parDefaut: true, largeur: 150 }),
+      num("age", "Âge", { largeur: 90, total: "moyenne", precision: "en années" }),
     ],
   },
   {
