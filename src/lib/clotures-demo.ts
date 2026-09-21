@@ -368,6 +368,32 @@ function cleCreations(sujet: string): string {
   return `sedima.parc.creations.${sujet}`;
 }
 
+/**
+ * Retire une création du navigateur, où qu'elle soit rangée : la suppression
+ * d'une ligne que la base n'a pas encore prise s'arrête là, et celle d'une
+ * ligne confirmée ne doit pas la laisser revenir de la copie locale.
+ * Rend vrai si la création n'était que locale.
+ */
+export function retirerCreationLocale(numero: string): { trouvee: boolean; enBase: boolean } {
+  let trouvee = false;
+  let enBase = false;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith("sedima.parc.creations.")) continue;
+      const liste = lireJson<Creation[]>(k, []);
+      const c = liste.find((x) => x.numero === numero);
+      if (!c) continue;
+      trouvee = true;
+      enBase = enBase || Boolean(c.enBase);
+      ecrireJson(k, liste.filter((x) => x.numero !== numero));
+    }
+  } catch {
+    /* stockage indisponible */
+  }
+  return { trouvee, enBase };
+}
+
 export function lireCreations(sujet: string): Creation[] {
   return lireJson<Creation[]>(cleCreations(sujet), []);
 }

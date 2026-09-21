@@ -189,7 +189,7 @@ export function OngletApercu({ fiche }: { fiche: FicheVehicule }) {
      apparaîtrait dans Dépenses et manquerait aux charges qui les totalisent —
      et l'écart serait mis sur le compte d'un défaut de l'application. En
      production, la transaction est en base et les vues recalculent seules. */
-  const depenses = [...creations("depense", fabriquerDepense), ...fiche.depenses.map(surcharger)];
+  const depenses = sansDoublon([...creations("depense", fabriquerDepense), ...fiche.depenses.map(surcharger)]);
   const { chargesParGroupe, coutsMensuels, total: totalDepenses } = agregerCouts(depenses, fiche.coutsMensuels.map((m) => m.mois));
   /* Le kilométrage des douze mois ne s'affiche nulle part : on le retrouve des
      deux indicateurs du serveur, pour que le coût au kilomètre suive les
@@ -197,8 +197,8 @@ export function OngletApercu({ fiche }: { fiche: FicheVehicule }) {
   const kmDouzeMois = fiche.indicateurs.coutDouzeMois && fiche.indicateurs.coutParKm ? fiche.indicateurs.coutDouzeMois / fiche.indicateurs.coutParKm : null;
   const coutParKm = kmDouzeMois && kmDouzeMois > 0 ? Math.round(totalDepenses / kmDouzeMois) : fiche.indicateurs.coutParKm;
   const totalCharges = chargesParGroupe.reduce((somme, g) => somme + g.montant, 0);
-  const derniereIntervention = [...creations("intervention", fabriquerIntervention), ...fiche.interventions.map(surcharger)].sort((x, y) => y.date.localeCompare(x.date))[0] ?? null;
-  const dernierPlein = [...creations("plein", fabriquerPlein), ...fiche.pleins.map(surcharger)].sort((x, y) => y.date.localeCompare(x.date))[0] ?? null;
+  const derniereIntervention = sansDoublon([...creations("intervention", fabriquerIntervention), ...fiche.interventions.map(surcharger)]).sort((x, y) => y.date.localeCompare(x.date))[0] ?? null;
+  const dernierPlein = sansDoublon([...creations("plein", fabriquerPlein), ...fiche.pleins.map(surcharger)]).sort((x, y) => y.date.localeCompare(x.date))[0] ?? null;
 
   return (
     /* Les quatre cartes sont enfants directs de la grille, et non deux colonnes
@@ -594,6 +594,18 @@ export function OngletAffectations({ fiche, transferts = [], cible }: { fiche: F
 /* Conformité — liste des documents                                           */
 /* ========================================================================== */
 
+/**
+ * Une ligne créée dans l'application vit deux fois le temps que la base la
+ * confirme : sa copie du navigateur, et la ligne que le serveur renvoie déjà
+ * (métier, 21 septembre 2026 : « après la création d'un service et sa clôture,
+ * deux lignes apparaissent sur l'atelier »). Le numéro fait foi : la première
+ * — la copie, qui porte les dernières valeurs — reste.
+ */
+function sansDoublon<T extends { numero: string }>(lignes: T[]): T[] {
+  const vus = new Set<string>();
+  return lignes.filter((l) => (vus.has(l.numero) ? false : (vus.add(l.numero), true)));
+}
+
 export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible?: string }) {
   const ajouter = useAjoutVehicule(fiche);
   const { surcharger, demander, creer, creations } = useEdition();
@@ -828,7 +840,7 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
   const ouvrir = (o: LigneOrdre) => ouvrirService({ service: o, vehicule: vehiculeService, signalements, services });
   const reparer = (s: LigneSignalement) =>
     ouvrirService({ vehicule: vehiculeService, signalements, services, propose: { type: "curatif", objet: s.description, origineNumero: s.numero, signalements: [s.numero], priorite: s.priorite === "critique" ? "urgent" : "non-planifie" } });
-  const interventions = [...creations("intervention", fabriquerIntervention), ...fiche.interventions.map(surcharger)];
+  const interventions = sansDoublon([...creations("intervention", fabriquerIntervention), ...fiche.interventions.map(surcharger)]);
   const depensesCreees = creations("depense", fabriquerDepense);
   /*
    * Toute la famille « maintenance », et non les deux seuls postes pièces et
@@ -837,7 +849,7 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
    * laissait de côté — et l'onglet Autres dépenses l'écarte aussi, par le même
    * groupe. Elle n'apparaissait donc **sur aucun onglet de la fiche**.
    */
-  const fournitures = [...depensesCreees, ...fiche.depenses.map(surcharger)].filter((d) => groupeDuPoste(d.poste) === "maintenance");
+  const fournitures = sansDoublon([...depensesCreees, ...fiche.depenses.map(surcharger)]).filter((d) => groupeDuPoste(d.poste) === "maintenance");
 
   /*
    * UNE LIGNE PAR FAIT (métier, 16 septembre 2026, décision « A »). Le
@@ -1130,7 +1142,7 @@ export function OngletPlanEntretien({ fiche }: { fiche: FicheVehicule }) {
 export function OngletCarburant({ fiche, cible }: { fiche: FicheVehicule; cible?: string }) {
   const ajouter = useAjoutVehicule(fiche);
   const { surcharger, demander, creations } = useEdition();
-  const pleins = [...creations("plein", fabriquerPlein), ...fiche.pleins.map(surcharger)];
+  const pleins = sansDoublon([...creations("plein", fabriquerPlein), ...fiche.pleins.map(surcharger)]);
   const litres = pleins.reduce((s, p) => s + p.litres, 0);
   const total = pleins.reduce((s, p) => s + p.montant, 0);
   const avecTicket = pleins.filter((p) => p.photo).length;
@@ -1211,7 +1223,7 @@ export function OngletCarburant({ fiche, cible }: { fiche: FicheVehicule; cible?
 export function OngletAutresDepenses({ fiche, cible }: { fiche: FicheVehicule; cible?: string }) {
   const ajouter = useAjoutVehicule(fiche);
   const { surcharger, demander, creations } = useEdition();
-  const autres = [...creations("depense", fabriquerDepense), ...fiche.depenses.map(surcharger)].filter((d) => groupeDuPoste(d.poste) === "autres");
+  const autres = sansDoublon([...creations("depense", fabriquerDepense), ...fiche.depenses.map(surcharger)]).filter((d) => groupeDuPoste(d.poste) === "autres");
   const total = autres.reduce((s, d) => s + d.montant, 0);
   /* Comme à l'atelier : le clic ouvre la facture à droite, la liste se rétracte. */
   const [idOuverte, setIdOuverte] = useState<string | null>(null);

@@ -20,6 +20,7 @@ import { normaliser } from "@/domaine/immatriculation";
 import type { Parametres } from "@/domaine/parametres";
 import type { CategorieObservation, PosteDepense, TypeDocument } from "@/domaine/types";
 import { clientServeur } from "@/lib/supabase";
+import type { EvenementJournal } from "@/domaine/fiche";
 import { programmesServeur } from "./entretien";
 import { passagesReleves, planDuVehicule, programmeParDefaut } from "./entretien-demo";
 import { lignesFlotte, parcServeur } from "./flotte";
@@ -200,7 +201,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
    */
   const parc = await parcServeur();
   const vehiculeId = parc.vehicules.find((v) => v.immatriculation === ligne.vehicule.immatriculation)?.id ?? null;
-  const [lecture, livraisons, piecesJointes, attelages, incidents, rappels, piecesHorsDocuments, photosDepenses, photosPleins, signalements, services, tachesParIntervention] = await Promise.all([
+  const [lecture, livraisons, piecesJointes, attelages, incidents, rappels, piecesHorsDocuments, photosDepenses, photosPleins, signalements, services, tachesParIntervention, suppressions] = await Promise.all([
     client.rpc("lire_fiche", { immat: canonique }).maybeSingle<FicheJson | null>(),
     vehiculeId ? livraisonsDuVehicule(client, vehiculeId) : Promise.resolve([]),
     vehiculeId ? piecesJointesDuVehicule(client, vehiculeId) : Promise.resolve(new Map<string, string>()),
@@ -214,6 +215,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
     vehiculeId ? signalementsDuVehicule(client, vehiculeId).catch((e: unknown) => (console.warn(`Fiche ${canonique} : signalements illisibles — ${e instanceof Error ? e.message : String(e)}`), [])) : Promise.resolve([]),
     vehiculeId ? servicesDuVehicule(client, vehiculeId).catch((e: unknown) => (console.warn(`Fiche ${canonique} : services illisibles — ${e instanceof Error ? e.message : String(e)}`), [])) : Promise.resolve([]),
     vehiculeId ? tachesDesInterventionsDuVehicule(client, vehiculeId) : Promise.resolve(new Map<string, string[]>()),
+    suppressionsDuVehicule(client, canonique),
   ]);
   /* Fonction pas encore jouée : la fiche se dresse sur la ligne seule, sans historique — pas d'erreur. */
   if (lecture.error) console.warn(`Fiche ${canonique} : lire_fiche() indisponible (${lecture.error.message}), fiche dressée sans historique.`);
@@ -253,7 +255,9 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
         })),
       ...piecesHorsDocuments,
     ];
-    return assemblerFiche(ligne, { ...faits, documents, depenses, pleins, interventions, livraisons, incidents, rappels, signalements, services, pieces, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
+    const fiche = assemblerFiche(ligne, { ...faits, documents, depenses, pleins, interventions, livraisons, incidents, rappels, signalements, services, pieces, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
+    /* Les suppressions restent au journal (métier, 21 septembre 2026). */
+    return suppressions.length ? { ...fiche, journal: [...suppressions, ...fiche.journal].sort((a, b) => b.date.localeCompare(a.date)) } : fiche;
   } catch (e) {
     console.error(`Fiche ${canonique} : assemblage impossible sur l'historique lu — ${e instanceof Error ? e.stack ?? e.message : String(e)}`);
     return assemblerFiche(ligne, { ...FAITS_VIDES, livraisons, incidents, rappels, pieces: piecesHorsDocuments, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
@@ -261,6 +265,31 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
 }
 
 export const ficheServeur = cache(ficheServeurBrut);
+
+/** Les suppressions de lignes du véhicule, lues dans la trace : leur résumé porte la plaque entre crochets. */
+async function suppressionsDuVehicule(client: Awaited<ReturnType<typeof clientServeur>>, immatriculation: string): Promise<EvenementJournal[]> {
+  const r = await client
+    .from("modification")
+    .select("numero, avant, motif, cree_le, cree_par")
+    .eq("champ", "suppression")
+    .ilike("avant", `%[${immatriculation}]%`)
+    .order("cree_le", { ascending: false })
+    .limit(50)
+    .returns<{ numero: string; avant: string | null; motif: string; cree_le: string; cree_par: string }[]>();
+  if (r.error || !r.data?.length) return [];
+  const profils = await client.from("profil").select("utilisateur_id, nom").in("utilisateur_id", [...new Set(r.data.map((x) => x.cree_par))]).returns<{ utilisateur_id: string; nom: string }[]>();
+  const nom = new Map((profils.data ?? []).map((p) => [p.utilisateur_id, p.nom]));
+  return r.data.map((x) => {
+    const auteur = nom.get(x.cree_par) ?? "Utilisateur";
+    return {
+      date: x.cree_le.slice(0, 10),
+      auteur,
+      initiales: auteur.split(/\s+/).map((m) => m[0] ?? "").join("").slice(0, 2).toUpperCase() || "—",
+      categorie: "note" as const,
+      texte: `Supprimé : ${(x.avant ?? x.numero).replace(/\s*·\s*\[[A-Z0-9]+\]/, "")} — ${x.motif}`,
+    };
+  });
+}
 
 /** Les tâches du catalogue de chaque intervention du véhicule (0061), par numéro. Sans 0061, une carte vide. */
 async function tachesDesInterventionsDuVehicule(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<Map<string, string[]>> {

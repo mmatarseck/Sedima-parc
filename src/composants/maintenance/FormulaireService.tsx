@@ -18,9 +18,14 @@ import { PRIORITE_SERVICE, TAUX_BRS, TAUX_TVA, calculerService, joursImmobilisat
 import { ETAT_SIGNALEMENT, PRIORITE_SIGNALEMENT, etatSignalement, trierSignalements, type LigneSignalement } from "@/domaine/signalements";
 import { precisionTache, tacheParLibelle } from "@/domaine/taches";
 import { jourCourant } from "@/domaine/temps";
-import { enregistrerCreation, enregistrerModification, lireCreations } from "@/lib/clotures-demo";
+import { enregistrerCreation, enregistrerModification, lireCreations, retirerCreationLocale } from "@/lib/clotures-demo";
+import { resumeSuppression } from "@/domaine/suppression";
+import { supprimerTransaction } from "@/lib/transactions-actions";
 import { date as formaterDate, montant } from "@/lib/format";
 import { lirePiecesDisponibles, type PieceDisponible } from "@/lib/pieces-actions";
+import { lireProgrammes } from "@/lib/entretien-actions";
+import { libellePeriodicite, type ProgrammeEntretien } from "@/domaine/entretien";
+import { programmeParDefaut } from "@/donnees/entretien-demo";
 import { lireReferentiels } from "@/lib/referentiels-navigateur";
 import { lireRole } from "@/lib/session-demo";
 import { cloturerService } from "./cloturer-service";
@@ -123,6 +128,7 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
   const [pieces, setPieces] = useState<string[]>(existant?.pieces ?? []);
   const [inclus, setInclus] = useState<string[]>(existant?.signalements ?? demande.propose?.signalements ?? []);
   const [stock, setStock] = useState<PieceDisponible[] | null>(null);
+  const [programmes, setProgrammes] = useState<ProgrammeEntretien[] | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [fait, setFait] = useState<string | null>(null);
   const [tentee, setTentee] = useState(false);
@@ -130,6 +136,9 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
   useEffect(() => {
     let vivant = true;
     void lirePiecesDisponibles().then((p) => vivant && setStock(p));
+    void lireProgrammes()
+      .then((p) => vivant && setProgrammes(p))
+      .catch(() => vivant && setProgrammes([]));
     return () => {
       vivant = false;
     };
@@ -171,6 +180,29 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
 
   function changerLigne(i: number, modif: Partial<LigneService>) {
     setLignes((ls) => ls.map((l, j) => (j === i ? { ...l, ...modif } : l)));
+  }
+
+  /*
+   * Reprendre un plan d'entretien défini (métier, 21 septembre 2026 : « un
+   * nouveau service peut sélectionner aussi un plan d'entretien défini ») : le
+   * programme du véhicule, selon sa catégorie. Choisir une opération ajoute sa
+   * tâche du catalogue en ligne ; « tout le programme » les ajoute toutes. Le
+   * service devient préventif.
+   */
+  const categorieVehicule = vehiculeChoisi ? (lireReferentiels().vehicules.find((v) => v.immatriculation === vehiculeChoisi.immatriculation)?.categorie ?? null) : null;
+  const programme = programmes?.length && categorieVehicule ? programmeParDefaut(categorieVehicule, programmes) : null;
+  function reprendrePlan(code: string) {
+    if (!programme) return;
+    const operations = code === "*" ? programme.operations : programme.operations.filter((o) => o.code === code);
+    const nouvelles = operations
+      .map((o) => {
+        const t = tacheParLibelle(taches, o.tacheLibelle ?? o.libelle);
+        return { ...ligneVide(), libelle: t?.libelle ?? o.tacheLibelle ?? o.libelle, tacheNumero: t?.numero ?? null, systeme: t?.systeme ?? null, precision: `Plan ${programme.libelle} — ${o.libelle} (${libellePeriodicite(o.periodicite)})` };
+      })
+      .filter((n) => !lignes.some((l) => l.libelle === n.libelle));
+    if (!nouvelles.length) return;
+    setLignes((ls) => [...ls.filter((l) => l.libelle.trim() || l.mainOeuvre || l.piecesAchetees || l.piecesStock.length), ...nouvelles]);
+    if (!existant) setEntete((e) => ({ ...e, type: "preventif", objet: String(e.objet ?? "").trim() || `Entretien — ${programme.libelle}` }));
   }
 
   function choisirTache(i: number, libelle: string) {
@@ -260,6 +292,22 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
     setTimeout(onFermer, 2200);
   }
 
+  /* Supprimer un service ouvert (métier, 21 septembre 2026) : motif demandé, trace gardée au journal. Un service clos a écrit ses dépenses : il ne se supprime pas. */
+  async function supprimer() {
+    if (!existant || clos) return;
+    const motif = window.prompt(`Supprimer le service ${existant.numero} ? Ses pannes redeviennent ouvertes ; la trace reste au journal.\n\nMotif :`)?.trim() ?? "";
+    if (!motif) return;
+    if (motif.length < 3) return setErreur("Le motif de la suppression est trop court.");
+    const locale = retirerCreationLocale(existant.numero);
+    if (!(locale.trouvee && !locale.enBase)) {
+      const r = await supprimerTransaction({ type: "ordre", numero: existant.numero, motif, resume: resumeSuppression("Service", existant.numero, existant.objet, existant.immatriculation) });
+      if (r.issue !== "ecrite") return setErreur(r.issue === "refusee" ? r.motif : "La suppression demande une base branchée.");
+    }
+    setFait(`${existant.numero} supprimé — la trace reste au journal`);
+    onEnregistre();
+    setTimeout(onFermer, 1400);
+  }
+
   const titre = existant ? `Service ${existant.numero}` : "Nouveau service de maintenance";
 
   return (
@@ -344,6 +392,20 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
               {/* ---- Les lignes ---- */}
               <div className="mt-6 mb-2 flex items-center gap-3 border-b border-bordure pb-1.5">
                 <h3 className="titre-bloc flex-1 text-[13px]">Les lignes — tâches, main-d&apos;œuvre, pièces</h3>
+                {programme ? (
+                  <div className="w-[300px]">
+                    <ChampCombo
+                      valeur=""
+                      onChange={reprendrePlan}
+                      options={[
+                        { valeur: "*", libelle: `Tout le programme — ${programme.libelle}`, precision: `${programme.operations.length} opérations` },
+                        ...programme.operations.map((o) => ({ valeur: o.code, libelle: o.libelle, precision: `${o.tacheLibelle ?? "—"} · ${libellePeriodicite(o.periodicite)}` })),
+                      ]}
+                      placeholder="Depuis le plan d'entretien…"
+                      vide="Aucune opération au programme"
+                    />
+                  </div>
+                ) : null}
                 <button type="button" onClick={() => setLignes((ls) => [...ls, ligneVide()])} className="bouton-discret h-8 px-2 text-[12px]">
                   <Plus className="size-3.5" strokeWidth={2} />
                   Ajouter une tâche
@@ -522,6 +584,12 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
                 "La clôture écrit l'intervention, les dépenses et les sorties de stock, et résout les pannes incluses."
               )}
             </div>
+            {existant && !clos ? (
+              <button type="button" onClick={() => void supprimer()} disabled={Boolean(fait)} className="bouton-secondaire text-defavorable" title="Supprimer ce service ; la trace reste au journal">
+                <Trash2 className="size-4" strokeWidth={1.8} />
+                Supprimer
+              </button>
+            ) : null}
             <button type="button" onClick={onFermer} className="bouton-secondaire">
               {clos ? "Fermer" : "Annuler"}
             </button>

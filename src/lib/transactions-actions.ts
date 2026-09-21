@@ -30,6 +30,7 @@ import { revalidatePath } from "next/cache";
 import type { Creation } from "@/domaine/cloture";
 import { afficher } from "@/domaine/immatriculation";
 import { TYPE_TRANSACTION, formerNumero, type TypeTransaction } from "@/domaine/reference";
+import { estSupprimable } from "@/domaine/suppression";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur, utilisateurCourant } from "@/lib/supabase";
 import { EST_UUID, RETRAIT_CHAUFFEUR, cleDe, colonnesModification, decomposerSujet, immatriculationCanonique, ligneCreation, scinderUsage, tableDe, type Rattachement } from "@/lib/transactions-colonnes";
@@ -865,6 +866,46 @@ export async function ecrireModification(e: {
   }
   const trace = await client.from("modification").insert(e.diffs.map((d) => ({ table_cible: table, numero: cle.valeur, champ: d.champ, libelle_champ: d.libelleChamp, avant: d.avant, apres: d.apres, motif: e.motif, statut: "appliquee", cree_par: moi.utilisateurId })));
   if (trace.error) return { issue: "refusee", motif: `Modifiée, mais sans trace : ${trace.error.message}` };
+  revalidatePath("/", "layout");
+  return { issue: "ecrite", numero: e.numero };
+}
+
+/* -- Supprimer une transaction, en gardant sa trace ------------------------------- */
+
+/**
+ * Supprime la ligne, et laisse dans la trace (`modification`) une ligne
+ * « Suppression » : qui, quand, pourquoi, et ce qu'était la ligne. Le résumé
+ * porte la plaque entre crochets — « [AA350JN] » — : c'est ainsi que le
+ * journal du véhicule la retrouve.
+ *
+ * Deux gardes : un service clos a écrit son intervention et ses dépenses, il
+ * ne se supprime pas (on supprime celles-ci, ou on l'annule) ; une panne
+ * incluse dans un service ouvert s'en retire d'abord.
+ */
+export async function supprimerTransaction(e: { type: TypeTransaction; numero: string; motif: string; resume: string }): Promise<ResultatEcriture> {
+  if (!authentificationReelle()) return { issue: "hors-base" };
+  if (!estSupprimable(e.type)) return { issue: "refusee", motif: `Un${TYPE_TRANSACTION[e.type].libelle.toLowerCase().endsWith("e") ? "e" : ""} ${TYPE_TRANSACTION[e.type].libelle.toLowerCase()} ne se supprime pas d'ici.` };
+  if (e.motif.trim().length < 3) return { issue: "refusee", motif: "Le motif de la suppression est obligatoire." };
+  const table = tableDe(e.type);
+  if (!table) return { issue: "hors-base" };
+  const client = await clientServeur();
+  const moi = await utilisateurCourant(client);
+  if (!moi) return { issue: "refusee", motif: "Session absente : reconnectez-vous." };
+
+  if (e.type === "ordre") {
+    const o = await client.from("ordre_travail").select("statut").eq("numero", e.numero).maybeSingle<{ statut: string }>();
+    if (o.data?.statut === "clos") return { issue: "refusee", motif: "Un service clos a écrit son intervention et ses dépenses : il ne se supprime pas. Supprimez celles-ci, ou gardez le service." };
+  }
+  if (e.type === "signalement") {
+    const inclus = await client.from("ordre_travail").select("numero").contains("signalements", [e.numero]).in("statut", ["planifie", "en-atelier"]).limit(1).returns<{ numero: string }[]>();
+    if (inclus.data?.length) return { issue: "refusee", motif: `Cette panne est incluse dans le service ${inclus.data[0]!.numero} : retirez-l'en d'abord.` };
+  }
+
+  const retrait = await client.from(table).delete().eq("numero", e.numero).select("numero");
+  if (retrait.error) return { issue: "refusee", motif: `Suppression refusée : ${retrait.error.message}` };
+  if (!retrait.data || retrait.data.length === 0) return { issue: "refusee", motif: `Suppression non appliquée : ${e.numero} n'est pas en base, ou vos droits ne le permettent pas.` };
+  const trace = await client.from("modification").insert({ table_cible: table, numero: e.numero, champ: "suppression", libelle_champ: "Suppression", avant: e.resume.slice(0, 500), apres: null, motif: e.motif.trim(), statut: "appliquee", cree_par: moi.utilisateurId });
+  if (trace.error) return { issue: "refusee", motif: `Supprimée, mais sans trace : ${trace.error.message}` };
   revalidatePath("/", "layout");
   return { issue: "ecrite", numero: e.numero };
 }

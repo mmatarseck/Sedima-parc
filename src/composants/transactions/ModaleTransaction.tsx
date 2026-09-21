@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, History, Lock, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Check, History, Lock, Trash2, X } from "lucide-react";
 import { Numero } from "@/composants/interface/Numero";
 import { Echeance } from "@/composants/interface/Pastille";
 import { CHAMP_DATE, moisDe, peutCloturer, type ChampEdition, type Creation, type Modification } from "@/domaine/cloture";
 import { TYPE_TRANSACTION, type TypeTransaction } from "@/domaine/reference";
-import { enregistrerCreation, enregistrerModification, lireClotures, lireHistorique } from "@/lib/clotures-demo";
+import { enregistrerCreation, enregistrerModification, lireClotures, lireHistorique, retirerCreationLocale } from "@/lib/clotures-demo";
+import { estSupprimable, resumeSuppression } from "@/domaine/suppression";
+import { lireReferentiels } from "@/lib/referentiels-navigateur";
+import { supprimerTransaction } from "@/lib/transactions-actions";
 import { champsCourants } from "./champs";
 import { resoudreReference } from "./ChampReference";
 import { ChampSaisie } from "./ChampSaisie";
@@ -108,6 +112,9 @@ export function ModaleTransaction({
   const [issue, setIssue] = useState<Issue | null>(null);
   const [numeroAttribue, setNumeroAttribue] = useState<string | null>(null);
   const [approbateur, setApprobateur] = useState(false);
+  const router = useRouter();
+  const [suppression, setSuppression] = useState<{ ton: "ok" | "erreur"; texte: string } | null>(null);
+  const [supprimant, setSupprimant] = useState(false);
 
   const champDate = CHAMP_DATE[type];
   const moisInitial = champDate ? moisDe(String(valeurs[champDate] ?? "")) : "";
@@ -196,6 +203,38 @@ export function ModaleTransaction({
   }
 
   const libelleType = TYPE_TRANSACTION[type].libelle;
+
+  /*
+   * Supprimer (métier, 21 septembre 2026 : « possibilité de supprimer une panne
+   * créée, un service créé ou autre — garder la trace dans le journal »). Le
+   * motif est obligatoire, comme pour une modification. Une ligne que la base
+   * n'a pas encore prise s'efface du navigateur ; les autres, en base, avec une
+   * ligne « Suppression » dans la trace.
+   */
+  const supprimable = !creation && Boolean(numero) && estSupprimable(type);
+  async function supprimer() {
+    if (!numero) return;
+    if (motif.trim().length < 3) return setSuppression({ ton: "erreur", texte: "Donnez le motif de la suppression : il reste dans le journal." });
+    if (!window.confirm(`Supprimer ${libelleType.toLowerCase()} ${numero} ? La ligne disparaît ; sa trace reste au journal.`)) return;
+    setSupprimant(true);
+    const plaque = immatFormulaire ? (lireReferentiels().vehicules.find((v) => v.id === immatFormulaire || v.immatriculation === immatFormulaire)?.immatriculation ?? immatFormulaire) : null;
+    const locale = retirerCreationLocale(numero);
+    if (locale.trouvee && !locale.enBase) {
+      setSupprimant(false);
+      setSuppression({ ton: "ok", texte: "Supprimée : elle n'était pas encore en base." });
+      onEnregistre();
+      setTimeout(onFermer, 1200);
+      return;
+    }
+    const r = await supprimerTransaction({ type, numero, motif: motif.trim(), resume: resumeSuppression(libelleType, numero, titre, plaque) });
+    setSupprimant(false);
+    if (r.issue === "refusee") return setSuppression({ ton: "erreur", texte: r.motif });
+    if (r.issue === "hors-base") return setSuppression({ ton: "erreur", texte: "La suppression demande une base branchée." });
+    setSuppression({ ton: "ok", texte: "Supprimée — la trace reste au journal." });
+    onEnregistre();
+    router.refresh();
+    setTimeout(onFermer, 1200);
+  }
 
   return (
     <>
@@ -310,7 +349,7 @@ export function ModaleTransaction({
             {/* ---- Motif ---- */}
             <label className="mt-5 flex flex-col gap-1.5">
               <span className="label-champ">
-                {creation ? "Commentaire" : "Motif de la modification"} {creation ? null : <span className="text-defavorable">●</span>}
+                {creation ? "Commentaire" : supprimable ? "Motif de la modification ou de la suppression" : "Motif de la modification"} {creation ? null : <span className="text-defavorable">●</span>}
               </span>
               <textarea
                 value={motif}
@@ -324,8 +363,16 @@ export function ModaleTransaction({
 
           {/* ---- Pied ---- */}
           <div className="flex items-center gap-3 border-t border-bordure px-6 py-4">
+            {supprimable ? (
+              <button type="button" onClick={() => void supprimer()} disabled={supprimant || issue !== null} className="bouton-secondaire text-defavorable" title="Le motif ci-dessus est obligatoire ; la suppression reste au journal">
+                <Trash2 className="size-4" strokeWidth={1.8} />
+                Supprimer
+              </button>
+            ) : null}
             <p className="meta min-w-0 flex-1">
-              {issue === "appliquee" ? (
+              {suppression ? (
+                <span className={`font-medium ${suppression.ton === "ok" ? "text-favorable" : "text-defavorable"}`}>{suppression.texte}</span>
+              ) : issue === "appliquee" ? (
                 <span className="inline-flex items-center gap-1.5 font-medium text-favorable">
                   <Check className="size-4" strokeWidth={2.2} />
                   Modification enregistrée et tracée.

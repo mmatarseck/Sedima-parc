@@ -24,6 +24,7 @@ import { travauxOuverts } from "../src/domaine/maintenance";
 import { construireRapportDe } from "../src/domaine/assembler-rapports";
 import { RAPPORTS } from "../src/domaine/rapports";
 import { motsClesDe } from "../src/domaine/entretien";
+import { estSupprimable, plaqueDuResume, resumeSuppression } from "../src/domaine/suppression";
 import { ChampPieces } from "../src/composants/interface/ChampPieces";
 import { sourceRapportsDemo } from "../src/donnees/rapports-demo";
 import { programmesDepuisLignes } from "../src/donnees/entretien";
@@ -184,6 +185,17 @@ attendu("à un utilisateur qui n'est pas responsable du parc, pas de bouton « C
   );
   attendu("un programme lu en base : code court, tâche citée, retirés écartés", lus.length === 1 && lus[0]!.operations[0]!.code === "vidange-moteur" && lus[0]!.operations[0]!.tacheLibelle === "Remplacement de l'huile moteur et du filtre" && programmeParDefaut("vehicule-leger", lus).code === "leger");
   attendu("les mots-clés proposés pour une tâche", motsClesDe("Remplacement des plaquettes de frein").join() === "plaquette,frein");
+
+  /* Supprimer, en gardant la trace ; reprendre un plan ; l'atelier sans doublon ni visionneuse vide. */
+  const resume = resumeSuppression("Panne", "SIG-2026-90001", "Freins qui sifflent", "AA350JN");
+  attendu(`une suppression se résume avec sa plaque, que le journal retrouve (${resume})`, plaqueDuResume(resume) === "AA350JN" && estSupprimable("signalement") && estSupprimable("ordre") && !estSupprimable("vehicule") && !estSupprimable("tache"));
+  const modale = readFileSync("src/composants/transactions/ModaleTransaction.tsx", "utf8");
+  const formulaire = readFileSync("src/composants/maintenance/FormulaireService.tsx", "utf8");
+  const actions = readFileSync("src/lib/transactions-actions.ts", "utf8");
+  attendu("« Supprimer » dans la modale et le service ; motif obligatoire ; trace « suppression » ; un service clos ne se supprime pas", modale.includes("void supprimer()") && formulaire.includes("void supprimer()") && actions.includes(`champ: "suppression"`) && actions.includes("Un service clos a écrit"));
+  attendu("un service reprend les tâches du plan d'entretien du véhicule", formulaire.includes("Depuis le plan d'entretien…") && formulaire.includes("programmeParDefaut(categorieVehicule, programmes)"));
+  const onglets = readFileSync("src/composants/vehicule/onglets.tsx", "utf8");
+  attendu("l'atelier : colonne « Tâche de service », pas de doublon local/base, pas de cadre sans pièce", onglets.includes(`libelle: "Tâche de service"`) && onglets.includes("const interventions = sansDoublon(") && onglets.includes("c === l.cle || !l.fichier ? null : l.cle"));
 }
 
 const bac = process.env.PGLITE_DIR ?? "";

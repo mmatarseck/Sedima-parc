@@ -343,6 +343,31 @@ et caisse, chauffeurs, alertes et notifications, administration.
 pièces ne s'ouvre plus sur une pièce d'office : comme sur les dépenses, c'est
 au clic d'une pièce que la liste se replie et que la pièce s'affiche à droite.
 
+## Retours du 21 septembre 2026, suite
+
+- **Atelier de la fiche** : la colonne « Tâche de service » est affichée par
+  défaut (tâches du catalogue de l'intervention). Une ligne sans pièce jointe
+  n'ouvre plus le cadre de visualisation — de même au carburant et aux autres
+  dépenses.
+- **Deux lignes après la clôture d'un service** : la base était juste (une
+  intervention, ses dépenses, une même clé de facture) ; l'écran montrait en
+  plus la copie du navigateur, tant que la base ne l'avait pas confirmée. Les
+  listes de la fiche ne gardent plus qu'une ligne par numéro.
+- **En-tête de la fiche** : seuls les documents **suivis en Conformité** (les
+  rappels) s'y signalent. Un rappel échu d'un document critique affiche
+  « Immobilisé administrativement ». AB-932-ET citait une licence de transport
+  que la liste ne suivait pas.
+- **Supprimer** une panne, un service ouvert, une intervention, une dépense, un
+  plein… depuis sa fenêtre de modification (ou le formulaire du service), avec
+  un motif obligatoire. La ligne disparaît ; une ligne « Suppression » reste
+  dans la trace (`modification`), et le journal du véhicule l'affiche. Un
+  service clos ne se supprime pas ; une panne incluse dans un service ouvert
+  s'en retire d'abord. Les référentiels ne se suppriment pas d'ici.
+- **Un service reprend un plan d'entretien** : « Depuis le plan
+  d'entretien… » propose les opérations du programme du véhicule, ou tout le
+  programme. Chacune devient une ligne, sur sa tâche du catalogue, et le
+  service passe préventif.
+
 ## Ce qui reste
 
 - **Plans préventifs par modèle** (par catégorie aujourd'hui) ; une échéance

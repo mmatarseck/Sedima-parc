@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { GroupeOperation } from "@/domaine/entretien";
+import type { GroupeOperation, ProgrammeEntretien } from "@/domaine/entretien";
+import { programmesServeur } from "@/donnees/entretien";
 import type { CategorieVehicule } from "@/domaine/types";
 import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
@@ -130,4 +131,12 @@ export async function retirerOperation(programme: string, code: string): Promise
   if (r.error) return { ok: false, motif: `Opération non retirée : ${r.error.message}` };
   revalidatePath("/", "layout");
   return { ok: true, code };
+}
+
+/**
+ * Les programmes du parc, pour le formulaire d'un service : un service peut
+ * reprendre les tâches d'un plan d'entretien défini (métier, 21 septembre 2026).
+ */
+export async function lireProgrammes(): Promise<ProgrammeEntretien[]> {
+  return (await programmesServeur()).programmes;
 }
