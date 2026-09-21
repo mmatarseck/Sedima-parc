@@ -194,4 +194,6 @@ export interface LigneInterventionFlotte extends Intervention {
   businessUnit: BusinessUnit | null;
   site: string | null;
   creee: boolean;
+  /** Les tâches du catalogue que l'intervention a couvertes (0061) ; absentes avant l'affectation. */
+  taches?: string[];
 }

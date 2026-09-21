@@ -95,6 +95,15 @@ attendu("seul le responsable du parc — et l'administrateur — clôt un servic
 attendu("« vidange » se range au moteur, « PLAQUETTE FREIN AV » aux freins, « appareil air » au freinage pneumatique", systemeReconnu("vidange") === "045" && systemeReconnu("PLAQUETTE FREIN AV") === "013" && systemeReconnu("appareil air") === "013");
 attendu("le composant précis l'emporte sur le mot générique : disque d'embrayage à l'embrayage, ballon d'air à la suspension, compresseur frigo au groupe frigorifique", systemeReconnu("DISQUE EMBRAYAGE") === "023" && systemeReconnu("BALLON AIR") === "016" && systemeReconnu("Compresseur Golden Shop") === "054");
 attendu("un libellé qu'on ne reconnaît pas reste à classer", systemeReconnu("service HSE") === null);
+{
+  const { tachesDe } = await import("./affecter-interventions-taches.mts");
+  const a = tachesDe("ACHAT DISQUE EMBRAYAGE ET HUILE BOITE AA 542 BQ (BENNE)", false);
+  attendu("une intervention du parc se range sous ses tâches : disque d'embrayage et huile de boîte", a.includes("Remplacement du disque d'embrayage") && a.includes("Vidange et remplissage du liquide de transmission") && a.length === 2);
+  attendu("un entretien « aux 50 000 km » est l'entretien périodique ; « entretien et réparation » sans détail, du divers",
+    tachesDe("ENTRETIEN DU VEHICULE AA 324 JE AUX 50000 KMS A LASA", false).join() === "Entretien périodique (révision)" && tachesDe("ENTRETIEN ET RÉPARATION DU VÉHICULE DK6154AS", false).join() === "Travaux non détaillés (Divers)");
+  attendu("le groupe frigorifique n'est pas le moteur du camion ; le divers d'un système ne double pas une tâche précise",
+    tachesDe("REPARATION DU MOTEUR DU GROUPE AUBINEAU AA 300 PT", false).join() === "Réparation du groupe frigorifique" && !tachesDe("CHANGEMENT PLAQUETTE FREIN AVANT", false).includes("Freins (Divers)"));
+}
 attendu(`le classement se lit catégorie › système (${libelleClassement({ systeme: "017", ensemble: "001" })})`, libelleClassement({ systeme: "017", ensemble: "001" }) === "Châssis › Pneus › 001" && libelleClassement({}) === "À classer");
 attendu("une tâche se retrouve par son nom ou un alias, aux accents près", tacheParLibelle([{ libelle: "Remplacement de l'huile moteur et du filtre", alias: ["vidange"] }], "VIDANGE")?.libelle === "Remplacement de l'huile moteur et du filtre" && cleTache("Moteur (Divers)") === cleTache("MOTEUR DIVERS"));
 
@@ -180,6 +189,21 @@ if (bac) {
   const clos = (await pg.query(`select o.statut, o.cloture_par::text as par, s.statut as signalement, s.resolu_le::text as le, s.service_numero from ordre_travail o, signalement s where o.numero = 'OTR-2026-00001' and s.numero = 'SIG-2026-00001'`)).rows[0] as { statut: string; par: string; signalement: string; le: string; service_numero: string };
   attendu("le responsable du parc clôt ; la clôture se signe", clos.statut === "clos" && clos.par === MOI);
   attendu("et la panne incluse est résolue, datée, rattachée au service", clos.signalement === "resolu" && clos.le === "2026-09-21" && clos.service_numero === "OTR-2026-00001");
+
+  /* 0061 : les interventions du parc affectées au catalogue, et les utilisations comptées chez nous. */
+  const affectations = readFileSync("supabase/interventions-taches.sql", "utf8");
+  const exemple = /\('(INT-[^']+)', '((?:[^']|'')+)'\)/.exec(affectations)!;
+  const [numeroInt, tacheInt] = [exemple[1]!, exemple[2]!.replace(/''/g, "'")];
+  const attendues = [...affectations.matchAll(new RegExp(`\\('${numeroInt}', '((?:[^']|'')+)'\\)`, "g"))].length;
+  await pg.exec(`insert into intervention (numero, vehicule_id, date, type, objet) values ('${numeroInt}', '00000000-0000-0000-0000-0000000000aa', '2026-01-10', 'curatif', 'Banc');`);
+  await pg.exec(affectations);
+  await pg.exec(affectations);
+  const liens = async () => ((await pg.query(`select count(*)::int as n from intervention_tache`)).rows[0] as { n: number }).n;
+  const util = async (libelle: string) => ((await pg.query(`select utilisations as n from tache_service where libelle = $1`, [libelle])).rows[0] as { n: number } | undefined)?.n;
+  attendu(`une intervention du parc est affectée à ses tâches, rejouable (${numeroInt} → ${attendues} tâche(s), dont « ${tacheInt} »)`, (await liens()) === attendues && (await util(tacheInt)) === 1);
+  attendu("les utilisations se comptent sur notre parc : le service clos compte pour ses tâches", (await util("Remplacement des plaquettes de frein")) === 1 && (await util("Remplacement de l'assemblage d'embrayage")) === 1);
+  await pg.exec(catalogue);
+  attendu("rejouer le catalogue garde les affectations et le compte", (await liens()) === attendues && (await util(tacheInt)) === 1);
 
   const niveaux = (await pg.query(`select niveau_par_role('gestionnaire-parc', 'maintenance') as gp, niveau_par_role('direction', 'maintenance') as dir, niveau_par_role('responsable-maintenance', 'maintenance') as rm`)).rows[0] as { gp: string; dir: string; rm: string };
   attendu(`le responsable du parc gère la maintenance ; la direction la lit (${niveaux.gp}, ${niveaux.dir})`, niveaux.gp === "gestion" && niveaux.dir === "lecture" && niveaux.rm === "gestion");

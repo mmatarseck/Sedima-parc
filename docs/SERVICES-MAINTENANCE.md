@@ -19,7 +19,9 @@ du métier du même jour.*
 ```
 supabase/migrations/0059_depense_origine_stock.sql   -- une dépense peut venir du magasin (seule dans son fichier)
 supabase/migrations/0060_services_maintenance.sql    -- catalogue, signalements, service, clôture, droits, prix de référence
-supabase/taches-service.sql                          -- le catalogue tiré de Fleetio, revu : 286 tâches
+supabase/migrations/0061_intervention_tache.sql      -- les tâches de chaque intervention, les utilisations comptées sur le parc
+supabase/taches-service.sql                          -- le catalogue tiré de Fleetio, revu : 294 tâches
+supabase/interventions-taches.sql                    -- les 581 interventions du parc affectées au catalogue
 ```
 
 **Si 0060 a échoué à moitié** (« syntax error at end of input », 21 septembre 2026 : les tables `tache_service` et `signalement` créées, les colonnes du service et 0059 absentes), jouer à la place `supabase/rattrapage-0059-0060.sql` : les deux migrations en un fichier, sans commentaires, rejouable — éprouvé deux fois de suite sur une base dans cet état. Puis `taches-service.sql`.
@@ -160,7 +162,8 @@ Les 143 tâches créées à la main dans Fleetio n'avaient pas de code, et beauc
   plaquettes de frein…
 - **des doublons** fondus : « GLACIOLE EAUX », « LAVAGE VEHICULE », « Huile
   pour engreanages » (vidange du pont arrière)…
-- **25 tâches standard ajoutées**, bien nommées et codées, qui regroupent les
+- **33 tâches standard ajoutées** — 25 par la revue, 8 pour les interventions du
+  parc (plus bas) —, bien nommées et codées, qui regroupent les
   réparations réelles sans équivalent Fleetio :
   - freins : circuit d'air de freinage (« appareil air », électrovanne,
     distributeur, boudins), vases de frein (poumons), compresseur d'air, frein à
@@ -182,22 +185,90 @@ Les 143 tâches créées à la main dans Fleetio n'avaient pas de code, et beauc
 Le nom d'une tâche fondue reste en **alias** : taper « appareil air » ou
 « ACHATS PNEU 385 » dans le formulaire retrouve la bonne tâche.
 
-Restent **286 tâches, toutes codifiées** comme Fleetio, sur trois niveaux, et
+Restent **294 tâches, toutes codifiées** comme Fleetio, sur trois niveaux, et
 **aucune à classer** :
 
 - la **catégorie** : 0 cabine et carrosserie, 1 châssis, 2 transmission,
   3 électricité, 4 moteur, 5 accessoires et fluides, 9 divers ;
 - le **système** : 013 Freins, 017 Pneus, 045 Moteur…
 - l'**ensemble** : un code à trois chiffres dans le système. **999** est le
-  divers du système, pour les 75 tâches que Fleetio laissait sans ensemble.
+  divers du système, pour les tâches que Fleetio laissait sans ensemble.
 
 Cinq systèmes s'ajoutent à la classification : 020 Transmission — divers,
 030 Électricité — divers, 050 Accessoires et aménagements, 052 Hydraulique —
 benne et vérins, 054 Groupe frigorifique et caisse isotherme.
 
-**Rejouer `taches-service.sql`** remplace les tâches venues de Fleetio (celles
-saisies dans l'application restent). Aucune ligne de service ne pointe une tâche
-par clé étrangère : un service déjà saisi garde ses libellés.
+Les numéros suivent le classement (système, ensemble, libellé), et restent donc
+les mêmes d'une génération à l'autre. **Rejouer `taches-service.sql`** remplace
+les tâches venues de Fleetio. Celles saisies dans l'application restent, et les
+affectations des interventions sont mises de côté puis rendues. Aucune ligne de
+service ne pointe une tâche par clé étrangère : un service déjà saisi garde ses
+libellés.
+
+## Les utilisations, comptées sur notre parc
+
+Métier, 21 septembre 2026 : le nombre d'utilisations dans Fleetio ne dit rien
+de SEDIMA. On compte donc dans notre flotte, en affectant chaque intervention
+déjà faite à la bonne tâche, ou au divers.
+
+**Le lien** (0061) : `intervention_tache`, une intervention pour une ou
+plusieurs tâches (« disque d'embrayage et huile de boîte »). Son origine est
+« historique » pour l'affectation des interventions passées, « saisie » pour un
+lien posé dans l'application.
+
+**L'affectation** (`scripts/affecter-interventions-taches.mts`, qui fabrique
+`interventions-taches.sql`). Pour chaque intervention, le script lit :
+
+- son objet, sans les désignations creuses (« ENTRETIEN VEHICULE ; RETENUE
+  5% ») ;
+- quand elle vient d'un bon de commande, l'objet de la demande d'achat et les
+  désignations de ses lignes, tirés du classeur des bons de maintenance. Une
+  ligne du grand livre qui nomme déjà son travail se suffit : l'objet de son
+  bon, commun à plusieurs véhicules, brouillerait.
+
+Ce texte passe devant une liste de motifs relus à la main, un par tâche. Les
+tâches « (Divers) » d'un système ne jouent que si aucune tâche précise du même
+système n'est reconnue. Un entretien « aux 50 000 km », une révision, sont
+l'**entretien périodique**. Ce qui ne se reconnaît pas va à l'entretien
+périodique si l'intervention est préventive, à **« Travaux non détaillés
+(Divers) »** sinon.
+
+Résultat, au 21 septembre 2026 : **581 interventions**, dont 444 lues avec leur
+bon, donnent 696 affectations sur 82 tâches. 488 interventions ont trouvé leur
+tâche. **93 restent en divers** : des factures groupées sans détail (« facture
+réparation des véhicules … par TSA »), des « réparation du véhicule » sans plus,
+des pièces de rechange non nommées. Les plus fréquentes :
+
+| Tâche | Interventions |
+| --- | ---: |
+| Entretien périodique (révision) | 156 |
+| Travaux non détaillés (Divers) | 93 |
+| Remplacement des pneus | 46 |
+| Tôlerie et peinture | 34 |
+| Réparation du groupe frigorifique | 25 |
+| Remplacement de l'ensemble moteur | 23 |
+| Remplacement de l'huile moteur et du filtre | 22 |
+| Lavage du véhicule | 20 |
+| Moteur (Divers) | 18 |
+| Système électrique (Divers) | 16 |
+
+Huit tâches ont été ajoutées au catalogue pour ce que le parc fait et que
+Fleetio n'avait pas : tôlerie et peinture ; sellerie et tapisserie ; disques de
+frein ; arbre de transmission ou cardan ; réparation de la boîte de vitesses ;
+réparation du groupe frigorifique ; caisse isotherme ; travaux non détaillés.
+
+**Le compte.** `tache_service.utilisations` vaut les interventions affectées
+plus les services clos dont une ligne cite la tâche (par son libellé ou un
+alias). Il se recompte à chaque affectation et à chaque clôture de service. Le
+catalogue et les listes de choix sont triés sur ce compte.
+
+**À l'écran.** La liste des interventions de la page Maintenance a une colonne
+« Tâches ». Une base sans 0061 l'affiche vide, sans bloquer la page.
+Paramètres › Catalogue montre « Utilisations (parc) ».
+
+**Rejouer** `affecter-interventions-taches.mts` après un nouveau chargement
+d'interventions, puis `interventions-taches.sql` : les affectations
+« historique » sont refaites, celles saisies restent.
 
 Paramètres › **Catalogue des tâches de service** : on les consulte, on les
 classe en un clic, on en crée. Les filtres sont « À classer », une catégorie, ou
@@ -218,12 +289,17 @@ classe en un clic, on en crée. Les filtres sont « À classer », une catégori
 ## Bancs
 
 `PGLITE_DIR=… node --import tsx --import ./scripts/rendu/hook.mjs scripts/tester-services-maintenance.mts`
-— 49 contrôles :
+— 55 contrôles :
 
 - une facture calculée à la main : remises, TVA, BRS, net, magasin, coût ;
 - la répartition en dépenses, au franc ;
 - ce qu'écrit la clôture, et l'atelier qui la lit en une ligne ;
 - les états d'un signalement, la classification ;
+- l'affectation d'une intervention du parc : plusieurs tâches, l'entretien
+  périodique, le divers, le groupe frigorifique distinct du moteur ;
+- dans PGlite, 0061 : une intervention affectée et rejouée, le compte des
+  utilisations (service clos compris), les affectations gardées quand on rejoue
+  le catalogue ;
 - dans PGlite : les migrations, le catalogue rejoué sans doublon, toutes ses
   tâches codifiées, les tâches mal créées rangées ou retirées, le refus de
   clôture au responsable de la maintenance, la clôture signée par le

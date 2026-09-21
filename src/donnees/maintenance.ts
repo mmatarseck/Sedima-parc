@@ -74,7 +74,30 @@ async function interventionsServeurBrut(): Promise<LigneInterventionFlotte[]> {
     .order("date", { ascending: false })
     .limit(3000)
     .returns<LigneInterventionBase[]>();
-  return lignesLues("Interventions", lecture).map(interventionDepuisLigne);
+  const taches = await tachesDesInterventions();
+  return lignesLues("Interventions", lecture).map((l) => ({ ...interventionDepuisLigne(l), taches: taches.get(l.numero) ?? [] }));
+}
+
+/**
+ * Les tâches du catalogue de chaque intervention (0061), par numéro. Une base
+ * sans 0061 rend une carte vide : la liste s'affiche, sans la colonne remplie.
+ */
+async function tachesDesInterventions(): Promise<Map<string, string[]>> {
+  const client = await clientServeur();
+  const parNumero = new Map<string, string[]>();
+  for (let de = 0; ; de += 1000) {
+    const r = await client
+      .from("intervention_tache")
+      .select("intervention (numero), tache_service (libelle)")
+      .range(de, de + 999)
+      .returns<{ intervention: { numero: string } | null; tache_service: { libelle: string } | null }[]>();
+    if (r.error) return parNumero;
+    for (const l of r.data ?? []) {
+      if (!l.intervention || !l.tache_service) continue;
+      parNumero.set(l.intervention.numero, [...(parNumero.get(l.intervention.numero) ?? []), l.tache_service.libelle]);
+    }
+    if ((r.data ?? []).length < 1000) return parNumero;
+  }
 }
 
 export const interventionsServeur = cache(interventionsServeurBrut);

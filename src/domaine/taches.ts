@@ -16,7 +16,7 @@ export interface TacheService {
   typeDefaut: "preventif" | "curatif" | null;
   /** Les autres noms fondus à l'import : « vidange ». */
   alias: string[];
-  /** Les utilisations dans l'historique Fleetio : l'ordre des listes. */
+  /** Les utilisations dans notre parc — interventions affectées et services clos (0061) : l'ordre des listes. */
   utilisations: number;
   source: "fleetio" | "saisie";
   aClasser: boolean;

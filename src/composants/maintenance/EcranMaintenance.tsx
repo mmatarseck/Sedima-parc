@@ -449,6 +449,7 @@ function Interieur({ travaux, ordres, signalements = [], interventions, aujourdh
     () => [
       { cle: "type", libelle: "Type", parDefaut: true, largeur: 105, texte: (i) => (i.type === "preventif" ? "Préventif" : "Curatif"), rendu: (i) => <Pastille ton={i.type === "preventif" ? "favorable" : "vigilance"}>{i.type === "preventif" ? "Préventif" : "Curatif"}</Pastille> },
       { cle: "objet", libelle: "Objet", parDefaut: true, largeur: 260, rendu: (i) => <span className="block truncate font-medium">{i.objet}</span> },
+      { cle: "taches", libelle: "Tâches", parDefaut: true, largeur: 240, texte: (i) => (i.taches ?? []).join(" · "), rendu: (i) => (i.taches?.length ? <span className="block truncate" title={i.taches.join("\n")}>{i.taches.join(" · ")}</span> : <span className="text-attenue">—</span>) },
       { cle: "garage", libelle: "Garage", parDefaut: true, largeur: 200, rendu: (i) => <span className="block truncate">{i.garage}</span> },
       { cle: "km", libelle: "Km relevé", parDefaut: false, largeur: 120, alignee: "droite", tri: (i) => i.km, rendu: (i) => <span className="code">{kilometrage(i.km)}</span> },
       { cle: "immob", libelle: "Immob.", parDefaut: true, largeur: 95, alignee: "droite", tri: (i) => i.immobilisationJours, rendu: (i) => (i.immobilisationJours === null ? <span className="text-attenue" title="Durée non relevée sur la pièce">—</span> : <span className="code">{i.immobilisationJours} j</span>) },

@@ -187,6 +187,15 @@ const NOUVELLES: { libelle: string; systeme: string; ensemble: string; type: Typ
   { libelle: "Réfection du moteur (segmentation, pochette de joints)", systeme: "045", ensemble: "999", type: "curatif", depuis: ["JEU DE SEGMENT", "POCHETTE DE GAIN"] },
   { libelle: "Entretien périodique (révision)", systeme: "045", ensemble: "999", type: "preventif", depuis: ["Maintenance périodique", "Entretien Préventive"] },
   { libelle: "Remplacement de la courroie de ventilateur", systeme: "042", ensemble: "003", type: "curatif", depuis: ["CROIE HELICE"] },
+  /* Ce que les interventions du parc réclament et que Fleetio n'avait pas (affectation du 21 septembre 2026, `affecter-interventions-taches.mts`). */
+  { libelle: "Tôlerie et peinture", systeme: "002", ensemble: "999", type: "curatif", depuis: [] },
+  { libelle: "Sellerie et tapisserie de la cabine", systeme: "002", ensemble: "999", type: "curatif", depuis: [] },
+  { libelle: "Remplacement des disques de frein", systeme: "013", ensemble: "017", type: "curatif", depuis: [] },
+  { libelle: "Remplacement de l'arbre de transmission ou du cardan", systeme: "024", ensemble: "999", type: "curatif", depuis: [] },
+  { libelle: "Réparation de la boîte de vitesses", systeme: "026", ensemble: "999", type: "curatif", depuis: [] },
+  { libelle: "Réparation du groupe frigorifique", systeme: "054", ensemble: "999", type: "curatif", depuis: [] },
+  { libelle: "Réparation de la caisse isotherme", systeme: "054", ensemble: "006", type: "curatif", depuis: [] },
+  { libelle: "Travaux non détaillés (Divers)", systeme: "999", ensemble: "999", type: "curatif", depuis: [] },
 ];
 
 /** Fondues dans une tâche Fleetio existante : [la tâche mal créée, sa cible]. */
@@ -290,12 +299,14 @@ for (const t of parCle.values()) {
   if (!t.ensemble || !/^\d{3}$/.test(t.ensemble)) t.ensemble = "999";
 }
 
-const taches = [...parCle.values()].sort((a, b) => b.utilisations - a.utilisations || a.libelle.localeCompare(b.libelle, "fr"));
+/* Rangées par classement : les numéros ne bougent plus d'une génération à l'autre. Les utilisations dans Fleetio ne disent rien de notre parc
+   (métier, 21 septembre 2026) : le compte vient des interventions du parc, affectées par `affecter-interventions-taches.mts`. */
+const taches = [...parCle.values()].sort((a, b) => a.systeme!.localeCompare(b.systeme!) || a.ensemble!.localeCompare(b.ensemble!) || a.libelle.localeCompare(b.libelle, "fr"));
 const lignesSql = taches.map((t, i) => {
   const alias = t.alias.filter((a, j, x) => x.indexOf(a) === j && cleTache(a) !== cleTache(t.libelle));
   const tableau = alias.length ? `array[${alias.map((a) => `'${echappe(a)}'`).join(", ")}]::text[]` : `'{}'::text[]`;
   const sql = (v: string | null) => (v === null ? "null" : `'${echappe(v)}'`);
-  return `  ('TCH-2026-${String(i + 1).padStart(5, "0")}', ${sql(t.libelle)}, ${sql(t.description)}, ${sql(t.categorie)}, ${sql(t.systeme)}, ${sql(t.ensemble)}, ${sql(typeImpose.get(cleTache(t.libelle)) ?? typeDe(t.libelle))}, ${tableau}, ${t.utilisations}, 'fleetio', false)`;
+  return `  ('TCH-2026-${String(i + 1).padStart(5, "0")}', ${sql(t.libelle)}, ${sql(t.description)}, ${sql(t.categorie)}, ${sql(t.systeme)}, ${sql(t.ensemble)}, ${sql(typeImpose.get(cleTache(t.libelle)) ?? typeDe(t.libelle))}, ${tableau}, 0, 'fleetio', false)`;
 });
 
 const divers = taches.filter((t) => t.ensemble === "999").length;
@@ -304,7 +315,7 @@ writeFileSync(
   `-- ============================================================================
 -- SEDIMA Parc — le catalogue des tâches de service, tiré de l'export Fleetio.
 --
--- **Ce n'est pas une migration.** À jouer après 0060. Fabriqué par
+-- **Ce n'est pas une migration.** À jouer après 0061. Fabriqué par
 -- \`scripts/charger-taches-fleetio.mts\` — voir docs/SERVICES-MAINTENANCE.md.
 --
 -- ${lues} tâches dans l'export ; ${jamais} jamais utilisées, laissées ; ${ecartees} qui ne sont pas des
@@ -314,12 +325,17 @@ writeFileSync(
 -- ajoutées, ${revues.recodees} recodées.
 -- Restent **${taches.length} tâches**, toutes codifiées comme Fleetio (catégorie, système,
 -- ensemble ; « 999 » est le divers du système, ${divers} tâches). Aucune à classer.
--- Leurs utilisations dans Fleetio ordonnent les listes.
+-- Les utilisations se comptent sur notre parc, pas dans Fleetio : ensuite,
+-- jouer interventions-taches.sql.
 --
 -- REJOUABLE : les tâches venues de Fleetio sont remplacées ; celles saisies
--- dans l'application restent. Aucune ligne de service ne pointe une tâche par
--- clé étrangère : une ligne garde son libellé.
+-- dans l'application restent. Les affectations des interventions sont mises
+-- de côté puis rendues, par le libellé de leur tâche.
 -- ============================================================================
+
+drop table if exists pg_temp.liens_taches;
+create temp table liens_taches as
+  select it.intervention_id, lower(t.libelle) as libelle, it.origine from intervention_tache it join tache_service t on t.id = it.tache_id;
 
 delete from tache_service where source = 'fleetio';
 
@@ -327,7 +343,12 @@ insert into tache_service (numero, libelle, description, categorie, systeme, ens
 ${lignesSql.join(",\n")}
 on conflict do nothing;
 
-select count(*) as taches, count(*) filter (where a_classer) as a_classer, sum(utilisations) as utilisations from tache_service;
+insert into intervention_tache (intervention_id, tache_id, origine)
+  select l.intervention_id, t.id, l.origine from liens_taches l join tache_service t on lower(t.libelle) = l.libelle
+  on conflict do nothing;
+select recompter_utilisations_taches();
+
+select count(*) as taches, count(*) filter (where a_classer) as a_classer, (select count(*) from intervention_tache) as affectations from tache_service;
 `,
   "utf8",
 );
