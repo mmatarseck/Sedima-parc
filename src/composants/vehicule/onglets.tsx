@@ -796,6 +796,8 @@ interface LigneAtelier {
   origine: DepenseFiche["origine"] | null;
   /** La facture ou le reçu de la dépense, dans le seau : s'ouvre depuis la ligne (16 septembre 2026). */
   fichier: string | null;
+  /** Les tâches du catalogue de l'intervention (0061). */
+  taches: string[];
   modifier: () => void;
 }
 
@@ -863,6 +865,7 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
     reference: i.reference,
     origine: d ? d.origine : null,
     fichier: lignes.find((x) => x.photo)?.photo ?? null,
+    taches: i.taches ?? [],
     modifier: () => demander({ type: "intervention", numero: i.numero, titre: `Intervention · ${i.objet}`, valeurs: i as unknown as Record<string, unknown> }),
   });
   const atelier: LigneAtelier[] = [
@@ -888,6 +891,7 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
         reference: d.reference,
         origine: d.origine,
         fichier: d.photo ?? null,
+        taches: [],
         modifier: () => demander({ type: "depense", numero: d.numero, titre: `Dépense · ${d.libelle}`, valeurs: d as unknown as Record<string, unknown> }),
       }),
     ),
@@ -1043,14 +1047,15 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
           * compteur, l'immobilisation et le numéro de pièce restent à un clic,
           * dans le choix des colonnes, et ce choix est retenu par profil.
           */}
-        <TableauSimple<LigneAtelier> reglages="fiche-vehicule.atelier.3"
+        <TableauSimple<LigneAtelier> reglages="fiche-vehicule.atelier.4"
           fixe
           /* Rétractée à côté d'une pièce, la liste ne garde que ce qui s'y lit, et
              laisse le navigateur répartir : ses largeurs réglées sont celles de
              la pleine page. */
           ajustable={!ouverte}
           seulement={ouverte ? ["date", "objet", "montant"] : undefined}
-          surLigne={(l) => setCleOuverte((c) => (c === l.cle ? null : l.cle))}
+          /* Sans pièce jointe, rien à montrer : le clic n'ouvre pas le cadre (métier, 21 septembre 2026). */
+          surLigne={(l) => setCleOuverte((c) => (c === l.cle || !l.fichier ? null : l.cle))}
           ouverte={cleOuverte}
           cle={(l) => l.cle}
           lignes={atelier}
@@ -1079,6 +1084,8 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
                 </span>
               ),
             },
+            /* La tâche de service, par défaut (métier, 21 septembre 2026). */
+            { cle: "taches", libelle: "Tâche de service", largeur: "240px", rendu: (l) => (l.taches.length ? <span className="block truncate text-texte-2" title={l.taches.join(" · ")}>{l.taches.join(" · ")}</span> : <span className="text-attenue-2">—</span>) },
             { cle: "tiers", libelle: "Garage ou fournisseur", largeur: "240px", rendu: (l) => <span className="block truncate" title={l.tiers}>{l.tiers}</span> },
             { cle: "montant", libelle: "Montant", largeur: "118px", alignee: "droite", rendu: (l) => <span className="font-medium whitespace-nowrap">{montant(l.montant)}</span> },
             { cle: "numero", libelle: "Réf.", largeur: "136px", rendu: (l) => <Numero valeur={l.numero} /> },
@@ -1168,7 +1175,7 @@ export function OngletCarburant({ fiche, cible }: { fiche: FicheVehicule; cible?
         numero={(p) => p.numero}
         cible={cible}
         seulement={ouvert ? ["date", "source", "montant"] : undefined}
-        surLigne={(p) => setIdOuvert((c) => (c === p.id ? null : p.id))}
+        surLigne={(p) => setIdOuvert((c) => (c === p.id || !p.photo ? null : p.id))}
         ouverte={idOuvert}
         surModifier={modifier}
         colonnes={[
@@ -1246,7 +1253,7 @@ export function OngletAutresDepenses({ fiche, cible }: { fiche: FicheVehicule; c
         numero={(d) => d.numero}
         cible={cible}
         seulement={ouverte ? ["date", "libelle", "montant"] : undefined}
-        surLigne={(d) => setIdOuverte((c) => (c === d.id ? null : d.id))}
+        surLigne={(d) => setIdOuverte((c) => (c === d.id || !d.photo ? null : d.id))}
         ouverte={idOuverte}
         surModifier={modifier}
         colonnes={[

@@ -123,6 +123,8 @@ export interface Intervention {
   immobilisationJours: number | null;
   montant: number;
   reference: string;
+  /** Les tâches du catalogue qu'elle a couvertes (0061). */
+  taches?: string[];
 }
 
 export interface ConsommationMensuelle {

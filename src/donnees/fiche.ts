@@ -200,7 +200,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
    */
   const parc = await parcServeur();
   const vehiculeId = parc.vehicules.find((v) => v.immatriculation === ligne.vehicule.immatriculation)?.id ?? null;
-  const [lecture, livraisons, piecesJointes, attelages, incidents, rappels, piecesHorsDocuments, photosDepenses, photosPleins, signalements, services] = await Promise.all([
+  const [lecture, livraisons, piecesJointes, attelages, incidents, rappels, piecesHorsDocuments, photosDepenses, photosPleins, signalements, services, tachesParIntervention] = await Promise.all([
     client.rpc("lire_fiche", { immat: canonique }).maybeSingle<FicheJson | null>(),
     vehiculeId ? livraisonsDuVehicule(client, vehiculeId) : Promise.resolve([]),
     vehiculeId ? piecesJointesDuVehicule(client, vehiculeId) : Promise.resolve(new Map<string, string>()),
@@ -213,6 +213,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
     /* Signalements et services (0060) : la fiche s'ouvre sans eux plutôt que de se fermer si la migration manque. */
     vehiculeId ? signalementsDuVehicule(client, vehiculeId).catch((e: unknown) => (console.warn(`Fiche ${canonique} : signalements illisibles — ${e instanceof Error ? e.message : String(e)}`), [])) : Promise.resolve([]),
     vehiculeId ? servicesDuVehicule(client, vehiculeId).catch((e: unknown) => (console.warn(`Fiche ${canonique} : services illisibles — ${e instanceof Error ? e.message : String(e)}`), [])) : Promise.resolve([]),
+    vehiculeId ? tachesDesInterventionsDuVehicule(client, vehiculeId) : Promise.resolve(new Map<string, string[]>()),
   ]);
   /* Fonction pas encore jouée : la fiche se dresse sur la ligne seule, sans historique — pas d'erreur. */
   if (lecture.error) console.warn(`Fiche ${canonique} : lire_fiche() indisponible (${lecture.error.message}), fiche dressée sans historique.`);
@@ -232,6 +233,8 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
     const depenses = faits.depenses.map((d) => ({ ...d, photo: photosDepenses.get(d.numero) ?? null }));
     /* Le ticket d'un plein, de même (21 septembre 2026). */
     const pleins = faits.pleins.map((p) => ({ ...p, photo: photosPleins.get(p.numero) ?? null }));
+    /* Les tâches du catalogue de chaque intervention (0061) : la colonne « Tâche de service » de l'atelier. */
+    const interventions = faits.interventions.map((i) => ({ ...i, taches: tachesParIntervention.get(i.numero) ?? [] }));
     /* Les documents qui portent un scan rejoignent le dossier, avec les pièces
        des visites, des interventions, des dépenses et des pleins. */
     const libelles = new Map(parametres.documents.types.map((t) => [t.id, t.libelle]));
@@ -250,7 +253,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
         })),
       ...piecesHorsDocuments,
     ];
-    return assemblerFiche(ligne, { ...faits, documents, depenses, pleins, livraisons, incidents, rappels, signalements, services, pieces, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
+    return assemblerFiche(ligne, { ...faits, documents, depenses, pleins, interventions, livraisons, incidents, rappels, signalements, services, pieces, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
   } catch (e) {
     console.error(`Fiche ${canonique} : assemblage impossible sur l'historique lu — ${e instanceof Error ? e.stack ?? e.message : String(e)}`);
     return assemblerFiche(ligne, { ...FAITS_VIDES, livraisons, incidents, rappels, pieces: piecesHorsDocuments, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
@@ -258,6 +261,20 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
 }
 
 export const ficheServeur = cache(ficheServeurBrut);
+
+/** Les tâches du catalogue de chaque intervention du véhicule (0061), par numéro. Sans 0061, une carte vide. */
+async function tachesDesInterventionsDuVehicule(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<Map<string, string[]>> {
+  const r = await client
+    .from("intervention_tache")
+    .select("intervention!inner (numero, vehicule_id), tache_service (libelle)")
+    .eq("intervention.vehicule_id", vehiculeId)
+    .limit(2000)
+    .returns<{ intervention: { numero: string } | null; tache_service: { libelle: string } | null }[]>();
+  const parNumero = new Map<string, string[]>();
+  if (r.error) return parNumero;
+  for (const l of r.data ?? []) if (l.intervention && l.tache_service) parNumero.set(l.intervention.numero, [...(parNumero.get(l.intervention.numero) ?? []), l.tache_service.libelle]);
+  return parNumero;
+}
 
 /* -- Les pièces du dossier, hors documents -----------------------------------
  *

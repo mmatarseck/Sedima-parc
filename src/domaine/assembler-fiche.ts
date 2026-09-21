@@ -49,7 +49,7 @@ export interface FaitsFiche {
   releves: { numero: string; date: string; km: number; origine: string; motifRejet: string | null }[];
   pleins: { numero: string; date: string; litres: number; prixLitre: number; montant: number; km: number | null; source: string; reference: string | null; photo?: string | null }[];
   depenses: { numero: string; date: string; poste: PosteDepense; libelle: string; montant: number; beneficiaire: string | null; reference: string | null; origine: "caisse" | "bon-de-commande" | "facture" | "stock"; justificatif: boolean; km: number | null; kmMotifRejet: string | null; /** La facture ou le reçu, posé par la lecture à part de `donnees/fiche`. */ photo?: string | null }[];
-  interventions: { numero: string; date: string; type: "preventif" | "curatif"; objet: string; garage: string | null; montant: number; immobilisationJours: number | null; km: number | null; reference: string | null }[];
+  interventions: { numero: string; date: string; type: "preventif" | "curatif"; objet: string; garage: string | null; montant: number; immobilisationJours: number | null; km: number | null; reference: string | null; taches?: string[] }[];
   /** La trace des statuts, du plus ancien au plus récent. */
   statuts: { le: string; avant: string | null; apres: string | null; motif: string }[];
   /** Les visites techniques (0023), de la plus récente à la plus ancienne. */
@@ -163,7 +163,7 @@ export function assemblerFiche(l: LigneFlotte, faits: FaitsFiche, parametres: Pa
   const immobilisation = exploitation ? immobilisationAdministrative(v, [...derniersParType.values()], parametres) : null;
 
   /* ---- Interventions ---- */
-  const interventions: Intervention[] = faits.interventions.map((i) => ({ numero: i.numero, date: i.date, type: i.type, objet: i.objet, garage: i.garage ?? "—", km: i.km, immobilisationJours: i.immobilisationJours, montant: i.montant, reference: i.reference ?? "" })).sort((a, b) => b.date.localeCompare(a.date));
+  const interventions: Intervention[] = faits.interventions.map((i) => ({ numero: i.numero, date: i.date, type: i.type, objet: i.objet, garage: i.garage ?? "—", km: i.km, immobilisationJours: i.immobilisationJours, montant: i.montant, reference: i.reference ?? "", taches: i.taches ?? [] })).sort((a, b) => b.date.localeCompare(a.date));
 
   /* ---- Pleins et dépenses ---- */
   const pleins: PleinFiche[] = faits.pleins.map((p) => ({ id: p.numero, numero: p.numero, date: p.date, source: p.source, litres: p.litres, prixLitre: p.prixLitre, montant: p.montant, reference: p.reference ?? "", km: p.km, kmMotifRejet: null, photo: p.photo ?? null })).sort((a, b) => b.date.localeCompare(a.date));

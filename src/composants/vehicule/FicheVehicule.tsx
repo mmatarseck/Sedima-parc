@@ -1,7 +1,7 @@
 "use client";
 
 import { LienRetour } from "@/composants/interface/LienRetour";
-import { prixEnergie } from "@/domaine/parametres";
+import { definitionDocument, prixEnergie } from "@/domaine/parametres";
 import { jourCourant } from "@/domaine/temps";
 import { lireParametres } from "@/lib/parametres-demo";
 
@@ -18,7 +18,9 @@ import { peutCourant } from "@/lib/acces-courant";
 import { useEdition } from "@/composants/transactions/ContexteEdition";
 import { FormulaireDeclaration } from "@/composants/incidents/FormulaireDeclaration";
 import { OngletIncidents } from "@/composants/vehicule/OngletIncidents";
-import { fabriquerAffectationVehicule, fabriquerDocument, fabriquerPeriodeStatut, fabriquerReleve, libelleSite } from "@/composants/transactions/fabriques";
+import { fabriquerAffectationVehicule, fabriquerDocument, fabriquerPeriodeStatut, fabriquerRappel, fabriquerReleve, libelleSite } from "@/composants/transactions/fabriques";
+import { etatRappel } from "@/domaine/rappels";
+import type { TypeDocument } from "@/domaine/types";
 import { TYPE_TRANSACTION, type TypeTransaction } from "@/domaine/reference";
 import { StatutModifiable } from "./StatutModifiable";
 import type { FicheVehicule as Fiche } from "@/domaine/fiche";
@@ -155,7 +157,19 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
   /* Le document échu avertit, il n'impose plus le statut (15 septembre 2026) :
      c'est l'équipe parc qui sait si le camion roule, attend au garage ou part
      en mutation — pas un échéancier. */
-  const immobilisation = fiche.immobilisationAdministrative;
+  /*
+   * SEULS LES DOCUMENTS SUIVIS EN CONFORMITÉ se signalent ici (métier,
+   * 21 septembre 2026 — AB-932-ET affichait « licence de transport échue »
+   * alors que la liste des échéances suivies ne la citait pas). L'en-tête lit
+   * donc les rappels du véhicule, créations et corrections comprises : un
+   * rappel échu d'un document critique l'immobilise administrativement.
+   */
+  const rappelsSuivis = [
+    ...creations("rappel", (c) => fabriquerRappel(c, { vehicule: { id: fiche.ligne.vehicule.id, immatriculation: fiche.ligne.vehicule.immatriculation, immatriculationAffichee: fiche.ligne.vehicule.immatriculationAffichee, marque: fiche.ligne.vehicule.marque, appellation: fiche.ligne.vehicule.appellation } })),
+    ...fiche.rappels.map(surcharger),
+  ];
+  const echus = rappelsSuivis.filter((r) => etatRappel(r.echeance, jourCourant()) === "echu" && (definitionDocument(r.type, lireParametres())?.critique ?? false));
+  const immobilisation: { documents: { type: TypeDocument; etat: "echu" | "manquant" }[] } | null = echus.length ? { documents: [...new Set(echus.map((r) => r.type))].map((type) => ({ type, etat: "echu" })) } : null;
   const statutCourant = statutsCrees[0]?.statut ?? v.statut;
   const i = fiche.indicateurs;
   const titulaire = fiche.affectations.find((a) => a.role === "titulaire" && a.fin === null) ?? null;
