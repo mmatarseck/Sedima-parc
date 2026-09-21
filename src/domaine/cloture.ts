@@ -47,7 +47,8 @@ export function moisDe(dateIso: string): string {
  * « être sûr du rattachement »).
  */
 /** « suggestion » : un texte libre, avec une liste proposée — la marque, le modèle. */
-export type TypeChamp = "texte" | "texte-long" | "nombre" | "date" | "choix" | "oui-non" | "cases" | "reference" | "suggestion" | "photo";
+/* « pieces » : plusieurs photos ou documents ; « lignes » : les lignes d'un service, qui ont leur propre formulaire. */
+export type TypeChamp = "texte" | "texte-long" | "nombre" | "date" | "choix" | "oui-non" | "cases" | "reference" | "suggestion" | "photo" | "pieces" | "lignes";
 
 export interface ChampEdition {
   cle: string;
@@ -167,6 +168,9 @@ export const CHAMP_DATE: Record<TypeTransaction, string> = {
   caisse: "date",
   achat: "date",
   ordre: "datePrevue",
+  signalement: "date",
+  /* Une tâche du catalogue n'a pas de mois : la clôture ne la concerne pas. */
+  tache: "",
   cuve: "date",
   /* Une fiche de prestataire n'a pas de mois : la clôture ne la concerne pas. */
   prestataire: "",
@@ -205,6 +209,18 @@ export function formaterValeur(champ: ChampEdition, valeur: unknown): string {
   if (valeur === null || valeur === undefined || valeur === "") return "—";
   if (champ.type === "oui-non") return valeur ? "oui" : "non";
   if (champ.type === "photo") return "photo jointe";
+  if (champ.type === "pieces") {
+    const n = Array.isArray(valeur) ? valeur.length : String(valeur).startsWith("[") ? (JSON.parse(String(valeur)) as unknown[]).length : 1;
+    return n ? `${n} pièce${n > 1 ? "s" : ""} jointe${n > 1 ? "s" : ""}` : "—";
+  }
+  if (champ.type === "lignes") {
+    try {
+      const l = (Array.isArray(valeur) ? valeur : JSON.parse(String(valeur))) as unknown[];
+      return `${l.length} ligne${l.length > 1 ? "s" : ""}`;
+    } catch {
+      return "—";
+    }
+  }
   if (champ.type === "choix") return champ.options?.find((o) => o.valeur === String(valeur))?.libelle ?? String(valeur);
   if (champ.type === "date") {
     const s = String(valeur);

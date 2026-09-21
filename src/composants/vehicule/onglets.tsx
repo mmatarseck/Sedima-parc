@@ -17,6 +17,10 @@ import { VisionneusePiece } from "@/composants/interface/VisionneusePiece";
 import { useEdition } from "@/composants/transactions/ContexteEdition";
 import { useAjoutVehicule } from "./ajout";
 import { preuveDuRappel } from "@/domaine/rappels";
+import { estOuvert, factureDe, STATUT_ORDRE, TON_STATUT_ORDRE, type LigneOrdre } from "@/domaine/maintenance";
+import { PRIORITE_SERVICE, calculerService } from "@/domaine/service";
+import { ETAT_SIGNALEMENT, PRIORITE_SIGNALEMENT, etatSignalement, trierSignalements, type LigneSignalement } from "@/domaine/signalements";
+import { systemeDe } from "@/domaine/categories-maintenance";
 import { enregistrerModification } from "@/lib/clotures-demo";
 import { CHAMPS, champsCreation } from "@/composants/transactions/champs";
 import { lireParametres } from "@/lib/parametres-demo";
@@ -30,7 +34,9 @@ import {
   fabriquerEvenementIncident,
   fabriquerEvenementStatut,
   fabriquerIntervention,
+  fabriquerLigneOrdre,
   fabriquerPeriodeStatut,
+  fabriquerSignalement,
   fabriquerPlein,
   fabriquerReleve,
   fabriquerRappel,
@@ -83,6 +89,8 @@ const LIBELLE_ORIGINE: Record<DepenseFiche["origine"], string> = {
   caisse: "Caisse parc",
   "bon-de-commande": "Bon de commande",
   facture: "Facture",
+  /* Une pièce prise au magasin par un service (0059). */
+  stock: "Magasin",
 };
 
 /** Cellule « Km relevé » : barrée et signalée quand le contrôle l'a écartée. */
@@ -800,7 +808,19 @@ const NATURE_ATELIER: Record<NatureAtelier, { libelle: string; ton: "favorable" 
 
 export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cible?: string }) {
   const ajouter = useAjoutVehicule(fiche);
-  const { surcharger, demander, creations } = useEdition();
+  const { surcharger, demander, creations, ouvrirService } = useEdition();
+  const vf = fiche.ligne.vehicule;
+  /* Les services et les pannes signalées (0060) : ce qui est à réparer, et ce qui le répare. */
+  const servicesCrees = creations("ordre", fabriquerLigneOrdre).filter((o): o is LigneOrdre => o !== null);
+  const services = [...servicesCrees, ...(fiche.services ?? []).filter((o) => !servicesCrees.some((c) => c.numero === o.numero))].map(surcharger);
+  const signalementsCrees = creations("signalement", fabriquerSignalement).filter((s): s is LigneSignalement => s !== null);
+  const signalements = trierSignalements([...signalementsCrees, ...(fiche.signalements ?? []).filter((s) => !signalementsCrees.some((c) => c.numero === s.numero))].map(surcharger)).map((s) => ({ ...s, etat: etatSignalement(s, services) }));
+  const pannesEnAttente = signalements.filter((s) => s.etat === "ouvert" || s.etat === "pris-en-charge");
+  const servicesOuverts = services.filter((o) => estOuvert(o.statut));
+  const vehiculeService = { immatriculation: vf.immatriculation, immatriculationAffichee: vf.immatriculationAffichee, libelle: `${vf.marque} ${vf.appellation}` };
+  const ouvrir = (o: LigneOrdre) => ouvrirService({ service: o, vehicule: vehiculeService, signalements, services });
+  const reparer = (s: LigneSignalement) =>
+    ouvrirService({ vehicule: vehiculeService, signalements, services, propose: { type: "curatif", objet: s.description, origineNumero: s.numero, signalements: [s.numero], priorite: s.priorite === "critique" ? "urgent" : "non-planifie" } });
   const interventions = [...creations("intervention", fabriquerIntervention), ...fiche.interventions.map(surcharger)];
   const depensesCreees = creations("depense", fabriquerDepense);
   /*
@@ -878,6 +898,79 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
 
   return (
     <div className="flex flex-col gap-5">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <Carte
+          titre="Pannes signalées"
+          precision={pannesEnAttente.length ? `${pannesEnAttente.length} à réparer · ${pannesEnAttente.filter((s) => s.etat === "pris-en-charge").length} prise${pannesEnAttente.filter((s) => s.etat === "pris-en-charge").length > 1 ? "s" : ""} en charge par un service` : "Aucune panne en attente de réparation"}
+          action={
+            <button type="button" onClick={() => ajouter("signalement")} className="bouton-secondaire h-9" title="Priorité, système, description, photos">
+              <AlertTriangle className="size-4" strokeWidth={1.8} />
+              Signaler une panne
+            </button>
+          }
+          sansMarge
+        >
+          {pannesEnAttente.length === 0 ? (
+            <p className="px-5 pb-4 text-[12.5px] text-texte-2">Rien à réparer : une panne signalée ici attendra qu&apos;un service l&apos;inclue.</p>
+          ) : (
+            <ul className="flex flex-col px-3 pb-3">
+              {pannesEnAttente.map((s) => (
+                <li key={s.numero} data-numero={s.numero} className={`flex items-center gap-3 rounded-[10px] px-2 py-2 hover:bg-surface-2 ${cible === s.numero ? "bg-accent-fond" : ""}`}>
+                  <button type="button" onClick={() => demander({ type: "signalement", numero: s.numero, titre: `Signalement ${s.numero} · ${s.description}`, valeurs: s as unknown as Record<string, unknown>, champs: CHAMPS.signalement })} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                    <Echeance ton={PRIORITE_SIGNALEMENT[s.priorite].ton}>{PRIORITE_SIGNALEMENT[s.priorite].libelle}</Echeance>
+                    <IndicateurPiece present={s.pieces.length > 0} />
+                    <span className="min-w-0">
+                      <span className="block truncate text-[13px] font-medium">{s.description}</span>
+                      <span className="meta block truncate">{[date(s.date), systemeDe(s.systeme)?.libelle, ETAT_SIGNALEMENT[s.etat].libelle].filter(Boolean).join(" · ")}</span>
+                    </span>
+                  </button>
+                  {s.etat === "ouvert" ? (
+                    <button type="button" onClick={() => reparer(s)} className="bouton-discret h-7 shrink-0 px-2 text-[12px]">
+                      Créer un service
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Carte>
+
+        <Carte
+          titre="Services de maintenance"
+          precision={servicesOuverts.length ? `${servicesOuverts.length} en cours · ${services.length} au total` : services.length ? `Aucun en cours · ${services.length} au total` : "Aucun service sur ce véhicule"}
+          action={
+            <button type="button" onClick={() => ajouter("ordre-de-travail")} className="bouton-secondaire h-9" title="Tâches, pièces du magasin, facture, pannes incluses">
+              <Plus className="size-4" strokeWidth={2} />
+              Nouveau service
+            </button>
+          }
+          sansMarge
+        >
+          {services.length === 0 ? (
+            <p className="px-5 pb-4 text-[12.5px] text-texte-2">Un service planifie un entretien ou répare une panne ; sa clôture écrit l&apos;intervention et ses dépenses dans l&apos;atelier, ci-dessous.</p>
+          ) : (
+            <ul className="flex flex-col px-3 pb-3">
+              {[...servicesOuverts, ...services.filter((o) => !estOuvert(o.statut)).slice(0, 4)].map((o) => {
+                const cout = o.lignes?.length ? calculerService(factureDe(o)).coutTotal : o.montantEstime;
+                return (
+                  <li key={o.numero} data-numero={o.numero}>
+                    <button type="button" onClick={() => ouvrir(o)} className={`flex w-full items-center gap-3 rounded-[10px] px-2 py-2 text-left hover:bg-surface-2 ${cible === o.numero ? "bg-accent-fond" : ""}`}>
+                      <Echeance ton={TON_STATUT_ORDRE[o.statut]}>{STATUT_ORDRE[o.statut]}</Echeance>
+                      <IndicateurPiece present={(o.pieces?.length ?? 0) > 0} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-medium">{o.objet}</span>
+                        <span className="meta block truncate">{[o.numero, date(o.datePrevue), o.garage !== "—" ? o.garage : null, PRIORITE_SERVICE[o.priorite ?? "planifie"].libelle, o.signalements?.length ? `${o.signalements.length} panne${o.signalements.length > 1 ? "s" : ""}` : null].filter(Boolean).join(" · ")}</span>
+                      </span>
+                      {cout !== null && cout !== undefined ? <span className="code shrink-0 text-[12.5px]">{montant(cout)}</span> : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Carte>
+      </div>
+
       <ListeEtPiece
         piece={
           ouverte ? (

@@ -490,7 +490,7 @@ export interface Depense {
   reference: string | null;
   justificatifUrl: string | null;
   /** Origine du décaissement : caisse parc, bon de commande, facture directe. */
-  origine: "caisse" | "bon-de-commande" | "facture";
+  origine: "caisse" | "bon-de-commande" | "facture" | "stock";
 }
 
 /* -- Vues dérivées, calculées côté serveur ---------------------------------- */

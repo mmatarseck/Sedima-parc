@@ -100,6 +100,8 @@ async function budgetServeurBrut(): Promise<SourceBudget> {
       .select("numero, date, poste, libelle, montant, beneficiaire, origine, justificatif, vehicule (immatriculation, marque, appellation, business_unit)")
       .gte("date", `${exercice}-01-01`)
       .lte("date", aujourdhui)
+      /* Une pièce prise au magasin (0059) porte son coût au véhicule, mais le budget l'a déjà comptée à l'achat, par sa demande. */
+      .neq("origine", "stock")
       .order("date", { ascending: false })
       .limit(10000)
       .returns<LigneDepenseBudget[]>(),

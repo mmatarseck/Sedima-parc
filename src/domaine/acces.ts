@@ -95,7 +95,9 @@ export const PROFILS: DefinitionProfil[] = [
     precision: "Gestionnaire du parc, direction des opérations",
     roleDefaut: "gestionnaire-parc",
     roles: ["gestionnaire-parc", "direction"],
-    defauts: N("gestion", "gestion", "gestion", "lecture", "gestion", "gestion", "gestion", "gestion", "saisie", "gestion", "gestion"),
+    /* La maintenance en gestion depuis 0060 (21 septembre 2026) : le responsable
+       du parc clôt les services. En base, la direction garde la lecture. */
+    defauts: N("gestion", "gestion", "gestion", "gestion", "gestion", "gestion", "gestion", "gestion", "saisie", "gestion", "gestion"),
     statuts: "tous",
     sanctions: true,
     mobile: "Tout le parc, tous les statuts, affectation rapide, validations",

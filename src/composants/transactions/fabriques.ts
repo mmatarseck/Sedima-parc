@@ -8,6 +8,8 @@
  * d'un chauffeur. En production, ce travail est celui des vues.
  * ==========================================================================*/
 
+import { lireLignes } from "@/domaine/service";
+import type { LigneSignalement } from "@/domaine/signalements";
 import { idChauffeur, initialesDe, type AffectationChauffeur, type ContraventionChauffeur, type EcheanceChauffeur, type FraisDeRoute, type IncidentChauffeur, type LigneChauffeur } from "@/domaine/chauffeur";
 import type { Creation } from "@/domaine/cloture";
 import { idAttributaire, initialesAttributaire, type Attributaire, type LigneAttributaire } from "@/domaine/parc-leger";
@@ -489,6 +491,57 @@ export function fabriquerLigneOrdre(c: Creation): LigneOrdre | null {
     interventionNumero: s(v.interventionNumero),
     commentaire: s(v.commentaire),
     demandeur: c.auteur,
+    creee: true,
+    priorite: (s(v.priorite) as LigneOrdre["priorite"]) ?? "planifie",
+    dateFin: s(v.dateFin),
+    kilometrage: n(v.kilometrage),
+    numeroFacture: s(v.numeroFacture),
+    lignes: lireLignes(v.lignes),
+    remiseMode: v.remiseMode === "pourcentage" ? "pourcentage" : "montant",
+    remiseValeur: n(v.remiseValeur) ?? 0,
+    tvaTaux: n(v.tvaTaux) ?? 0,
+    brsTaux: n(v.brsTaux) ?? 0,
+    pieces: listeDe(v.pieces),
+    signalements: listeDe(v.signalements),
+  };
+}
+
+/** Une liste de références, d'un tableau ou d'une chaîne JSON. */
+function listeDe(v: unknown): string[] {
+  if (Array.isArray(v)) return v.filter((x): x is string => typeof x === "string");
+  if (typeof v === "string" && v.startsWith("[")) {
+    try {
+      return (JSON.parse(v) as unknown[]).filter((x): x is string => typeof x === "string");
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+/** Un signalement saisi dans l'application, à la forme des listes. */
+export function fabriquerSignalement(c: Creation): LigneSignalement | null {
+  const v = c.valeurs;
+  /* Depuis la page Maintenance, le véhicule est choisi (son identifiant) ; depuis la fiche, c'est celui du sujet (sa plaque). */
+  const plaque = c.sujet.startsWith("vehicule:") ? c.sujet.slice(9) : null;
+  const l = vehiculeDe(s(v.vehiculeId)) ?? lireReferentiels().vehicules.find((x) => x.immatriculation === plaque) ?? null;
+  if (!l) return null;
+  return {
+    numero: c.numero,
+    vehiculeId: l.immatriculation,
+    immatriculationAffichee: l.immatriculationAffichee,
+    vehicule: `${l.marque} ${l.appellation}`,
+    date: s(v.date) ?? c.date.slice(0, 10),
+    priorite: (s(v.priorite) as LigneSignalement["priorite"]) ?? "normale",
+    systeme: s(v.systeme),
+    description: s(v.description) ?? "",
+    details: s(v.details),
+    kilometrage: n(v.kilometrage),
+    pieces: listeDe(v.pieces),
+    statut: (s(v.statut) as LigneSignalement["statut"]) ?? "ouvert",
+    resoluLe: s(v.resoluLe),
+    serviceNumero: s(v.serviceNumero),
+    declarant: s(v.declarant) ?? c.auteur,
     creee: true,
   };
 }

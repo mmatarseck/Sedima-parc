@@ -3,6 +3,9 @@
 import { useCallback } from "react";
 import { champsCreation } from "@/composants/transactions/champs";
 import { useEdition } from "@/composants/transactions/ContexteEdition";
+import { fabriquerLigneOrdre, fabriquerSignalement } from "@/composants/transactions/fabriques";
+import type { LigneOrdre } from "@/domaine/maintenance";
+import type { LigneSignalement } from "@/domaine/signalements";
 import type { FicheVehicule } from "@/domaine/fiche";
 import { prixEnergie } from "@/domaine/parametres";
 import { jourCourant } from "@/domaine/temps";
@@ -44,7 +47,7 @@ export const TITRE_CREATION: Partial<Record<CibleAjout, string>> = {
  * faire.
  */
 export function useAjoutVehicule(fiche: FicheVehicule): (cible: CibleAjout) => boolean {
-  const { creer, saisirFacture } = useEdition();
+  const { creer, saisirFacture, ouvrirService, creations } = useEdition();
   const v = fiche.ligne.vehicule;
 
   return useCallback(
@@ -55,6 +58,18 @@ export function useAjoutVehicule(fiche: FicheVehicule): (cible: CibleAjout) => b
         saisirFacture({
           mode: cible === "intervention" ? "atelier" : "autres",
           vehicule: { immatriculation: v.immatriculation, immatriculationAffichee: v.immatriculationAffichee, libelle: `${v.marque} ${v.appellation}` },
+        });
+        return true;
+      }
+      if (cible === "signalement") {
+        creer({ type: "signalement", titre: `Signaler une panne · ${v.immatriculationAffichee}`, champs: champsCreation("signalement", { pour: "vehicule" }), valeurs: { date: jourCourant(), priorite: "normale" } });
+        return true;
+      }
+      if (cible === "ordre-de-travail") {
+        ouvrirService({
+          vehicule: { immatriculation: v.immatriculation, immatriculationAffichee: v.immatriculationAffichee, libelle: `${v.marque} ${v.appellation}` },
+          signalements: [...creations("signalement", fabriquerSignalement), ...(fiche.signalements ?? [])].filter((s): s is LigneSignalement => s !== null),
+          services: [...creations("ordre", fabriquerLigneOrdre), ...(fiche.services ?? [])].filter((o): o is LigneOrdre => o !== null),
         });
         return true;
       }
@@ -92,6 +107,6 @@ export function useAjoutVehicule(fiche: FicheVehicule): (cible: CibleAjout) => b
       });
       return true;
     },
-    [creer, saisirFacture, fiche.visitesTechniques, v.appellation, v.categorie, v.energie, v.immatriculation, v.immatriculationAffichee, v.marque],
+    [creer, saisirFacture, ouvrirService, creations, fiche.signalements, fiche.services, fiche.visitesTechniques, v.appellation, v.categorie, v.energie, v.immatriculation, v.immatriculationAffichee, v.marque],
   );
 }

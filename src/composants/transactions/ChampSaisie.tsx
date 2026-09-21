@@ -2,6 +2,7 @@
 
 import { ChampCombo } from "@/composants/interface/ChampCombo";
 import { ChampPhoto } from "@/composants/interface/ChampPhoto";
+import { ChampPieces } from "@/composants/interface/ChampPieces";
 import type { ChampEdition } from "@/domaine/cloture";
 import { ChampReference } from "./ChampReference";
 
@@ -147,6 +148,19 @@ export function ChampSaisie({
         compact
       />
     );
+  }
+  if (champ.type === "pieces") {
+    /* Plusieurs pièces : la saisie les garde en JSON, la sortie de la modale en refait un tableau. */
+    let refs: string[] = [];
+    try {
+      refs = typeof v === "string" && v.startsWith("[") ? (JSON.parse(v) as string[]) : [];
+    } catch {
+      refs = [];
+    }
+    return <ChampPieces valeur={refs} onChange={(r) => onChange(r.length ? JSON.stringify(r) : "")} dossier={champ.dossier ?? "documents"} />;
+  }
+  if (champ.type === "lignes") {
+    return <span className="meta">Les lignes se saisissent dans le formulaire du service.</span>;
   }
   if (champ.type === "texte-long") {
     return <textarea value={String(v ?? "")} onChange={(e) => onChange(e.target.value)} rows={3} className={`${commun} h-auto resize-none py-2 leading-relaxed`} />;

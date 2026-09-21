@@ -151,7 +151,7 @@ export interface DepenseFiche {
   montant: number;
   beneficiaire: string | null;
   reference: string | null;
-  origine: "caisse" | "bon-de-commande" | "facture";
+  origine: "caisse" | "bon-de-commande" | "facture" | "stock";
   justificatif: boolean;
   /** La facture ou le reçu, dans le seau : posé sur la ligne, ouvert depuis elle (16 septembre 2026). */
   photo?: string | null;
@@ -327,6 +327,10 @@ export interface FicheVehicule {
   incidents: import("./incidents").LigneIncident[];
   /** Les rappels du véhicule — assurance, visite, salubrité — du plus pressé au plus lointain (0053). */
   rappels: import("./rappels").Rappel[];
+  /** Les pannes signalées (0060), les plus pressantes d'abord. */
+  signalements?: import("./signalements").LigneSignalement[];
+  /** Les services de maintenance du véhicule (0060), du plus récent au plus ancien. */
+  services?: import("./maintenance").LigneOrdre[];
   /**
    * Les pièces du dossier, en trois familles (16 septembre 2026) : le
    * réglementaire — carte grise, assurance, salubrité —, les procès-verbaux de

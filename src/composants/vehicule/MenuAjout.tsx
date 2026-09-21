@@ -23,6 +23,7 @@ import {
   Wrench,
   type LucideIcon,
   BellRing,
+  AlertOctagon,
 } from "lucide-react";
 
 export type CibleAjout =
@@ -36,6 +37,7 @@ export type CibleAjout =
   | "statut"
   | "inspection"
   | "ordre-de-travail"
+  | "signalement"
   | "contravention"
   | "sanction"
   | "indisponibilite"
@@ -63,8 +65,10 @@ export interface EntreeAjout {
  */
 export const ENTREES_VEHICULE: EntreeAjout[] = [
   { cle: "plein", libelle: "Plein de carburant", precision: "Litres, bon de sortie, compteur", icone: Fuel, livre: true },
-  { cle: "depense", libelle: "Dépense", precision: "Caisse parc, bon de commande ou facture", icone: Wallet, livre: true },
-  { cle: "intervention", libelle: "Intervention", precision: "Préventive ou curative, garage, immobilisation", icone: Wrench, livre: true },
+  { cle: "depense", libelle: "Dépense", precision: "Une ou plusieurs lignes, et la pièce justificative", icone: Wallet, livre: true },
+  { cle: "signalement", libelle: "Panne ou anomalie", precision: "Priorité, système, photos — un service la réparera", icone: AlertOctagon, livre: true },
+  { cle: "ordre-de-travail", libelle: "Service de maintenance", precision: "Tâches, pièces du magasin, facture, pannes incluses", icone: ClipboardCheck, livre: true },
+  { cle: "intervention", libelle: "Facture d'atelier", precision: "Une intervention déjà faite : lignes, garage, facture jointe", icone: Wrench, livre: true },
   { cle: "affectation", libelle: "Affectation", precision: "Chauffeur titulaire ou suppléant, sur période", icone: UserPlus, livre: true },
   { cle: "attelage", libelle: "Attelage", precision: "Tracteur et remorque, sur période ou définitif", icone: Link2, livre: true },
   { cle: "incident", libelle: "Incident ou accident", precision: "Déclaration en quatre étapes", icone: TriangleAlert, livre: true },
@@ -75,7 +79,6 @@ export const ENTREES_VEHICULE: EntreeAjout[] = [
   { cle: "releve", libelle: "Relevé kilométrique", precision: "Lecture du compteur, contrôlée", icone: Gauge, livre: true },
   { cle: "statut", libelle: "Changement de statut", precision: "Ouvre une période horodatée", icone: ArrowLeftRight, livre: true },
   { cle: "inspection", libelle: "Inspection", precision: "Check-list avant départ ou au retour — Lot 2", icone: ClipboardList, livre: false },
-  { cle: "ordre-de-travail", libelle: "Ordre de travail", precision: "Depuis une échéance d'entretien — Lot 2", icone: ClipboardCheck, livre: false },
 ];
 
 /**

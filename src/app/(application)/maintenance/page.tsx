@@ -4,6 +4,7 @@ import { typeDuNumero } from "@/domaine/reference";
 import { jourCourant } from "@/domaine/temps";
 import { interventionsServeur, travauxServeur } from "@/donnees/maintenance";
 import { ordresServeur } from "@/donnees/ordres";
+import { signalementsServeur } from "@/donnees/signalements";
 import { parametresServeur } from "@/lib/parametres-serveur";
 
 export const metadata = { title: titrePage("Maintenance") };
@@ -17,10 +18,11 @@ export const metadata = { title: titrePage("Maintenance") };
 export default async function PageMaintenance({ searchParams }: { searchParams: Promise<{ vue?: string; ref?: string }> }) {
   const { vue, ref } = await searchParams;
   const typeCible = ref ? typeDuNumero(ref) : null;
-  const vueRetenue: VueMaintenance = vue === "ordres" || typeCible === "ordre" ? "ordres" : vue === "interventions" || typeCible === "intervention" ? "interventions" : "afaire";
+  const vueRetenue: VueMaintenance =
+    vue === "ordres" || typeCible === "ordre" ? "ordres" : vue === "interventions" || typeCible === "intervention" ? "interventions" : vue === "signalements" || typeCible === "signalement" ? "signalements" : "afaire";
 
   /* Base branchée : les ordres viennent de leur table, les interventions de la
      leur, et le travail à faire se déduit du parc lu pour la liste Flotte. */
-  const [travaux, ordres, interventions] = await Promise.all([travauxServeur(await parametresServeur()), ordresServeur(), interventionsServeur()]);
-  return <EcranMaintenance travaux={travaux} ordres={ordres} interventions={interventions} aujourdhui={jourCourant()} vueInitiale={vueRetenue} cible={ref} />;
+  const [travaux, ordres, interventions, signalements] = await Promise.all([travauxServeur(await parametresServeur()), ordresServeur(), interventionsServeur(), signalementsServeur()]);
+  return <EcranMaintenance travaux={travaux} ordres={ordres} interventions={interventions} signalements={signalements} aujourdhui={jourCourant()} vueInitiale={vueRetenue} cible={ref} />;
 }

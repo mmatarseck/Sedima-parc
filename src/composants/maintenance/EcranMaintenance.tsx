@@ -2,14 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarPlus, Pencil, Play, Plus, Receipt, Wrench } from "lucide-react";
+import { AlertOctagon, CalendarPlus, Pencil, Play, Plus, Receipt, Wrench } from "lucide-react";
+import { IndicateurPiece } from "@/composants/interface/IndicateurPiece";
+import { systemeDe } from "@/domaine/categories-maintenance";
+import { PRIORITE_SERVICE, calculerService } from "@/domaine/service";
+import { ETAT_SIGNALEMENT, PRIORITE_SIGNALEMENT, etatSignalement, trierSignalements, type EtatSignalement, type LigneSignalement } from "@/domaine/signalements";
+import { lireReferentiels } from "@/lib/referentiels-navigateur";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { Numero } from "@/composants/interface/Numero";
 import { Echeance, Pastille } from "@/composants/interface/Pastille";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
 import { CHAMPS, champsCreation } from "@/composants/transactions/champs";
 import { FournisseurEdition, useEdition } from "@/composants/transactions/ContexteEdition";
-import { fabriquerIntervention, fabriquerLigneOrdre } from "@/composants/transactions/fabriques";
+import { fabriquerIntervention, fabriquerLigneOrdre, fabriquerSignalement } from "@/composants/transactions/fabriques";
 import { BUSINESS_UNIT } from "@/domaine/libelles";
 import {
   actionSuivante,
@@ -30,7 +35,7 @@ import {
 } from "@/domaine/maintenance";
 import type { BusinessUnit } from "@/domaine/types";
 import { FLOTTE } from "@/donnees/parc-demo";
-import { enregistrerModification, lireCreations, lireToutesCreations } from "@/lib/clotures-demo";
+import { enregistrerModification, lireToutesCreations } from "@/lib/clotures-demo";
 import { date, dateCourte, kilometrage, montant } from "@/lib/format";
 
 /* ============================================================================
@@ -46,7 +51,14 @@ import { date, dateCourte, kilometrage, montant } from "@/lib/format";
  * sous-titre.
  * ==========================================================================*/
 
-export type VueMaintenance = "afaire" | "ordres" | "interventions";
+export type VueMaintenance = "afaire" | "signalements" | "ordres" | "interventions";
+
+const FILTRES_SIGNALEMENTS: FiltreListe<LigneSignalement & { etat: EtatSignalement }>[] = [
+  { cle: "a-traiter", libelle: "À traiter", retient: (s) => s.etat === "ouvert" },
+  { cle: "pris", libelle: "Pris en charge", retient: (s) => s.etat === "pris-en-charge" },
+  { cle: "resolus", libelle: "Résolus", retient: (s) => s.etat === "resolu" },
+  { cle: "tous", libelle: "Tous", retient: () => true },
+];
 
 type Periode = "30" | "90" | "365" | "tout";
 const PERIODES: { cle: Periode; libelle: string }[] = [
@@ -105,6 +117,8 @@ function Segments<T extends string>({ valeur, options, onChange, etiquette }: { 
 interface Props {
   travaux: LigneTravail[];
   ordres: LigneOrdre[];
+  /** Les pannes et anomalies signalées (0060). */
+  signalements?: LigneSignalement[];
   interventions: LigneInterventionFlotte[];
   aujourdhui: string;
   vueInitiale: VueMaintenance;
@@ -119,8 +133,8 @@ export function EcranMaintenance(props: Props) {
   );
 }
 
-function Interieur({ travaux, ordres, interventions, aujourdhui, vueInitiale, cible }: Props) {
-  const { demander, creer, saisirFacture, surcharger, version, actualiser } = useEdition();
+function Interieur({ travaux, ordres, signalements = [], interventions, aujourdhui, vueInitiale, cible }: Props) {
+  const { demander, creer, saisirFacture, ouvrirService, surcharger, version, actualiser } = useEdition();
   const [vue, setVue] = useState<VueMaintenance>(vueInitiale);
   const [periode, setPeriode] = useState<Periode>("365");
   const [bu, setBu] = useState<BusinessUnit | "toutes">("toutes");
@@ -129,7 +143,7 @@ function Interieur({ travaux, ordres, interventions, aujourdhui, vueInitiale, ci
 
   /* ---- Ce qui a été créé dans l'application ---- */
   const ordresCrees = useMemo(
-    () => (monte ? lireCreations("maintenance").filter((c) => c.type === "ordre").map(fabriquerLigneOrdre).filter((o): o is LigneOrdre => o !== null) : []),
+    () => (monte ? lireToutesCreations("ordre").map(fabriquerLigneOrdre).filter((o): o is LigneOrdre => o !== null) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [version, monte],
   );
@@ -154,6 +168,17 @@ function Interieur({ travaux, ordres, interventions, aujourdhui, vueInitiale, ci
     if (cible) fusion.sort((a, b) => (a.numero === cible ? -1 : b.numero === cible ? 1 : 0));
     return fusion;
   }, [ordresCrees, ordres, surcharger, cible]);
+
+  const signalementsCrees = useMemo(
+    () => (monte ? lireToutesCreations("signalement").map(fabriquerSignalement).filter((s): s is LigneSignalement => s !== null) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [version, monte],
+  );
+  const tousSignalements = useMemo(
+    () =>
+      trierSignalements([...signalementsCrees, ...signalements.filter((s) => !signalementsCrees.some((c) => c.numero === s.numero))].map((s) => surcharger(s))).map((s) => ({ ...s, etat: etatSignalement(s, tousOrdres) })),
+    [signalementsCrees, signalements, surcharger, tousOrdres],
+  );
 
   /* Le tableau « à faire » suit les ordres tels qu'ils sont maintenant : un ordre
      créé ici met la ligne « en cours », un ordre clos la rend à son urgence. */
@@ -189,22 +214,45 @@ function Interieur({ travaux, ordres, interventions, aujourdhui, vueInitiale, ci
   const enCours = travauxVisibles.filter((t) => t.urgence === "en-cours").length;
   const ouverts = ordresVisibles.filter((o) => estOuvert(o.statut)).length;
   const enAtelier = ordresVisibles.filter((o) => o.statut === "en-atelier").length;
+  const signalementsVisibles = tousSignalements.filter((s) => (bu === "toutes" || lireReferentiels().vehicules.find((v) => v.immatriculation === s.vehiculeId)?.businessUnit === bu) && (s.etat === "ouvert" || s.etat === "pris-en-charge" || !depuis || s.date >= depuis || s.numero === cible));
+  const aTraiter = tousSignalements.filter((s) => s.etat === "ouvert").length;
   const totalInterventions = interventionsVisibles.reduce((s, i) => s + i.montant, 0);
 
   /* ---- Gestes ---- */
   function planifier(t?: LigneTravail) {
-    creer({
-      type: "ordre",
-      titre: t ? `Planifier · ${t.objet} · ${t.immatriculationAffichee}` : "Nouvel ordre de travail",
-      champs: champsCreation("ordre", { pour: "maintenance" }),
-      valeurs: t
-        ? { vehiculeId: t.vehiculeId, type: t.type, objet: t.objet, origineNumero: t.origineNumero, datePrevue: decaler(aujourdhui, 3), immobilisationPrevueJours: t.type === "preventif" ? 1 : null }
-        : { datePrevue: aujourdhui },
+    ouvrirService({
+      signalements: tousSignalements,
+      services: tousOrdres,
+      propose: t ? { type: t.type, objet: t.objet, origineNumero: t.origineNumero, priorite: t.urgence === "en-retard" ? "urgent" : "planifie", vehiculeImmatriculation: t.immatriculation } : undefined,
     });
   }
 
+  /* Une panne signalée se répare par un service, qui l'inclut d'avance. */
+  function planifierSignalement(s: LigneSignalement) {
+    ouvrirService({
+      signalements: tousSignalements,
+      services: tousOrdres,
+      propose: { type: "curatif", objet: s.description, origineNumero: s.numero, signalements: [s.numero], priorite: s.priorite === "critique" ? "urgent" : "non-planifie", vehiculeImmatriculation: s.vehiculeId },
+    });
+  }
+
+  function signaler() {
+    creer({
+      type: "signalement",
+      titre: "Signaler une panne ou une anomalie",
+      champs: champsCreation("signalement", { pour: "maintenance" }),
+      valeurs: { date: aujourdhui, priorite: "normale" },
+      /* Rangé sous le véhicule choisi : sa fiche le voit. */
+      sujetDe: (v) => `vehicule:${lireReferentiels().vehicules.find((x) => x.id === v.vehiculeId)?.immatriculation ?? String(v.vehiculeId ?? "")}`,
+    });
+  }
+
+  function modifierSignalement(s: LigneSignalement) {
+    demander({ type: "signalement", numero: s.numero, titre: `Signalement ${s.numero} · ${s.description}`, valeurs: s as unknown as Record<string, unknown>, champs: CHAMPS.signalement });
+  }
+
   function modifierOrdre(o: LigneOrdre) {
-    demander({ type: "ordre", numero: o.numero, titre: `Ordre de travail ${o.numero} · ${o.objet}`, valeurs: o as unknown as Record<string, unknown>, champs: CHAMPS.ordre });
+    ouvrirService({ service: o, signalements: tousSignalements, services: tousOrdres });
   }
 
   /* Démarrer : le véhicule entre au garage. Un geste, une trace, sans ressaisie. */
@@ -225,25 +273,7 @@ function Interieur({ travaux, ordres, interventions, aujourdhui, vueInitiale, ci
   /* Clôturer : l'intervention réalisée est créée sur la fiche du véhicule, et
      l'ordre se referme sur son numéro. Une saisie, deux transactions. */
   function cloturer(o: LigneOrdre) {
-    const immobilisation = o.dateDebut ? Math.max(1, joursEntre(o.dateDebut, aujourdhui) + 1) : o.immobilisationPrevueJours;
-    creer({
-      type: "intervention",
-      titre: `Clôturer ${o.numero} · intervention réalisée sur ${o.immatriculationAffichee}`,
-      champs: champsCreation("intervention", { pour: "vehicule" }),
-      valeurs: { date: aujourdhui, type: o.type, objet: o.objet, garage: o.garage, immobilisationJours: immobilisation, montant: o.montantEstime },
-      sujetDe: () => `vehicule:${o.vehiculeId}`,
-      apresCreation: (c) =>
-        enregistrerModification({
-          numero: o.numero,
-          type: "ordre",
-          titre: `Ordre de travail ${o.numero} · ${o.objet}`,
-          href: `/maintenance?vue=ordres&ref=${o.numero}`,
-          champs: CHAMPS.ordre,
-          avant: o as unknown as Record<string, unknown>,
-          apres: { ...(o as unknown as Record<string, unknown>), statut: "clos", dateCloture: aujourdhui, interventionNumero: c.numero },
-          motif: `Clos par l'intervention ${c.numero}`,
-        }),
-    });
+    modifierOrdre(o);
   }
 
   function modifierIntervention(i: LigneInterventionFlotte) {
@@ -308,9 +338,67 @@ function Interieur({ travaux, ordres, interventions, aujourdhui, vueInitiale, ci
   const tousOrdresRef = useMemo(() => ({ courants: [] as LigneOrdre[] }), []);
   tousOrdresRef.courants = tousOrdres;
 
+  const colonnesSignalements = useMemo<ColonneListe<LigneSignalement & { etat: EtatSignalement }>[]>(
+    () => [
+      { cle: "priorite", libelle: "Priorité", parDefaut: true, largeur: 110, texte: (s) => PRIORITE_SIGNALEMENT[s.priorite].libelle, tri: (s) => PRIORITE_SIGNALEMENT[s.priorite].rang, rendu: (s) => <Echeance ton={PRIORITE_SIGNALEMENT[s.priorite].ton}>{PRIORITE_SIGNALEMENT[s.priorite].libelle}</Echeance> },
+      {
+        cle: "description",
+        libelle: "Problème",
+        parDefaut: true,
+        largeur: 300,
+        rendu: (s) => (
+          <span className="flex min-w-0 items-center gap-2">
+            <IndicateurPiece present={s.pieces.length > 0} />
+            <span className="min-w-0 truncate font-medium" title={s.details ?? s.description}>{s.description}</span>
+          </span>
+        ),
+      },
+      { cle: "systeme", libelle: "Type", parDefaut: true, largeur: 170, texte: (s) => systemeDe(s.systeme)?.libelle ?? "", rendu: (s) => systemeDe(s.systeme)?.libelle ?? <span className="text-attenue">—</span> },
+      { cle: "etat", libelle: "Suivi", parDefaut: true, largeur: 130, texte: (s) => ETAT_SIGNALEMENT[s.etat].libelle, rendu: (s) => <Echeance ton={ETAT_SIGNALEMENT[s.etat].ton}>{ETAT_SIGNALEMENT[s.etat].libelle}</Echeance> },
+      { cle: "anciennete", libelle: "Depuis", parDefaut: true, largeur: 90, alignee: "droite", tri: (s) => s.date, rendu: (s) => <span className="code">{joursEntre(s.date, aujourdhui)} j</span> },
+      { cle: "declarant", libelle: "Signalé par", parDefaut: false, largeur: 160, rendu: (s) => s.declarant ?? "—" },
+      { cle: "km", libelle: "Km", parDefaut: false, largeur: 110, alignee: "droite", tri: (s) => s.kilometrage, rendu: (s) => <span className="code">{kilometrage(s.kilometrage)}</span> },
+      {
+        cle: "action",
+        libelle: "Action",
+        parDefaut: true,
+        largeur: 140,
+        texte: (s) => (s.etat === "ouvert" ? "Créer un service" : "Modifier"),
+        rendu: (s) =>
+          s.etat === "ouvert" ? (
+            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); planifierSignalement(s); }} className="bouton-principal h-7 px-2.5 text-[12px]">
+              <CalendarPlus className="size-3.5" strokeWidth={2} />
+              Créer un service
+            </button>
+          ) : (
+            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); modifierSignalement(s); }} className="bouton-discret h-7 px-2 text-[12px]">
+              <Pencil className="size-3.5" strokeWidth={1.8} />
+              Modifier
+            </button>
+          ),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
   const colonnesOrdres = useMemo<ColonneListe<LigneOrdre>[]>(
     () => [
-      { cle: "objet", libelle: "Objet", parDefaut: true, largeur: 260, rendu: (o) => <span className="block truncate font-medium">{o.objet}</span> },
+      {
+        cle: "objet",
+        libelle: "Objet",
+        parDefaut: true,
+        largeur: 260,
+        rendu: (o) => (
+          <span className="flex min-w-0 items-center gap-2">
+            <IndicateurPiece present={(o.pieces?.length ?? 0) > 0} />
+            <span className="min-w-0 truncate font-medium">{o.objet}</span>
+          </span>
+        ),
+      },
+      { cle: "priorite", libelle: "Priorité", parDefaut: true, largeur: 115, texte: (o) => PRIORITE_SERVICE[o.priorite ?? "planifie"].libelle, rendu: (o) => <Echeance ton={PRIORITE_SERVICE[o.priorite ?? "planifie"].ton}>{PRIORITE_SERVICE[o.priorite ?? "planifie"].libelle}</Echeance> },
+      { cle: "cout", libelle: "Coût", parDefaut: true, largeur: 125, alignee: "droite", tri: (o) => (o.lignes?.length ? calculerService({ lignes: o.lignes, remiseMode: o.remiseMode ?? "montant", remiseValeur: o.remiseValeur ?? 0, tvaTaux: o.tvaTaux ?? 0, brsTaux: o.brsTaux ?? 0 }).coutTotal : o.montantEstime), rendu: (o) => { const c = o.lignes?.length ? calculerService({ lignes: o.lignes, remiseMode: o.remiseMode ?? "montant", remiseValeur: o.remiseValeur ?? 0, tvaTaux: o.tvaTaux ?? 0, brsTaux: o.brsTaux ?? 0 }).coutTotal : o.montantEstime; return c === null ? <span className="text-attenue">—</span> : <span className="code">{montant(c)}</span>; } },
+      { cle: "pannes", libelle: "Pannes incluses", parDefaut: false, largeur: 120, alignee: "droite", tri: (o) => o.signalements?.length ?? 0, rendu: (o) => <span className="code">{o.signalements?.length ?? 0}</span> },
       { cle: "type", libelle: "Type", parDefaut: true, largeur: 105, texte: (o) => (o.type === "preventif" ? "Préventif" : "Curatif"), rendu: (o) => <Pastille ton={o.type === "preventif" ? "favorable" : "vigilance"}>{o.type === "preventif" ? "Préventif" : "Curatif"}</Pastille> },
       { cle: "garage", libelle: "Garage", parDefaut: true, largeur: 200, rendu: (o) => <span className="block truncate">{o.garage}</span> },
       { cle: "statut", libelle: "Statut", parDefaut: true, largeur: 110, texte: (o) => STATUT_ORDRE[o.statut], rendu: (o) => <Echeance ton={TON_STATUT_ORDRE[o.statut]}>{STATUT_ORDRE[o.statut]}</Echeance> },
@@ -397,8 +485,10 @@ function Interieur({ travaux, ordres, interventions, aujourdhui, vueInitiale, ci
   const sousTitre =
     vue === "afaire"
       ? `${enRetard} en retard · ${aPlanifier} à planifier · ${enCours} en cours · au ${date(aujourdhui)}`
+      : vue === "signalements"
+        ? `${aTraiter} panne${aTraiter > 1 ? "s" : ""} à traiter · ${signalementsVisibles.length} signalement${signalementsVisibles.length > 1 ? "s" : ""} · au ${date(aujourdhui)}`
       : vue === "ordres"
-        ? `${ordresVisibles.length} ordre${ordresVisibles.length > 1 ? "s" : ""} de travail · ${ouverts} ouvert${ouverts > 1 ? "s" : ""} · ${enAtelier} en atelier · au ${date(aujourdhui)}`
+        ? `${ordresVisibles.length} service${ordresVisibles.length > 1 ? "s" : ""} de maintenance · ${ouverts} ouvert${ouverts > 1 ? "s" : ""} · ${enAtelier} en atelier · au ${date(aujourdhui)}`
         : `${interventionsVisibles.length} intervention${interventionsVisibles.length > 1 ? "s" : ""} · ${montant(totalInterventions)} · au ${date(aujourdhui)}`;
 
   return (
@@ -412,7 +502,8 @@ function Interieur({ travaux, ordres, interventions, aujourdhui, vueInitiale, ci
               valeur={vue}
               options={[
                 { cle: "afaire" as VueMaintenance, libelle: "À faire" },
-                { cle: "ordres" as VueMaintenance, libelle: "Ordres de travail" },
+                { cle: "signalements" as VueMaintenance, libelle: `Pannes signalées${aTraiter ? ` (${aTraiter})` : ""}` },
+                { cle: "ordres" as VueMaintenance, libelle: "Services" },
                 { cle: "interventions" as VueMaintenance, libelle: "Interventions" },
               ]}
               onChange={setVue}
@@ -425,14 +516,18 @@ function Interieur({ travaux, ordres, interventions, aujourdhui, vueInitiale, ci
               onChange={setBu}
               etiquette="Business unit"
             />
+            <button type="button" onClick={signaler} className={vue === "signalements" ? "bouton-principal" : "bouton-secondaire"}>
+              <AlertOctagon className="size-4" strokeWidth={1.9} />
+              Signaler une panne
+            </button>
             <button type="button" onClick={() => saisirFacture({ mode: "atelier" })} className={vue === "interventions" ? "bouton-principal" : "bouton-secondaire"}>
               <Receipt className="size-4" strokeWidth={1.9} />
               Saisir une facture
             </button>
-            {vue !== "interventions" ? (
+            {vue === "afaire" || vue === "ordres" ? (
               <button type="button" onClick={() => planifier()} className="bouton-principal">
                 <Plus className="size-4" strokeWidth={2.2} />
-                Ordre de travail
+                Nouveau service
               </button>
             ) : null}
           </>
@@ -455,6 +550,24 @@ function Interieur({ travaux, ordres, interventions, aujourdhui, vueInitiale, ci
           libelleUnite="travaux"
           vide="Rien à faire dans cette sélection."
         />
+      ) : vue === "signalements" ? (
+        <TableListe<LigneSignalement & { etat: EtatSignalement }>
+          ecran="signalements"
+          lignes={signalementsVisibles}
+          cle={(s) => s.numero}
+          href={(s) => `/flotte/${s.vehiculeId}?onglet=maintenance&ref=${s.numero}`}
+          filet={(s) => ({ couleur: s.etat === "ouvert" ? "var(--color-defavorable)" : s.etat === "pris-en-charge" ? "var(--color-vigilance)" : "var(--color-accent)", libelle: ETAT_SIGNALEMENT[s.etat].libelle, precision: s.serviceNumero ? `Service ${s.serviceNumero}` : "Pas encore de service" })}
+          identifiant={{ cle: "numero", libelle: "Réf.", largeur: 140, rendu: (s) => <Numero valeur={s.numero} /> }}
+          fixes={FIXES_SIGNALEMENTS}
+          colonnes={colonnesSignalements}
+          filtres={FILTRES_SIGNALEMENTS}
+          champsRecherche={(s) => [s.numero, s.immatriculationAffichee, s.vehicule, s.description, s.details ?? "", systemeDe(s.systeme)?.libelle ?? "", s.declarant ?? ""]}
+          placeholderRecherche="Référence, immatriculation, problème…"
+          libelleRecherche="Rechercher une panne signalée"
+          libelleUnite="signalements"
+          vide="Aucune panne signalée dans cette sélection."
+          surLigne={modifierSignalement}
+        />
       ) : vue === "ordres" ? (
         <TableListe<LigneOrdre>
           ecran="ordres"
@@ -468,9 +581,9 @@ function Interieur({ travaux, ordres, interventions, aujourdhui, vueInitiale, ci
           filtres={FILTRES_ORDRES}
           champsRecherche={(o) => [o.numero, o.immatriculationAffichee, o.vehicule, o.objet, o.garage, o.origineNumero ?? "", o.interventionNumero ?? "", o.demandeur, STATUT_ORDRE[o.statut]]}
           placeholderRecherche="Référence, immatriculation, objet, garage…"
-          libelleRecherche="Rechercher un ordre de travail"
-          libelleUnite="ordres"
-          vide="Aucun ordre de travail ne correspond."
+          libelleRecherche="Rechercher un service de maintenance"
+          libelleUnite="services"
+          vide="Aucun service de maintenance ne correspond."
           surLigne={modifierOrdre}
         />
       ) : (
@@ -501,6 +614,11 @@ function Interieur({ travaux, ordres, interventions, aujourdhui, vueInitiale, ci
 const FIXES_ORDRES: ColonneListe<LigneOrdre>[] = [
   { cle: "immat", libelle: "Véhicule", parDefaut: true, largeur: 120, rendu: (o) => <Link href={`/flotte/${o.immatriculation}`} onClick={(e) => e.stopPropagation()} className="code font-medium text-accent-fonce hover:underline">{o.immatriculationAffichee}</Link> },
   { cle: "date", libelle: "Prévu le", parDefaut: true, largeur: 100, tri: (o) => o.datePrevue, rendu: (o) => <span className="code">{dateCourte(o.datePrevue)}</span> },
+];
+
+const FIXES_SIGNALEMENTS: ColonneListe<LigneSignalement>[] = [
+  { cle: "immat", libelle: "Véhicule", parDefaut: true, largeur: 120, rendu: (s) => <Link href={`/flotte/${s.vehiculeId}`} onClick={(e) => e.stopPropagation()} className="code font-medium text-accent-fonce hover:underline">{s.immatriculationAffichee}</Link> },
+  { cle: "date", libelle: "Signalé le", parDefaut: true, largeur: 105, tri: (s) => s.date, rendu: (s) => <span className="code">{dateCourte(s.date)}</span> },
 ];
 
 const FIXES_INTERVENTIONS: ColonneListe<LigneInterventionFlotte>[] = [

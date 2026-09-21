@@ -25,7 +25,7 @@ export interface DepenseBudget {
   libelle: string;
   montant: number;
   beneficiaire: string | null;
-  origine: "caisse" | "bon-de-commande" | "facture";
+  origine: "caisse" | "bon-de-commande" | "facture" | "stock";
   justificatif: boolean;
   businessUnit: BusinessUnit | null;
   immatriculation: string;

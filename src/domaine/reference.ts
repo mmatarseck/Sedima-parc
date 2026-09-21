@@ -54,7 +54,9 @@ export type TypeTransaction =
   | "entretien"
   | "mise-a-disposition"
   | "prestation"
-  | "tarif";
+  | "tarif"
+  | "signalement"
+  | "tache";
 
 export interface DefinitionTypeTransaction {
   prefixe: string;
@@ -104,7 +106,11 @@ export const TYPE_TRANSACTION: Record<TypeTransaction, DefinitionTypeTransaction
   achat: { prefixe: "DAC", libelle: "Demande d'achat", ongletVehicule: null, ongletChauffeur: null },
   /* L'ordre de travail planifie une intervention ; une fois clos, c'est
      l'intervention INT qu'il a produite qui vit sur la fiche. */
-  ordre: { prefixe: "OTR", libelle: "Ordre de travail", ongletVehicule: "entretien", ongletChauffeur: null },
+  ordre: { prefixe: "OTR", libelle: "Service de maintenance", ongletVehicule: "maintenance", ongletChauffeur: null },
+  /* Une panne ou une anomalie à réparer (0060) : un service de maintenance l'inclut, sa clôture la résout. */
+  signalement: { prefixe: "SIG", libelle: "Signalement", ongletVehicule: "maintenance", ongletChauffeur: null },
+  /* Une tâche du catalogue de maintenance (0060) : chaque ligne d'un service en cite une. */
+  tache: { prefixe: "TCH", libelle: "Tâche de service", ongletVehicule: null, ongletChauffeur: null },
   /* La cuve interne n'appartient à aucun véhicule : ses mouvements vivent sur le
      journal de la cuve, les sorties citent le plein qu'elles alimentent. */
   cuve: { prefixe: "CUV", libelle: "Mouvement de cuve", ongletVehicule: null, ongletChauffeur: null },

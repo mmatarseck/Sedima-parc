@@ -176,3 +176,17 @@ Chaque lot est utilisable seul, et le suivant s'appuie sur lui.
    moyen des achats ?
 6. **Qui clôt un service** : le service parc seul, ou avec la validation d'un
    responsable au-delà d'un montant ?
+
+## Décisions du 21 septembre 2026
+
+1. Signalement et incident séparés : **oui**.
+2. Le service remplace l'ordre de travail et reprend les ordres existants : **oui**.
+3. Les lignes : **toute forme de facture** — remise par ligne, remise globale,
+   TVA 18 %, BRS 5 %, total HT, total TTC.
+4. Le catalogue : **une catégorisation comme Fleetio** (catégorie, système,
+   ensemble).
+5. Le coût d'une pièce du magasin : **son prix de référence, pris à l'entrée de
+   stock**.
+6. Qui clôt : **le responsable du parc**.
+
+Lots 1 à 3 livrés le même jour : voir `SERVICES-MAINTENANCE.md`.

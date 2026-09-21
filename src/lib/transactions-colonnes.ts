@@ -53,7 +53,9 @@ export type TableBranchee =
   | "chauffeur"
   | "prestataire"
   | "attributaire"
-  | "rappel";
+  | "rappel"
+  | "signalement"
+  | "tache_service";
 
 const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   releve: "releve_kilometrique",
@@ -96,6 +98,8 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   prestataire: "prestataire",
   attributaire: "attributaire",
   rappel: "rappel",
+  signalement: "signalement",
+  tache: "tache_service",
 };
 
 /**
@@ -209,6 +213,57 @@ export function produitDepuis(brut: unknown): ProduitTransporte {
 }
 
 const texte = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
+/**
+ * Les colonnes du service de maintenance (0060), écrites seulement quand la
+ * saisie les porte : un ordre créé par l'ancien chemin reste un ordre, et
+ * s'écrit même sur une base qui n'a pas joué 0060.
+ */
+function colonnesDuService(v: Record<string, unknown>): Record<string, unknown> {
+  const c: Record<string, unknown> = {};
+  if (v.priorite !== undefined) c.priorite = texte(v.priorite) ?? "planifie";
+  if (v.dateFin !== undefined) c.date_fin = texte(v.dateFin);
+  if (v.kilometrage !== undefined) c.kilometrage = nombre(v.kilometrage);
+  if (v.numeroFacture !== undefined) c.numero_facture = texte(v.numeroFacture);
+  if (v.lignes !== undefined) c.lignes = jsonDe(v.lignes);
+  if (v.remiseMode !== undefined) c.remise_mode = texte(v.remiseMode) ?? "montant";
+  if (v.remiseValeur !== undefined) c.remise_valeur = nombre(v.remiseValeur) ?? 0;
+  if (v.tvaTaux !== undefined) c.tva_taux = nombre(v.tvaTaux) ?? 0;
+  if (v.brsTaux !== undefined) c.brs_taux = nombre(v.brsTaux) ?? 0;
+  if (v.pieces !== undefined) c.pieces = tableauDe(v.pieces);
+  if (v.signalements !== undefined) c.signalements = tableauDe(v.signalements);
+  return c;
+}
+
+/** Un tableau de chaînes, d'un tableau ou d'une chaîne JSON — la forme d'une saisie. */
+function tableauDe(v: unknown): string[] {
+  let brut = v;
+  if (typeof v === "string") {
+    if (!v.trim()) return [];
+    try {
+      brut = JSON.parse(v);
+    } catch {
+      return v.split(/\s*[·,]\s*/).filter(Boolean);
+    }
+  }
+  return Array.isArray(brut) ? brut.filter((x): x is string => typeof x === "string" && x.trim() !== "") : [];
+}
+
+/** Une valeur JSON, d'un objet ou d'une chaîne : les lignes d'un service. */
+function jsonDe(v: unknown): unknown {
+  if (typeof v !== "string") return v ?? [];
+  try {
+    return JSON.parse(v);
+  } catch {
+    return [];
+  }
+}
+
+/** La catégorie Fleetio d'un système : le chiffre des dizaines — 013 Freins en 1, Châssis ; 111 en 1, 999 en 9. */
+function categorieDuSysteme(systeme: string | null): string | null {
+  if (!systeme || !/^\d{3}$/.test(systeme)) return null;
+  return systeme === "111" ? "1" : systeme === "999" ? "9" : systeme[1]!;
+}
+
 /* Les pièces d'une déclaration (0058) : la colonne n'est écrite que s'il y en a,
    pour qu'une déclaration sans pièce passe même sur une base qui n'a pas joué 0058. */
 const piecesDe = (v: unknown): { pieces?: string[] } => {
@@ -376,7 +431,44 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
     case "ordre": {
       if (!r.vehiculeId) return { refus: "ordre de travail sans véhicule" };
       if (!texte(v.objet)) return { refus: "ordre de travail sans objet" };
-      return { ligne: { numero, vehicule_id: r.vehiculeId, type: texte(v.type) ?? "curatif", objet: texte(v.objet), origine_numero: texte(v.origineNumero), origine_libelle: texte(v.origineLibelle), prestataire_id: r.prestataireId, garage: texte(v.garage) ?? "—", date_prevue: texte(v.datePrevue), immobilisation_prevue_jours: nombre(v.immobilisationPrevueJours), montant_estime: nombre(v.montantEstime), statut: texte(v.statut) ?? "planifie", date_debut: texte(v.dateDebut), date_cloture: texte(v.dateCloture), intervention_numero: texte(v.interventionNumero), commentaire: texte(v.commentaire), demandeur_nom: texte(v.demandeur) } };
+      return { ligne: { numero, vehicule_id: r.vehiculeId, type: texte(v.type) ?? "curatif", objet: texte(v.objet), origine_numero: texte(v.origineNumero), origine_libelle: texte(v.origineLibelle), prestataire_id: r.prestataireId, garage: texte(v.garage) ?? "—", date_prevue: texte(v.datePrevue), immobilisation_prevue_jours: nombre(v.immobilisationPrevueJours), montant_estime: nombre(v.montantEstime), statut: texte(v.statut) ?? "planifie", date_debut: texte(v.dateDebut), date_cloture: texte(v.dateCloture), intervention_numero: texte(v.interventionNumero), commentaire: texte(v.commentaire), demandeur_nom: texte(v.demandeur), ...colonnesDuService(v) } };
+    }
+    case "signalement": {
+      if (!r.vehiculeId) return { refus: "signalement sans véhicule" };
+      if (!texte(v.description)) return { refus: "signalement sans description" };
+      return {
+        ligne: {
+          numero,
+          vehicule_id: r.vehiculeId,
+          date: texte(v.date),
+          priorite: texte(v.priorite) ?? "normale",
+          systeme: texte(v.systeme),
+          description: texte(v.description),
+          details: texte(v.details),
+          kilometrage: nombre(v.kilometrage),
+          statut: texte(v.statut) ?? "ouvert",
+          declarant: texte(v.declarant),
+          ...piecesDe(v.pieces),
+        },
+      };
+    }
+    case "tache": {
+      const libelle = texte(v.libelle);
+      if (!libelle) return { refus: "tâche sans libellé" };
+      const systeme = texte(v.systeme);
+      return {
+        ligne: {
+          numero,
+          libelle,
+          description: texte(v.description),
+          systeme,
+          categorie: categorieDuSysteme(systeme),
+          ensemble: texte(v.ensemble),
+          type_defaut: texte(v.typeDefaut),
+          actif: v.actif === undefined ? true : booleen(v.actif),
+          source: "saisie",
+        },
+      };
     }
     case "caisse": {
       /* Une sortie cite la dépense qu'elle règle ; sans dépense, c'est un approvisionnement. */
@@ -904,7 +996,13 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   achat: { date: "date", objet: "objet", poste: "poste", montantEstime: "montant_estime", fournisseur: "fournisseur", urgence: "urgence", etape: "etape", visaPar: "visa_par", visaLe: "visa_le", validePar: "valide_par", valideeLe: "validee_le", numeroDemandeX3: "numero_demande_x3", numeroBonCommande: "numero_bon_commande", montantEngage: "montant_engage", dateLivraison: "date_livraison", dateFacture: "date_facture", montantReel: "montant_reel", dateReglement: "date_reglement", depenseNumero: "depense_numero", commentaireDecision: "commentaire_decision", fichier: "fichier" },
   visite: { type: "type", centre: "centre", dateRendezVous: "date_rendez_vous", heure: "heure", datePassage: "date_passage", statut: "statut", numeroPv: "numero_pv", dateLimiteContreVisite: "date_limite_contre_visite", commentaire: "commentaire", fichier: "fichier" },
   observation: { libelle: "libelle", categorie: "categorie", gravite: "gravite", statut: "statut", interventionNumero: "intervention_numero", corrigeeLe: "corrigee_le", commentaire: "commentaire" },
-  ordre: { datePrevue: "date_prevue", objet: "objet", garage: "garage", immobilisationPrevueJours: "immobilisation_prevue_jours", montantEstime: "montant_estime", statut: "statut", dateDebut: "date_debut", dateCloture: "date_cloture", interventionNumero: "intervention_numero", commentaire: "commentaire" },
+  ordre: {
+    datePrevue: "date_prevue", objet: "objet", garage: "garage", immobilisationPrevueJours: "immobilisation_prevue_jours", montantEstime: "montant_estime", statut: "statut", dateDebut: "date_debut", dateCloture: "date_cloture", interventionNumero: "intervention_numero", commentaire: "commentaire",
+    /* Le service de maintenance (0060). */
+    priorite: "priorite", dateFin: "date_fin", kilometrage: "kilometrage", numeroFacture: "numero_facture", lignes: "lignes", remiseMode: "remise_mode", remiseValeur: "remise_valeur", tvaTaux: "tva_taux", brsTaux: "brs_taux", pieces: "pieces", signalements: "signalements",
+  },
+  signalement: { date: "date", priorite: "priorite", systeme: "systeme", description: "description", details: "details", kilometrage: "kilometrage", pieces: "pieces", statut: "statut" },
+  tache: { libelle: "libelle", description: "description", systeme: "systeme", ensemble: "ensemble", typeDefaut: "type_defaut", actif: "actif" },
   /* Le relevé : ce que le pont bascule ou le bon de livraison corrigent après
      coup. Le camion et le transporteur se fixent à la saisie. */
   transport: { date: "date", destination: "destination", produit: "produit", tonnage: "tonnage", tonnagePese: "tonnage_pese", bonLivraison: "bon_livraison", chauffeur: "chauffeur", origine: "origine" },
@@ -978,7 +1076,10 @@ const NUMERIQUES = new Set([
   "puissance_cv", "cylindree", "ptac", "ptra", "poids_vide", "charge_utile", "capacite_reservoir", "valeur_acquisition", "duree_amortissement_annees",
 ]);
 /* Les colonnes qui gardent leurs décimales : des litres, des tonnes, des quantités. */
-const DECIMALES = new Set(["litres", "tonnage", "tonnage_pese", "tonnage_livre", "carburant_litres", "tonnes_transportees", "quantite"]);
+const DECIMALES = new Set(["litres", "tonnage", "tonnage_pese", "tonnage_livre", "carburant_litres", "tonnes_transportees", "quantite", "remise_valeur", "tva_taux", "brs_taux"]);
+/* Les colonnes JSON et les tableaux (0058, 0060) : ni un texte, ni un nombre. */
+const JSONS = new Set(["lignes"]);
+const TABLEAUX = new Set(["pieces", "signalements"]);
 /* Les colonnes que la base veut en booléen. Une case « oui/non » arrive de la
    modale en texte : sans cette liste, « non » entrerait tel quel et Postgres le
    lirait comme vrai — une fiche qu'on croit désactivée resterait proposée. */
@@ -1014,7 +1115,16 @@ export function colonnesModification(type: TypeTransaction, diffs: { champ: stri
       if (plaque) ligne[colonne] = plaque;
       continue;
     }
-    if (NUMERIQUES.has(colonne)) {
+    if (JSONS.has(colonne)) {
+      ligne[colonne] = jsonDe(d.valeur);
+      continue;
+    }
+    if (TABLEAUX.has(colonne)) {
+      ligne[colonne] = tableauDe(d.valeur);
+      continue;
+    }
+    if (colonne === "systeme" && type === "tache") ligne.categorie = categorieDuSysteme(texte(d.valeur));
+    if (NUMERIQUES.has(colonne) || DECIMALES.has(colonne)) {
       const n = nombre(d.valeur);
       ligne[colonne] = n === null ? null : DECIMALES.has(colonne) ? Math.round(n * 100) / 100 : Math.round(n);
     } else if (BOOLEENS.has(colonne)) ligne[colonne] = booleen(d.valeur);

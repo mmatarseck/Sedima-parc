@@ -11,6 +11,7 @@ import { lignesLues } from "./lecture";
 import { cache } from "react";
 import { afficher } from "@/domaine/immatriculation";
 import type { LigneOrdre } from "@/domaine/maintenance";
+import { lireLignes, type ModeRemise, type PrioriteService } from "@/domaine/service";
 import type { BusinessUnit } from "@/domaine/types";
 import { clientServeur } from "@/lib/supabase";
 
@@ -64,8 +65,51 @@ export function ordreDepuisLigne(l: LigneOrdreBase): LigneOrdre {
   };
 }
 
+/** Les colonnes du service de maintenance (0060), lues à part. */
+interface ColonnesService {
+  numero: string;
+  priorite: PrioriteService | null;
+  date_fin: string | null;
+  kilometrage: number | null;
+  numero_facture: string | null;
+  lignes: unknown;
+  remise_mode: ModeRemise | null;
+  remise_valeur: number | string | null;
+  tva_taux: number | string | null;
+  brs_taux: number | string | null;
+  pieces: string[] | null;
+  signalements: string[] | null;
+}
+
+export function serviceDepuisColonnes(o: LigneOrdre, c: ColonnesService | undefined): LigneOrdre {
+  if (!c) return o;
+  return {
+    ...o,
+    priorite: c.priorite ?? "planifie",
+    dateFin: c.date_fin,
+    kilometrage: c.kilometrage,
+    numeroFacture: c.numero_facture,
+    lignes: lireLignes(c.lignes),
+    remiseMode: c.remise_mode ?? "montant",
+    remiseValeur: Number(c.remise_valeur ?? 0),
+    tvaTaux: Number(c.tva_taux ?? 0),
+    brsTaux: Number(c.brs_taux ?? 0),
+    pieces: c.pieces ?? [],
+    signalements: c.signalements ?? [],
+  };
+}
+
+/** Ce que 0060 ajoute, lu à part : avant la migration, cette lecture échoue seule et les ordres restent entiers. */
+export async function colonnesDesServices(client: Awaited<ReturnType<typeof clientServeur>>, filtre?: { vehiculeId: string }): Promise<Map<string, ColonnesService>> {
+  let requete = client.from("ordre_travail").select("numero, priorite, date_fin, kilometrage, numero_facture, lignes, remise_mode, remise_valeur, tva_taux, brs_taux, pieces, signalements");
+  if (filtre) requete = requete.eq("vehicule_id", filtre.vehiculeId);
+  const lecture = await requete.limit(2000).returns<ColonnesService[]>();
+  return new Map((lecture.error ? [] : (lecture.data ?? [])).map((c) => [c.numero, c]));
+}
+
 async function ordresServeurBrut(): Promise<LigneOrdre[]> {
   const client = await clientServeur();
+  const colonnes = colonnesDesServices(client);
   const lecture = await client
     .from("ordre_travail")
     .select("numero, vehicule_id, type, objet, origine_numero, origine_libelle, garage, date_prevue, immobilisation_prevue_jours, montant_estime, statut, date_debut, date_cloture, intervention_numero, commentaire, demandeur_nom, vehicule (immatriculation, marque, appellation, business_unit, site (libelle)), prestataire (raison_sociale)")
@@ -73,7 +117,23 @@ async function ordresServeurBrut(): Promise<LigneOrdre[]> {
     .limit(2000)
     .returns<LigneOrdreBase[]>();
   /* Table pas encore jouée : aucun ordre, pas d'erreur. */
-  return lignesLues("Ordres de travail", lecture).map(ordreDepuisLigne);
+  const services = await colonnes;
+  return lignesLues("Ordres de travail", lecture).map((l) => serviceDepuisColonnes(ordreDepuisLigne(l), services.get(l.numero)));
 }
 
 export const ordresServeur = cache(ordresServeurBrut);
+
+/** Les services d'un véhicule, pour sa fiche. */
+export async function servicesDuVehicule(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<LigneOrdre[]> {
+  const [lecture, colonnes] = await Promise.all([
+    client
+      .from("ordre_travail")
+      .select("numero, vehicule_id, type, objet, origine_numero, origine_libelle, garage, date_prevue, immobilisation_prevue_jours, montant_estime, statut, date_debut, date_cloture, intervention_numero, commentaire, demandeur_nom, vehicule (immatriculation, marque, appellation, business_unit, site (libelle)), prestataire (raison_sociale)")
+      .eq("vehicule_id", vehiculeId)
+      .order("date_prevue", { ascending: false })
+      .limit(500)
+      .returns<LigneOrdreBase[]>(),
+    colonnesDesServices(client, { vehiculeId }),
+  ]);
+  return lignesLues("Services du véhicule", lecture).map((l) => serviceDepuisColonnes(ordreDepuisLigne(l), colonnes.get(l.numero)));
+}

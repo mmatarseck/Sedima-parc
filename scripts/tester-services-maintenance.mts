@@ -1,0 +1,185 @@
+/* Les services de maintenance, les pannes signalées et le catalogue des tâches
+ * (0059, 0060 — décisions du métier du 21 septembre 2026).
+ *
+ * Sans base : le calcul d'une facture (remises de ligne et globale, TVA 18 %,
+ * BRS 5 %), sa répartition en dépenses, ce qu'écrit la clôture, l'atelier qui
+ * la lit en une ligne, l'état d'un signalement, la reconnaissance des systèmes.
+ * Avec PGlite : les migrations, le catalogue tiré de Fleetio, la clôture que
+ * seul le responsable du parc peut faire, la résolution des pannes incluses, le
+ * prix de référence suivi à l'entrée de stock.
+ *
+ * Lancer : PGLITE_DIR=<dossier PGlite> node --import tsx --import ./scripts/rendu/hook.mjs scripts/tester-services-maintenance.mts */
+import { readFileSync, readdirSync } from "node:fs";
+import { createRequire } from "node:module";
+import { join } from "node:path";
+import React from "react";
+import { renderToString } from "react-dom/server";
+import { FormulaireService } from "../src/composants/maintenance/FormulaireService";
+import { apparierAtelier } from "../src/domaine/atelier";
+import { libelleClassement, systemeReconnu } from "../src/domaine/categories-maintenance";
+import { ecrituresDeCloture } from "../src/domaine/cloture-service";
+import type { LigneOrdre } from "../src/domaine/maintenance";
+import { calculerService, depensesDuService, lireLignes, peutCloturerService, type FactureService } from "../src/domaine/service";
+import { etatSignalement, trierSignalements, type LigneSignalement } from "../src/domaine/signalements";
+import { cleTache, tacheParLibelle } from "../src/domaine/taches";
+import { colonnesModification, ligneCreation } from "../src/lib/transactions-colonnes";
+
+let echecs = 0;
+const attendu = (libelle: string, ok: boolean) => {
+  console.log(`${ok ? "ok " : "ÉCHEC"} ${libelle}`);
+  if (!ok) echecs++;
+};
+
+/* -- La facture, calculée à la main ---------------------------------------------- */
+
+const facture: FactureService = {
+  lignes: [
+    { cle: "a", tacheNumero: "TCH-2026-00010", libelle: "Remplacement de l'assemblage d'embrayage", systeme: "023", mainOeuvre: 150_000, piecesAchetees: 420_000, piecesStock: [], remiseMode: "pourcentage", remiseValeur: 10 },
+    { cle: "b", tacheNumero: "TCH-2026-00020", libelle: "Remplacement des plaquettes de frein", systeme: "013", mainOeuvre: 25_000, piecesAchetees: 65_000, piecesStock: [{ pieceNumero: "PCE-1", designation: "Batterie 150 AH", quantite: 2, prixUnitaire: 35_000 }], remiseMode: "montant", remiseValeur: 5_000 },
+  ],
+  remiseMode: "pourcentage",
+  remiseValeur: 2,
+  tvaTaux: 18,
+  brsTaux: 5,
+};
+const t = calculerService(facture);
+/* L1 : 570 000 − 10 % = 513 000 ; L2 : 90 000 − 5 000 = 85 000 ; sous-total 598 000 ; remise 2 % = 11 960 ; HT 586 040 ;
+   TVA 18 % = 105 487 ; TTC 691 527 ; BRS 5 % du HT = 29 302 ; net 662 225 ; magasin 70 000 ; coût 761 527. */
+attendu(`remises de ligne : 57 000 et 5 000 (${t.lignes.map((l) => l.remise).join(" et ")})`, t.lignes[0]!.remise === 57_000 && t.lignes[1]!.remise === 5_000);
+attendu(`sous-total 598 000, remise globale 11 960, HT 586 040 (${t.sousTotalHT}, ${t.remiseGlobale}, ${t.totalHT})`, t.sousTotalHT === 598_000 && t.remiseGlobale === 11_960 && t.totalHT === 586_040);
+attendu(`TVA 105 487, TTC 691 527 (${t.tva}, ${t.totalTTC})`, t.tva === 105_487 && t.totalTTC === 691_527);
+attendu(`BRS sur le HT 29 302, net à payer 662 225 (${t.brs}, ${t.netAPayer})`, t.brs === 29_302 && t.netAPayer === 662_225);
+attendu(`les pièces du magasin, hors facture : 70 000 ; coût du service 761 527 (${t.stock}, ${t.coutTotal})`, t.stock === 70_000 && t.coutTotal === 761_527);
+attendu("les lignes se partagent le TTC au franc près", t.lignes.reduce((s, l) => s + l.cout, 0) === t.coutTotal);
+const sansTaxe = calculerService({ ...facture, tvaTaux: 0, brsTaux: 0, remiseValeur: 0 });
+attendu("sans TVA ni BRS ni remise globale, le coût est le net des lignes plus le magasin", sansTaxe.coutTotal === 598_000 + 70_000 && sansTaxe.netAPayer === 598_000);
+const remiseExcessive = calculerService({ lignes: [{ ...facture.lignes[0]!, remiseMode: "montant", remiseValeur: 9_999_999 }], remiseMode: "pourcentage", remiseValeur: 150, tvaTaux: 18, brsTaux: 0 });
+attendu("une remise ne rend jamais un montant négatif", remiseExcessive.lignes[0]!.netHT === 0 && remiseExcessive.totalHT === 0 && remiseExcessive.coutTotal === 0);
+
+/* -- Les dépenses que la clôture en tire ----------------------------------------------- */
+
+const depenses = depensesDuService(facture, "curatif");
+attendu(`la somme des dépenses est le coût du service (${depenses.reduce((s, d) => s + d.montant, 0)})`, depenses.reduce((s, d) => s + d.montant, 0) === t.coutTotal);
+attendu("main-d'œuvre au poste curatif, pièces au poste pièces, magasin d'origine « stock »", depenses.some((d) => d.poste === "maintenance-curative" && d.origine === "facture") && depenses.some((d) => d.poste === "pieces" && d.origine === "facture") && depenses.filter((d) => d.origine === "stock").length === 1 && depenses.find((d) => d.origine === "stock")!.montant === 70_000);
+attendu("un service préventif porte sa main-d'œuvre au poste préventif", depensesDuService(facture, "preventif").some((d) => d.poste === "maintenance-preventive"));
+
+const service: LigneOrdre = {
+  numero: "OTR-2026-90001", vehiculeId: "AA565GA", immatriculation: "AA565GA", immatriculationAffichee: "AA-565-GA", vehicule: "TATA LPT1618", businessUnit: null, site: null,
+  type: "curatif", objet: "Embrayage et freins", origineNumero: "SIG-2026-90001", origineLibelle: null, garage: "TATA INTERNATIONAL / UNITECH",
+  datePrevue: "2026-09-18", immobilisationPrevueJours: 3, montantEstime: null, statut: "en-atelier", dateDebut: "2026-09-18", dateCloture: null, interventionNumero: null, commentaire: null, demandeur: "Banc", creee: true,
+  priorite: "urgent", dateFin: "2026-09-21", kilometrage: 245_300, numeroFacture: "F-2031", lignes: facture.lignes, remiseMode: "pourcentage", remiseValeur: 2, tvaTaux: 18, brsTaux: 5,
+  pieces: ["pieces/documents/2026/09/facture-f2031.pdf"], signalements: ["SIG-2026-90001"],
+};
+const ecritures = ecrituresDeCloture(service, "2026-09-21", "FAC-260921-TEST", "uuid-aa565ga");
+const intervention = ecritures[0]!;
+attendu("la clôture écrit d'abord l'intervention, au coût du service, sur le véhicule", intervention.type === "intervention" && intervention.valeurs.montant === t.coutTotal && intervention.sujet === "vehicule:AA565GA");
+attendu(`l'immobilisation court du début à la fin des travaux (${intervention.valeurs.immobilisationJours} jours)`, intervention.valeurs.immobilisationJours === 4 && intervention.valeurs.km === 245_300);
+attendu("puis une dépense par part de ligne, avec la facture jointe — sauf le magasin", ecritures.filter((e) => e.type === "depense").length === depenses.length && ecritures.filter((e) => e.type === "depense" && e.valeurs.origine === "facture").every((e) => e.valeurs.photo === service.pieces![0]) && ecritures.filter((e) => e.type === "depense" && e.valeurs.origine === "stock").every((e) => e.valeurs.photo === null && e.valeurs.beneficiaire === "Magasin SEDIMA"));
+const sorties = ecritures.filter((e) => e.type === "mouvement");
+attendu("puis une sortie de stock par pièce du magasin, au prix de référence, rattachée au service et au véhicule", sorties.length === 1 && sorties[0]!.valeurs.quantite === 2 && sorties[0]!.valeurs.prixUnitaire === 35_000 && sorties[0]!.valeurs.ordreNumero === service.numero && sorties[0]!.valeurs.vehiculeId === "uuid-aa565ga");
+attendu("toutes citent le service, la facture et la clé", ecritures.filter((e) => e.type !== "mouvement").every((e) => String(e.valeurs.reference) === "OTR-2026-90001 · F-2031 · FAC-260921-TEST"));
+
+const paires = apparierAtelier([{ numero: "INT-2026-90011", reference: String(intervention.valeurs.reference) }], ecritures.filter((e) => e.type === "depense").map((e, i) => ({ numero: `DEP-2026-9002${i}`, reference: String(e.valeurs.reference), montant: Number(e.valeurs.montant) })));
+attendu("l'atelier du véhicule lit le service clos en une seule ligne, à son coût", paires.paires.length === 1 && paires.paires[0]!.lignes.reduce((s, d) => s + d.montant, 0) === t.coutTotal && paires.depensesSeules.length === 0);
+
+/* -- Le signalement, et qui clôt ---------------------------------------------------- */
+
+const sig = (numero: string, priorite: LigneSignalement["priorite"], date: string) => ({ numero, statut: "ouvert" as const, priorite, date });
+attendu("un signalement inclus dans un service ouvert est « pris en charge »", etatSignalement(sig("SIG-1", "haute", "2026-09-01"), [{ statut: "en-atelier", signalements: ["SIG-1"] }]) === "pris-en-charge");
+attendu("inclus dans un service clos, il est résolu ; sinon, ouvert", etatSignalement(sig("SIG-1", "haute", "2026-09-01"), [{ statut: "clos", signalements: ["SIG-1"] }]) === "resolu" && etatSignalement(sig("SIG-2", "basse", "2026-09-01"), [{ statut: "planifie", signalements: ["SIG-1"] }]) === "ouvert");
+attendu("les pannes critiques d'abord, puis les plus anciennes", trierSignalements([sig("A", "normale", "2026-09-01"), sig("B", "critique", "2026-09-10"), sig("C", "normale", "2026-08-01")]).map((s) => s.numero).join() === "B,C,A");
+attendu("seul le responsable du parc — et l'administrateur — clôt un service", peutCloturerService("gestionnaire-parc") && peutCloturerService("administrateur") && !peutCloturerService("responsable-maintenance") && !peutCloturerService(null));
+
+/* -- La classification comme Fleetio ----------------------------------------------------- */
+
+attendu("« vidange » se range au moteur, « PLAQUETTE FREIN AV » aux freins, « appareil air » au freinage pneumatique", systemeReconnu("vidange") === "045" && systemeReconnu("PLAQUETTE FREIN AV") === "013" && systemeReconnu("appareil air") === "013");
+attendu("un libellé qu'on ne reconnaît pas reste à classer", systemeReconnu("crochet teton") === null);
+attendu(`le classement se lit catégorie › système (${libelleClassement({ systeme: "017", ensemble: "001" })})`, libelleClassement({ systeme: "017", ensemble: "001" }) === "Châssis › Pneus › 001" && libelleClassement({}) === "À classer");
+attendu("une tâche se retrouve par son nom ou un alias, aux accents près", tacheParLibelle([{ libelle: "Remplacement de l'huile moteur et du filtre", alias: ["vidange"] }], "VIDANGE")?.libelle === "Remplacement de l'huile moteur et du filtre" && cleTache("Moteur (Divers)") === cleTache("MOTEUR DIVERS"));
+
+/* -- Ce que la base reçoit ------------------------------------------------------------ */
+
+const r = { vehiculeId: "v-1", chauffeurId: null, prestataireId: "p-1" };
+const ecrit = ligneCreation("ordre", "OTR-2026-90001", { vehiculeId: "v-1", type: "curatif", objet: "Embrayage", garage: "TATA", datePrevue: "2026-09-18", priorite: "urgent", lignes: JSON.stringify(facture.lignes), remiseMode: "pourcentage", remiseValeur: 2, tvaTaux: 18, brsTaux: 5, pieces: ["pieces/x.pdf"], signalements: ["SIG-1"] }, r);
+attendu("un service s'écrit avec ses lignes en JSON, ses taux, ses pièces et ses pannes", "ligne" in ecrit && Array.isArray(ecrit.ligne.lignes) && (ecrit.ligne.lignes as unknown[]).length === 2 && ecrit.ligne.tva_taux === 18 && ecrit.ligne.brs_taux === 5 && JSON.stringify(ecrit.ligne.signalements) === '["SIG-1"]');
+const ancien = ligneCreation("ordre", "OTR-2026-90002", { vehiculeId: "v-1", type: "curatif", objet: "Vidange", garage: "TATA", datePrevue: "2026-09-18" }, r);
+attendu("un ordre de l'ancien chemin n'écrit pas les colonnes de 0060", "ligne" in ancien && !("lignes" in ancien.ligne) && !("priorite" in ancien.ligne));
+const modif = colonnesModification("ordre", [{ champ: "lignes", valeur: JSON.stringify(facture.lignes) }, { champ: "pieces", valeur: ["a.pdf", "b.jpg"] }, { champ: "tvaTaux", valeur: "18" }]);
+attendu("une modification réécrit les lignes en JSON, les pièces en tableau, le taux en nombre", Array.isArray(modif.lignes) && JSON.stringify(modif.pieces) === '["a.pdf","b.jpg"]' && modif.tva_taux === 18);
+const sgn = ligneCreation("signalement", "SIG-2026-90001", { date: "2026-09-21", priorite: "critique", systeme: "013", description: "Freins qui sifflent", pieces: ["pieces/p.jpg"] }, r);
+attendu("un signalement s'écrit avec sa priorité, son système et ses photos", "ligne" in sgn && sgn.ligne.priorite === "critique" && sgn.ligne.systeme === "013" && JSON.stringify(sgn.ligne.pieces) === '["pieces/p.jpg"]');
+const tch = ligneCreation("tache", "TCH-2026-90001", { libelle: "Remplacement du klaxon", systeme: "034" }, r);
+attendu("une tâche créée prend la catégorie de son système", "ligne" in tch && tch.ligne.categorie === "3" && tch.ligne.source === "saisie");
+attendu("les lignes se relisent d'un tableau comme d'une chaîne JSON", lireLignes(facture.lignes).length === 2 && lireLignes(JSON.stringify(facture.lignes))[1]!.piecesStock[0]!.quantite === 2 && lireLignes("pas du json").length === 0);
+
+/* -- Le formulaire ------------------------------------------------------------------------ */
+
+const panne = { numero: "SIG-2026-90001", vehiculeId: "AA565GA", immatriculationAffichee: "AA-565-GA", vehicule: "TATA", date: "2026-09-18", priorite: "critique" as const, systeme: "013", description: "Freins qui sifflent", details: null, kilometrage: null, pieces: [], statut: "ouvert" as const, resoluLe: null, serviceNumero: null, declarant: "Banc", creee: true };
+const html = renderToString(React.createElement(FormulaireService, { demande: { vehicule: { immatriculation: "AA565GA", immatriculationAffichee: "AA-565-GA", libelle: "TATA LPT1618" }, signalements: [panne], services: [] }, onFermer: () => {}, onEnregistre: () => {} }));
+attendu("le formulaire propose les pannes signalées du véhicule, à cocher", html.includes("Pannes et anomalies incluses") && html.includes("Freins qui sifflent"));
+attendu("il porte la priorité, le type, les dates, le prestataire", ["Priorité", "Type d&#x27;intervention", "Début des travaux", "Fin des travaux", "Prestataire"].every((m) => html.includes(m)));
+attendu("et la facture : lignes, remise globale, total HT, TVA, TTC, BRS, net à payer, coût", ["Main-d&#x27;œuvre", "Remise globale", "Total HT", "TVA", "Total TTC", "BRS", "Net à payer au prestataire", "Coût du service"].every((m) => html.includes(m)));
+attendu("à un utilisateur qui n'est pas responsable du parc, pas de bouton « Clôturer »", !html.includes("Clôturer le service"));
+
+/* -- La base ---------------------------------------------------------------------------- */
+
+const bac = process.env.PGLITE_DIR ?? "";
+if (bac) {
+  const require = createRequire(join(bac, "package.json"));
+  const { PGlite } = require("@electric-sql/pglite");
+  const { btree_gist } = require("@electric-sql/pglite/contrib/btree_gist");
+  const { pgcrypto } = require("@electric-sql/pglite/contrib/pgcrypto");
+  const MOI = "00000000-0000-0000-0000-000000000001";
+  const pg = new PGlite({ extensions: { btree_gist, pgcrypto } });
+  await pg.exec(`create schema auth; create table auth.users (id uuid primary key); insert into auth.users values ('${MOI}');
+    create function auth.uid() returns uuid language sql stable as $$ select '${MOI}'::uuid $$;`);
+  for (const role of ["anon", "authenticated", "service_role"]) {
+    try {
+      await pg.exec(`create role ${role}`);
+    } catch {}
+  }
+  for (const m of readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort()) await pg.exec(readFileSync(join("supabase/migrations", m), "utf8"));
+  attendu("0059 et 0060 se jouent sur la base", true);
+
+  const catalogue = readFileSync("supabase/taches-service.sql", "utf8");
+  await pg.exec(catalogue);
+  await pg.exec(catalogue);
+  const nTaches = (await pg.query(`select count(*)::int as n, count(*) filter (where a_classer)::int as a from tache_service`)).rows[0] as { n: number; a: number };
+  attendu(`le catalogue tiré de Fleetio entre, et se rejoue sans doublon (${nTaches.n} tâches, ${nTaches.a} à classer)`, nTaches.n === (catalogue.match(/^\s+\('TCH-/gm) ?? []).length && nTaches.n > 300);
+  const vidange = (await pg.query(`select libelle, systeme, categorie from tache_service where 'vidange' = any(alias)`)).rows[0] as { libelle: string; systeme: string; categorie: string } | undefined;
+  attendu("« vidange » est un alias de la vidange moteur, système 045, catégorie 4", vidange?.systeme === "045" && vidange.categorie === "4");
+  const mo = (await pg.query(`select count(*)::int as n from tache_service where lower(libelle) like 'main d%oeuvre%'`)).rows[0] as { n: number };
+  attendu("la main-d'œuvre n'est pas une tâche", mo.n === 0);
+
+  await pg.exec(`insert into profil (utilisateur_id, nom, role, actif) values ('${MOI}', 'Banc', 'responsable-maintenance', true) on conflict (utilisateur_id) do update set role = excluded.role;
+    insert into vehicule (id, immatriculation, marque, appellation, categorie) values ('00000000-0000-0000-0000-0000000000aa', 'AA565GA', 'TATA', 'LPT1618', 'camion');
+    insert into signalement (numero, vehicule_id, date, priorite, systeme, description, pieces) values ('SIG-2026-00001', '00000000-0000-0000-0000-0000000000aa', '2026-09-18', 'critique', '013', 'Freins qui sifflent', array['pieces/p.jpg']);
+    insert into ordre_travail (numero, vehicule_id, type, objet, garage, date_prevue, statut, priorite, lignes, tva_taux, brs_taux, signalements)
+      values ('OTR-2026-00001', '00000000-0000-0000-0000-0000000000aa', 'curatif', 'Freins', 'TATA', '2026-09-18', 'en-atelier', 'urgent', '${JSON.stringify(facture.lignes).replace(/'/g, "''")}'::jsonb, 18, 5, array['SIG-2026-00001']);
+    insert into depense (numero, vehicule_id, date, poste, libelle, montant, origine, reference) values ('DEP-2026-00001', '00000000-0000-0000-0000-0000000000aa', '2026-09-21', 'pieces', 'Batterie (magasin)', 70000, 'stock', 'OTR-2026-00001');`);
+  attendu("une dépense d'origine « stock » s'écrit (0059)", ((await pg.query(`select count(*)::int as n from depense where origine = 'stock'`)).rows[0] as { n: number }).n === 1);
+
+  let refus = "";
+  try {
+    await pg.exec(`update ordre_travail set statut = 'clos', date_cloture = '2026-09-21' where numero = 'OTR-2026-00001'`);
+  } catch (e) {
+    refus = String((e as Error).message);
+  }
+  attendu(`le responsable de la maintenance ne clôt pas : la base refuse (${refus.slice(0, 60)})`, refus.includes("responsable du parc"));
+  await pg.exec(`update profil set role = 'gestionnaire-parc' where utilisateur_id = '${MOI}';
+    update ordre_travail set statut = 'clos', date_cloture = '2026-09-21' where numero = 'OTR-2026-00001';`);
+  const clos = (await pg.query(`select o.statut, o.cloture_par::text as par, s.statut as signalement, s.resolu_le::text as le, s.service_numero from ordre_travail o, signalement s where o.numero = 'OTR-2026-00001' and s.numero = 'SIG-2026-00001'`)).rows[0] as { statut: string; par: string; signalement: string; le: string; service_numero: string };
+  attendu("le responsable du parc clôt ; la clôture se signe", clos.statut === "clos" && clos.par === MOI);
+  attendu("et la panne incluse est résolue, datée, rattachée au service", clos.signalement === "resolu" && clos.le === "2026-09-21" && clos.service_numero === "OTR-2026-00001");
+
+  const niveaux = (await pg.query(`select niveau_par_role('gestionnaire-parc', 'maintenance') as gp, niveau_par_role('direction', 'maintenance') as dir, niveau_par_role('responsable-maintenance', 'maintenance') as rm`)).rows[0] as { gp: string; dir: string; rm: string };
+  attendu(`le responsable du parc gère la maintenance ; la direction la lit (${niveaux.gp}, ${niveaux.dir})`, niveaux.gp === "gestion" && niveaux.dir === "lecture" && niveaux.rm === "gestion");
+
+  await pg.exec(`insert into piece (id, numero, reference, designation, prix_reference) values ('00000000-0000-0000-0000-0000000000bb', 'PCE-2026-00001', 'BAT-150', 'Batterie 150 AH', 30000);
+    insert into mouvement_stock (numero, date, nature, piece_id, quantite, prix_unitaire) values ('MVT-2026-00001', '2026-09-20', 'entree', '00000000-0000-0000-0000-0000000000bb', 4, 35000);`);
+  const prix = (await pg.query(`select prix_reference::int as p from piece where numero = 'PCE-2026-00001'`)).rows[0] as { p: number };
+  attendu(`le prix de référence suit la dernière entrée de stock (${prix.p})`, prix.p === 35_000);
+} else console.log("—   PGLITE_DIR absent : la base n'est pas éprouvée");
+
+console.log(echecs ? `${echecs} échec(s)` : "tout passe");
+process.exit(echecs ? 1 : 0);

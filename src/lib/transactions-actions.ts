@@ -251,6 +251,7 @@ async function rattacher(client: SupabaseClient, c: Creation, utilisateurId: str
   if ((c.type === "caisse" || c.type === "cuve") && !v.enregistrePar) v.enregistrePar = c.auteur;
   /* Le demandeur d'un ordre ou d'un affrètement : la personne qui le crée, telle que le navigateur la nomme. */
   if ((c.type === "ordre" || c.type === "affretement") && !v.demandeur) v.demandeur = c.auteur;
+  if (c.type === "signalement" && !v.declarant) v.declarant = c.auteur;
   /* L'auteur d'une évaluation, et le libellé de la pièce qu'elle juge, lu sur sa table. */
   if (c.type === "evaluation") {
     if (!v.auteur) v.auteur = c.auteur;

@@ -32,12 +32,20 @@ function valeurInitiale(champ: ChampEdition, brut: unknown): string | boolean {
   if (champ.type === "oui-non") return Boolean(brut);
   if (brut === null || brut === undefined) return "";
   if (champ.type === "date") return String(brut).slice(0, 10);
+  if ((champ.type === "pieces" || champ.type === "lignes") && Array.isArray(brut)) return brut.length ? JSON.stringify(brut) : "";
   return String(brut);
 }
 
 function valeurSortie(champ: ChampEdition, saisie: string | boolean): unknown {
   if (champ.type === "oui-non") return Boolean(saisie);
   const s = String(saisie).trim();
+  if (champ.type === "pieces") {
+    try {
+      return s.startsWith("[") ? (JSON.parse(s) as string[]) : [];
+    } catch {
+      return [];
+    }
+  }
   if (s === "") return null;
   if (champ.type === "nombre") {
     const n = Number(s.replace(/\s/g, "").replace(",", "."));

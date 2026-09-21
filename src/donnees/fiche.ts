@@ -12,6 +12,8 @@ import { cache } from "react";
 import { assemblerFiche, FAITS_VIDES, type FaitsFiche } from "@/domaine/assembler-fiche";
 import { incidentsDuVehicule } from "./incidents";
 import { rappelsDuVehicule } from "./rappels";
+import { servicesDuVehicule } from "./ordres";
+import { signalementsDuVehicule } from "./signalements";
 import type { AttelageFiche, FicheVehicule, PieceDossier } from "@/domaine/fiche";
 import type { LivraisonFiche } from "@/domaine/livraisons";
 import { normaliser } from "@/domaine/immatriculation";
@@ -27,7 +29,7 @@ export interface FicheJson {
   affectations: { numero: string; chauffeur_id: string | null; chauffeur: string; role: "titulaire" | "suppleant"; debut: string; fin: string | null; motif: string }[];
   releves: { numero: string; date: string; km: number; origine: string; motif_rejet: string | null }[];
   pleins: { numero: string; date: string; litres: number | string; prix_litre: number; montant: number; km: number | null; source: string; reference: string | null; prestataire: string | null }[];
-  depenses: { numero: string; date: string; poste: PosteDepense; libelle: string; montant: number; beneficiaire: string | null; reference: string | null; origine: "caisse" | "bon-de-commande" | "facture"; justificatif: boolean; km: number | null; km_motif_rejet: string | null }[];
+  depenses: { numero: string; date: string; poste: PosteDepense; libelle: string; montant: number; beneficiaire: string | null; reference: string | null; origine: "caisse" | "bon-de-commande" | "facture" | "stock"; justificatif: boolean; km: number | null; km_motif_rejet: string | null }[];
   interventions: { numero: string; date: string; type: "preventif" | "curatif"; objet: string; garage: string | null; montant: number; immobilisation_jours: number | null; km: number | null; reference: string | null }[];
   statuts: { le: string; avant: string | null; apres: string | null; motif: string }[];
   visites?: { numero: string; type: "visite" | "contre-visite"; centre: string; date_rendez_vous: string; heure: string | null; date_passage: string | null; statut: "rendez-vous" | "acceptee" | "refusee" | "annulee"; numero_pv: string | null; date_limite_contre_visite: string | null; commentaire: string | null }[];
@@ -197,7 +199,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
    */
   const parc = await parcServeur();
   const vehiculeId = parc.vehicules.find((v) => v.immatriculation === ligne.vehicule.immatriculation)?.id ?? null;
-  const [lecture, livraisons, piecesJointes, attelages, incidents, rappels, piecesHorsDocuments, photosDepenses, photosPleins] = await Promise.all([
+  const [lecture, livraisons, piecesJointes, attelages, incidents, rappels, piecesHorsDocuments, photosDepenses, photosPleins, signalements, services] = await Promise.all([
     client.rpc("lire_fiche", { immat: canonique }).maybeSingle<FicheJson | null>(),
     vehiculeId ? livraisonsDuVehicule(client, vehiculeId) : Promise.resolve([]),
     vehiculeId ? piecesJointesDuVehicule(client, vehiculeId) : Promise.resolve(new Map<string, string>()),
@@ -207,6 +209,9 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
     vehiculeId ? piecesDuVehicule(client, vehiculeId) : Promise.resolve([]),
     vehiculeId ? photosDesDepenses(client, vehiculeId) : Promise.resolve(new Map<string, string>()),
     vehiculeId ? photosDesPleins(client, vehiculeId) : Promise.resolve(new Map<string, string>()),
+    /* Signalements et services (0060) : la fiche s'ouvre sans eux plutôt que de se fermer si la migration manque. */
+    vehiculeId ? signalementsDuVehicule(client, vehiculeId).catch((e: unknown) => (console.warn(`Fiche ${canonique} : signalements illisibles — ${e instanceof Error ? e.message : String(e)}`), [])) : Promise.resolve([]),
+    vehiculeId ? servicesDuVehicule(client, vehiculeId).catch((e: unknown) => (console.warn(`Fiche ${canonique} : services illisibles — ${e instanceof Error ? e.message : String(e)}`), [])) : Promise.resolve([]),
   ]);
   /* Fonction pas encore jouée : la fiche se dresse sur la ligne seule, sans historique — pas d'erreur. */
   if (lecture.error) console.warn(`Fiche ${canonique} : lire_fiche() indisponible (${lecture.error.message}), fiche dressée sans historique.`);
@@ -243,7 +248,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
         })),
       ...piecesHorsDocuments,
     ];
-    return assemblerFiche(ligne, { ...faits, documents, depenses, pleins, livraisons, incidents, rappels, pieces, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
+    return assemblerFiche(ligne, { ...faits, documents, depenses, pleins, livraisons, incidents, rappels, signalements, services, pieces, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
   } catch (e) {
     console.error(`Fiche ${canonique} : assemblage impossible sur l'historique lu — ${e instanceof Error ? e.stack ?? e.message : String(e)}`);
     return assemblerFiche(ligne, { ...FAITS_VIDES, livraisons, incidents, rappels, pieces: piecesHorsDocuments, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);

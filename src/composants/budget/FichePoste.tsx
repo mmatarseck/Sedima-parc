@@ -292,7 +292,7 @@ export function FichePoste({ fiche }: { fiche: Fiche }) {
               cle: "origine",
               libelle: "Origine",
               parDefaut: false,
-              rendu: (d) => <span className="block truncate">{d.origine === "bon-de-commande" ? "Bon de commande" : d.origine === "facture" ? "Facture" : "Caisse"}</span>,
+              rendu: (d) => <span className="block truncate">{d.origine === "bon-de-commande" ? "Bon de commande" : d.origine === "facture" ? "Facture" : d.origine === "stock" ? "Magasin" : "Caisse"}</span>,
             },
             {
               cle: "justificatif",

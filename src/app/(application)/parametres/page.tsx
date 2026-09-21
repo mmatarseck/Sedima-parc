@@ -8,7 +8,7 @@ export const metadata = { title: titrePage("Paramètres") };
 /**
  * Paramètres — ce qui règle l'application plutôt que le parc.
  *
- * Les quatorze sections sont livrées. Quatre d'entre elles **montrent sans
+ * Les quinze sections sont livrées. Quatre d'entre elles **montrent sans
  * laisser modifier**, et c'est délibéré : les référentiels sont les clés des
  * enregistrements, un barème de prime ne se change pas en cours de période,
  * les gabarits d'entretien attendent de savoir qui en a la main, et le
@@ -20,6 +20,7 @@ const SECTIONS = [
   { href: "/parametres/documents", libelle: "Règles des documents", precision: "Liste des documents — ajout, renommage — validité, criticité, applicabilité, exemption des véhicules légers neufs", icone: FileCheck2, livre: true },
   { href: "/parametres/energie", libelle: "Énergie et carburant", precision: "Prix du litre de gasoil et d'essence, prix du kWh, prix du litre livré en cuve, contenance de la cuve", icone: Fuel, livre: true },
   { href: "/parametres/entretien", libelle: "Programmes d'entretien", precision: "Un gabarit par type de véhicule — opérations, périodicités au kilométrage ou aux heures, coût et immobilisation par cycle", icone: Wrench, livre: true },
+  { href: "/parametres/taches", libelle: "Catalogue des tâches de service", precision: "Les tâches de maintenance classées comme Fleetio — catégorie, système, ensemble — que citent les lignes des services", icone: Wrench, livre: true },
   { href: "/parametres/referentiels", libelle: "Référentiels", precision: "Sites, catégories, typologies d'incident, postes de dépense — avec le nombre d'enregistrements qui en dépendent", icone: ListChecks, livre: true },
   { href: "/parametres/utilisateurs", libelle: "Utilisateurs et rôles", precision: "Les huit rôles, leur périmètre, qui voit les sanctions, qui clôture — et de quoi prendre un autre rôle", icone: Users, livre: true },
   /* Le réglage personnel des notifications est livré ; les **règles** de
@@ -38,7 +39,7 @@ const SECTIONS = [
 export default function PageParametres() {
   return (
     <div className="defilement-discret flex flex-col gap-5 px-8 py-7 lg:h-full lg:overflow-y-auto">
-      <TitreEcran titre="Paramètres" sousTitre="Ce qui règle l'application — quatorze sections : dix où l'on saisit, quatre qui montrent et disent pourquoi" />
+      <TitreEcran titre="Paramètres" sousTitre="Ce qui règle l'application — quinze sections : onze où l'on saisit, quatre qui montrent et disent pourquoi" />
       <ul className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {SECTIONS.map((s) => {
           const Icone = s.icone;

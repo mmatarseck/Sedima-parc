@@ -31,6 +31,7 @@ import { date, montantCourt, nombre } from "@/lib/format";
 import { controlerReleves } from "@/domaine/releves";
 import { alertesDeLaFiche, alertesParOnglet } from "./alertes-fiche";
 import { MenuAjout, type CibleAjout } from "./MenuAjout";
+import { useAjoutVehicule } from "./ajout";
 import { PhotoVehicule } from "./PhotoVehicule";
 import { BoutonQr } from "./PanneauQr";
 import { enregistrerModification } from "@/lib/clotures-demo";
@@ -121,6 +122,7 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
   const [declaration, setDeclaration] = useState(false);
   const [nombreMessages, setNombreMessages] = useState<number | null>(null);
   const { surcharger, creer, demander, creations, actualiser, saisirFacture } = useEdition();
+  const ajouterCommun = useAjoutVehicule(fiche);
 
   /* Archiver relève de la gestion de la flotte, comme créer un véhicule : le
      bouton ne promet rien à qui n'en a que la saisie ou la lecture. */
@@ -202,6 +204,12 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
     /* La déclaration a son formulaire en quatre étapes (cadrage incidents). */
     if (cible === "incident") {
       setDeclaration(true);
+      return;
+    }
+    /* Signaler une panne, ouvrir un service : le geste des onglets (0060). */
+    if (cible === "signalement" || cible === "ordre-de-travail") {
+      ajouterCommun(cible);
+      setOnglet("maintenance");
       return;
     }
     /* Une intervention et une dépense se saisissent comme la facture qui les

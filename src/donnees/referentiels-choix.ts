@@ -20,15 +20,17 @@ import { lignesFlotte } from "./flotte";
 import { parcLegerServeur } from "./parc-leger";
 import { sites } from "./referentiels";
 import { transporteursServeur } from "./transporteurs";
+import { tachesPourFormulaires } from "./taches";
 
 async function referentielsChoixBrut(parametres: Parametres): Promise<ReferentielsChoix> {
   try {
-    const [flotte, chauffeurs, listeSites, tiers, parcLeger] = await Promise.all([
+    const [flotte, chauffeurs, listeSites, tiers, parcLeger, taches] = await Promise.all([
       lignesFlotte(parametres),
       lignesChauffeurs(),
       sites(),
       transporteursServeur(),
       parcLegerServeur(parametres),
+      tachesPourFormulaires(),
     ]);
     return {
       /* Un véhicule sorti du parc ou archivé ne s'attelle ni ne se remplit :
@@ -64,6 +66,7 @@ async function referentielsChoixBrut(parametres: Parametres): Promise<Referentie
       prestataires: tiers.prestataires.map((p) => ({ numero: p.numero, raisonSociale: p.raisonSociale, ville: p.ville ?? null, type: p.type, actif: p.actif })),
       camionsTiers: tiers.camions.map((c) => ({ immatriculation: c.immatriculation, immatriculationAffichee: c.immatriculationAffichee, transporteurNumero: c.transporteurNumero, actif: c.actif })),
       chauffeursTiers: tiers.chauffeurs.map((c) => ({ id: c.id, nom: c.nom, transporteurNumero: c.transporteurNumero, actif: c.actif })),
+      taches: taches.map((t) => ({ numero: t.numero, libelle: t.libelle, categorie: t.categorie, systeme: t.systeme, typeDefaut: t.typeDefaut, alias: t.alias })),
     };
   } catch (e) {
     console.error(`Référentiels des formulaires : lecture impossible — ${e instanceof Error ? e.message : String(e)}`);

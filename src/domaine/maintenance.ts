@@ -19,6 +19,7 @@
  * en attendant Paramètres.
  * ==========================================================================*/
 
+import type { FactureService, LigneService, ModeRemise, PrioriteService } from "./service";
 import type { Intervention } from "./fiche";
 import type { Ton } from "./libelles";
 import type { BusinessUnit } from "./types";
@@ -153,6 +154,23 @@ export interface LigneOrdre {
   commentaire: string | null;
   demandeur: string;
   creee: boolean;
+  /* ---- Le service de maintenance (0060) : absent sur une base qui ne l'a pas joué. ---- */
+  priorite?: PrioriteService;
+  dateFin?: string | null;
+  kilometrage?: number | null;
+  numeroFacture?: string | null;
+  lignes?: LigneService[];
+  remiseMode?: ModeRemise;
+  remiseValeur?: number;
+  tvaTaux?: number;
+  brsTaux?: number;
+  pieces?: string[];
+  signalements?: string[];
+}
+
+/** La facture d'un service, prête pour le calcul. */
+export function factureDe(o: Pick<LigneOrdre, "lignes" | "remiseMode" | "remiseValeur" | "tvaTaux" | "brsTaux">): FactureService {
+  return { lignes: o.lignes ?? [], remiseMode: o.remiseMode ?? "montant", remiseValeur: o.remiseValeur ?? 0, tvaTaux: o.tvaTaux ?? 0, brsTaux: o.brsTaux ?? 0 };
 }
 
 export function estOuvert(statut: StatutOrdre): boolean {

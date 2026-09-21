@@ -48,7 +48,7 @@ export interface FaitsFiche {
   affectations: { numero: string; chauffeurId: string | null; chauffeur: string; role: "titulaire" | "suppleant"; debut: string; fin: string | null; motif: string }[];
   releves: { numero: string; date: string; km: number; origine: string; motifRejet: string | null }[];
   pleins: { numero: string; date: string; litres: number; prixLitre: number; montant: number; km: number | null; source: string; reference: string | null; photo?: string | null }[];
-  depenses: { numero: string; date: string; poste: PosteDepense; libelle: string; montant: number; beneficiaire: string | null; reference: string | null; origine: "caisse" | "bon-de-commande" | "facture"; justificatif: boolean; km: number | null; kmMotifRejet: string | null; /** La facture ou le reçu, posé par la lecture à part de `donnees/fiche`. */ photo?: string | null }[];
+  depenses: { numero: string; date: string; poste: PosteDepense; libelle: string; montant: number; beneficiaire: string | null; reference: string | null; origine: "caisse" | "bon-de-commande" | "facture" | "stock"; justificatif: boolean; km: number | null; kmMotifRejet: string | null; /** La facture ou le reçu, posé par la lecture à part de `donnees/fiche`. */ photo?: string | null }[];
   interventions: { numero: string; date: string; type: "preventif" | "curatif"; objet: string; garage: string | null; montant: number; immobilisationJours: number | null; km: number | null; reference: string | null }[];
   /** La trace des statuts, du plus ancien au plus récent. */
   statuts: { le: string; avant: string | null; apres: string | null; motif: string }[];
@@ -69,6 +69,8 @@ export interface FaitsFiche {
   incidents?: LigneIncident[];
   /** Les rappels du véhicule (0053) ; un lecteur d'avant n'en rend pas. */
   rappels?: Rappel[];
+  signalements?: import("./signalements").LigneSignalement[];
+  services?: import("./maintenance").LigneOrdre[];
   /** Les pièces du dossier, déjà réunies par le lecteur ; un lecteur d'avant n'en rend pas. */
   pieces?: PieceDossier[];
   /**
@@ -355,6 +357,8 @@ export function assemblerFiche(l: LigneFlotte, faits: FaitsFiche, parametres: Pa
     livraisons: [...(faits.livraisons ?? [])].sort((a, b) => b.date.localeCompare(a.date) || b.numero.localeCompare(a.numero)),
     incidents: [...(faits.incidents ?? [])].sort((a, b) => b.dateHeure.localeCompare(a.dateHeure)),
     rappels: [...(faits.rappels ?? [])].sort((a, b) => a.echeance.localeCompare(b.echeance)),
+    signalements: faits.signalements ?? [],
+    services: [...(faits.services ?? [])].sort((a, b) => b.datePrevue.localeCompare(a.datePrevue)),
     pieces: [...(faits.pieces ?? [])].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "")),
     immobilisationAdministrative: immobilisation,
     planEntretien: { programmeCode: programme.code, programmeLibelle: programme.libelle, programmePrecision: programme.precision, base: programme.base, aujourdhui, compteurs, echeances: echeancesEntretien },

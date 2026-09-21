@@ -23,6 +23,9 @@ import { APTITUDE, BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_OBSERVATION, CONTR
 import type { TypeTransaction } from "@/domaine/reference";
 import type { CategorieVehicule } from "@/domaine/types";
 import { cleNom, nomMarqueConnu } from "@/domaine/parametres";
+import { optionsSystemes } from "@/domaine/categories-maintenance";
+import { PRIORITE_SERVICE } from "@/domaine/service";
+import { ETAT_SIGNALEMENT, PRIORITE_SIGNALEMENT } from "@/domaine/signalements";
 import { lireParametres } from "@/lib/parametres-demo";
 import { lireReferentiels } from "@/lib/referentiels-navigateur";
 
@@ -452,17 +455,51 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
   /* Un ordre de travail planifie une intervention : ce qui se modifie après
      coup, c'est le rendez-vous et son avancement. L'intervention réalisée,
      elle, est une transaction INT à part. */
+  /* Le service de maintenance (0060) : l'ordre de travail enrichi. Son
+     formulaire est `FormulaireService` ; ces champs disent ce qu'une
+     modification trace, et comment l'historique l'affiche. */
   ordre: [
-    DATE("datePrevue", "Date prévue"),
+    DATE("datePrevue", "Début des travaux"),
+    { cle: "dateFin", libelle: "Fin des travaux", type: "date" },
     { cle: "objet", libelle: "Objet", type: "texte", obligatoire: true },
-    { cle: "garage", libelle: "Garage", type: "choix", options: optionsGarages(), obligatoire: true },
+    { cle: "priorite", libelle: "Priorité", type: "choix", options: Object.entries(PRIORITE_SERVICE).map(([valeur, d]) => ({ valeur, libelle: d.libelle })) },
+    { cle: "garage", libelle: "Prestataire", type: "choix", options: optionsGarages(), obligatoire: true },
+    { cle: "kilometrage", libelle: "Kilométrage", type: "nombre", unite: "km" },
     { cle: "immobilisationPrevueJours", libelle: "Immobilisation prévue", type: "nombre", unite: "j" },
     { cle: "montantEstime", libelle: "Montant estimé", type: "nombre", unite: "F" },
+    { cle: "numeroFacture", libelle: "N° de facture", type: "texte" },
+    { cle: "lignes", libelle: "Lignes", type: "lignes" },
+    { cle: "remiseMode", libelle: "Remise globale en", type: "choix", options: [{ valeur: "montant", libelle: "francs" }, { valeur: "pourcentage", libelle: "pour cent" }] },
+    { cle: "remiseValeur", libelle: "Remise globale", type: "nombre" },
+    { cle: "tvaTaux", libelle: "TVA", type: "nombre", unite: "%" },
+    { cle: "brsTaux", libelle: "BRS", type: "nombre", unite: "%" },
+    { cle: "pieces", libelle: "Documents et photos", type: "pieces" },
+    { cle: "signalements", libelle: "Signalements inclus", type: "cases" },
     { cle: "statut", libelle: "Statut", type: "choix", options: options(STATUT_ORDRE), obligatoire: true },
     { cle: "dateDebut", libelle: "Entré au garage le", type: "date" },
     { cle: "dateCloture", libelle: "Clos le", type: "date" },
     { cle: "interventionNumero", libelle: "Intervention réalisée", type: "reference", references: ["intervention"] },
     { cle: "commentaire", libelle: "Commentaire", type: "texte-long" },
+  ],
+  /* Une panne ou une anomalie à réparer (0060, métier du 21 septembre 2026). */
+  signalement: [
+    DATE("date"),
+    { cle: "priorite", libelle: "Priorité", type: "choix", options: Object.entries(PRIORITE_SIGNALEMENT).map(([valeur, d]) => ({ valeur, libelle: d.libelle })), obligatoire: true },
+    { cle: "systeme", libelle: "Type — le système concerné", type: "choix", options: optionsSystemes() },
+    { cle: "description", libelle: "Le problème, en une ligne", type: "texte", obligatoire: true },
+    { cle: "details", libelle: "Plus de détails", type: "texte-long" },
+    { cle: "kilometrage", libelle: "Kilométrage", type: "nombre", unite: "km" },
+    { cle: "pieces", libelle: "Photos et documents", type: "pieces", precision: "Photos prises sur place, rapport du chauffeur — en image ou en PDF" },
+    { cle: "statut", libelle: "Statut", type: "choix", options: (["ouvert", "resolu", "annule"] as const).map((valeur) => ({ valeur, libelle: ETAT_SIGNALEMENT[valeur].libelle })) },
+  ],
+  /* Une tâche du catalogue de maintenance, classée comme Fleetio (0060). */
+  tache: [
+    { cle: "libelle", libelle: "Tâche", type: "texte", obligatoire: true },
+    { cle: "systeme", libelle: "Catégorie › système", type: "choix", options: optionsSystemes(), obligatoire: true },
+    { cle: "ensemble", libelle: "Ensemble (code à trois chiffres)", type: "texte" },
+    { cle: "typeDefaut", libelle: "Nature habituelle", type: "choix", options: [{ valeur: "preventif", libelle: "Préventif" }, { valeur: "curatif", libelle: "Curatif" }] },
+    { cle: "description", libelle: "Description", type: "texte-long" },
+    { cle: "actif", libelle: "Proposée dans les services", type: "oui-non" },
   ],
   /* Un mouvement de cuve : une livraison ou un relevé de jauge. Les sorties de
      cuve ne se saisissent pas ici — ce sont les pleins, et c'est eux qu'on
@@ -806,6 +843,12 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
         ...base
           .filter((c) => !["statut", "dateDebut", "dateCloture", "interventionNumero", "commentaire"].includes(c.cle))
           .map((c) => (c.cle === "garage" ? { ...c, options: optionsPrestataires(TYPES_GARAGE, typeof window === "undefined" ? undefined : lireCreations) } : c)),
+      ];
+    case "signalement":
+      /* Depuis la page Maintenance, on choisit le véhicule ; depuis la fiche, il est connu. Le statut vient ensuite. */
+      return [
+        ...(contexte.pour === "maintenance" ? [{ cle: "vehiculeId", libelle: "Véhicule", type: "choix" as const, options: optionsVehicules(), obligatoire: true }] : []),
+        ...base.filter((c) => c.cle !== "statut"),
       ];
     case "rappel": {
       /* Le type se choisit parmi ceux qui donnent lieu à un rappel pour ce

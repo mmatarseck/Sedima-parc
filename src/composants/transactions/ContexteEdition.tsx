@@ -6,12 +6,14 @@ import type { TypeTransaction } from "@/domaine/reference";
 import { lireCreations, lireToutesCreations, lireToutesSurcharges } from "@/lib/clotures-demo";
 import dynamic from "next/dynamic";
 import type { ModeFacture, VehiculeFacture } from "./FormulaireFacture";
+import type { DemandeService } from "@/composants/maintenance/FormulaireService";
 
 /* La modale — et avec elle les champs, le catalogue des références et les
    listes de choix — ne se charge qu'à la première ouverture : un lecteur qui
    ne crée rien ne la télécharge pas (revue de performance du 8 septembre 2026). */
 const ModaleTransaction = dynamic(() => import("./ModaleTransaction").then((m) => m.ModaleTransaction), { ssr: false });
 const FormulaireFacture = dynamic(() => import("./FormulaireFacture").then((m) => m.FormulaireFacture), { ssr: false });
+const FormulaireService = dynamic(() => import("@/composants/maintenance/FormulaireService").then((m) => m.FormulaireService), { ssr: false });
 
 /** Une facture à saisir, ligne par ligne, avec sa pièce jointe (21 septembre 2026). */
 export interface DemandeFacture {
@@ -70,6 +72,8 @@ interface Edition {
   creer: (d: DemandeCreation) => void;
   /** Ouvre la saisie d'une facture : l'en-tête, les lignes, la pièce jointe. */
   saisirFacture: (d: DemandeFacture) => void;
+  /** Ouvre un service de maintenance, à créer ou existant (0060). */
+  ouvrirService: (d: DemandeService) => void;
   surcharger: <T extends { numero: string }>(objet: T) => T;
   /** Ce qui a été créé sur cette fiche, du plus récent au plus ancien, fabriqué à la forme voulue. */
   creations: <T>(type: TypeTransaction, fabriquer: (c: Creation) => T | null) => T[];
@@ -96,6 +100,7 @@ export function FournisseurEdition({ sujet, href, children }: { sujet: string; h
   const [version, setVersion] = useState(0);
   const [courante, setCourante] = useState<Courante | null>(null);
   const [facture, setFacture] = useState<DemandeFacture | null>(null);
+  const [service, setService] = useState<DemandeService | null>(null);
 
   useEffect(() => {
     setSurcharges(lireToutesSurcharges());
@@ -140,6 +145,7 @@ export function FournisseurEdition({ sujet, href, children }: { sujet: string; h
       demander: (d) => setCourante({ mode: "modification", d }),
       creer: (d) => setCourante({ mode: "creation", d }),
       saisirFacture: (d) => setFacture(d),
+      ouvrirService: (d) => setService(d),
       surcharger,
       creations,
       creationsLiees,
@@ -185,6 +191,7 @@ export function FournisseurEdition({ sujet, href, children }: { sujet: string; h
           onEnregistre={() => setVersion((v) => v + 1)}
         />
       ) : null}
+      {service ? <FormulaireService demande={service} onFermer={() => setService(null)} onEnregistre={() => setVersion((v) => v + 1)} /> : null}
       {facture ? <FormulaireFacture mode={facture.mode} vehicule={facture.vehicule} onFermer={() => setFacture(null)} onEnregistre={() => setVersion((v) => v + 1)} /> : null}
     </Contexte.Provider>
   );
