@@ -22,6 +22,8 @@ supabase/migrations/0060_services_maintenance.sql    -- catalogue, signalements,
 supabase/taches-service.sql                          -- le catalogue tiré de Fleetio : 341 tâches
 ```
 
+**Si 0060 a échoué à moitié** (« syntax error at end of input », 21 septembre 2026 : les tables `tache_service` et `signalement` créées, les colonnes du service et 0059 absentes), jouer à la place `supabase/rattrapage-0059-0060.sql` : les deux migrations en un fichier, sans commentaires, rejouable — éprouvé deux fois de suite sur une base dans cet état. Puis `taches-service.sql`.
+
 **Avant de déployer le code.** Les pages Maintenance et Paramètres › Catalogue
 lisent les nouvelles tables ; une lecture qui échoue arrête la page. La fiche
 véhicule et les formulaires tolèrent l'absence de 0060, pour ne pas fermer toute
