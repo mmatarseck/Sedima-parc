@@ -62,7 +62,6 @@ type Onglet =
   | "caracteristiques"
   | "affectations"
   | "conformite"
-  | "dossier"
   | "incidents"
   | "maintenance"
   | "plan"
@@ -81,14 +80,9 @@ const ONGLETS: { cle: Onglet; libelle: string; ordinateurSeulement?: boolean }[]
   { cle: "apercu", libelle: "Aperçu" },
   { cle: "caracteristiques", libelle: "Caractéristiques" },
   { cle: "affectations", libelle: "Affectations" },
-  { cle: "conformite", libelle: "Conformité" },
-  /* Partout, depuis le 16 septembre 2026. L'onglet était réservé aux écrans
-     larges à la demande du métier de la veille — et c'est ce qui l'a rendu
-     introuvable dès que la fenêtre passait sous 1024 px, sans qu'aucun message
-     ne le dise. Un dossier qu'on ne trouve pas ne rend service à personne :
-     sur un écran étroit, la liste passe au-dessus du cadre, et la pièce reste
-     ouvrable dans un onglet à part. */
-  { cle: "dossier", libelle: "Dossier" },
+  /* Conformité et Dossier réunis (métier, 21 septembre 2026) : l'échéance de
+     ce qui se renouvelle, et la pièce qui le prouve, sur le même onglet. */
+  { cle: "conformite", libelle: "Conformité & dossier" },
   { cle: "incidents", libelle: "Incidents & sinistres" },
   { cle: "maintenance", libelle: "Maintenance" },
   /* Les rappels sur leur propre onglet (15 septembre 2026) : ce qui reste à
@@ -105,6 +99,12 @@ function estOnglet(valeur: string | undefined): valeur is Onglet {
   return ONGLETS.some((o) => o.cle === valeur);
 }
 
+/** Les adresses d'avant la réunion des onglets mènent toujours quelque part : « dossier » ouvre la Conformité. */
+function ongletDe(valeur: string | undefined): Onglet {
+  if (valeur === "dossier") return "conformite";
+  return estOnglet(valeur) ? valeur : "apercu";
+}
+
 /**
  * Fiche véhicule 360°.
  *
@@ -115,12 +115,12 @@ function estOnglet(valeur: string | undefined): valeur is Onglet {
  */
 export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInitial, discussionInitiale = false, cible, detenteur }: { fiche: Fiche; transferts?: Transfert[]; /** Les comptes que la discussion peut citer ; ceux de la démonstration à défaut. */ utilisateurs?: Personne[]; ongletInitial?: string; discussionInitiale?: boolean; cible?: string; /** Le dossier du parc léger d'un véhicule de service ou de fonction : détenteur, forfait, plan car. */ detenteur?: ReactNode }) {
   const router = useRouter();
-  const [onglet, setOnglet] = useState<Onglet>(estOnglet(ongletInitial) ? ongletInitial : "apercu");
+  const [onglet, setOnglet] = useState<Onglet>(ongletDe(ongletInitial));
   useCible(cible, onglet);
   const [discussionOuverte, setDiscussionOuverte] = useState(discussionInitiale);
   const [declaration, setDeclaration] = useState(false);
   const [nombreMessages, setNombreMessages] = useState<number | null>(null);
-  const { surcharger, creer, demander, creations, actualiser } = useEdition();
+  const { surcharger, creer, demander, creations, actualiser, saisirFacture } = useEdition();
 
   /* Archiver relève de la gestion de la flotte, comme créer un véhicule : le
      bouton ne promet rien à qui n'en a que la saisie ou la lecture. */
@@ -204,6 +204,13 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
       setDeclaration(true);
       return;
     }
+    /* Une intervention et une dépense se saisissent comme la facture qui les
+       porte, depuis ce menu comme depuis les listes (21 septembre 2026). */
+    if (cible === "intervention" || cible === "depense") {
+      saisirFacture({ mode: cible === "intervention" ? "atelier" : "autres", vehicule: { immatriculation: v.immatriculation, immatriculationAffichee: v.immatriculationAffichee, libelle: `${v.marque} ${v.appellation}` } });
+      setOnglet(ONGLET_PAR_CIBLE[cible] ?? "journal");
+      return;
+    }
     const type = cible as TypeTransaction;
     const titre = TITRE_CREATION[cible];
     if (titre && type in TYPE_TRANSACTION) {
@@ -216,11 +223,11 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
           visites: fiche.visitesTechniques.map((x) => ({ valeur: x.id, libelle: `${x.type === "contre-visite" ? "Contre-visite" : "Visite"} du ${date(x.datePassage ?? x.dateRendezVous)} · ${x.centre}` })),
         }),
         valeurs: {
-          date: "2026-09-02",
-          debut: "2026-09-02",
-          dateEffet: "2026-09-02",
-          dateHeure: "2026-09-02",
-          dateRendezVous: "2026-09-02",
+          date: jourCourant(),
+          debut: jourCourant(),
+          dateEffet: jourCourant(),
+          dateHeure: jourCourant(),
+          dateRendezVous: jourCourant(),
           origine: "caisse",
           /* Le prix du litre vient du barème **en vigueur ce jour**, selon
              l'énergie du véhicule : on saisit un plein d'aujourd'hui. Pour un
@@ -289,7 +296,7 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
                 immatriculation={v.immatriculation}
                 immatriculationAffichee={v.immatriculationAffichee}
                 immobilisation={immobilisation?.documents ?? null}
-                aujourdhui="2026-09-02"
+                aujourdhui={jourCourant()}
               />
               {immobilisation ? (
                 <span
@@ -480,7 +487,7 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
             {declaration ? (
               <FormulaireDeclaration
                 vehiculeId={v.id}
-                aujourdhui="2026-09-02"
+                aujourdhui={jourCourant()}
                 onFermer={() => setDeclaration(false)}
                 onEnregistre={() => {
                   actualiser();
@@ -562,15 +569,15 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
         {onglet === "apercu" && <OngletApercu fiche={fiche} />}
         {onglet === "caracteristiques" && <OngletCaracteristiques fiche={fiche} detenteur={detenteur} />}
         {onglet === "affectations" && <OngletAffectations fiche={fiche} transferts={transferts} cible={cible} />}
-        {onglet === "conformite" && <OngletConformite fiche={fiche} cible={cible} />}
-        {/* Le dossier ne s'affiche pas sous 1024 px : le cadre y serait trop
-            petit pour lire un scan, et l'onglet lui-même y est masqué. */}
-        {onglet === "dossier" && (
-          <div className="hidden lg:block">
+        {onglet === "conformite" && (
+          <div className="flex flex-col gap-8">
+            <OngletConformite fiche={fiche} cible={cible} />
+            {/* Le dossier sous les échéances, partout : sous 1280 px la liste des
+                pièces passe au-dessus du cadre, qui reste lisible. */}
             <OngletDossier fiche={fiche} />
           </div>
         )}
-        {onglet === "incidents" && <OngletIncidents fiche={fiche} cible={cible} />}
+        {onglet === "incidents" && <OngletIncidents fiche={fiche} cible={cible} onDeclarer={() => setDeclaration(true)} />}
         {onglet === "maintenance" && <OngletMaintenance fiche={fiche} cible={cible} />}
         {onglet === "plan" && <OngletPlanEntretien fiche={fiche} />}
         {onglet === "carburant" && <OngletCarburant fiche={fiche} cible={cible} />}

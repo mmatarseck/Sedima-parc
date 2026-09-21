@@ -370,6 +370,7 @@ export function fabriquerLigneIncident(c: Creation): LigneIncident | null {
     description: s(v.description) ?? "",
     kilometrage: n(v.kilometrage),
     declarant: s(v.declarant) ?? c.auteur,
+    pieces: Array.isArray(v.pieces) ? v.pieces.filter((x): x is string => typeof x === "string") : [],
     creee: true,
   };
 }

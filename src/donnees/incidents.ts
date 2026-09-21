@@ -105,12 +105,12 @@ export const incidentsServeur = cache(incidentsServeurBrut);
  * Incidents et que le rapport : les trois ne peuvent pas diverger.
  */
 export async function incidentsDuVehicule(client: SupabaseClient, vehiculeId: string): Promise<LigneIncident[]> {
-  const lecture = await client
-    .from("incident")
-    .select(CHAMPS_INCIDENT)
-    .eq("vehicule_id", vehiculeId)
-    .order("date_heure", { ascending: false })
-    .limit(2000)
-    .returns<LigneIncidentBase[]>();
-  return lignesLues("Incidents du véhicule", lecture).map(incidentDepuisLigne);
+  const [lecture, pieces] = await Promise.all([
+    client.from("incident").select(CHAMPS_INCIDENT).eq("vehicule_id", vehiculeId).order("date_heure", { ascending: false }).limit(2000).returns<LigneIncidentBase[]>(),
+    /* Les photos et documents (0058) se lisent à part : sur une base qui n'a pas
+       encore la colonne, cette lecture échoue seule et la liste reste entière. */
+    client.from("incident").select("numero, pieces").eq("vehicule_id", vehiculeId).limit(2000).returns<{ numero: string; pieces: string[] | null }[]>(),
+  ]);
+  const parNumero = new Map((pieces.error ? [] : (pieces.data ?? [])).map((p) => [p.numero, p.pieces ?? []]));
+  return lignesLues("Incidents du véhicule", lecture).map((l) => ({ ...incidentDepuisLigne(l), pieces: parNumero.get(l.numero) ?? [] }));
 }

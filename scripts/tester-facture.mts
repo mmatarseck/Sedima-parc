@@ -150,7 +150,7 @@ attendu("une ligne qui porte sa pièce montre le trombone, et le dit aux lecteur
 attendu("une ligne sans pièce ne montre rien", sans === "");
 const onglets = readFileSync("src/composants/vehicule/onglets.tsx", "utf8");
 const ecranCarburant = readFileSync("src/composants/carburant/EcranCarburant.tsx", "utf8");
-attendu("le trombone est posé à l'atelier, aux autres dépenses et aux pleins de la fiche", (onglets.match(/<IndicateurPiece present=/g) ?? []).length === 3);
+attendu("le trombone est posé à l'atelier, aux autres dépenses, aux pleins et aux échéances de conformité de la fiche", (onglets.match(/<IndicateurPiece present=/g) ?? []).length === 4);
 attendu("et sur la page Carburant", ecranCarburant.includes("<IndicateurPiece present={Boolean(p.photo)} />"));
 
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, Lock, Plus, Trash2, X } from "lucide-react";
+import { ChampPieces } from "@/composants/interface/ChampPieces";
 import { Numero } from "@/composants/interface/Numero";
 import { CHAMPS } from "@/composants/transactions/champs";
 import { type ChampEdition } from "@/domaine/cloture";
@@ -48,6 +49,8 @@ interface Saisie {
   kilometrage: string;
   mission: MissionIncident | "";
   description: string;
+  /** Les photos et documents joints (0058). */
+  pieces: string[];
   roulant: Roulant;
   nouveauStatut: StatutVehicule;
   depannage: boolean;
@@ -124,6 +127,7 @@ export function FormulaireDeclaration({ vehiculeId, aujourdhui, onFermer, onEnre
       kilometrage: "",
       mission: "livraison",
       description: "",
+      pieces: [],
       roulant: "oui",
       nouveauStatut: l?.vehicule.statut ?? "en-service",
       depannage: false,
@@ -272,6 +276,7 @@ export function FormulaireDeclaration({ vehiculeId, aujourdhui, onFermer, onEnre
       franchise: s.franchise ? Number(s.franchise.replace(/\s/g, "")) : null,
       sanction: s.sanction === "aucune" ? null : s.sanction,
       actionsCorrectives: s.actionsCorrectives.trim() || null,
+      pieces: s.pieces,
       statut: "declare",
       declarant: role.nom,
       kmMotifRejet: verdictKm && !verdictKm.valide ? verdictKm.motifRejet : null,
@@ -497,7 +502,12 @@ export function FormulaireDeclaration({ vehiculeId, aujourdhui, onFermer, onEnre
                     <Champ libelle="Description" obligatoire large precision="Ce qui s'est passé, dans les mots du déclarant">
                       <textarea value={s.description} onChange={(e) => regler("description", e.target.value)} rows={3} className={`${COMMUN} h-auto resize-none py-2 leading-relaxed`} />
                     </Champ>
-                    <p className="meta sm:col-span-2">Pièces jointes (photos, PDF) : au branchement de la base — lot 2 du cadrage.</p>
+                    {/* Pas un <label> : chaque cadre porte le sien, et deux libellés imbriqués se disputeraient le clic. */}
+                    <div className="flex flex-col gap-1.5 sm:col-span-2">
+                      <span className="label-champ">Photos et documents</span>
+                      <ChampPieces valeur={s.pieces} onChange={(pieces) => regler("pieces", pieces)} />
+                      <span className="meta">Photos prises sur place, constat, procès-verbal — en image ou en PDF. Sur un téléphone, le cadre ouvre l&apos;appareil photo.</span>
+                    </div>
                   </>
                 ) : null}
 

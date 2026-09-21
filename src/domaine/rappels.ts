@@ -76,6 +76,21 @@ export function etatRappel(echeance: string, aujourdhui: string, seuilJours = 30
  * métier corrige — décision du 16 septembre 2026. Nulle quand le type n'a pas
  * de validité : on ne propose pas une date qu'on ne sait pas calculer.
  */
+/**
+ * La pièce qui prouve un rappel : le document qu'il cite, s'il porte un scan ;
+ * sinon le plus récent document du même type qui en porte un. Nulle quand
+ * aucun ne prouve rien (21 septembre 2026).
+ */
+export function preuveDuRappel<D extends { numero: string; type: string; dateEffet: string | null; fichier: string | null }>(r: Pick<Rappel, "type" | "documentNumero">, documents: D[]): D | null {
+  const cite = r.documentNumero ? documents.find((d) => d.numero === r.documentNumero && d.fichier) : undefined;
+  if (cite) return cite;
+  return (
+    documents
+      .filter((d) => d.type === r.type && d.fichier)
+      .sort((a, b) => (b.dateEffet ?? "").localeCompare(a.dateEffet ?? ""))[0] ?? null
+  );
+}
+
 export function echeanceProposee(type: Pick<DefinitionDocument, "validiteMois">, faitLe: string): string | null {
   if (!type.validiteMois || !/^\d{4}-\d{2}-\d{2}$/.test(faitLe)) return null;
   const d = new Date(`${faitLe}T00:00:00Z`);

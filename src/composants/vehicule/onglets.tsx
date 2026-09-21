@@ -16,7 +16,9 @@ import { Numero } from "@/composants/interface/Numero";
 import { VisionneusePiece } from "@/composants/interface/VisionneusePiece";
 import { useEdition } from "@/composants/transactions/ContexteEdition";
 import { useAjoutVehicule } from "./ajout";
-import { CHAMPS } from "@/composants/transactions/champs";
+import { preuveDuRappel } from "@/domaine/rappels";
+import { enregistrerModification } from "@/lib/clotures-demo";
+import { CHAMPS, champsCreation } from "@/composants/transactions/champs";
 import { lireParametres } from "@/lib/parametres-demo";
 import { ETAT_RAPPEL, echeanceProposee, etatRappel, type Rappel } from "@/domaine/rappels";
 import { apparierAtelier } from "@/domaine/atelier";
@@ -24,6 +26,7 @@ import {
   fabriquerAffectationVehicule,
   fabriquerAttelage,
   fabriquerDepense,
+  fabriquerDocument,
   fabriquerEvenementIncident,
   fabriquerEvenementStatut,
   fabriquerIntervention,
@@ -585,7 +588,7 @@ export function OngletAffectations({ fiche, transferts = [], cible }: { fiche: F
 
 export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible?: string }) {
   const ajouter = useAjoutVehicule(fiche);
-  const { surcharger, demander, creations } = useEdition();
+  const { surcharger, demander, creer, creations } = useEdition();
   const v = fiche.ligne.vehicule;
   /*
    * Les rappels d'abord : c'est ce que la Conformité suit depuis le
@@ -597,18 +600,61 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const rappelsEchus = rappels.filter((r) => etatRappel(r.echeance, aujourdhui) === "echu").length;
   const rappelsBientot = rappels.filter((r) => etatRappel(r.echeance, aujourdhui) === "bientot").length;
-  /* Renouveler : la date d'aujourd'hui comme date du renouvellement, et la
-     prochaine échéance proposée d'après la validité du type — modifiable. */
+  /*
+   * RENOUVELER, C'EST DÉPOSER LA NOUVELLE PIÈCE (métier, 21 septembre 2026 :
+   * « prévoir la possibilité de joindre une pièce justificative — PV de visite
+   * technique, police d'assurance »). Le geste crée le document — son type, sa
+   * date d'effet, sa nouvelle échéance, et le scan, obligatoire — puis porte la
+   * nouvelle échéance sur le rappel. La pièce rejoint le dossier, sous cette
+   * liste, et s'ouvre depuis la ligne du rappel.
+   *
+   * Le rappel ne cite pas le numéro du document : ce numéro peut encore changer
+   * quand la base le prend, et la clé étrangère refuserait l'écriture. La
+   * preuve se retrouve par le type — le document le plus récent qui porte un
+   * scan —, et le commentaire du rappel nomme la pièce.
+   */
   function renouveler(r: Rappel) {
     const def = lireParametres().documents.types.find((t) => t.id === r.type);
-    demander({
-      type: "rappel",
-      numero: r.numero,
+    const proposee = (def ? echeanceProposee(def, aujourdhui) : null) ?? r.echeance;
+    creer({
+      type: "document",
       titre: `Renouveler · ${r.libelle} · ${v.immatriculationAffichee}`,
-      champs: CHAMPS.rappel,
-      valeurs: { echeance: (def ? echeanceProposee(def, aujourdhui) : null) ?? r.echeance, faitLe: aujourdhui, documentNumero: r.documentNumero ?? "", commentaire: r.commentaire ?? "" },
+      champs: champsCreation("document", { pour: "vehicule", categorie: v.categorie }).map((c) =>
+        c.cle === "fichier"
+          ? { ...c, obligatoire: true, libelle: "La pièce justificative", precision: "PV de visite technique, police d'assurance, attestation — en PDF ou en image" }
+          : c.cle === "dateEffet"
+            ? { ...c, libelle: "Renouvelé le" }
+            : c.cle === "echeance"
+              ? { ...c, libelle: "Nouvelle échéance", obligatoire: true }
+              : c,
+      ),
+      valeurs: { type: r.type, dateEffet: aujourdhui, echeance: proposee },
+      apresCreation: (c) => {
+        const faitLe = String(c.valeurs.dateEffet ?? aujourdhui);
+        const echeance = String(c.valeurs.echeance || (def ? echeanceProposee(def, faitLe) : null) || proposee);
+        const avant = { echeance: r.echeance, faitLe: r.faitLe ?? "", documentNumero: r.documentNumero ?? "", commentaire: r.commentaire ?? "" };
+        enregistrerModification({
+          numero: r.numero,
+          sujet: `vehicule:${v.immatriculation}`,
+          type: "rappel",
+          titre: `Rappel · ${r.libelle}`,
+          href: `/flotte/${v.immatriculation}?onglet=conformite`,
+          champs: CHAMPS.rappel,
+          avant,
+          apres: { ...avant, echeance, faitLe, commentaire: `Renouvelé le ${faitLe.split("-").reverse().join("/")} — pièce ${c.numero}` },
+          motif: `Renouvelé : pièce ${c.numero} déposée`,
+        });
+      },
     });
   }
+  /* La pièce qui prouve chaque rappel, et la ligne ouverte : sa pièce se lit à droite. */
+  const documentsConnus = [
+    ...creations("document", (c) => fabriquerDocument(c, v.categorie)).map((d) => ({ numero: d.numero, type: d.type, dateEffet: d.dateEffet, fichier: d.fichier ?? null })),
+    ...fiche.documents.map((d) => ({ numero: d.numero, type: d.type, dateEffet: d.dateEffet, fichier: fiche.pieces.find((p) => p.type === "document" && p.numero === d.numero)?.fichier ?? null })),
+  ];
+  const [rappelOuvert, setRappelOuvert] = useState<string | null>(null);
+  const ouvert = rappelOuvert ? (rappels.find((r) => r.numero === rappelOuvert) ?? null) : null;
+  const preuveOuverte = ouvert ? preuveDuRappel(ouvert, documentsConnus) : null;
   /*
    * UNE SEULE LISTE, ET RIEN DE PLUS (métier, 16 septembre 2026) : le type de
    * document, sa validité, l'échéance de renouvellement. Les documents
@@ -621,6 +667,24 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
     return def?.validiteMois ? `${def.validiteMois} mois` : "—";
   };
   return (
+    <ListeEtPiece
+      piece={
+        ouvert ? (
+          <VisionneusePiece
+            fichier={preuveOuverte?.fichier ?? null}
+            libelle={ouvert.libelle}
+            precision={[`échéance ${date(ouvert.echeance)}`, preuveOuverte?.dateEffet ? `pièce du ${date(preuveOuverte.dateEffet)}` : null].filter(Boolean).join(" · ")}
+            vide="Aucune pièce justificative pour ce document. « Renouveler » la dépose avec la nouvelle échéance."
+            onFermer={() => setRappelOuvert(null)}
+            actions={
+              <button type="button" onClick={() => renouveler(ouvert)} className="bouton-secondaire h-9">
+                Renouveler
+              </button>
+            }
+          />
+        ) : null
+      }
+    >
     <div className="flex flex-col gap-5">
     <Carte
       titre="Conformité"
@@ -639,9 +703,21 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
         vide="Aucun rappel sur ce véhicule."
         numero={(r) => r.numero}
         cible={cible}
+        seulement={ouvert ? ["document", "echeance"] : undefined}
+        surLigne={(r) => setRappelOuvert((o) => (o === r.numero ? null : r.numero))}
+        ouverte={rappelOuvert}
         surModifier={(r) => demander({ type: "rappel", numero: r.numero, titre: `Rappel · ${r.libelle}`, champs: CHAMPS.rappel, valeurs: { echeance: r.echeance, faitLe: r.faitLe ?? "", documentNumero: r.documentNumero ?? "", commentaire: r.commentaire ?? "" } })}
         colonnes={[
-          { cle: "document", libelle: "Document", rendu: (r) => <span className="font-medium">{r.libelle}</span> },
+          {
+            cle: "document",
+            libelle: "Document",
+            rendu: (r) => (
+              <span className="flex items-center gap-2">
+                <IndicateurPiece present={Boolean(preuveDuRappel(r, documentsConnus)?.fichier)} />
+                <span className="font-medium">{r.libelle}</span>
+              </span>
+            ),
+          },
           { cle: "validite", libelle: "Validité", rendu: (r) => <span className="text-texte-2">{validiteDe(r.type)}</span> },
           {
             cle: "echeance",
@@ -660,7 +736,7 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
             cle: "renouveler",
             libelle: "",
             rendu: (r) => (
-              <button type="button" onClick={(ev) => { ev.stopPropagation(); renouveler(r); }} className="bouton-discret h-7 px-2 text-[12px]">
+              <button type="button" onClick={(ev) => { ev.stopPropagation(); renouveler(r); }} className="bouton-discret h-7 px-2 text-[12px]" title="Déposer la nouvelle pièce et porter la nouvelle échéance">
                 Renouveler
               </button>
             ),
@@ -669,6 +745,7 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
       />
     </Carte>
     </div>
+    </ListeEtPiece>
   );
 }
 

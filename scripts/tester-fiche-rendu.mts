@@ -95,7 +95,9 @@ for (const brut of parc.vehicules) {
       React.createElement(FournisseurEdition, { sujet: `vehicule:${v.immatriculation}`, href: `/flotte/${v.immatriculation}` } as any,
         React.createElement(FicheVehicule, { fiche, ongletInitial: "dossier", discussionInitiale: false, cible: undefined } as any)),
     );
-    if (!dossier.includes("Dossier")) throw new Error("l'onglet Dossier ne s'annonce pas");
+    /* Conformité et Dossier réunis le 21 septembre 2026 : l'ancienne adresse « dossier » ouvre l'onglet commun, qui porte les échéances et les familles de pièces. */
+    if (!dossier.includes("Conformité &amp; dossier")) throw new Error("l'onglet Conformité & dossier ne s'annonce pas");
+    if (!dossier.includes("Déposer")) throw new Error("le dossier ne se dresse pas sous les échéances");
     /* Maintenance et Plan d'entretien, séparés le 15 septembre 2026 : une seule
        liste d'atelier d'un côté, les rappels de l'autre. Chacun doit porter ce
        qui lui revient, et rien de ce qui revient à l'autre. */

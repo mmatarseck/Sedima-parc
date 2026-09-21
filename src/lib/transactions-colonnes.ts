@@ -209,6 +209,12 @@ export function produitDepuis(brut: unknown): ProduitTransporte {
 }
 
 const texte = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
+/* Les pièces d'une déclaration (0058) : la colonne n'est écrite que s'il y en a,
+   pour qu'une déclaration sans pièce passe même sur une base qui n'a pas joué 0058. */
+const piecesDe = (v: unknown): { pieces?: string[] } => {
+  const refs = Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim() !== "") : [];
+  return refs.length ? { pieces: refs } : {};
+};
 const nombre = (v: unknown): number | null => {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
   if (typeof v === "string" && v.trim()) {
@@ -333,7 +339,7 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       if (!dateHeure) return { refus: "incident sans date" };
       const roulant = texte(v.roulant);
       const description = [texte(v.description), roulant === "non" ? "Véhicule non roulant." : roulant === "reserve" ? "Véhicule roulant avec réserve." : null].filter(Boolean).join(" ") || null;
-      return { ligne: { numero, vehicule_id: r.vehiculeId, chauffeur_id: r.chauffeurId, date_heure: dateHeure, nature: texte(v.nature) ?? "incident", type: texte(v.type) ?? "autre", lieu: texte(v.lieu), mission: texte(v.mission), responsabilite: texte(v.responsabilite), statut: texte(v.statut) ?? "declare", kilometrage: nombre(v.kilometrage), description } };
+      return { ligne: { numero, vehicule_id: r.vehiculeId, chauffeur_id: r.chauffeurId, date_heure: dateHeure, nature: texte(v.nature) ?? "incident", type: texte(v.type) ?? "autre", lieu: texte(v.lieu), mission: texte(v.mission), responsabilite: texte(v.responsabilite), statut: texte(v.statut) ?? "declare", kilometrage: nombre(v.kilometrage), description, ...piecesDe(v.pieces) } };
     }
     case "affectation": {
       if (!r.vehiculeId || !r.chauffeurId) return { refus: "affectation sans véhicule ou sans chauffeur" };

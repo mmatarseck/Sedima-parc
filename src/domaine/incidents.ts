@@ -71,6 +71,8 @@ export interface LigneIncident {
   description: string;
   kilometrage: number | null;
   declarant: string;
+  /** Les photos et documents de la déclaration, dans le seau (0058). */
+  pieces?: string[];
   /** Créée dans l'application (pas dans le jeu de démonstration). */
   creee: boolean;
 }
