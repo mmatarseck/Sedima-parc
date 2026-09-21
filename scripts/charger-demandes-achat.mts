@@ -302,7 +302,17 @@ const dossier = join(projet, "supabase/achats-parties");
 rmSync(dossier, { recursive: true, force: true });
 mkdirSync(dossier, { recursive: true });
 
-const CHARGEE = "Chargée le 11 septembre 2026 depuis l'extraction des bons de commande du dossier DO. Réglée : un bon retenu dans les totaux est une dépense faite ; la date de règlement n'est pas connue.";
+/* L'achat d'un véhicule n'est pas un achat du parc : c'est un investissement,
+   que la fiche du véhicule porte (valeur d'acquisition, 0057) et que le
+   tableau des immobilisations amortit. Métier, 21 septembre 2026 : « retirer
+   des achats les achats de véhicules ». La famille du classeur les nomme ; la
+   camionnette HOWO y est rangée à tort en « pièces détachées », d'où son bon
+   cité ici. Les numéros DAC-R ne bougent pas : on saute la ligne, on ne
+   renumérote pas — le chargement reste rejouable sur une base déjà chargée. */
+const BONS_DE_VEHICULES = new Set(["CMD2-25120278"]);
+const estAchatDeVehicule = (d: Demande) => d.famille === "Acquisition de véhicules" || BONS_DE_VEHICULES.has(d.bon);
+
+const CHARGEE ="Chargée le 11 septembre 2026 depuis l'extraction des bons de commande du dossier DO. Réglée : un bon retenu dans les totaux est une dépense faite ; la date de règlement n'est pas connue.";
 const valeurBon = (d: Demande, i: number) =>
   `  ('DAC-R-${String(i + 1).padStart(5, "0")}', '${d.date}', ${sql(d.objet)}, '${d.poste}', ${d.montant}, ${sql(d.fournisseur)}, '${cleFournisseur(d.fournisseur)}', ${sql(d.immatriculation)}, ${sql(d.demandeur)}, ${sql(d.validation)}, ${sql(d.da)}, ${sql(d.bon)}, ${sql(`${d.categorie} · ${d.famille}`)}, ${sql([CHARGEE, ...d.notes].join(" "))})`;
 
@@ -312,7 +322,7 @@ writeFileSync(
   `-- ============================================================================
 -- SEDIMA Parc — les demandes d'achat réelles : les bons de commande.
 --
--- **Ce n'est pas une migration.** ${demandes.length} demandes, une par bon de commande
+-- **Ce n'est pas une migration.** ${demandes.filter((d) => !estAchatDeVehicule(d)).length} demandes, une par bon de commande
 -- retenu, du ${demandes[0]!.date} au ${demandes.at(-1)!.date}, pour ${Math.round(total / 1e6)} M F. Source :
 -- SEDIMA_Maintenance_Parc_Bons_de_commande.xlsx. Voir docs/ACHATS-REELS.md.
 --
@@ -331,7 +341,7 @@ select v.numero, v.date::date, v.objet, coalesce(dep.poste, v.poste::poste_depen
        'Bon de commande ' || v.bon || ' — ' || v.categorie,
        coalesce(ve.id, itv.vehicule_id, dep.vehicule_id), v.demandeur, 'reglee', v.validee_le::date, v.da, v.bon, v.montant::bigint, dep.numero, v.commentaire
   from (values
-${demandes.map(valeurBon).join(",\n")}
+${demandes.map((d, i) => (estAchatDeVehicule(d) ? null : valeurBon(d, i))).filter(Boolean).join(",\n")}
   ) as v(numero, date, objet, poste, montant, fournisseur, cle_fournisseur, immatriculation, demandeur, validee_le, da, bon, categorie, commentaire)
   left join vehicule ve on ve.immatriculation = v.immatriculation
   left join lateral (select i.numero, i.prestataire_id, i.vehicule_id from intervention i where split_part(i.reference, ' · ', 1) = v.bon order by i.numero limit 1) itv on true
