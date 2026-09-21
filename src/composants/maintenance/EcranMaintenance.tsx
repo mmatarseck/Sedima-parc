@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarPlus, Pencil, Play, Plus, Wrench } from "lucide-react";
+import { CalendarPlus, Pencil, Play, Plus, Receipt, Wrench } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { Numero } from "@/composants/interface/Numero";
 import { Echeance, Pastille } from "@/composants/interface/Pastille";
@@ -120,7 +120,7 @@ export function EcranMaintenance(props: Props) {
 }
 
 function Interieur({ travaux, ordres, interventions, aujourdhui, vueInitiale, cible }: Props) {
-  const { demander, creer, surcharger, version, actualiser } = useEdition();
+  const { demander, creer, saisirFacture, surcharger, version, actualiser } = useEdition();
   const [vue, setVue] = useState<VueMaintenance>(vueInitiale);
   const [periode, setPeriode] = useState<Periode>("365");
   const [bu, setBu] = useState<BusinessUnit | "toutes">("toutes");
@@ -425,6 +425,10 @@ function Interieur({ travaux, ordres, interventions, aujourdhui, vueInitiale, ci
               onChange={setBu}
               etiquette="Business unit"
             />
+            <button type="button" onClick={() => saisirFacture({ mode: "atelier" })} className={vue === "interventions" ? "bouton-principal" : "bouton-secondaire"}>
+              <Receipt className="size-4" strokeWidth={1.9} />
+              Saisir une facture
+            </button>
             {vue !== "interventions" ? (
               <button type="button" onClick={() => planifier()} className="bouton-principal">
                 <Plus className="size-4" strokeWidth={2.2} />

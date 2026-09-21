@@ -44,11 +44,20 @@ export const TITRE_CREATION: Partial<Record<CibleAjout, string>> = {
  * faire.
  */
 export function useAjoutVehicule(fiche: FicheVehicule): (cible: CibleAjout) => boolean {
-  const { creer } = useEdition();
+  const { creer, saisirFacture } = useEdition();
   const v = fiche.ligne.vehicule;
 
   return useCallback(
     (cible: CibleAjout) => {
+      /* Une intervention et une dépense se saisissent comme la facture qui les
+         porte : l'en-tête, les lignes, la pièce jointe (21 septembre 2026). */
+      if (cible === "intervention" || cible === "depense") {
+        saisirFacture({
+          mode: cible === "intervention" ? "atelier" : "autres",
+          vehicule: { immatriculation: v.immatriculation, immatriculationAffichee: v.immatriculationAffichee, libelle: `${v.marque} ${v.appellation}` },
+        });
+        return true;
+      }
       const type = cible as TypeTransaction;
       const titre = TITRE_CREATION[cible];
       if (!titre || !(type in TYPE_TRANSACTION)) return false;
@@ -64,11 +73,11 @@ export function useAjoutVehicule(fiche: FicheVehicule): (cible: CibleAjout) => b
           })),
         }),
         valeurs: {
-          date: "2026-09-02",
-          debut: "2026-09-02",
-          dateEffet: "2026-09-02",
-          dateHeure: "2026-09-02",
-          dateRendezVous: "2026-09-02",
+          date: jourCourant(),
+          debut: jourCourant(),
+          dateEffet: jourCourant(),
+          dateHeure: jourCourant(),
+          dateRendezVous: jourCourant(),
           origine: "caisse",
           /* Le prix du litre vient du barème **en vigueur ce jour**, selon
              l'énergie du véhicule : on saisit un plein d'aujourd'hui. Pour un
@@ -83,6 +92,6 @@ export function useAjoutVehicule(fiche: FicheVehicule): (cible: CibleAjout) => b
       });
       return true;
     },
-    [creer, fiche.visitesTechniques, v.categorie, v.energie, v.immatriculationAffichee],
+    [creer, saisirFacture, fiche.visitesTechniques, v.appellation, v.categorie, v.energie, v.immatriculation, v.immatriculationAffichee, v.marque],
   );
 }

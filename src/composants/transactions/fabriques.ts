@@ -77,9 +77,10 @@ export function fabriquerDepense(c: Creation): DepenseFiche {
     beneficiaire: s(v.beneficiaire),
     reference: s(v.reference),
     origine: (s(v.origine) as DepenseFiche["origine"]) ?? "caisse",
-    justificatif: b(v.justificatif),
+    justificatif: b(v.justificatif) || Boolean(s(v.photo)),
     km: n(v.km),
     kmMotifRejet: null,
+    photo: s(v.photo),
   };
 }
 

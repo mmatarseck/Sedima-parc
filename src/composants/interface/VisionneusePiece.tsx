@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { ExternalLink, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Carte } from "@/composants/interface/Carte";
 import { urlPhoto } from "@/lib/photos";
 
@@ -36,7 +36,7 @@ export function VisionneusePiece({
   fichier: string | null;
   libelle: string;
   precision?: string | null;
-  /** Les gestes propres à l'appelant — « Retirer », « Modifier la ligne » —, posés après « Ouvrir dans un onglet ». */
+  /** Les gestes propres à l'appelant — « Retirer », « Modifier la ligne ». */
   actions?: ReactNode;
   /** Présent quand la pièce s'ouvre à côté d'une liste qui s'est rétractée : refermer lui rend sa largeur. */
   onFermer?: () => void;
@@ -66,14 +66,10 @@ export function VisionneusePiece({
       titre={libelle}
       precision={precision ?? undefined}
       action={
-        fichier || onFermer ? (
+        actions || onFermer ? (
+          /* Aucun lien vers un onglet : la pièce se lit ici, et nulle part
+             ailleurs (métier, 21 septembre 2026). */
           <span className="flex items-center gap-2">
-            {fichier && url ? (
-              <a href={url} target="_blank" rel="noopener noreferrer" className="bouton-secondaire h-9">
-                <ExternalLink className="size-4 text-texte-2" strokeWidth={1.7} />
-                Ouvrir dans un onglet
-              </a>
-            ) : null}
             {actions}
             {onFermer ? (
               <button type="button" onClick={onFermer} className="bouton-discret size-9 justify-center p-0" title="Refermer la pièce" aria-label="Refermer la pièce">

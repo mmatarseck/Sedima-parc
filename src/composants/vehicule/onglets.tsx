@@ -5,11 +5,10 @@ import { useEffect, useState } from "react";
 import { ENERGIE } from "@/domaine/libelles";
 import { STATUT_TRANSFERT, libellePartie, statutTransfert, type Transfert } from "@/domaine/transferts";
 import { lireAccesCourant } from "@/lib/acces-courant";
-import { urlPhoto } from "@/lib/photos";
 import { lireTransferts } from "@/lib/transferts-demo";
 
 import Link from "next/link";
-import { AlertTriangle, FileText, Plus, Wrench } from "lucide-react";
+import { AlertTriangle, FileText, Paperclip, Plus, Receipt } from "lucide-react";
 import { Carte, Definitions, TableauSimple } from "@/composants/interface/Carte";
 import { ListeEtPiece } from "@/composants/interface/ListeEtPiece";
 import { Numero } from "@/composants/interface/Numero";
@@ -111,14 +110,14 @@ function PastilleOrigine({ origine }: { origine: DepenseFiche["origine"] }) {
 }
 
 /**
- * Le justificatif d'une ligne. Quand un fichier est attaché, il s'ouvre : le
- * lien est signé à la demande, au clic, plutôt que pour chaque ligne au
- * chargement — une liste de trente documents ne doit pas signer trente adresses
- * pour n'en ouvrir aucune. Sans fichier, « Fourni » reste une déclaration.
+ * Le justificatif d'une ligne : « Jointe » quand un fichier est attaché — un
+ * clic sur la ligne l'ouvre à droite de la liste, dans l'application. Plus
+ * aucun lien ne l'ouvre dans un onglet (métier, 21 septembre 2026 : « éliminer
+ * les boutons qui ouvrent les fichiers hors plateforme »). Sans fichier,
+ * « Fourni » reste une déclaration.
  */
 function Justificatif({ present, fichier }: { present: boolean; fichier?: string | null }) {
-  const [ouverture, setOuverture] = useState(false);
-  if (!present) return <Echeance ton="vigilance">manquant</Echeance>;
+  if (!present && !fichier) return <Echeance ton="vigilance">manquant</Echeance>;
   if (!fichier) {
     return (
       <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-texte-2" title="La pièce est déclarée fournie, mais aucun fichier n'y est attaché : « Modifier » permet de l'ajouter.">
@@ -128,22 +127,10 @@ function Justificatif({ present, fichier }: { present: boolean; fichier?: string
     );
   }
   return (
-    <button
-      type="button"
-      disabled={ouverture}
-      title="Ouvrir la pièce"
-      onClick={async (e) => {
-        e.stopPropagation();
-        setOuverture(true);
-        const url = await urlPhoto(fichier);
-        setOuverture(false);
-        if (url) window.open(url, "_blank", "noopener,noreferrer");
-      }}
-      className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-accent-fonce hover:underline disabled:text-attenue"
-    >
-      <FileText className="size-3.5" strokeWidth={1.8} />
-      {ouverture ? "Ouverture…" : "Ouvrir"}
-    </button>
+    <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-accent-fonce" title="Pièce jointe — cliquer sur la ligne pour la lire à droite">
+      <Paperclip className="size-3.5" strokeWidth={1.8} />
+      Jointe
+    </span>
   );
 }
 
@@ -757,7 +744,7 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
    * viennent de la dépense. « Modifier » ouvre l'intervention.
    */
   const { paires, interventionsSeules, depensesSeules } = apparierAtelier(interventions, fournitures);
-  const ligneIntervention = (i: Intervention, d: DepenseFiche | null): LigneAtelier => ({
+  const ligneIntervention = (i: Intervention, d: DepenseFiche | null, lignes: DepenseFiche[] = d ? [d] : []): LigneAtelier => ({
     cle: `int-${i.numero}`,
     numero: i.numero,
     date: i.date,
@@ -767,14 +754,16 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
     km: i.km,
     kmMotifRejet: null,
     immobilisationJours: i.immobilisationJours,
-    montant: d ? d.montant : i.montant,
+    /* Une facture saisie dans l'application a plusieurs lignes : la ligne
+       d'atelier en porte la somme, et la première pièce jointe trouvée. */
+    montant: lignes.length ? lignes.reduce((s, x) => s + x.montant, 0) : i.montant,
     reference: i.reference,
     origine: d ? d.origine : null,
-    fichier: d?.photo ?? null,
+    fichier: lignes.find((x) => x.photo)?.photo ?? null,
     modifier: () => demander({ type: "intervention", numero: i.numero, titre: `Intervention · ${i.objet}`, valeurs: i as unknown as Record<string, unknown> }),
   });
   const atelier: LigneAtelier[] = [
-    ...paires.map(({ intervention, depense }) => ligneIntervention(intervention, depense)),
+    ...paires.map(({ intervention, depense, lignes }) => ligneIntervention(intervention, depense, lignes)),
     ...interventionsSeules.map((i) => ligneIntervention(i, null)),
     ...depensesSeules.map(
       (d): LigneAtelier => ({
@@ -833,9 +822,9 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
         titre="Atelier"
         precision={`${atelier.length} ligne${atelier.length > 1 ? "s" : ""}${paires.length ? ` · ${paires.length} intervention${paires.length > 1 ? "s" : ""} avec leur dépense sur une seule ligne` : ""} · ${montant(total)} sur 12 mois`}
         action={
-          <button type="button" onClick={() => ajouter("intervention")} className="bouton-secondaire h-9">
-            <Wrench className="size-4" strokeWidth={1.8} />
-            Nouvelle intervention
+          <button type="button" onClick={() => ajouter("intervention")} className="bouton-secondaire h-9" title="L'intervention, ses lignes de dépense, le fournisseur, le compteur et la facture jointe">
+            <Receipt className="size-4" strokeWidth={1.8} />
+            Saisir une facture
           </button>
         }
         sansMarge
@@ -1002,9 +991,9 @@ export function OngletAutresDepenses({ fiche, cible }: { fiche: FicheVehicule; c
       titre="Autres dépenses"
       precision={`${autres.length} dépenses · ${montant(total)} — assurance, documents, péages, frais de route, contraventions, divers`}
       action={
-        <button type="button" onClick={() => ajouter("depense")} className="bouton-secondaire h-9">
-          <Plus className="size-4" strokeWidth={2} />
-          Nouvelle dépense
+        <button type="button" onClick={() => ajouter("depense")} className="bouton-secondaire h-9" title="Une ou plusieurs lignes, le fournisseur et la pièce justificative jointe">
+          <Receipt className="size-4" strokeWidth={1.8} />
+          Saisir une dépense
         </button>
       }
       sansMarge

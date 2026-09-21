@@ -95,3 +95,47 @@ base » et ses propres fournisseurs « déjà créés » : régénéré, le fich
 Il ignore maintenant ce qu'il a lui-même écrit (`DEP-GL-`, `INT-GL-`,
 `PRE-2026-6…`) et refait exactement les fichiers commités. La lecture des plaques
 d'un libellé est partagée avec la répartition (`scripts/plaques-libelle.mts`).
+
+## 4. Suite du 21 septembre : saisir une facture, et plus rien hors de l'application
+
+*Métier : « éliminer les boutons qui ouvrent les fichiers hors plateforme. On
+doit pouvoir rajouter des dépenses et interventions en renseignant toutes les
+lignes de dépenses, le fournisseur, le kilométrage, etc., en attachant la
+facture en PDF ou image, directement à partir de la vue maintenance du véhicule,
+ou sur la page Maintenance globale. La même possibilité pour les dépenses
+autres, où l'on attache la pièce justificative. »*
+
+**Saisir une facture** (`FormulaireFacture`) : l'en-tête une fois — véhicule
+(choisi depuis la page Maintenance, celui de la fiche sinon), fournisseur pris
+au référentiel ou écrit, date, n° de facture, kilométrage, « réglée par »,
+nature, immobilisation, objet — et la **pièce jointe, obligatoire**, en PDF ou
+en image. Puis les lignes, autant qu'il en faut : poste, libellé, montant, avec
+le total qui se tient à jour.
+
+| D'où | Bouton | Ce qui s'écrit |
+| --- | --- | --- |
+| Fiche véhicule, onglet Atelier | « Saisir une facture » | une intervention au total de la facture, et une dépense par ligne (postes de maintenance) |
+| Page Maintenance | « Saisir une facture » | la même chose, sur le véhicule choisi |
+| Fiche véhicule, onglet Autres dépenses | « Saisir une dépense » | une dépense par ligne (assurance, péage, documents, frais de route…) |
+| Menu « Ajouter » de la fiche | Intervention, Dépense | le même formulaire que les boutons |
+
+Chaque ligne porte la pièce jointe et le fournisseur ; le compteur est relevé une
+seule fois. Une clé `FAC-AAMMJJ-XXXX`, écrite dans la référence de l'intervention
+et de ses lignes, les rassemble à l'atelier en **une ligne au total de la
+facture** — le suffixe des numéros ne le pouvait pas : une facture a plusieurs
+lignes, et les numéros se renumérotent en base, chaque table de son côté.
+
+**Plus aucun fichier ne s'ouvre hors de l'application.** « Ouvrir dans un
+onglet » a quitté le cadre des pièces ; le justificatif d'une ligne dit
+« Jointe », et la ligne l'ouvre à droite ; le bon scanné de la caisse et les
+pièces du chauffeur s'ouvrent dans un cadre par-dessus l'écran. Restent les
+étiquettes QR : un PDF que l'application fabrique pour l'imprimer, pas une pièce
+jointe.
+
+Au passage : les formulaires de la fiche proposaient le 2 septembre comme date,
+jour où ils ont été écrits ; ils proposent aujourd'hui. Et une dépense tout juste
+créée garde sa pièce jointe avant même que la base ne la renvoie.
+
+Le dépôt d'un PDF demande la base branchée — en démonstration, seules les images
+passent. Banc : `node --import tsx --import ./scripts/rendu/hook.mjs scripts/tester-facture.mts`
+(21 contrôles).

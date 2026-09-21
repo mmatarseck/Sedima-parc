@@ -524,7 +524,7 @@ export function OngletDocuments({ fiche, cible, onAjouter }: { fiche: FicheChauf
             libelle: "Justificatif",
             rendu: (d) =>
               d.fichier ? (
-                <OuvrirPiece fichier={d.fichier} libelle="Ouvrir" titre="Ouvrir la pièce attachée" />
+                <OuvrirPiece fichier={d.fichier} titre="La pièce attachée" />
               ) : d.justificatif ? (
                 <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-texte-2" title="La pièce est déclarée fournie, mais aucun fichier n'y est attaché : « Modifier » permet de l'ajouter.">
                   <FileText className="size-3.5 text-attenue" strokeWidth={1.8} />
