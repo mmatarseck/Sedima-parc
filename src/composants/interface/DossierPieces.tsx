@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExternalLink, FileText, Image as IconeImage, Plus, Trash2 } from "lucide-react";
+import { FileText, Image as IconeImage, Plus, Trash2 } from "lucide-react";
 import { Carte } from "@/composants/interface/Carte";
+import { VisionneusePiece, estImage } from "@/composants/interface/VisionneusePiece";
 import type { PieceDossier } from "@/domaine/fiche";
 import { date as formaterDate } from "@/lib/format";
-import { urlPhoto } from "@/lib/photos";
 
 /* ============================================================================
  * Un dossier de pièces : des familles à gauche, la pièce ouverte à droite.
@@ -17,9 +17,9 @@ import { urlPhoto } from "@/lib/photos";
  * geste qui dépose ; retirer est un geste rendu à qui l'appelle, parce que
  * c'est la ligne porteuse qui sait se vider.
  *
- * LES ADRESSES SE SIGNENT AU CLIC, jamais au chargement : le seau est privé,
- * et signer trente pièces pour n'en regarder aucune serait trente appels pour
- * rien.
+ * Le cadre de droite est `VisionneusePiece`, que les listes de dépenses
+ * partagent : une pièce s'ouvre de la même façon partout, et son adresse ne se
+ * signe qu'à l'ouverture.
  * ==========================================================================*/
 
 export interface FamillePieces {
@@ -31,36 +31,15 @@ export interface FamillePieces {
   deposer?: { libelle: string; onClick: () => void };
 }
 
-function estImage(chemin: string): boolean {
-  return /\.(jpe?g|png|webp|gif|avif)$/i.test(chemin);
-}
-
 export function DossierPieces({ familles, onRetirer, vide = "Aucune pièce n'est attachée." }: { familles: FamillePieces[]; onRetirer?: (p: PieceDossier) => void; vide?: string }) {
   const toutes = familles.flatMap((f) => f.pieces);
   const [choisie, setChoisie] = useState<PieceDossier | null>(null);
-  const [url, setUrl] = useState<string | null>(null);
-  const [etat, setEtat] = useState<"repos" | "signature" | "refus">("repos");
 
   /* La première pièce s'ouvre d'elle-même : un dossier qui s'ouvre vide
      demanderait un clic pour ne rien apprendre. */
   useEffect(() => {
     if (!choisie && toutes.length > 0) setChoisie(toutes[0]!);
   }, [toutes, choisie]);
-
-  useEffect(() => {
-    if (!choisie) return;
-    let vivant = true;
-    setEtat("signature");
-    setUrl(null);
-    void urlPhoto(choisie.fichier).then((adresse) => {
-      if (!vivant) return;
-      setUrl(adresse);
-      setEtat(adresse ? "repos" : "refus");
-    });
-    return () => {
-      vivant = false;
-    };
-  }, [choisie]);
 
   const retirable = choisie && onRetirer && choisie.type !== "licence";
 
@@ -111,49 +90,20 @@ export function DossierPieces({ familles, onRetirer, vide = "Aucune pièce n'est
         ))}
       </div>
 
-      <Carte
-        titre={choisie?.libelle ?? "Pièce"}
+      <VisionneusePiece
+        fichier={choisie?.fichier ?? null}
+        libelle={choisie?.libelle ?? "Pièce"}
         precision={choisie ? [choisie.date ? formaterDate(choisie.date) : null, choisie.precision].filter(Boolean).join(" · ") : "Choisissez une pièce dans une famille, ou déposez-en une"}
-        action={
-          choisie ? (
-            <span className="flex items-center gap-2">
-              {url ? (
-                <a href={url} target="_blank" rel="noopener noreferrer" className="bouton-secondaire h-9">
-                  <ExternalLink className="size-4 text-texte-2" strokeWidth={1.7} />
-                  Ouvrir dans un onglet
-                </a>
-              ) : null}
-              {retirable ? (
-                <button type="button" onClick={() => onRetirer(choisie)} className="bouton-secondaire h-9 text-defavorable" title="Retire le fichier de la ligne ; la ligne reste">
-                  <Trash2 className="size-4" strokeWidth={1.7} />
-                  Retirer
-                </button>
-              ) : null}
-            </span>
+        vide={vide}
+        actions={
+          retirable ? (
+            <button type="button" onClick={() => onRetirer(choisie)} className="bouton-secondaire h-9 text-defavorable" title="Retire le fichier de la ligne ; la ligne reste">
+              <Trash2 className="size-4" strokeWidth={1.7} />
+              Retirer
+            </button>
           ) : null
         }
-        sansMarge
-      >
-        <div className="mx-5 mb-5 h-[70vh] min-h-[420px] overflow-hidden rounded-[12px] border border-bordure bg-surface-2">
-          {!choisie ? (
-            <p className="grid h-full place-items-center px-6 text-center text-[13px] leading-[1.5] text-texte-2">{vide}</p>
-          ) : etat === "signature" ? (
-            <p className="grid h-full place-items-center text-[13px] text-texte-2">Ouverture de la pièce…</p>
-          ) : etat === "refus" || !url ? (
-            /* Pièce illisible : le seau a refusé de signer, ou la ligne cite un
-               fichier qui n'y est plus. On le dit — un cadre vide laisserait
-               croire à un document blanc. */
-            <p className="grid h-full place-items-center px-6 text-center text-[13px] leading-[1.5] text-texte-2">
-              Cette pièce n&apos;a pas pu être ouverte. Le fichier a peut-être été retiré du dossier, ou la session n&apos;a plus le droit de le lire.
-            </p>
-          ) : estImage(choisie.fichier) ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={url} alt={choisie.libelle} className="h-full w-full object-contain" />
-          ) : (
-            <iframe src={url} title={choisie.libelle} className="h-full w-full" />
-          )}
-        </div>
-      </Carte>
+      />
     </div>
   );
 }

@@ -48,7 +48,7 @@ export interface FaitsFiche {
   affectations: { numero: string; chauffeurId: string | null; chauffeur: string; role: "titulaire" | "suppleant"; debut: string; fin: string | null; motif: string }[];
   releves: { numero: string; date: string; km: number; origine: string; motifRejet: string | null }[];
   pleins: { numero: string; date: string; litres: number; prixLitre: number; montant: number; km: number | null; source: string; reference: string | null }[];
-  depenses: { numero: string; date: string; poste: PosteDepense; libelle: string; montant: number; beneficiaire: string | null; reference: string | null; origine: "caisse" | "bon-de-commande" | "facture"; justificatif: boolean; km: number | null; kmMotifRejet: string | null }[];
+  depenses: { numero: string; date: string; poste: PosteDepense; libelle: string; montant: number; beneficiaire: string | null; reference: string | null; origine: "caisse" | "bon-de-commande" | "facture"; justificatif: boolean; km: number | null; kmMotifRejet: string | null; /** La facture ou le reçu, posé par la lecture à part de `donnees/fiche`. */ photo?: string | null }[];
   interventions: { numero: string; date: string; type: "preventif" | "curatif"; objet: string; garage: string | null; montant: number; immobilisationJours: number | null; km: number | null; reference: string | null }[];
   /** La trace des statuts, du plus ancien au plus récent. */
   statuts: { le: string; avant: string | null; apres: string | null; motif: string }[];
@@ -165,7 +165,7 @@ export function assemblerFiche(l: LigneFlotte, faits: FaitsFiche, parametres: Pa
 
   /* ---- Pleins et dépenses ---- */
   const pleins: PleinFiche[] = faits.pleins.map((p) => ({ id: p.numero, numero: p.numero, date: p.date, source: p.source, litres: p.litres, prixLitre: p.prixLitre, montant: p.montant, reference: p.reference ?? "", km: p.km, kmMotifRejet: null })).sort((a, b) => b.date.localeCompare(a.date));
-  const depenses: DepenseFiche[] = faits.depenses.map((d) => ({ id: d.numero, numero: d.numero, date: d.date, poste: d.poste, libelle: d.libelle, montant: d.montant, beneficiaire: d.beneficiaire, reference: d.reference, origine: d.origine, justificatif: d.justificatif, km: d.km, kmMotifRejet: d.kmMotifRejet }));
+  const depenses: DepenseFiche[] = faits.depenses.map((d) => ({ id: d.numero, numero: d.numero, date: d.date, poste: d.poste, libelle: d.libelle, montant: d.montant, beneficiaire: d.beneficiaire, reference: d.reference, origine: d.origine, justificatif: d.justificatif, km: d.km, kmMotifRejet: d.kmMotifRejet, photo: d.photo ?? null }));
   /* Un plein est une dépense de carburant ; s'il n'a pas sa ligne de dépense, la fiche la déduit — la caisse et la cuve sont une seule vérité. */
   const numerosDepenses = new Set(depenses.map((d) => d.numero));
   for (const p of pleins) {

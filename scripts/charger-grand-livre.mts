@@ -53,6 +53,7 @@ import { join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import { lireClasseur, type Cellule } from "./lire-xlsx.mts";
 import { cleFournisseur } from "./noms-fournisseurs.mts";
+import { lecteurDePlaques } from "./plaques-libelle.mts";
 
 const CLASSEUR =
   "C:/Users/mamadou.seck/OneDrive - SEDIMA S.A/Direction des Operations (DO) - Documents/2. Stratégie, Budget, Objectifs/21. Budget/212. Budget 2027/Fichiers de travail/RECAP 31082026.xlsx";
@@ -114,19 +115,17 @@ type VehiculeBase = { immatriculation: string; vin: string | null; marque: strin
 const flotte = await tout<VehiculeBase>("vehicule", "immatriculation,vin,marque,appellation,valeur_acquisition");
 const parPlaque = new Map(flotte.map((v) => [v.immatriculation, v]));
 const parVin = new Map(flotte.filter((v) => v.vin).map((v) => [v.vin!.toUpperCase(), v]));
-/** Les quatre à six derniers signes d'une plaque (« 4922BB »), quand ils ne désignent qu'un véhicule : le grand livre écrit « AA4922BB » pour DK 4922 BB. */
-const parQueue = new Map<string, string | null>();
-for (const v of flotte) {
-  const q = /^[A-Z]{2}(\d{3,4}[A-Z]{1,2})$/.exec(v.immatriculation)?.[1];
-  if (q) parQueue.set(q, parQueue.has(q) ? null : v.immatriculation);
-}
-
-const prestataires = await tout<{ raison_sociale: string }>("prestataire", "raison_sociale");
+/* Les fournisseurs que ce chargement a créés (PRE-2026-6…) restent « à créer » : sans cela, le fichier des prestataires se viderait après le premier passage. */
+const prestataires = (await tout<{ numero: string; raison_sociale: string }>("prestataire", "numero,raison_sociale")).filter((p) => !p.numero.startsWith("PRE-2026-6"));
 const clesPrestataires = new Set(prestataires.map((p) => cleFournisseur(p.raison_sociale)));
 
 const bonsEnBase = new Set<string>();
 for (const t of ["depense", "intervention"]) {
-  for (const d of await tout<{ reference: string | null }>(t, "reference")) {
+  for (const d of await tout<{ numero: string; reference: string | null }>(t, "numero,reference")) {
+    /* Ce que ce chargement a lui-même écrit ne compte pas : une fois joué, ses
+       propres lignes citent leurs bons, et un second passage les écarterait
+       comme « déjà en base » — le fichier fondrait à chaque génération. */
+    if (/^(DEP|INT)-GL-/.test(d.numero)) continue;
     const m = /CMD\d?-(\d{5,9})/.exec(d.reference ?? "");
     if (m) bonsEnBase.add(m[1]!);
   }
@@ -134,36 +133,7 @@ for (const t of ["depense", "intervention"]) {
 
 /* -- 2. Les plaques dans un libellé ------------------------------------------ */
 
-const RE_PLAQUE = /(?<![A-Z0-9])(?:([A-Z]{2})[\s-]?(\d{3})[\s-]?([A-Z]{2})|([A-Z]{2})[\s-]?(\d{4})[\s-]?([A-Z]{1,2}))(?![A-Z0-9])/g;
-
-/** Les plaques que le grand livre écrit de travers, et que rien ne redresse seul. Relues le 18 septembre 2026. */
-const PLAQUES_CORRIGEES: [RegExp, string][] = [
-  [/\bAA106EN\b/g, "AA106NE"], // le Coaster du personnel, lettres interverties
-  [/\bAA09VA\b/g, "AA093VA"], // Tata LPT1618 des abattoirs, un chiffre sauté
-  [/\bDK9649\b(?!\s?BG)/g, "DK9649BG"], // Kia Sorento, série oubliée
-];
-
-/** Les véhicules du parc qu'un libellé nomme, dans l'ordre où il les nomme. */
-function plaquesDe(libelle: string): { plaques: string[]; redressees: string[] } {
-  /* « VEHAA898PZ » : le mot collé à la plaque la cache ; on le décolle. */
-  let t = libelle.toUpperCase().replace(/VEH(?:ICULE)?S?(?=[A-Z]{2}\s?\d{3})/g, "VEH ");
-  for (const [faux, juste] of PLAQUES_CORRIGEES) t = t.replace(faux, juste);
-  const plaques: string[] = [];
-  const redressees: string[] = [];
-  for (const m of t.matchAll(RE_PLAQUE)) {
-    const lue = m[1] ? `${m[1]}${m[2]}${m[3]}` : `${m[4]}${m[5]}${m[6]}`;
-    let plaque: string | null = parPlaque.has(lue) ? lue : null;
-    if (!plaque) {
-      const q = parQueue.get(lue.slice(2));
-      if (q) {
-        plaque = q;
-        redressees.push(`${lue} → ${q}`);
-      }
-    }
-    if (plaque && !plaques.includes(plaque)) plaques.push(plaque);
-  }
-  return { plaques, redressees };
-}
+const plaquesDe = lecteurDePlaques(parPlaque.keys());
 
 /* -- 3. Le classeur ---------------------------------------------------------- */
 

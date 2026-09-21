@@ -11,7 +11,9 @@ import { lireTransferts } from "@/lib/transferts-demo";
 import Link from "next/link";
 import { AlertTriangle, FileText, Plus, Wrench } from "lucide-react";
 import { Carte, Definitions, TableauSimple } from "@/composants/interface/Carte";
+import { ListeEtPiece } from "@/composants/interface/ListeEtPiece";
 import { Numero } from "@/composants/interface/Numero";
+import { VisionneusePiece } from "@/composants/interface/VisionneusePiece";
 import { useEdition } from "@/composants/transactions/ContexteEdition";
 import { useAjoutVehicule } from "./ajout";
 import { CHAMPS } from "@/composants/transactions/champs";
@@ -801,9 +803,32 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
   /* Le total se lit sur les lignes fusionnées : une paire compte son montant une
      fois, pas deux — c'est le même franc sur l'intervention et sur la dépense. */
   const total = atelier.reduce((s, l) => s + l.montant, 0);
+  /* La ligne ouverte : sa facture se lit à droite, la liste se rétracte (métier,
+     21 septembre 2026). On retient la clé, pas la ligne — la liste se refait à
+     chaque écriture, et la pièce doit suivre la ligne corrigée. */
+  const [cleOuverte, setCleOuverte] = useState<string | null>(null);
+  const ouverte = cleOuverte ? (atelier.find((l) => l.cle === cleOuverte) ?? null) : null;
 
   return (
     <div className="flex flex-col gap-5">
+      <ListeEtPiece
+        piece={
+          ouverte ? (
+            <VisionneusePiece
+              fichier={ouverte.fichier}
+              libelle={ouverte.objet}
+              precision={[date(ouverte.date), ouverte.tiers, montant(ouverte.montant), ouverte.reference].filter(Boolean).join(" · ")}
+              vide="Aucune facture n'est attachée à cette ligne. « Modifier la ligne » permet de la joindre : elle s'ouvrira ici."
+              onFermer={() => setCleOuverte(null)}
+              actions={
+                <button type="button" onClick={() => ouverte.modifier()} className="bouton-secondaire h-9">
+                  Modifier la ligne
+                </button>
+              }
+            />
+          ) : null
+        }
+      >
       <Carte
         titre="Atelier"
         precision={`${atelier.length} ligne${atelier.length > 1 ? "s" : ""}${paires.length ? ` · ${paires.length} intervention${paires.length > 1 ? "s" : ""} avec leur dépense sur une seule ligne` : ""} · ${montant(total)} sur 12 mois`}
@@ -827,7 +852,13 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
           */}
         <TableauSimple<LigneAtelier> reglages="fiche-vehicule.atelier.3"
           fixe
-          ajustable
+          /* Rétractée à côté d'une pièce, la liste ne garde que ce qui s'y lit, et
+             laisse le navigateur répartir : ses largeurs réglées sont celles de
+             la pleine page. */
+          ajustable={!ouverte}
+          seulement={ouverte ? ["date", "objet", "montant"] : undefined}
+          surLigne={(l) => setCleOuverte((c) => (c === l.cle ? null : l.cle))}
+          ouverte={cleOuverte}
           cle={(l) => l.cle}
           lignes={atelier}
           vide="Aucune intervention ni fourniture sur la période."
@@ -868,6 +899,7 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
           ]}
         />
       </Carte>
+      </ListeEtPiece>
 
     </div>
   );
@@ -943,7 +975,29 @@ export function OngletAutresDepenses({ fiche, cible }: { fiche: FicheVehicule; c
   const { surcharger, demander, creations } = useEdition();
   const autres = [...creations("depense", fabriquerDepense), ...fiche.depenses.map(surcharger)].filter((d) => groupeDuPoste(d.poste) === "autres");
   const total = autres.reduce((s, d) => s + d.montant, 0);
+  /* Comme à l'atelier : le clic ouvre la facture à droite, la liste se rétracte. */
+  const [idOuverte, setIdOuverte] = useState<string | null>(null);
+  const ouverte = idOuverte ? (autres.find((d) => d.id === idOuverte) ?? null) : null;
+  const modifier = (d: DepenseFiche) => demander({ type: "depense", numero: d.numero, titre: `Dépense · ${d.libelle}`, valeurs: d as unknown as Record<string, unknown> });
   return (
+    <ListeEtPiece
+      piece={
+        ouverte ? (
+          <VisionneusePiece
+            fichier={ouverte.photo ?? null}
+            libelle={ouverte.libelle}
+            precision={[date(ouverte.date), POSTE_DEPENSE[ouverte.poste], ouverte.beneficiaire, montant(ouverte.montant), ouverte.reference].filter(Boolean).join(" · ")}
+            vide="Aucune facture n'est attachée à cette dépense. « Modifier la ligne » permet de la joindre : elle s'ouvrira ici."
+            onFermer={() => setIdOuverte(null)}
+            actions={
+              <button type="button" onClick={() => modifier(ouverte)} className="bouton-secondaire h-9">
+                Modifier la ligne
+              </button>
+            }
+          />
+        ) : null
+      }
+    >
     <Carte
       titre="Autres dépenses"
       precision={`${autres.length} dépenses · ${montant(total)} — assurance, documents, péages, frais de route, contraventions, divers`}
@@ -960,7 +1014,10 @@ export function OngletAutresDepenses({ fiche, cible }: { fiche: FicheVehicule; c
         lignes={autres}
         numero={(d) => d.numero}
         cible={cible}
-        surModifier={(d) => demander({ type: "depense", numero: d.numero, titre: `Dépense · ${d.libelle}`, valeurs: d as unknown as Record<string, unknown> })}
+        seulement={ouverte ? ["date", "libelle", "montant"] : undefined}
+        surLigne={(d) => setIdOuverte((c) => (c === d.id ? null : d.id))}
+        ouverte={idOuverte}
+        surModifier={modifier}
         colonnes={[
           { cle: "numero", libelle: "Réf.", rendu: (d) => <Numero valeur={d.numero} /> },
           { cle: "date", libelle: "Date", largeur: "110px", rendu: (d) => <span className="code whitespace-nowrap">{date(d.date)}</span> },
@@ -969,12 +1026,13 @@ export function OngletAutresDepenses({ fiche, cible }: { fiche: FicheVehicule; c
           { cle: "beneficiaire", libelle: "Bénéficiaire", rendu: (d) => d.beneficiaire ?? <span className="text-attenue-2">—</span> },
           { cle: "origine", libelle: "Origine", rendu: (d) => <PastilleOrigine origine={d.origine} /> },
           { cle: "reference", libelle: "Pièce", rendu: (d) => <span className="code whitespace-nowrap text-texte-2">{d.reference ?? "—"}</span> },
-          { cle: "justificatif", libelle: "Justificatif", rendu: (d) => <Justificatif present={d.justificatif} /> },
+          { cle: "justificatif", libelle: "Justificatif", rendu: (d) => <Justificatif present={d.justificatif} fichier={d.photo ?? undefined} /> },
           { cle: "km", libelle: "Km relevé", alignee: "droite", rendu: (d) => <KmReleve km={d.km} motifRejet={d.kmMotifRejet} /> },
           { cle: "montant", libelle: "Montant", alignee: "droite", rendu: (d) => <span className="font-medium">{montant(d.montant)}</span> },
         ]}
       />
     </Carte>
+    </ListeEtPiece>
   );
 }
 

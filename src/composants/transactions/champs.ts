@@ -279,6 +279,9 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "reference", libelle: "Pièce", type: "texte" },
     { cle: "km", libelle: "Km relevé", type: "nombre", unite: "km" },
     { cle: "justificatif", libelle: "Justificatif fourni", type: "oui-non" },
+    /* La facture vit sur la ligne (16 septembre 2026) : on la joint, on la
+       remplace et on la retire d'ici, et elle s'ouvre à côté de la liste. */
+    { cle: "photo", libelle: "La facture ou le reçu", type: "photo" },
   ],
   plein: [
     DATE("date"),
@@ -663,7 +666,8 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
       return [
         { cle: "poste", libelle: "Poste", type: "choix", options: options(POSTE_DEPENSE).filter((o) => !["carburant", "amortissement", "salaire"].includes(o.valeur)), obligatoire: true },
         { cle: "origine", libelle: "Origine du décaissement", type: "choix", options: [{ valeur: "caisse", libelle: "Caisse parc" }, { valeur: "bon-de-commande", libelle: "Bon de commande" }, { valeur: "facture", libelle: "Facture" }], obligatoire: true },
-        ...base,
+        /* À la saisie, la pièce est obligatoire : le champ de la modification cède la place au sien. */
+        ...base.filter((c) => c.cle !== "photo"),
         { cle: "photo", libelle: "Photo de la pièce", type: "photo", obligatoire: true },
       ];
     case "plein":

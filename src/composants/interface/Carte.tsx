@@ -102,6 +102,9 @@ export function TableauSimple<T>({
   reglages,
   figerEnTete = "fiche",
   ajustable = false,
+  surLigne,
+  ouverte,
+  seulement,
 }: {
   colonnes: { cle: string; libelle: string; alignee?: "droite"; largeur?: string; rendu: (l: T) => React.ReactNode; parDefaut?: boolean }[];
   lignes: T[];
@@ -140,6 +143,19 @@ export function TableauSimple<T>({
    * dans une fiche, on préfère laisser la page défiler d'un seul tenant.
    */
   ajustable?: boolean;
+  /**
+   * Le clic sur la ligne : il ouvre ce que la ligne porte — sa facture, à côté
+   * de la liste (21 septembre 2026). Le crayon garde la modification.
+   */
+  surLigne?: (l: T) => void;
+  /** La clé (`cle`) de la ligne ouverte : elle reste marquée tant que sa pièce se lit à côté. */
+  ouverte?: string | null;
+  /**
+   * Les seules colonnes à montrer, le temps que la liste est rétractée à côté
+   * d'une pièce ouverte. Ce n'est pas un réglage : rien n'est enregistré, et la
+   * liste retrouve ses colonnes dès que la pièce se referme.
+   */
+  seulement?: string[];
 }) {
   /* Colonnes visibles : celles du compte quand un réglage est enregistré,
      sinon celles marquées par défaut. La signature des clés, et non le
@@ -161,7 +177,11 @@ export function TableauSimple<T>({
   }, [reglages, signature]);
 
   const definitions = useMemo(() => colonnes.map((c) => ({ cle: c.cle, parDefaut: c.parDefaut !== false })), [colonnes]);
-  const affichees_colonnes = useMemo(() => (reglages ? colonnes.filter((c) => visibles.includes(c.cle)) : colonnes), [colonnes, visibles, reglages]);
+  const signatureSeulement = seulement?.join("|") ?? "";
+  const affichees_colonnes = useMemo(
+    () => (signatureSeulement ? colonnes.filter((c) => signatureSeulement.split("|").includes(c.cle)) : reglages ? colonnes.filter((c) => visibles.includes(c.cle)) : colonnes),
+    [colonnes, visibles, reglages, signatureSeulement],
+  );
 
   function basculerColonne(c: string) {
     setVisibles((precedent) => {
@@ -373,7 +393,13 @@ export function TableauSimple<T>({
             const n = numero?.(l);
             const visee = n !== undefined && n === cible;
             return (
-            <tr key={cle(l)} data-numero={n} className={`group ${visee ? "bg-accent-fond" : "hover:bg-surface-2"}`}>
+            <tr
+              key={cle(l)}
+              data-numero={n}
+              onClick={surLigne ? () => surLigne(l) : undefined}
+              aria-current={ouverte !== undefined && ouverte !== null && ouverte === cle(l) ? true : undefined}
+              className={`group ${surLigne ? "cursor-pointer" : ""} ${visee || (ouverte !== undefined && ouverte !== null && ouverte === cle(l)) ? "bg-accent-fond" : "hover:bg-surface-2"}`}
+            >
               {affichees_colonnes.map((c) => (
                 <td
                   key={c.cle}
