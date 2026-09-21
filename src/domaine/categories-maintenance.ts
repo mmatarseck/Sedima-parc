@@ -46,6 +46,8 @@ export const SYSTEMES_MAINTENANCE: SystemeMaintenance[] = [
   { code: "017", libelle: "Pneus", categorie: "1" },
   { code: "018", libelle: "Roues et moyeux", categorie: "1" },
   { code: "111", libelle: "Soubassement", categorie: "1" },
+  /* Les « divers » d'une catégorie, que Fleetio rangeait sans système (revue du 21 septembre 2026). */
+  { code: "020", libelle: "Transmission — divers", categorie: "2" },
   { code: "021", libelle: "Pont avant", categorie: "2" },
   { code: "022", libelle: "Pont arrière", categorie: "2" },
   { code: "023", libelle: "Embrayage", categorie: "2" },
@@ -53,6 +55,7 @@ export const SYSTEMES_MAINTENANCE: SystemeMaintenance[] = [
   { code: "025", libelle: "Boîte de transfert", categorie: "2" },
   { code: "026", libelle: "Boîte de vitesses manuelle", categorie: "2" },
   { code: "027", libelle: "Boîte de vitesses automatique", categorie: "2" },
+  { code: "030", libelle: "Électricité — divers", categorie: "3" },
   { code: "031", libelle: "Charge et alternateur", categorie: "3" },
   { code: "032", libelle: "Démarrage et batterie", categorie: "3" },
   { code: "033", libelle: "Allumage", categorie: "3" },
@@ -63,7 +66,10 @@ export const SYSTEMES_MAINTENANCE: SystemeMaintenance[] = [
   { code: "043", libelle: "Échappement et émissions", categorie: "4" },
   { code: "044", libelle: "Alimentation en carburant", categorie: "4" },
   { code: "045", libelle: "Moteur", categorie: "4" },
+  { code: "050", libelle: "Accessoires et aménagements", categorie: "5" },
+  { code: "052", libelle: "Hydraulique — benne et vérins", categorie: "5" },
   { code: "053", libelle: "Fluides et fournitures", categorie: "5" },
+  { code: "054", libelle: "Groupe frigorifique et caisse isotherme", categorie: "5" },
   { code: "999", libelle: "Divers", categorie: "9" },
 ];
 
@@ -93,42 +99,42 @@ export function optionsSystemes(): { valeur: string; libelle: string }[] {
  * DIVERS »). Nul quand rien ne se reconnaît : la tâche reste « à classer ».
  */
 const MOTS: [RegExp, string][] = [
-  [/vidange|huile moteur|filtre (à|a) huile/i, "045"],
-  [/clim|chauffage|compresseur|hvac/i, "001"],
-  [/carross|t[ôo]le|peinture|pare[- ]?(brise|choc)|r[ée]troviseur|vitre|porti[èe]re|serrure|si[èe]ge|essuie/i, "002"],
-  [/tableau de bord|compteur|indicateur|jauge/i, "003"],
-  [/frein|plaquette|disque|tambour|garniture|m[âa]choire/i, "013"],
-  [/ch[âa]ssis|cadre|soudure/i, "014"],
-  [/direction|cr[ée]maill[èe]re|rotule de direction/i, "015"],
-  [/suspension|amortisseur|ressort|lame|silent|barre stab|jambe de force|bras/i, "016"],
-  [/pneu|vulcani|chambre (à|a) air|crevaison/i, "017"],
-  [/roue|moyeu|roulement|jante|parall[ée]lisme|alignement/i, "018"],
-  [/pont avant|homocin[ée]tique|cardan avant/i, "021"],
-  [/pont arri[èe]re|diff[ée]rentiel|essieu/i, "022"],
+  /* L'ordre compte : le premier motif reconnu l'emporte. Les composants
+     précis passent donc avant les mots génériques — un « disque
+     d'embrayage » est de l'embrayage, pas du freinage ; un « ballon d'air »
+     est de la suspension, pas du freinage ; un compresseur « frigo » est du
+     groupe frigorifique, pas de la climatisation (revue du 21 septembre 2026). */
   [/embray/i, "023"],
+  [/ballon|suspension pneumatique/i, "016"],
+  [/golden shop|frigo|froid|fr[ée]on|frigorig[èe]ne|isotherme/i, "054"],
+  [/v[ée]rin|hydrauliqu(e|es) (de|du) (benne|v[ée]rin)|benne|hydraulic oil/i, "052"],
+  [/vidange|huile moteur|filtre (à|a) huile/i, "045"],
+  [/clim|chauffage|hvac/i, "001"],
+  [/carross|t[ôo]le|peinture|pare[- ]?(brise|choc)|r[ée]troviseur|vitre|porti[èe]re|serrure|si[èe]ge|essuie|sinistre|remise en [ée]tat/i, "002"],
+  [/tableau de bord|compteur|indicateur|jauge/i, "003"],
+  [/\bair\b|aire\b|dessicat|poumon|[ée]lectrovanne|distributeur|boudin|compresseur/i, "013"],
+  [/frein|plaquette|disque|tambour|garniture|m[âa]choire|[ée]trier/i, "013"],
+  [/attelage|sellette|crochet|ch[âa]ssis|cadre|soudure/i, "014"],
+  [/direction|cr[ée]maill[èe]re|rotule de direction/i, "015"],
+  [/suspension|amortisseur|ressort|\blames?\b|silent|barre stab|jambe de force|bras/i, "016"],
+  [/pneu|vulcani|chambre (à|a) air|crevaison|gonflage/i, "017"],
+  [/roue|moyeu|roulement|jante|goujon|bic[ôo]ne|parall[ée]lisme|alignement/i, "018"],
+  [/pont avant|homocin[ée]tique|cardan avant/i, "021"],
+  [/pont arri[èe]re|diff[ée]rentiel|essieu|engren/i, "022"],
   [/arbre de transmission|cardan|croisillon/i, "024"],
-  [/bo[îi]te (de )?(vitesse|transfert)|transmission/i, "026"],
+  [/bo[îi]te (de )?(vitesse|transfert)|transmission|robot/i, "026"],
   [/alternateur|r[ée]gulateur de charge/i, "031"],
   [/batterie|d[ée]marreur/i, "032"],
   [/allumage|bougie|bobine|contact/i, "033"],
-  [/feu|phare|ampoule|clignotant|[ée]clairage|signalisation/i, "034"],
+  [/feu|phare|ampoule|bulb|clignotant|[ée]clairage|signalisation|gabarit|relais|klaxon|avertisseur|prise (de )?(courant|remorque)/i, "034"],
   [/cam[ée]ra|alarme|gps|balise|traceur/i, "036"],
   [/filtre (à|a) air|admission|papillon|collecteur d.admission/i, "041"],
-  [/radiateur|refroidiss|pompe (à|a) eau|thermostat|ventilateur|durite/i, "042"],
-  [/[ée]chappement|pot|silencieux|turbo|egr|fap|adblue/i, "043"],
-  [/carburant|gasoil|gazole|injecteur|injection|pompe (à|a) (gasoil|carburant)|r[ée]servoir/i, "044"],
-  [/moteur|culasse|joint de culasse|courroie|distribution|segment|piston|vilebrequin/i, "045"],
-  [/graissage|lubrifi|liquide|fourniture|atelier/i, "053"],
-  /* Relus sur les tâches créées à la main dans Fleetio, le 21 septembre 2026 :
-     l'air comprimé des camions est leur freinage ; la graisse, la colle et le
-     silicone sont des fournitures ; le froid est celui de la caisse. */
-  [/\bair\b|aire\b|dessicat|poumon|[ée]lectrovanne|distributeur|[ée]trier|boudin/i, "013"],
-  [/froid|frigo/i, "001"],
-  [/ampoule|bulb|relais|klaxon|prise (de )?courant/i, "034"],
-  [/graisse|grease|engren|silicone|\bcol+e\b|bouteille/i, "053"],
-  [/robot|vitesse/i, "026"],
-  [/sinistre|remise en [ée]tat/i, "002"],
-  [/lavage|remorquage|d[ée]pannage|assistance|administratif|transport|visite technique|contr[ôo]le technique/i, "999"],
+  [/radiateur|refroidiss|glaciol|pompe (à|a) eau|thermostat|ventilateur|h[ée]lice|durite/i, "042"],
+  [/[ée]chappement|\bpot\b|silencieux|turbo|egr|fap|adblue/i, "043"],
+  [/carburant|gasoil|gazole|injecteur|injection|r[ée]servoir/i, "044"],
+  [/moteur|culasse|courroie|distribution|segment|piston|vilebrequin/i, "045"],
+  [/graissage|graisse|grease|lubrifi|liquide|fourniture|atelier|silicone|\bcol+e\b/i, "053"],
+  [/lavage|remorquage|d[ée]pannage|assistance|d[ée]sinfection|administratif/i, "999"],
 ];
 
 export function systemeReconnu(libelle: string): string | null {

@@ -93,7 +93,8 @@ attendu("seul le responsable du parc — et l'administrateur — clôt un servic
 /* -- La classification comme Fleetio ----------------------------------------------------- */
 
 attendu("« vidange » se range au moteur, « PLAQUETTE FREIN AV » aux freins, « appareil air » au freinage pneumatique", systemeReconnu("vidange") === "045" && systemeReconnu("PLAQUETTE FREIN AV") === "013" && systemeReconnu("appareil air") === "013");
-attendu("un libellé qu'on ne reconnaît pas reste à classer", systemeReconnu("crochet teton") === null);
+attendu("le composant précis l'emporte sur le mot générique : disque d'embrayage à l'embrayage, ballon d'air à la suspension, compresseur frigo au groupe frigorifique", systemeReconnu("DISQUE EMBRAYAGE") === "023" && systemeReconnu("BALLON AIR") === "016" && systemeReconnu("Compresseur Golden Shop") === "054");
+attendu("un libellé qu'on ne reconnaît pas reste à classer", systemeReconnu("service HSE") === null);
 attendu(`le classement se lit catégorie › système (${libelleClassement({ systeme: "017", ensemble: "001" })})`, libelleClassement({ systeme: "017", ensemble: "001" }) === "Châssis › Pneus › 001" && libelleClassement({}) === "À classer");
 attendu("une tâche se retrouve par son nom ou un alias, aux accents près", tacheParLibelle([{ libelle: "Remplacement de l'huile moteur et du filtre", alias: ["vidange"] }], "VIDANGE")?.libelle === "Remplacement de l'huile moteur et du filtre" && cleTache("Moteur (Divers)") === cleTache("MOTEUR DIVERS"));
 
@@ -145,7 +146,15 @@ if (bac) {
   await pg.exec(catalogue);
   await pg.exec(catalogue);
   const nTaches = (await pg.query(`select count(*)::int as n, count(*) filter (where a_classer)::int as a from tache_service`)).rows[0] as { n: number; a: number };
-  attendu(`le catalogue tiré de Fleetio entre, et se rejoue sans doublon (${nTaches.n} tâches, ${nTaches.a} à classer)`, nTaches.n === (catalogue.match(/^\s+\('TCH-/gm) ?? []).length && nTaches.n > 300);
+  attendu(`le catalogue tiré de Fleetio entre, et se rejoue sans doublon (${nTaches.n} tâches)`, nTaches.n === (catalogue.match(/^\s+\('TCH-/gm) ?? []).length && nTaches.n > 250);
+  const codifiees = (await pg.query(`select count(*) filter (where a_classer or systeme is null or ensemble is null or categorie is distinct from substr(systeme, 2, 1))::int as n from tache_service`)).rows[0] as { n: number };
+  attendu("toutes les tâches sont codifiées : catégorie, système, ensemble ; aucune à classer", nTaches.a === 0 && codifiees.n === 0);
+  const classeDe = async (alias: string) => ((await pg.query(`select libelle, systeme, ensemble from tache_service where $1 = any(alias)`, [alias])).rows[0] as { libelle: string; systeme: string; ensemble: string } | undefined);
+  const air = await classeDe("appareil air"), ballon = await classeDe("BALLON AIR"), embrayage = await classeDe("DISQUE EMBRAYAGE MERCEDES AXOR"), pneu = await classeDe("ACHATS PNEU 385");
+  attendu("la revue range les tâches mal créées : « appareil air » au circuit d'air des freins, « BALLON AIR » à la suspension, le disque d'embrayage à l'embrayage, l'achat de pneus au remplacement des pneus",
+    air?.systeme === "013" && ballon?.systeme === "016" && embrayage?.libelle === "Remplacement du disque d'embrayage" && pneu?.libelle === "Remplacement des pneus");
+  const retirees = (await pg.query(`select count(*)::int as n from tache_service where libelle in ('Location de véhicule', 'raccord', 'service HSE') or 'raccord' = any(alias)`)).rows[0] as { n: number };
+  attendu("ce qui n'est pas une tâche de maintenance est retiré", retirees.n === 0);
   const vidange = (await pg.query(`select libelle, systeme, categorie from tache_service where 'vidange' = any(alias)`)).rows[0] as { libelle: string; systeme: string; categorie: string } | undefined;
   attendu("« vidange » est un alias de la vidange moteur, système 045, catégorie 4", vidange?.systeme === "045" && vidange.categorie === "4");
   const mo = (await pg.query(`select count(*)::int as n from tache_service where lower(libelle) like 'main d%oeuvre%'`)).rows[0] as { n: number };

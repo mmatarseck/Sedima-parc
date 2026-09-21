@@ -19,7 +19,7 @@ du métier du même jour.*
 ```
 supabase/migrations/0059_depense_origine_stock.sql   -- une dépense peut venir du magasin (seule dans son fichier)
 supabase/migrations/0060_services_maintenance.sql    -- catalogue, signalements, service, clôture, droits, prix de référence
-supabase/taches-service.sql                          -- le catalogue tiré de Fleetio : 341 tâches
+supabase/taches-service.sql                          -- le catalogue tiré de Fleetio, revu : 286 tâches
 ```
 
 **Si 0060 a échoué à moitié** (« syntax error at end of input », 21 septembre 2026 : les tables `tache_service` et `signalement` créées, les colonnes du service et 0059 absentes), jouer à la place `supabase/rattrapage-0059-0060.sql` : les deux migrations en un fichier, sans commentaires, rejouable — éprouvé deux fois de suite sur une base dans cet état. Puis `taches-service.sql`.
@@ -144,17 +144,60 @@ Il vient de l'export Fleetio (`scripts/charger-taches-fleetio.mts`) :
   filtre », « MAIN D OEUVRE DEPANNAGE » dans « Assistance routière/remorquage »,
   etc. Le nom fondu reste en alias et se retrouve encore dans le formulaire.
 
-Restent **341 tâches**, classées comme Fleetio, sur trois niveaux :
+Les 143 tâches créées à la main dans Fleetio n'avaient pas de code, et beaucoup
+étaient mal créées. **La revue du 21 septembre 2026** les reprend une à une
+(table explicite dans le script, qui s'arrête si une tâche reste sans système) :
+
+- **8 retirées** : ce n'est pas de la maintenance, ou c'est illisible —
+  « Location de véhicule », « service HSE », « réparation quaie de
+  chargement », « raccord », « CONFECTIONNEUSE ECROUS », « JEUX ARRET
+  MERCESDES AXOR », et deux tâches d'engins (« AWD Filter Replacement »,
+  « Circle Drive Oil Replacement ») ;
+- **des achats de pièces saisis comme des tâches**, fondus dans la tâche qu'ils
+  servent : « ACHATS PNEU 385 » dans « Remplacement des pneus », « RIMULA
+  EXTRA » et « FILTRE A HUILE » dans la vidange moteur, « ACHAT BATTERIE »
+  dans « Remplacement de la batterie », « JEU DE PLAQUETTE » dans les
+  plaquettes de frein…
+- **des doublons** fondus : « GLACIOLE EAUX », « LAVAGE VEHICULE », « Huile
+  pour engreanages » (vidange du pont arrière)…
+- **25 tâches standard ajoutées**, bien nommées et codées, qui regroupent les
+  réparations réelles sans équivalent Fleetio :
+  - freins : circuit d'air de freinage (« appareil air », électrovanne,
+    distributeur, boudins), vases de frein (poumons), compresseur d'air, frein à
+    main, étrier ;
+  - châssis : ballons de suspension pneumatique, lames de ressort, goujons et
+    écrous de roue, attelage (crochet, sellette), contrôle et gonflage des
+    pneus ;
+  - groupe frigorifique (système 054) : entretien, compresseur, recharge de gaz,
+    ventilateur et condenseur, filtres et capillaires ;
+  - hydraulique de benne (052) : vérin, huile et filtre ;
+  - et : robot de boîte, feux de gabarit, klaxon, prise de remorque, graissage
+    général, réfection moteur, entretien périodique (révision), courroie de
+    ventilateur ;
+- **12 recodées** : les « Divers » sans système reçoivent le leur (Moteur 045,
+  Transmission 020, Électricité 030, Accessoires 050), les tâches d'essieu le
+  pont arrière (022), deux libellés corrigés (« Remise en état après sinistre »,
+  « Désinfection et désinsectisation du véhicule »).
+
+Le nom d'une tâche fondue reste en **alias** : taper « appareil air » ou
+« ACHATS PNEU 385 » dans le formulaire retrouve la bonne tâche.
+
+Restent **286 tâches, toutes codifiées** comme Fleetio, sur trois niveaux, et
+**aucune à classer** :
 
 - la **catégorie** : 0 cabine et carrosserie, 1 châssis, 2 transmission,
   3 électricité, 4 moteur, 5 accessoires et fluides, 9 divers ;
 - le **système** : 013 Freins, 017 Pneus, 045 Moteur…
-- l'**ensemble** : un code à trois chiffres dans le système.
+- l'**ensemble** : un code à trois chiffres dans le système. **999** est le
+  divers du système, pour les 75 tâches que Fleetio laissait sans ensemble.
 
-Les 143 tâches créées à la main dans Fleetio n'avaient pas de code. Leur système
-se reconnaît au libellé. Par exemple, les « appareils à air », poumons et
-électrovannes relèvent du freinage pneumatique. **26 restent à classer** :
-« Maintenance périodique », « Huile pour engreanages », « crochet teton »…
+Cinq systèmes s'ajoutent à la classification : 020 Transmission — divers,
+030 Électricité — divers, 050 Accessoires et aménagements, 052 Hydraulique —
+benne et vérins, 054 Groupe frigorifique et caisse isotherme.
+
+**Rejouer `taches-service.sql`** remplace les tâches venues de Fleetio (celles
+saisies dans l'application restent). Aucune ligne de service ne pointe une tâche
+par clé étrangère : un service déjà saisi garde ses libellés.
 
 Paramètres › **Catalogue des tâches de service** : on les consulte, on les
 classe en un clic, on en crée. Les filtres sont « À classer », une catégorie, ou
@@ -175,12 +218,13 @@ classe en un clic, on en crée. Les filtres sont « À classer », une catégori
 ## Bancs
 
 `PGLITE_DIR=… node --import tsx --import ./scripts/rendu/hook.mjs scripts/tester-services-maintenance.mts`
-— 45 contrôles :
+— 49 contrôles :
 
 - une facture calculée à la main : remises, TVA, BRS, net, magasin, coût ;
 - la répartition en dépenses, au franc ;
 - ce qu'écrit la clôture, et l'atelier qui la lit en une ligne ;
 - les états d'un signalement, la classification ;
-- dans PGlite : les migrations, le catalogue rejoué sans doublon, le refus de
+- dans PGlite : les migrations, le catalogue rejoué sans doublon, toutes ses
+  tâches codifiées, les tâches mal créées rangées ou retirées, le refus de
   clôture au responsable de la maintenance, la clôture signée par le
   responsable du parc, la panne résolue, le prix de référence à l'entrée.
