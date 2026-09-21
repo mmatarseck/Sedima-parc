@@ -10,6 +10,7 @@ import { lireTransferts } from "@/lib/transferts-demo";
 import Link from "next/link";
 import { AlertTriangle, FileText, Paperclip, Plus, Receipt } from "lucide-react";
 import { Carte, Definitions, TableauSimple } from "@/composants/interface/Carte";
+import { IndicateurPiece } from "@/composants/interface/IndicateurPiece";
 import { ListeEtPiece } from "@/composants/interface/ListeEtPiece";
 import { Numero } from "@/composants/interface/Numero";
 import { VisionneusePiece } from "@/composants/interface/VisionneusePiece";
@@ -870,8 +871,8 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
               libelle: "Objet",
               rendu: (l) => (
                 <span className="flex min-w-0 items-center gap-2">
+                  <IndicateurPiece present={Boolean(l.fichier)} />
                   <span className="min-w-0 truncate font-medium" title={l.objet}>{l.objet}</span>
-                  {l.fichier ? <Justificatif present fichier={l.fichier} /> : null}
                 </span>
               ),
             },
@@ -922,13 +923,37 @@ export function OngletCarburant({ fiche, cible }: { fiche: FicheVehicule; cible?
   const pleins = [...creations("plein", fabriquerPlein), ...fiche.pleins.map(surcharger)];
   const litres = pleins.reduce((s, p) => s + p.litres, 0);
   const total = pleins.reduce((s, p) => s + p.montant, 0);
+  const avecTicket = pleins.filter((p) => p.photo).length;
+  /* Comme à l'atelier (métier, 21 septembre 2026 : « faire de même pour le
+     fuel ») : le clic ouvre le ticket à droite, la liste se rétracte. */
+  const [idOuvert, setIdOuvert] = useState<string | null>(null);
+  const ouvert = idOuvert ? (pleins.find((p) => p.id === idOuvert) ?? null) : null;
+  const modifier = (p: PleinFiche) => demander({ type: "plein", numero: p.numero, titre: `Plein · ${nombre(p.litres, 1)} L — ${p.source}`, valeurs: p as unknown as Record<string, unknown> });
   return (
+    <ListeEtPiece
+      piece={
+        ouvert ? (
+          <VisionneusePiece
+            fichier={ouvert.photo ?? null}
+            libelle={`Plein · ${nombre(ouvert.litres, 1)} L — ${ouvert.source}`}
+            precision={[date(ouvert.date), montant(ouvert.montant), ouvert.reference || null].filter(Boolean).join(" · ")}
+            vide="Aucun ticket n'est attaché à ce plein. « Modifier la ligne » permet de le joindre : il s'ouvrira ici."
+            onFermer={() => setIdOuvert(null)}
+            actions={
+              <button type="button" onClick={() => modifier(ouvert)} className="bouton-secondaire h-9">
+                Modifier la ligne
+              </button>
+            }
+          />
+        ) : null
+      }
+    >
     <Carte
       titre="Pleins"
-      precision={`${fiche.pleins.length} pleins · ${nombre(litres, 1)} L · ${montant(total)} — l'analyse mensuelle est dans l'Aperçu et dans Coûts & analyses`}
+      precision={`${pleins.length} pleins · ${avecTicket} avec leur ticket · ${nombre(litres, 1)} L · ${montant(total)} — l'analyse mensuelle est dans l'Aperçu et dans Coûts & analyses`}
       action={
-        <button type="button" onClick={() => ajouter("plein")} className="bouton-secondaire h-9">
-          <Plus className="size-4" strokeWidth={2} />
+        <button type="button" onClick={() => ajouter("plein")} className="bouton-secondaire h-9" title="Le plein, le compteur et le ticket ou le bon joint">
+          <Receipt className="size-4" strokeWidth={1.8} />
           Saisir un plein
         </button>
       }
@@ -939,19 +964,33 @@ export function OngletCarburant({ fiche, cible }: { fiche: FicheVehicule; cible?
         lignes={pleins}
         numero={(p) => p.numero}
         cible={cible}
-        surModifier={(p) => demander({ type: "plein", numero: p.numero, titre: `Plein · ${nombre(p.litres, 1)} L — ${p.source}`, valeurs: p as unknown as Record<string, unknown> })}
+        seulement={ouvert ? ["date", "source", "montant"] : undefined}
+        surLigne={(p) => setIdOuvert((c) => (c === p.id ? null : p.id))}
+        ouverte={idOuvert}
+        surModifier={modifier}
         colonnes={[
           { cle: "numero", libelle: "Réf.", rendu: (p) => <Numero valeur={p.numero} /> },
           { cle: "date", libelle: "Date", rendu: (p) => <span className="code whitespace-nowrap">{date(p.date)}</span> },
-          { cle: "source", libelle: "Source", rendu: (p) => <span className="font-medium">{p.source}</span> },
+          {
+            cle: "source",
+            libelle: "Source",
+            rendu: (p) => (
+              <span className="flex items-center gap-2">
+                <IndicateurPiece present={Boolean(p.photo)} />
+                <span className="font-medium">{p.source}</span>
+              </span>
+            ),
+          },
           { cle: "reference", libelle: "Bon de sortie", rendu: (p) => <span className="code whitespace-nowrap text-texte-2">{p.reference}</span> },
           { cle: "litres", libelle: "Litres", alignee: "droite", rendu: (p) => nombre(p.litres, 1) },
           { cle: "prix", libelle: "Prix / L", alignee: "droite", rendu: (p) => `${nombre(p.prixLitre)} F` },
           { cle: "montant", libelle: "Montant", alignee: "droite", rendu: (p) => <span className="font-medium">{montant(p.montant)}</span> },
           { cle: "km", libelle: "Km relevé", alignee: "droite", rendu: (p) => <KmReleve km={p.km} motifRejet={p.kmMotifRejet} /> },
+          { cle: "ticket", libelle: "Ticket", rendu: (p) => <Justificatif present={Boolean(p.photo)} fichier={p.photo} /> },
         ]}
       />
     </Carte>
+    </ListeEtPiece>
   );
 }
 
@@ -1011,7 +1050,16 @@ export function OngletAutresDepenses({ fiche, cible }: { fiche: FicheVehicule; c
           { cle: "numero", libelle: "Réf.", rendu: (d) => <Numero valeur={d.numero} /> },
           { cle: "date", libelle: "Date", largeur: "110px", rendu: (d) => <span className="code whitespace-nowrap">{date(d.date)}</span> },
           { cle: "poste", libelle: "Poste", rendu: (d) => <span className="whitespace-nowrap font-medium">{POSTE_DEPENSE[d.poste]}</span> },
-          { cle: "libelle", libelle: "Libellé", rendu: (d) => <span className="block max-w-[300px] truncate">{d.libelle}</span> },
+          {
+            cle: "libelle",
+            libelle: "Libellé",
+            rendu: (d) => (
+              <span className="flex min-w-0 max-w-[320px] items-center gap-2">
+                <IndicateurPiece present={Boolean(d.photo)} />
+                <span className="min-w-0 truncate">{d.libelle}</span>
+              </span>
+            ),
+          },
           { cle: "beneficiaire", libelle: "Bénéficiaire", rendu: (d) => d.beneficiaire ?? <span className="text-attenue-2">—</span> },
           { cle: "origine", libelle: "Origine", rendu: (d) => <PastilleOrigine origine={d.origine} /> },
           { cle: "reference", libelle: "Pièce", rendu: (d) => <span className="code whitespace-nowrap text-texte-2">{d.reference ?? "—"}</span> },

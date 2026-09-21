@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Gauge, Pencil, Plus, Truck } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
+import { IndicateurPiece } from "@/composants/interface/IndicateurPiece";
 import { Numero } from "@/composants/interface/Numero";
+import { OuvrirPiece } from "@/composants/interface/OuvrirPiece";
 import { Echeance, Pastille } from "@/composants/interface/Pastille";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
 import { CHAMPS, champsCreation } from "@/composants/transactions/champs";
@@ -242,7 +244,21 @@ function Interieur({ pleins, cuve, stockInitial, consommations, aujourdhui, vueI
   /* ---- Colonnes ---- */
   const colonnesPleins = useMemo<ColonneListe<LignePlein>[]>(
     () => [
-      { cle: "source", libelle: "Source", parDefaut: true, largeur: 170, rendu: (p) => <Pastille ton={estCuve(p.source) ? "favorable" : "neutre"}>{p.source}</Pastille>, texte: (p) => p.source },
+      {
+        cle: "source",
+        libelle: "Source",
+        parDefaut: true,
+        largeur: 190,
+        rendu: (p) => (
+          <span className="flex items-center gap-2">
+            <IndicateurPiece present={Boolean(p.photo)} />
+            <Pastille ton={estCuve(p.source) ? "favorable" : "neutre"}>{p.source}</Pastille>
+          </span>
+        ),
+        texte: (p) => p.source,
+      },
+      /* Le ticket ou le bon (21 septembre 2026) : « Voir » l'ouvre par-dessus l'écran, jamais dans un onglet. */
+      { cle: "ticket", libelle: "Ticket", parDefaut: true, largeur: 110, texte: (p) => (p.photo ? "avec ticket" : "sans ticket"), rendu: (p) => (p.photo ? <OuvrirPiece fichier={p.photo} titre={`Ticket du plein ${p.numero}`} /> : <span className="text-attenue">—</span>) },
       { cle: "bon", libelle: "Bon de sortie", parDefaut: true, largeur: 150, rendu: (p) => <span className="code text-[12px]">{p.reference || "—"}</span> },
       { cle: "litres", libelle: "Litres", parDefaut: true, largeur: 100, alignee: "droite", tri: (p) => p.litres, rendu: (p) => <span className="code font-medium">{nombre(p.litres, 1)}</span> },
       { cle: "prix", libelle: "Prix / L", parDefaut: true, largeur: 100, alignee: "droite", tri: (p) => p.prixLitre, rendu: (p) => <span className="code">{montant(p.prixLitre)}</span> },

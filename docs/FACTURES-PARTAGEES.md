@@ -139,3 +139,31 @@ créée garde sa pièce jointe avant même que la base ne la renvoie.
 Le dépôt d'un PDF demande la base branchée — en démonstration, seules les images
 passent. Banc : `node --import tsx --import ./scripts/rendu/hook.mjs scripts/tester-facture.mts`
 (21 contrôles).
+
+## 5. Le carburant, de même — et le trombone sur les lignes
+
+*Métier, même jour : « faire de même pour le fuel. Il nous faut une indication
+sur les lignes où on a une pièce justificative attachée. »*
+
+**Le carburant.** Le plein avait une colonne pour son ticket (`plein.photo`,
+0014) que l'écriture remplissait, mais que ni la fiche ni la page Carburant ne
+relisaient : un ticket joint ne se revoyait jamais. Il se relit maintenant.
+
+- Fiche véhicule, onglet Carburant : un clic sur un plein rétracte la liste
+  (date, source, montant) et ouvre le ticket à droite, avec « Modifier la
+  ligne ». La colonne « Ticket » dit « Jointe » ou « manquant », et l'en-tête
+  compte les pleins qui ont leur ticket.
+- « Saisir un plein », depuis la fiche ou la page Carburant : le ticket ou le
+  bon est **obligatoire, en PDF ou en image**. La modification d'un plein le
+  propose aussi, pour le joindre, le remplacer ou le retirer.
+- Page Carburant : une colonne « Ticket » — « Voir » l'ouvre par-dessus
+  l'écran, jamais dans un onglet —, filtrable sur « avec ticket » ou « sans
+  ticket ».
+
+**Le trombone.** Une ligne qui porte sa pièce montre un trombone dans la
+cellule qui la nomme — l'objet à l'atelier, le libellé aux autres dépenses, la
+source aux pleins de la fiche et de la page Carburant. Cette colonne reste
+affichée quand la liste se rétracte, et aucun réglage ne la masque : on voit
+d'un coup d'œil les lignes qui ont leur pièce, et un clic l'ouvre.
+
+Banc : `tester-facture`, 31 contrôles dont 10 pour le carburant et le trombone.

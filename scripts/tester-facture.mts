@@ -7,9 +7,16 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import React from "react";
 import { renderToString } from "react-dom/server";
+import { IndicateurPiece } from "../src/composants/interface/IndicateurPiece";
 import { OuvrirPiece } from "../src/composants/interface/OuvrirPiece";
 import { VisionneusePiece } from "../src/composants/interface/VisionneusePiece";
-import { fabriquerDepense } from "../src/composants/transactions/fabriques";
+import { CHAMPS, champsCreation } from "../src/composants/transactions/champs";
+import { fabriquerDepense, fabriquerPlein } from "../src/composants/transactions/fabriques";
+import { assemblerFiche, FAITS_VIDES } from "../src/domaine/assembler-fiche";
+import { PARAMETRES_DEFAUT } from "../src/domaine/parametres";
+import { pleinDepuisLigne } from "../src/donnees/carburant";
+import { passagesReleves, planDuVehicule, programmeParDefaut } from "../src/donnees/entretien-demo";
+import { sourceRapportsDemo } from "../src/donnees/rapports-demo";
 import { FormulaireFacture, cleFacture, ecrituresDeLaFacture, type EntreeFacture } from "../src/composants/transactions/FormulaireFacture";
 import { apparierAtelier, cleFactureDe } from "../src/domaine/atelier";
 import type { Creation } from "../src/domaine/cloture";
@@ -113,6 +120,38 @@ const dehors = fichiers("src").filter((f) => {
   return /window\.open\(|target="_blank"/.test(t) && !/etiquettes|PanneauQr|EtiquettesQr/.test(f);
 });
 attendu(`aucun autre écran n'ouvre un fichier dans un onglet${dehors.length ? ` (${dehors.join(", ")})` : ""}`, dehors.length === 0);
+
+/* -- Le carburant, de même (21 septembre 2026, suite) -------------------------------- */
+
+const ticket = "pieces/documents/2026/09/2026-09-21-ticket.jpg";
+const plein = fabriquerPlein({ numero: "PLN-2026-90001", type: "plein", sujet: "vehicule:AA565GA", date: "2026-09-21T10:00:00Z", valeurs: { date: "2026-09-21", litres: 120, montant: 84_600, source: "Station Total", photo: ticket } } as unknown as Creation);
+attendu("un plein tout juste saisi garde son ticket dans la fiche", plein.photo === ticket);
+const lignePlein = ligneCreation("plein", "PLN-2026-90001", { date: "2026-09-21", litres: 120, montant: 84_600, source: "Station Total", photo: ticket }, r);
+attendu("le plein s'écrit avec son ticket", "ligne" in lignePlein && lignePlein.ligne.photo === ticket);
+attendu("la modification d'un plein propose le ticket, sans l'exiger", CHAMPS.plein.some((c) => c.cle === "photo" && !c.obligatoire));
+const saisiePlein = champsCreation("plein", { pour: "carburant" }).filter((c) => c.cle === "photo");
+attendu("la saisie d'un plein garde un seul champ de ticket, obligatoire, PDF ou image", saisiePlein.length === 1 && saisiePlein[0]!.obligatoire === true && saisiePlein[0]!.dossier === "documents");
+attendu("la page Carburant lit le ticket en base", pleinDepuisLigne({ numero: "PLN-R-1", vehicule_id: "x", date: "2026-09-01", litres: 50, prix_litre: 700, montant: 35_000, km: null, source: "Station Shell", reference: null, photo: ticket, vehicule: null, prestataire: null }).photo === ticket);
+const lignePleinFiche = sourceRapportsDemo().lignes[0]!;
+const ficheAvecTicket = assemblerFiche(
+  lignePleinFiche,
+  { ...FAITS_VIDES, pleins: [{ numero: "PLN-R-1", date: "2026-09-01", litres: 50, prixLitre: 700, montant: 35_000, km: null, source: "Station Shell", reference: null, photo: ticket }] },
+  PARAMETRES_DEFAUT,
+  "2026-09-21",
+  { programme: programmeParDefaut(lignePleinFiche.vehicule.categorie), plan: planDuVehicule(lignePleinFiche.vehicule.id, lignePleinFiche.vehicule.categorie), passages: passagesReleves },
+);
+attendu("le ticket arrive sur le plein de la fiche", ficheAvecTicket.pleins.find((p) => p.numero === "PLN-R-1")?.photo === ticket);
+
+/* -- Le trombone ---------------------------------------------------------------------- */
+
+const avec = renderToString(React.createElement(IndicateurPiece, { present: true }));
+const sans = renderToString(React.createElement(IndicateurPiece, { present: false }));
+attendu("une ligne qui porte sa pièce montre le trombone, et le dit aux lecteurs d'écran", avec.includes("pièce jointe") && avec.includes("<svg"));
+attendu("une ligne sans pièce ne montre rien", sans === "");
+const onglets = readFileSync("src/composants/vehicule/onglets.tsx", "utf8");
+const ecranCarburant = readFileSync("src/composants/carburant/EcranCarburant.tsx", "utf8");
+attendu("le trombone est posé à l'atelier, aux autres dépenses et aux pleins de la fiche", (onglets.match(/<IndicateurPiece present=/g) ?? []).length === 3);
+attendu("et sur la page Carburant", ecranCarburant.includes("<IndicateurPiece present={Boolean(p.photo)} />"));
 
 console.log(echecs ? `${echecs} échec(s)` : "tout passe");
 process.exit(echecs ? 1 : 0);

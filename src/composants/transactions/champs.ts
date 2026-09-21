@@ -290,6 +290,8 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "montant", libelle: "Montant", type: "nombre", unite: "F", obligatoire: true },
     { cle: "reference", libelle: "Bon de sortie", type: "texte" },
     { cle: "km", libelle: "Km relevé", type: "nombre", unite: "km" },
+    /* Le ticket vit sur la ligne : il s'ouvre à droite de la liste des pleins (21 septembre 2026). */
+    { cle: "photo", libelle: "Le ticket ou le bon", type: "photo", dossier: "documents", precision: "PDF ou image" },
   ],
   intervention: [
     DATE("date"),
@@ -675,8 +677,8 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
         /* Depuis le module Carburant, on choisit d'abord le véhicule ; depuis la fiche, il est connu. */
         ...(contexte.pour === "carburant" ? [{ cle: "vehiculeId", libelle: "Véhicule", type: "choix" as const, options: optionsVehicules(), obligatoire: true }] : []),
         { cle: "source", libelle: "Source", type: "choix", options: [{ valeur: "Cuve interne SEDIMA", libelle: "Cuve interne SEDIMA" }, { valeur: "Station Total", libelle: "Station Total" }, { valeur: "Station Shell", libelle: "Station Shell" }], obligatoire: true },
-        ...base,
-        { cle: "photo", libelle: "Photo du ticket ou du bon", type: "photo", obligatoire: true },
+        ...base.filter((c) => c.cle !== "photo"),
+        { cle: "photo", libelle: "Le ticket ou le bon", type: "photo", dossier: "documents", obligatoire: true, precision: "PDF ou image — il s'ouvrira à droite de la liste des pleins" },
       ];
     case "document":
       return [

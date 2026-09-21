@@ -197,6 +197,8 @@ export interface PleinFiche {
   reference: string;
   km: number | null;
   kmMotifRejet: string | null;
+  /** Le ticket de la station ou le bon de sortie de la cuve, dans le seau (21 septembre 2026). */
+  photo?: string | null;
 }
 
 /** Les trois familles de charges d'un véhicule, telles que le métier les lit. */

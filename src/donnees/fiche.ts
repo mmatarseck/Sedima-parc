@@ -197,7 +197,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
    */
   const parc = await parcServeur();
   const vehiculeId = parc.vehicules.find((v) => v.immatriculation === ligne.vehicule.immatriculation)?.id ?? null;
-  const [lecture, livraisons, piecesJointes, attelages, incidents, rappels, piecesHorsDocuments, photosDepenses] = await Promise.all([
+  const [lecture, livraisons, piecesJointes, attelages, incidents, rappels, piecesHorsDocuments, photosDepenses, photosPleins] = await Promise.all([
     client.rpc("lire_fiche", { immat: canonique }).maybeSingle<FicheJson | null>(),
     vehiculeId ? livraisonsDuVehicule(client, vehiculeId) : Promise.resolve([]),
     vehiculeId ? piecesJointesDuVehicule(client, vehiculeId) : Promise.resolve(new Map<string, string>()),
@@ -206,6 +206,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
     vehiculeId ? rappelsDuVehicule(client, vehiculeId, parametres) : Promise.resolve([]),
     vehiculeId ? piecesDuVehicule(client, vehiculeId) : Promise.resolve([]),
     vehiculeId ? photosDesDepenses(client, vehiculeId) : Promise.resolve(new Map<string, string>()),
+    vehiculeId ? photosDesPleins(client, vehiculeId) : Promise.resolve(new Map<string, string>()),
   ]);
   /* Fonction pas encore jouée : la fiche se dresse sur la ligne seule, sans historique — pas d'erreur. */
   if (lecture.error) console.warn(`Fiche ${canonique} : lire_fiche() indisponible (${lecture.error.message}), fiche dressée sans historique.`);
@@ -222,6 +223,8 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
     const documents = faits.documents.map((d) => ({ ...d, fichier: piecesJointes.get(d.numero) ?? null }));
     /* La facture d'une dépense vit sur sa ligne : on la pose ici, comme la pièce jointe d'un document. */
     const depenses = faits.depenses.map((d) => ({ ...d, photo: photosDepenses.get(d.numero) ?? null }));
+    /* Le ticket d'un plein, de même (21 septembre 2026). */
+    const pleins = faits.pleins.map((p) => ({ ...p, photo: photosPleins.get(p.numero) ?? null }));
     /* Les documents qui portent un scan rejoignent le dossier, avec les pièces
        des visites, des interventions, des dépenses et des pleins. */
     const libelles = new Map(parametres.documents.types.map((t) => [t.id, t.libelle]));
@@ -240,7 +243,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
         })),
       ...piecesHorsDocuments,
     ];
-    return assemblerFiche(ligne, { ...faits, documents, depenses, livraisons, incidents, rappels, pieces, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
+    return assemblerFiche(ligne, { ...faits, documents, depenses, pleins, livraisons, incidents, rappels, pieces, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
   } catch (e) {
     console.error(`Fiche ${canonique} : assemblage impossible sur l'historique lu — ${e instanceof Error ? e.stack ?? e.message : String(e)}`);
     return assemblerFiche(ligne, { ...FAITS_VIDES, livraisons, incidents, rappels, pieces: piecesHorsDocuments, attelages: attelages.attelages, attelagesIllisibles: attelages.illisible }, parametres, aujourdhui, plan);
@@ -301,6 +304,12 @@ async function piecesDuVehicule(client: Awaited<ReturnType<typeof clientServeur>
 async function photosDesDepenses(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<Map<string, string>> {
   const lecture = await client.from("depense").select("numero, photo").eq("vehicule_id", vehiculeId).not("photo", "is", null).limit(5000).returns<{ numero: string; photo: string }[]>();
   return new Map(lignesLues("Pièces des dépenses", lecture).map((d) => [d.numero, d.photo]));
+}
+
+/** Le ticket ou le bon de chaque plein du véhicule — même raison, même lecture bornée. */
+async function photosDesPleins(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<Map<string, string>> {
+  const lecture = await client.from("plein").select("numero, photo").eq("vehicule_id", vehiculeId).not("photo", "is", null).limit(5000).returns<{ numero: string; photo: string }[]>();
+  return new Map(lignesLues("Pièces des pleins", lecture).map((p) => [p.numero, p.photo]));
 }
 
 /** La famille d'un document, d'après son type : les visites d'un côté, tout le reste est réglementaire. */

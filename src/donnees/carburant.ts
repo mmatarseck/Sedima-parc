@@ -33,6 +33,7 @@ export interface LignePleinBase {
   km: number | null;
   source: string;
   reference: string | null;
+  photo?: string | null;
   vehicule: { immatriculation: string; marque: string; appellation: string; business_unit: BusinessUnit | null; site: { libelle: string } | null } | null;
   prestataire: { raison_sociale: string } | null;
 }
@@ -51,6 +52,7 @@ export function pleinDepuisLigne(l: LignePleinBase): LignePlein {
     reference: l.reference ?? "",
     km: l.km,
     kmMotifRejet: null,
+    photo: l.photo ?? null,
     vehiculeId: v?.immatriculation ?? l.vehicule_id,
     immatriculation: v?.immatriculation ?? l.vehicule_id,
     immatriculationAffichee: v ? afficher(v.immatriculation) : l.vehicule_id,
@@ -197,7 +199,7 @@ async function carburantServeurBrut(parametres: Parametres): Promise<CarburantSe
   const stockInitial = parametres.cuve.stockInitial;
   const client = await clientServeur();
   const [pleins, cuve, parc] = await Promise.all([
-    client.from("plein").select("numero, vehicule_id, date, litres, prix_litre, montant, km, source, reference, vehicule (immatriculation, marque, appellation, business_unit, site (libelle)), prestataire (raison_sociale)").order("date", { ascending: false }).limit(5000).returns<LignePleinBase[]>(),
+    client.from("plein").select("numero, vehicule_id, date, litres, prix_litre, montant, km, source, reference, photo, vehicule (immatriculation, marque, appellation, business_unit, site (libelle)), prestataire (raison_sociale)").order("date", { ascending: false }).limit(5000).returns<LignePleinBase[]>(),
     client.from("mouvement_cuve").select("numero, date, sens, libelle, litres, prix_litre, montant, fournisseur, piece, commentaire, enregistre_par, prestataire (raison_sociale)").order("date", { ascending: false }).limit(5000).returns<LigneCuveBase[]>(),
     parcServeur(),
   ]);

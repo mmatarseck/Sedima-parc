@@ -62,7 +62,7 @@ export function fabriquerPlein(c: Creation): PleinFiche {
   const v = c.valeurs;
   const litres = n(v.litres) ?? 0;
   const montant = n(v.montant) ?? 0;
-  return { id: c.numero, numero: c.numero, date: s(v.date) ?? c.date.slice(0, 10), source: s(v.source) ?? "Saisie", litres, prixLitre: n(v.prixLitre) ?? (litres > 0 ? Math.round(montant / litres) : 0), montant, reference: s(v.reference) ?? "", km: n(v.km), kmMotifRejet: null };
+  return { id: c.numero, numero: c.numero, date: s(v.date) ?? c.date.slice(0, 10), source: s(v.source) ?? "Saisie", litres, prixLitre: n(v.prixLitre) ?? (litres > 0 ? Math.round(montant / litres) : 0), montant, reference: s(v.reference) ?? "", km: n(v.km), kmMotifRejet: null, photo: s(v.photo) };
 }
 
 export function fabriquerDepense(c: Creation): DepenseFiche {
