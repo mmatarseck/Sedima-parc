@@ -223,6 +223,13 @@ if (bac) {
   attendu("la main-d'œuvre n'est pas une tâche", mo.n === 0);
   const prog = (await pg.query(`select (select count(*)::int from programme_entretien) as p, (select count(*)::int from operation_entretien) as o, (select count(*)::int from operation_entretien where tache_libelle is null or tache_libelle not in (select libelle from tache_service)) as orphelines`)).rows[0] as { p: number; o: number; orphelines: number };
   attendu(`0062 : les quatre programmes d'origine en base, chaque opération cite une tâche du catalogue (${prog.p} programmes, ${prog.o} opérations, ${prog.orphelines} sans tâche)`, prog.p === 4 && prog.o > 15 && prog.orphelines === 0);
+  /* La base de production avait le jeu de départ, codé « leger:vidange-moteur » : 0062 y doublait chaque opération. */
+  await pg.exec(`insert into operation_entretien (code, programme_code, libelle, groupe, periodicite_km, mots_cles) select replace(code, '.', ':'), programme_code, libelle, groupe, periodicite_km, mots_cles from operation_entretien;`);
+  const doublees = ((await pg.query(`select count(*)::int as n from operation_entretien`)).rows[0] as { n: number }).n;
+  await pg.exec(readFileSync("supabase/correctif-operations-doublons.sql", "utf8"));
+  await pg.exec(readFileSync("supabase/correctif-operations-doublons.sql", "utf8"));
+  const apres = ((await pg.query(`select count(*)::int as n from operation_entretien`)).rows[0] as { n: number }).n;
+  attendu(`le correctif ôte les opérations en double du jeu de départ, rejouable (${doublees} → ${apres})`, doublees === 2 * prog.o && apres === prog.o);
   const colonne = (await pg.query(`select count(*)::int as n from information_schema.columns where table_name = 'ordre_travail' and column_name = 'main_oeuvre_globale'`)).rows[0] as { n: number };
   attendu("0062 : le service porte sa main-d'œuvre globale", colonne.n === 1);
 

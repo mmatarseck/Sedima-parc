@@ -43,7 +43,8 @@ interface LigneOperation {
 
 /** Le code d'une opération dans son programme : « leger.vidange-moteur » se lit « vidange-moteur ». */
 export function codeCourt(code: string, programme: string): string {
-  return code.startsWith(`${programme}.`) ? code.slice(programme.length + 1) : code;
+  /* « . » depuis 0062, « : » dans le jeu de départ. */
+  return code.startsWith(`${programme}.`) || code.startsWith(`${programme}:`) ? code.slice(programme.length + 1) : code;
 }
 
 /** Les programmes à la forme du domaine — pur, pour le banc. */

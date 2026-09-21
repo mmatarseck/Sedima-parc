@@ -67,6 +67,17 @@ insert into operation_entretien (code, programme_code, libelle, groupe, periodic
   ('engin.securite-levage', 'engin', 'Contrôle du dispositif de levage', 'securite'::groupe_operation, null, 1000, 12, array['levage', 'mât', 'fourche']::text[], 4, 210000, true, 5)
 on conflict (code) do nothing;
 
+-- Le jeu de départ codait « leger:vidange-moteur » : ces doublons cèdent la place aux codes à point.
+update ajustement_entretien a
+   set operation_code = replace(a.operation_code, ':', '.')
+ where a.operation_code like '%:%'
+   and exists (select 1 from operation_entretien o where o.code = replace(a.operation_code, ':', '.'))
+   and not exists (select 1 from ajustement_entretien b where b.vehicule_id = a.vehicule_id and b.operation_code = replace(a.operation_code, ':', '.'));
+
+delete from operation_entretien o
+ where o.code like '%:%'
+   and exists (select 1 from operation_entretien d where d.code = replace(o.code, ':', '.'));
+
 update operation_entretien o
    set tache_libelle = v.tache
   from (values

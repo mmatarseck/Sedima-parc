@@ -436,7 +436,7 @@ inserer(
 inserer(
   "operation_entretien",
   ["code", "programme_code", "libelle", "groupe", "periodicite_km", "periodicite_heures", "periodicite_mois", "mots_cles", "duree_heures", "cout_estime", "critique", "ordre"],
-  PROGRAMMES.flatMap((p) => p.operations.map((o, i) => [`${p.code}:${o.code}`, p.code, o.libelle, o.groupe, o.periodicite.km, o.periodicite.heures, o.periodicite.mois, o.motsCles, o.dureeHeures, o.coutEstime, o.critique, i])),
+  PROGRAMMES.flatMap((p) => p.operations.map((o, i) => [`${p.code}.${o.code}`, p.code, o.libelle, o.groupe, o.periodicite.km, o.periodicite.heures, o.periodicite.mois, o.motsCles, o.dureeHeures, o.coutEstime, o.critique, i])),
 );
 
 inserer(
