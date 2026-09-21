@@ -1,10 +1,10 @@
 -- ============================================================================
--- SEDIMA Parc — dix documents d'assurance vides sortent du registre.
+-- SEDIMA Parc — neuf documents d'assurance vides sortent du registre.
 --
--- **Ce n'est pas une migration.** Dix lignes effacées, à la demande du métier
+-- **Ce n'est pas une migration.** Neuf lignes effacées, à la demande du métier
 -- du 16 septembre 2026 (« ok pour le reste », sur la liste du matin).
 --
--- CE QUE C'EST. Dix lignes de type « assurance », posées sur des véhicules
+-- CE QUE C'EST. Neuf lignes de type « assurance », posées sur des véhicules
 -- qui ne figurent pas dans la police 2026 (`src/donnees/assurance-2026.ts`,
 -- la source réelle) — et qui ne portent **rien** : ni numéro de police, ni
 -- émetteur, ni montant, ni échéance, ni fichier. Ce sont des coquilles, posées
@@ -17,6 +17,12 @@
 -- 21 janvier 2027 — et 0053 en a tiré le rappel RAP-2026-00037. Un véhicule
 -- absent de la liste de janvier mais assuré depuis ressemble à un achat de
 -- l'année, pas à une invention. Elle reste, sauf décision contraire du métier.
+--
+-- DOC-2026-22002 (AB 681 HE) était la dixième coquille. Le garde-fou l'a
+-- arrêtée le 18 septembre 2026 : elle a été complétée le 16 septembre, après
+-- la lecture du matin — AXA Sénégal, du 1er janvier au 31 décembre 2026, avec
+-- son attestation (`pieces/documents/2026/09/2026-09-16-ab681he-assurance.pdf`).
+-- Elle reste donc elle aussi, et le fichier n'en vise plus que neuf.
 --
 -- LE GARDE-FOU. Chaque ligne n'est effacée que si elle est **encore** vide et
 -- qu'aucun rappel ne la cite comme preuve. Si l'une d'elles a été complétée
@@ -31,8 +37,8 @@ select d.numero, v.immatriculation, d.numero_piece, d.emetteur, d.montant, d.ech
        (select count(*) from rappel r where r.document_numero = d.numero) as cite_par_un_rappel
   from document d
   join vehicule v on v.id = d.vehicule_id
- where d.numero in ('DOC-2026-22002', 'DOC-2026-41002', 'DOC-2026-42004', 'DOC-2026-43004', 'DOC-2026-47002',
-                    'DOC-2026-48002', 'DOC-2026-49004', 'DOC-2026-51004', 'DOC-2026-52004', 'DOC-2026-54002')
+ where d.numero in ('DOC-2026-41002', 'DOC-2026-42004', 'DOC-2026-43004', 'DOC-2026-47002', 'DOC-2026-48002',
+                    'DOC-2026-49004', 'DOC-2026-51004', 'DOC-2026-52004', 'DOC-2026-54002')
  order by d.numero;
 
 -- ---------------------------------------------------------------------------
@@ -41,8 +47,8 @@ select d.numero, v.immatriculation, d.numero_piece, d.emetteur, d.montant, d.ech
 
 do $$
 declare
-  vises  text[] := array['DOC-2026-22002', 'DOC-2026-41002', 'DOC-2026-42004', 'DOC-2026-43004', 'DOC-2026-47002',
-                         'DOC-2026-48002', 'DOC-2026-49004', 'DOC-2026-51004', 'DOC-2026-52004', 'DOC-2026-54002'];
+  vises  text[] := array['DOC-2026-41002', 'DOC-2026-42004', 'DOC-2026-43004', 'DOC-2026-47002', 'DOC-2026-48002',
+                         'DOC-2026-49004', 'DOC-2026-51004', 'DOC-2026-52004', 'DOC-2026-54002'];
   pleins text[];
   cites  text[];
   n      integer;
