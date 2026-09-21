@@ -471,6 +471,7 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "lignes", libelle: "Lignes", type: "lignes" },
     { cle: "remiseMode", libelle: "Remise globale en", type: "choix", options: [{ valeur: "montant", libelle: "francs" }, { valeur: "pourcentage", libelle: "pour cent" }] },
     { cle: "remiseValeur", libelle: "Remise globale", type: "nombre" },
+    { cle: "mainOeuvreGlobale", libelle: "Main-d'œuvre globale", type: "nombre", unite: "F" },
     { cle: "tvaTaux", libelle: "TVA", type: "nombre", unite: "%" },
     { cle: "brsTaux", libelle: "BRS", type: "nombre", unite: "%" },
     { cle: "pieces", libelle: "Documents et photos", type: "pieces" },

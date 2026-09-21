@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Camera, FileText, Loader2, X } from "lucide-react";
+import { ZoneDepot } from "@/composants/interface/ZoneDepot";
 import { televerserPhoto, urlPhoto } from "@/lib/photos";
 
 /**
@@ -36,6 +37,16 @@ export function ChampPhoto({ valeur, onChange, dossier, libelle = "Prendre la ph
       return;
     }
     onChange(r.ref);
+  }
+
+  /* Rien de joint : la zone de dépôt (métier, 21 septembre 2026 — « s'inspirer de ça à chaque fois qu'on attache un document ou une photo »). */
+  if (!valeur) {
+    return (
+      <div className="flex flex-col gap-1">
+        <ZoneDepot compact={compact} chargement={chargement} erreur={erreur} libelle="Glisser-déposer le fichier ici" onFichiers={(f) => void choisir(f[0])} />
+        {!compact && precision ? <span className="meta">{precision}</span> : null}
+      </div>
+    );
   }
 
   return (

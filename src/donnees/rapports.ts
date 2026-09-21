@@ -37,6 +37,8 @@ import { prestatairesServeur } from "./prestataires";
 import { relevesServeur } from "./releves";
 import { transporteursServeur } from "./transporteurs";
 import { visitesServeur } from "./visites";
+import { signalementsServeur } from "./signalements";
+import { tachesPourFormulaires } from "./taches";
 
 /** Les initiales d'un nom : « Babacar Ndiaye » → « BN ». */
 function initialesDe(nom: string): string {
@@ -144,6 +146,8 @@ async function sourceRapportsServeurBrut(parametres: Parametres): Promise<Source
     budgetServeur(),
     parcLegerServeur(parametres),
   ]);
+  /* Pannes et catalogue (0060) : le rapport se dresse sans eux plutôt que pas du tout, si la migration manque. */
+  const [signalements, catalogueTaches] = await Promise.all([signalementsServeur().catch(() => []), tachesPourFormulaires().catch(() => [])]);
   const affectations = affectationsDepuisLeParc(await parcServeur());
   const pieces = await piecesReglementairesServeur();
   const sansFiches: Omit<SourceRapports, "resumesFiche"> = {
@@ -170,6 +174,8 @@ async function sourceRapportsServeurBrut(parametres: Parametres): Promise<Source
     budget,
     parcLeger,
     pieces,
+    signalements,
+    catalogueTaches: catalogueTaches.map((t) => ({ libelle: t.libelle, categorie: t.categorie, systeme: t.systeme })),
   };
   /* Ce que la fiche apporte, dérivé des lecteurs. */
   return { ...sansFiches, resumesFiche: resumesFicheDepuisLaSource(sansFiches) };

@@ -20,6 +20,7 @@ du métier du même jour.*
 supabase/migrations/0059_depense_origine_stock.sql   -- une dépense peut venir du magasin (seule dans son fichier)
 supabase/migrations/0060_services_maintenance.sql    -- catalogue, signalements, service, clôture, droits, prix de référence
 supabase/migrations/0061_intervention_tache.sql      -- les tâches de chaque intervention, les utilisations comptées sur le parc
+supabase/migrations/0062_programmes_entretien.sql    -- main-d'œuvre globale d'un service, programmes d'entretien en base et éditables
 supabase/taches-service.sql                          -- le catalogue tiré de Fleetio, revu : 294 tâches
 supabase/interventions-taches.sql                    -- les 581 interventions du parc affectées au catalogue
 ```
@@ -274,14 +275,80 @@ Paramètres › **Catalogue des tâches de service** : on les consulte, on les
 classe en un clic, on en crée. Les filtres sont « À classer », une catégorie, ou
 « Toutes ».
 
-## Ce qui reste (lots 4 et 5)
+## Retours du métier, 21 septembre 2026 au soir
 
-- **Plans préventifs** par modèle et par véhicule, sur le catalogue, avec un
-  intervalle en km et/ou en mois. Une échéance proposerait le service, tâches
-  déjà remplies.
-- **Rapports de maintenance** : par tâche, système, catégorie, modèle,
-  prestataire ; préventif et curatif ; pannes fréquentes ; délai de réparation ;
-  respect du plan ; consommation de pièces.
+**Attacher une pièce.** Partout où l'on joint un document ou une photo, une
+zone de dépôt « Glisser-déposer les fichiers ici — ou cliquer pour choisir »,
+plusieurs fichiers à la fois (`ZoneDepot`). Le service et la déclaration
+d'incident ont deux cadres côte à côte, **Photos** et **Documents**.
+
+**Le formulaire de service.**
+
+- Une panne ne s'y propose qu'une fois : le menu « Ajouter » de la fiche
+  passait la copie du navigateur et la ligne de la base.
+- La liste des prestataires était vide. Les formulaires ne recevaient que les
+  transporteurs ; ils reçoivent désormais tous les prestataires — garages,
+  pièces, pneus, dépanneurs.
+- **Main-d'œuvre globale** : un montant, sans ventilation par tâche. Elle
+  entre au sous-total, porte remise et taxes, et devient à la clôture une
+  dépense « Main-d'œuvre globale » au poste préventif ou curatif (0062).
+- **Précision libre** sous chaque tâche choisie au catalogue : « avant gauche »,
+  « fuite au raccord ».
+- **L'immobilisation se calcule** du début à la fin des travaux, bornes
+  comprises — ou jusqu'à aujourd'hui tant qu'ils courent. Elle ne se saisit
+  plus.
+
+**Ouverts, puis fermés.** Les pannes ouvertes et les services ouverts entrent
+dans « À faire » de la page Maintenance, et dans le rapport du même nom. Une
+panne ouverte est à planifier, en retard si elle est critique, en cours si un
+service l'inclut. Un service ouvert que rien d'autre ne porte a sa ligne.
+Résolus, annulés ou clos, ils quittent « À faire » et restent dans leurs listes
+(filtre « Tous »). Sur la fiche, « Voir les pannes résolues » et « Voir les
+services clos » les montrent, sans geste à faire.
+
+**Les programmes d'entretien, éditables** (Paramètres › Programmes
+d'entretien, 0062). Ils vivaient dans le code ; ils sont en base, avec les
+quatre gabarits d'origine. On y :
+
+- ajoute une tâche du catalogue à un programme, avec ses périodicités (km ou
+  heures, et/ou mois — la première atteinte déclenche), son immobilisation, son
+  coût et ses mots-clés de reconnaissance dans l'historique ;
+- modifie ou retire une opération ;
+- crée un programme pour une catégorie de véhicule. Une catégorie n'appartient
+  qu'à un programme : la cocher la retire à l'autre. Un programme retiré est
+  désactivé, pas effacé.
+
+Le responsable du parc les tient (gestion de la maintenance), comme
+l'administrateur. Les échéances de la flotte, de la fiche et de la
+Maintenance lisent ces programmes. Sans 0062, les gabarits d'origine
+s'appliquent et l'écran reste en lecture.
+
+**Les rapports de maintenance.**
+
+- *Interventions* : la colonne « Tâches du catalogue ».
+- *Ordres de travail* devient **Services de maintenance** : priorité, tâches,
+  main-d'œuvre, pièces achetées et du magasin, HT, TTC, BRS, coût,
+  immobilisation calculée, fin des travaux, pannes incluses, n° de facture.
+- **Pannes signalées** (nouveau) : priorité, système, état, service, délai de
+  résolution, ancienneté des ouvertes.
+- **Tâches de maintenance** (nouveau) : chaque tâche comptée sur le parc —
+  interventions et services clos, coût, coût moyen, véhicules, préventif et
+  curatif, par système et catégorie.
+- *À faire* : les pannes et services ouverts.
+
+**Paramètres** se lisent par groupe : parc et véhicules, maintenance, énergie
+et caisse, chauffeurs, alertes et notifications, administration.
+
+**La fiche véhicule.** L'onglet s'appelle **Conformité**. Le dossier des
+pièces ne s'ouvre plus sur une pièce d'office : comme sur les dépenses, c'est
+au clic d'une pièce que la liste se replie et que la pièce s'affiche à droite.
+
+## Ce qui reste
+
+- **Plans préventifs par modèle** (par catégorie aujourd'hui) ; une échéance
+  qui propose le service, tâches déjà remplies.
+- Rapports encore à faire : respect du plan préventif, consommation de pièces
+  par tâche.
 - Les observations de visite technique, à rattacher aux signalements.
 - Le téléphone de l'atelier démarre et clôt encore l'ancien ordre de travail. Il
   n'a pas le formulaire de service.
@@ -289,12 +356,17 @@ classe en un clic, on en crée. Les filtres sont « À classer », une catégori
 ## Bancs
 
 `PGLITE_DIR=… node --import tsx --import ./scripts/rendu/hook.mjs scripts/tester-services-maintenance.mts`
-— 55 contrôles :
+— 68 contrôles :
 
 - une facture calculée à la main : remises, TVA, BRS, net, magasin, coût ;
 - la répartition en dépenses, au franc ;
 - ce qu'écrit la clôture, et l'atelier qui la lit en une ligne ;
 - les états d'un signalement, la classification ;
+- la main-d'œuvre globale, l'immobilisation calculée, la précision d'une
+  ligne ; les pannes et services ouverts dans « À faire » ; les rapports des
+  pannes et des tâches ; la zone de dépôt ; un programme lu en base ;
+- dans PGlite, 0062 : les quatre programmes, chaque opération citant une tâche
+  du catalogue, la main-d'œuvre globale ;
 - l'affectation d'une intervention du parc : plusieurs tâches, l'entretien
   périodique, le divers, le groupe frigorifique distinct du moteur ;
 - dans PGlite, 0061 : une intervention affectée et rejouée, le compte des

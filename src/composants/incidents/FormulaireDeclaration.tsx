@@ -505,7 +505,7 @@ export function FormulaireDeclaration({ vehiculeId, aujourdhui, onFermer, onEnre
                     {/* Pas un <label> : chaque cadre porte le sien, et deux libellés imbriqués se disputeraient le clic. */}
                     <div className="flex flex-col gap-1.5 sm:col-span-2">
                       <span className="label-champ">Photos et documents</span>
-                      <ChampPieces valeur={s.pieces} onChange={(pieces) => regler("pieces", pieces)} />
+                      <ChampPieces valeur={s.pieces} onChange={(pieces) => regler("pieces", pieces)} separer />
                       <span className="meta">Photos prises sur place, constat, procès-verbal — en image ou en PDF. Sur un téléphone, le cadre ouvre l&apos;appareil photo.</span>
                     </div>
                   </>

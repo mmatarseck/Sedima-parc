@@ -75,6 +75,7 @@ interface ColonnesService {
   lignes: unknown;
   remise_mode: ModeRemise | null;
   remise_valeur: number | string | null;
+  main_oeuvre_globale?: number | string | null;
   tva_taux: number | string | null;
   brs_taux: number | string | null;
   pieces: string[] | null;
@@ -92,6 +93,7 @@ export function serviceDepuisColonnes(o: LigneOrdre, c: ColonnesService | undefi
     lignes: lireLignes(c.lignes),
     remiseMode: c.remise_mode ?? "montant",
     remiseValeur: Number(c.remise_valeur ?? 0),
+    mainOeuvreGlobale: Number(c.main_oeuvre_globale ?? 0),
     tvaTaux: Number(c.tva_taux ?? 0),
     brsTaux: Number(c.brs_taux ?? 0),
     pieces: c.pieces ?? [],
@@ -104,7 +106,12 @@ export async function colonnesDesServices(client: Awaited<ReturnType<typeof clie
   let requete = client.from("ordre_travail").select("numero, priorite, date_fin, kilometrage, numero_facture, lignes, remise_mode, remise_valeur, tva_taux, brs_taux, pieces, signalements");
   if (filtre) requete = requete.eq("vehicule_id", filtre.vehiculeId);
   const lecture = await requete.limit(2000).returns<ColonnesService[]>();
-  return new Map((lecture.error ? [] : (lecture.data ?? [])).map((c) => [c.numero, c]));
+  /* La main-d'œuvre globale (0062), lue à part : sans la migration, elle manque seule. */
+  let globale = client.from("ordre_travail").select("numero, main_oeuvre_globale");
+  if (filtre) globale = globale.eq("vehicule_id", filtre.vehiculeId);
+  const lectureGlobale = await globale.limit(2000).returns<{ numero: string; main_oeuvre_globale: number | string | null }[]>();
+  const parNumero = new Map((lectureGlobale.error ? [] : (lectureGlobale.data ?? [])).map((g) => [g.numero, g.main_oeuvre_globale]));
+  return new Map((lecture.error ? [] : (lecture.data ?? [])).map((c) => [c.numero, { ...c, main_oeuvre_globale: parNumero.get(c.numero) ?? 0 }]));
 }
 
 async function ordresServeurBrut(): Promise<LigneOrdre[]> {

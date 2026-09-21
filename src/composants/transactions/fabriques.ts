@@ -499,6 +499,7 @@ export function fabriquerLigneOrdre(c: Creation): LigneOrdre | null {
     lignes: lireLignes(v.lignes),
     remiseMode: v.remiseMode === "pourcentage" ? "pourcentage" : "montant",
     remiseValeur: n(v.remiseValeur) ?? 0,
+    mainOeuvreGlobale: n(v.mainOeuvreGlobale) ?? 0,
     tvaTaux: n(v.tvaTaux) ?? 0,
     brsTaux: n(v.brsTaux) ?? 0,
     pieces: listeDe(v.pieces),

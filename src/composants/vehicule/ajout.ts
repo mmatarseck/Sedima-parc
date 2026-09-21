@@ -68,7 +68,7 @@ export function useAjoutVehicule(fiche: FicheVehicule): (cible: CibleAjout) => b
       if (cible === "ordre-de-travail") {
         ouvrirService({
           vehicule: { immatriculation: v.immatriculation, immatriculationAffichee: v.immatriculationAffichee, libelle: `${v.marque} ${v.appellation}` },
-          signalements: [...creations("signalement", fabriquerSignalement), ...(fiche.signalements ?? [])].filter((s): s is LigneSignalement => s !== null),
+          signalements: [...creations("signalement", fabriquerSignalement), ...(fiche.signalements ?? [])].filter((s, i, x): s is LigneSignalement => s !== null && x.findIndex((y) => y?.numero === s.numero) === i),
           services: [...creations("ordre", fabriquerLigneOrdre), ...(fiche.services ?? [])].filter((o): o is LigneOrdre => o !== null),
         });
         return true;

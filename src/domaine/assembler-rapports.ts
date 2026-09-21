@@ -24,7 +24,10 @@ import { bilanVehicule, qualifier, VERDICT_COUT, type BilanVehicule, type Perime
 import { conducteurDuJour, etatDisponibilite, ETAT_DISPONIBILITE } from "@/domaine/disponibilite";
 import { ETAPE_ACHAT, SENS_CAISSE, TON_ETAPE_ACHAT, URGENCE_ACHAT, coutDe } from "@/domaine/caisse";
 import { LIBELLE_ETAT_PLEIN, SENS_CUVE, etatPlein } from "@/domaine/carburant";
-import { NATURE_TRAVAIL, STATUT_ORDRE, TON_URGENCE_TRAVAIL, URGENCE_TRAVAIL } from "@/domaine/maintenance";
+import { NATURE_TRAVAIL, STATUT_ORDRE, TON_URGENCE_TRAVAIL, URGENCE_TRAVAIL, factureDe, travauxOuverts } from "@/domaine/maintenance";
+import { CATEGORIES_MAINTENANCE, systemeDe } from "@/domaine/categories-maintenance";
+import { PRIORITE_SERVICE, calculerService, joursImmobilisation } from "@/domaine/service";
+import { ETAT_SIGNALEMENT, PRIORITE_SIGNALEMENT, etatSignalement, type LigneSignalement } from "@/domaine/signalements";
 import { STATUT_CHAUFFEUR, nonConforme } from "@/domaine/chauffeur";
 import { ROULANT, TON_STATUT_DECLARATION } from "@/domaine/incidents";
 import { BAREME_PRIME, classer } from "@/domaine/performance";
@@ -164,6 +167,10 @@ export interface SourceRapports {
    * démonstration n'en a pas (16 septembre 2026).
    */
   pieces: PieceReglementaire[];
+  /** Les pannes signalées (0060) ; absentes de la démonstration. */
+  signalements?: LigneSignalement[];
+  /** Le catalogue des tâches de service, pour ranger les interventions par tâche, système et catégorie (0060-0061). */
+  catalogueTaches?: { libelle: string; categorie: string | null; systeme: string | null }[];
 }
 
 export interface PieceReglementaire {
@@ -814,6 +821,7 @@ function interventions(s: SourceRapports, c: ContexteRapport): LigneRapport[] {
       coutParJour: i.immobilisationJours !== null && i.immobilisationJours > 0 ? Math.round(i.montant / i.immobilisationJours) : null,
       reference: i.reference,
       numero: i.numero,
+      taches: (i.taches ?? []).join(" · ") || null,
       creee: i.creee,
     }));
 }
@@ -834,6 +842,7 @@ function ordres(s: SourceRapports, c: ContexteRapport): LigneRapport[] {
       garage: o.garage,
       montant: o.montantEstime,
       immobilisationPrevue: o.immobilisationPrevueJours,
+      ...colonnesDuService(o, s.aujourdhui),
       dateDebut: o.dateDebut,
       dateCloture: o.dateCloture,
       delaiCloture: joursEntre(o.dateDebut, o.dateCloture),
@@ -845,8 +854,34 @@ function ordres(s: SourceRapports, c: ContexteRapport): LigneRapport[] {
     }));
 }
 
+/** Ce que le service de maintenance (0060-0062) ajoute à un ordre : priorité, facture, immobilisation calculée. */
+function colonnesDuService(o: LigneOrdre, aujourdhui: string): LigneRapport {
+  const t = o.lignes?.length || o.mainOeuvreGlobale ? calculerService(factureDe(o)) : null;
+  const priorite = PRIORITE_SERVICE[o.priorite ?? "planifie"];
+  const ouvert = o.statut === "planifie" || o.statut === "en-atelier";
+  return {
+    priorite: etat(priorite.libelle, priorite.ton, o.priorite === "urgent" ? 0 : o.priorite === "non-planifie" ? 1 : 2),
+    dateFin: o.dateFin ?? null,
+    immobilisation: joursImmobilisation(o.dateDebut ?? o.datePrevue, o.dateFin ?? o.dateCloture ?? (ouvert ? aujourdhui : null)),
+    taches: (o.lignes ?? []).map((l) => l.libelle).filter(Boolean).join(" · ") || null,
+    mainOeuvre: t?.mainOeuvre ?? null,
+    piecesAchetees: t?.piecesAchetees ?? null,
+    magasin: t?.stock ?? null,
+    totalHT: t?.totalHT ?? null,
+    totalTTC: t?.totalTTC ?? null,
+    brs: t?.brs ?? null,
+    cout: t ? t.coutTotal : o.montantEstime,
+    pannes: o.signalements?.length ?? 0,
+    numeroFacture: o.numeroFacture ?? null,
+  };
+}
+
 function aFaire(s: SourceRapports): LigneRapport[] {
-  return s.travaux.map((t) => ({
+  const porteur = (immatriculation: string) => {
+    const l = s.lignes.find((x) => x.vehicule.id === immatriculation);
+    return { businessUnit: l?.vehicule.businessUnit ?? null, site: l?.site?.libelle ?? null };
+  };
+  return travauxOuverts(s.travaux, s.signalements ?? [], s.ordres, s.aujourdhui, porteur).map((t) => ({
     ...situation(s, t.vehiculeId),
     origine: NATURE_TRAVAIL[t.nature],
     urgence: etat(URGENCE_TRAVAIL[t.urgence], TON_URGENCE_TRAVAIL[t.urgence], t.joursRestants ?? 9999),
@@ -858,6 +893,88 @@ function aFaire(s: SourceRapports): LigneRapport[] {
     ordreNumero: t.ordreNumero,
     origineNumero: t.origineNumero,
   }));
+}
+
+/**
+ * Les pannes signalées de la période : leur état, le service qui les répare,
+ * et le délai entre le signalement et la résolution. Les ouvertes toujours.
+ */
+function pannes(s: SourceRapports, c: ContexteRapport): LigneRapport[] {
+  const { debut, fin } = resoudrePeriode(c.periode, s.aujourdhui);
+  const RANG = { ouvert: 0, "pris-en-charge": 1, resolu: 2, annule: 3 } as const;
+  return (s.signalements ?? [])
+    .filter((p) => dansLaPeriode(p.date, debut, fin) || p.statut === "ouvert")
+    .map((p) => {
+      const e = etatSignalement(p, s.ordres);
+      const systeme = systemeDe(p.systeme);
+      return {
+        ...situation(s, p.vehiculeId),
+        numero: p.numero,
+        date: p.date,
+        priorite: etat(PRIORITE_SIGNALEMENT[p.priorite].libelle, PRIORITE_SIGNALEMENT[p.priorite].ton, PRIORITE_SIGNALEMENT[p.priorite].rang),
+        etat: etat(ETAT_SIGNALEMENT[e].libelle, ETAT_SIGNALEMENT[e].ton, RANG[e]),
+        systeme: systeme?.libelle ?? null,
+        categorie: systeme ? CATEGORIES_MAINTENANCE[systeme.categorie] : null,
+        description: p.description,
+        km: p.kilometrage,
+        service: p.serviceNumero ?? s.ordres.find((o) => o.signalements?.includes(p.numero))?.numero ?? null,
+        resoluLe: p.resoluLe,
+        delai: p.resoluLe ? joursEntre(p.date, p.resoluLe) : null,
+        age: p.statut === "ouvert" ? joursEntre(p.date, s.aujourdhui) : null,
+        declarant: p.declarant ?? null,
+      };
+    });
+}
+
+/**
+ * Les tâches du catalogue, comptées sur le parc : les interventions affectées
+ * (0061) et les lignes des services clos de la période, leur coût, les
+ * véhicules concernés, la part préventive. Le coût d'une intervention qui
+ * couvre plusieurs tâches se partage à parts égales.
+ */
+function parTache(s: SourceRapports, c: ContexteRapport): LigneRapport[] {
+  const { debut, fin } = resoudrePeriode(c.periode, s.aujourdhui);
+  const cumul = new Map<string, { interventions: number; services: number; cout: number; preventif: number; curatif: number; vehicules: Set<string>; derniere: string }>();
+  const ajouter = (tache: string, vehicule: string, date: string, cout: number, preventif: boolean, service: boolean) => {
+    const x = cumul.get(tache) ?? { interventions: 0, services: 0, cout: 0, preventif: 0, curatif: 0, vehicules: new Set<string>(), derniere: date };
+    if (service) x.services += 1;
+    else x.interventions += 1;
+    x.cout += cout;
+    if (preventif) x.preventif += 1;
+    else x.curatif += 1;
+    x.vehicules.add(vehicule);
+    if (date > x.derniere) x.derniere = date;
+    cumul.set(tache, x);
+  };
+  for (const i of s.interventions.filter((x) => dansLaPeriode(x.date, debut, fin))) {
+    const taches = i.taches ?? [];
+    for (const t of taches) ajouter(t, i.vehiculeId, i.date, Math.round(i.montant / taches.length), i.type === "preventif", false);
+  }
+  for (const o of s.ordres.filter((x) => x.statut === "clos" && dansLaPeriode(x.dateCloture ?? x.datePrevue, debut, fin))) {
+    const t = calculerService(factureDe(o));
+    (o.lignes ?? []).forEach((l, k) => {
+      if (l.libelle) ajouter(l.libelle, o.immatriculation, o.dateCloture ?? o.datePrevue, t.lignes[k]?.cout ?? 0, o.type === "preventif", true);
+    });
+  }
+  const catalogue = new Map((s.catalogueTaches ?? []).map((t) => [t.libelle.toLowerCase(), t]));
+  return [...cumul].map(([tache, x]) => {
+    const t = catalogue.get(tache.toLowerCase());
+    const systeme = systemeDe(t?.systeme);
+    return {
+      tache,
+      categorie: systeme ? CATEGORIES_MAINTENANCE[systeme.categorie] : t?.categorie ? (CATEGORIES_MAINTENANCE[t.categorie] ?? null) : null,
+      systeme: systeme?.libelle ?? null,
+      utilisations: x.interventions + x.services,
+      interventions: x.interventions,
+      services: x.services,
+      vehicules: x.vehicules.size,
+      preventif: x.preventif,
+      curatif: x.curatif,
+      cout: x.cout,
+      coutMoyen: x.interventions + x.services ? Math.round(x.cout / (x.interventions + x.services)) : null,
+      derniere: x.derniere,
+    };
+  });
 }
 
 /* -- Conformité --------------------------------------------------------------- */
@@ -1884,6 +2001,10 @@ export function construireRapportDe(s: SourceRapports, id: string, c: ContexteRa
       return ordres(s, c);
     case "maintenance-a-faire":
       return aFaire(s);
+    case "maintenance-pannes":
+      return pannes(s, c);
+    case "maintenance-taches":
+      return parTache(s, c);
     case "conformite-documents":
       return documents(s, parametres);
     case "incidents-declarations":

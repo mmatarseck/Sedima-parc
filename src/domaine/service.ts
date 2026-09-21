@@ -49,6 +49,8 @@ export interface LigneService {
   /** La tâche du catalogue ; nulle pour une tâche écrite à la main. */
   tacheNumero: string | null;
   libelle: string;
+  /** Ce que la tâche du catalogue ne dit pas : « côté gauche », « fuite au raccord arrière » (métier, 21 septembre 2026). */
+  precision?: string;
   systeme: string | null;
   mainOeuvre: number;
   piecesAchetees: number;
@@ -59,6 +61,12 @@ export interface LigneService {
 
 export interface FactureService {
   lignes: LigneService[];
+  /**
+   * La main-d'œuvre facturée d'un seul montant, sans ventilation par tâche —
+   * beaucoup de garages la donnent ainsi (métier, 21 septembre 2026). Elle
+   * s'ajoute au sous-total, porte remise globale et taxes comme le reste.
+   */
+  mainOeuvreGlobale?: number;
   remiseMode: ModeRemise;
   remiseValeur: number;
   /** En pour cent : 18 pour la TVA, 5 pour la BRS ; 0 quand la facture n'en porte pas. */
@@ -83,7 +91,11 @@ export interface LigneCalculee {
 
 export interface TotauxService {
   lignes: LigneCalculee[];
+  /** Toute la main-d'œuvre : celle des lignes et la main-d'œuvre globale. */
   mainOeuvre: number;
+  mainOeuvreGlobale: number;
+  /** Sa part du TTC. */
+  coutMainOeuvreGlobale: number;
   piecesAchetees: number;
   remisesLignes: number;
   sousTotalHT: number;
@@ -115,7 +127,8 @@ export function calculerService(f: FactureService): TotauxService {
     const r = remise(facture, l.remiseMode, l.remiseValeur);
     return { cle: l.cle, facture, remise: r, netHT: facture - r, stock: valeurStock(l) };
   });
-  const sousTotalHT = bruts.reduce((s, l) => s + l.netHT, 0);
+  const globale = rond(positif(f.mainOeuvreGlobale));
+  const sousTotalHT = bruts.reduce((s, l) => s + l.netHT, 0) + globale;
   const remiseGlobale = remise(sousTotalHT, f.remiseMode, f.remiseValeur);
   const totalHT = sousTotalHT - remiseGlobale;
   const tva = rond((totalHT * positif(f.tvaTaux)) / 100);
@@ -124,13 +137,15 @@ export function calculerService(f: FactureService): TotauxService {
   const stock = bruts.reduce((s, l) => s + l.stock, 0);
 
   /* Le TTC réparti sur les lignes au prorata de leur net HT ; l'écart d'arrondi à la plus grosse. */
-  const parts = bruts.map((l) => (sousTotalHT > 0 ? rond((totalTTC * l.netHT) / sousTotalHT) : 0));
+  const parts = [...bruts.map((l) => l.netHT), globale].map((ht) => (sousTotalHT > 0 ? rond((totalTTC * ht) / sousTotalHT) : 0));
   const ecart = totalTTC - parts.reduce((s, x) => s + x, 0);
   if (ecart !== 0 && parts.length) parts[parts.indexOf(Math.max(...parts))]! += ecart;
 
   return {
     lignes: bruts.map((l, i) => ({ ...l, cout: parts[i]! + l.stock })),
-    mainOeuvre: f.lignes.reduce((s, l) => s + rond(positif(l.mainOeuvre)), 0),
+    mainOeuvre: f.lignes.reduce((s, l) => s + rond(positif(l.mainOeuvre)), 0) + globale,
+    mainOeuvreGlobale: globale,
+    coutMainOeuvreGlobale: parts[bruts.length]!,
     piecesAchetees: f.lignes.reduce((s, l) => s + rond(positif(l.piecesAchetees)), 0),
     remisesLignes: bruts.reduce((s, l) => s + l.remise, 0),
     sousTotalHT,
@@ -143,6 +158,12 @@ export function calculerService(f: FactureService): TotauxService {
     stock,
     coutTotal: totalTTC + stock,
   };
+}
+
+/** Les jours d'immobilisation d'un service : du début des travaux à leur fin, bornes comprises — ou jusqu'à aujourd'hui s'il court encore. */
+export function joursImmobilisation(debut: string | null | undefined, fin: string | null | undefined): number | null {
+  if (!debut || !fin || fin < debut) return null;
+  return Math.round((Date.parse(`${fin}T00:00:00Z`) - Date.parse(`${debut}T00:00:00Z`)) / 86_400_000) + 1;
 }
 
 /* -- Ce que la clôture écrit --------------------------------------------------- */
@@ -180,6 +201,7 @@ export function depensesDuService(f: FactureService, type: "preventif" | "curati
       if (m > 0) depenses.push({ poste: "pieces", libelle: `${l.libelle} — ${p.designation} × ${p.quantite} (magasin)`, montant: m, origine: "stock" });
     }
   });
+  if (t.coutMainOeuvreGlobale > 0) depenses.push({ poste: posteMO, libelle: "Main-d'œuvre globale", montant: t.coutMainOeuvreGlobale, origine: "facture" });
   return depenses;
 }
 
@@ -202,6 +224,7 @@ export function lireLignes(v: unknown): LigneService[] {
       cle: typeof x.cle === "string" ? x.cle : `l${i}`,
       tacheNumero: typeof x.tacheNumero === "string" ? x.tacheNumero : null,
       libelle: typeof x.libelle === "string" ? x.libelle : "",
+      ...(typeof x.precision === "string" && x.precision.trim() ? { precision: x.precision } : {}),
       systeme: typeof x.systeme === "string" ? x.systeme : null,
       mainOeuvre: Number(x.mainOeuvre) || 0,
       piecesAchetees: Number(x.piecesAchetees) || 0,

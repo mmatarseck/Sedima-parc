@@ -14,7 +14,7 @@ import { optionsSystemes } from "@/domaine/categories-maintenance";
 import type { LigneOrdre } from "@/domaine/maintenance";
 import { STATUT_ORDRE } from "@/domaine/maintenance";
 import { TYPES_GARAGE } from "@/domaine/prestataires";
-import { PRIORITE_SERVICE, TAUX_BRS, TAUX_TVA, calculerService, peutCloturerService, type LigneService, type ModeRemise, type PrioriteService } from "@/domaine/service";
+import { PRIORITE_SERVICE, TAUX_BRS, TAUX_TVA, calculerService, joursImmobilisation, peutCloturerService, type LigneService, type ModeRemise, type PrioriteService } from "@/domaine/service";
 import { ETAT_SIGNALEMENT, PRIORITE_SIGNALEMENT, etatSignalement, trierSignalements, type LigneSignalement } from "@/domaine/signalements";
 import { precisionTache, tacheParLibelle } from "@/domaine/taches";
 import { jourCourant } from "@/domaine/temps";
@@ -112,12 +112,12 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
     garage: existant && existant.garage !== "—" ? existant.garage : "",
     kilometrage: existant?.kilometrage ? String(existant.kilometrage) : "",
     numeroFacture: existant?.numeroFacture ?? "",
-    immobilisationPrevueJours: existant?.immobilisationPrevueJours ? String(existant.immobilisationPrevueJours) : "",
     commentaire: existant?.commentaire ?? "",
   }));
   const [lignes, setLignes] = useState<LigneService[]>(() => (existant?.lignes?.length ? existant.lignes : [ligneVide()]));
   const [remiseMode, setRemiseMode] = useState<ModeRemise>(existant?.remiseMode ?? "montant");
   const [remiseValeur, setRemiseValeur] = useState<number>(existant?.remiseValeur ?? 0);
+  const [mainOeuvreGlobale, setMainOeuvreGlobale] = useState<number>(existant?.mainOeuvreGlobale ?? 0);
   const [tvaTaux, setTvaTaux] = useState<number>(existant ? (existant.tvaTaux ?? 0) : TAUX_TVA);
   const [brsTaux, setBrsTaux] = useState<number>(existant?.brsTaux ?? 0);
   const [pieces, setPieces] = useState<string[]>(existant?.pieces ?? []);
@@ -145,10 +145,16 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
   const proposables = useMemo(() => {
     if (!vehiculeChoisi) return [];
     const autres = (demande.services ?? []).filter((o) => o.numero !== existant?.numero);
-    return trierSignalements(demande.signalements.filter((s) => s.vehiculeId === vehiculeChoisi.immatriculation && (inclus.includes(s.numero) || etatSignalement(s, autres) === "ouvert")));
+    /* Une panne ne se propose qu'une fois, même si l'appelant la tient deux fois — sa copie du navigateur et la ligne de la base (métier, 21 septembre 2026). */
+    const uniques = [...new Map(demande.signalements.map((s) => [s.numero, s])).values()];
+    return trierSignalements(uniques.filter((s) => s.vehiculeId === vehiculeChoisi.immatriculation && (inclus.includes(s.numero) || etatSignalement(s, autres) === "ouvert")));
   }, [demande.signalements, demande.services, vehiculeChoisi, inclus, existant?.numero]);
 
-  const totaux = calculerService({ lignes, remiseMode, remiseValeur, tvaTaux, brsTaux });
+  const totaux = calculerService({ lignes, mainOeuvreGlobale, remiseMode, remiseValeur, tvaTaux, brsTaux });
+  /* L'immobilisation se calcule (métier, 21 septembre 2026) : du début à la fin des travaux, ou jusqu'à aujourd'hui tant qu'ils courent. */
+  const debutTravaux = String(entete.datePrevue ?? "") || null;
+  const finTravaux = String(entete.dateFin ?? "") || null;
+  const immobilisation = joursImmobilisation(debutTravaux, finTravaux ?? (debutTravaux && debutTravaux <= aujourdhui ? aujourdhui : null));
 
   const champsEntete: ChampEdition[] = [
     ...(vehiculeFixe || existant ? [] : [{ cle: "vehiculeId", libelle: "Véhicule", type: "choix" as const, options: optionsVehicules(), obligatoire: true }]),
@@ -159,7 +165,6 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
     { cle: "garage", libelle: "Prestataire", type: "suggestion", suggestionsDe: () => optionsPrestataires([...TYPES_GARAGE, "pieces", "pneumatiques"], lireCreations), obligatoire: true },
     { cle: "kilometrage", libelle: "Kilométrage", type: "nombre", unite: "km" },
     { cle: "numeroFacture", libelle: "N° de facture ou de devis", type: "texte" },
-    { cle: "immobilisationPrevueJours", libelle: "Immobilisation prévue", type: "nombre", unite: "jours" },
     { cle: "objet", libelle: "Objet du service", type: "texte", obligatoire: true },
   ];
   const manquants = champsEntete.filter((c) => c.obligatoire && !String(entete[c.cle] ?? "").trim());
@@ -186,12 +191,13 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
       priorite: entete.priorite,
       kilometrage: entete.kilometrage ? nombre(String(entete.kilometrage)) : null,
       numeroFacture: String(entete.numeroFacture ?? "").trim() || null,
-      immobilisationPrevueJours: entete.immobilisationPrevueJours ? nombre(String(entete.immobilisationPrevueJours)) : null,
-      montantEstime: calculerService({ lignes: lignesFinales, remiseMode, remiseValeur, tvaTaux, brsTaux }).coutTotal || null,
+      immobilisationPrevueJours: immobilisation,
+      montantEstime: calculerService({ lignes: lignesFinales, mainOeuvreGlobale, remiseMode, remiseValeur, tvaTaux, brsTaux }).coutTotal || null,
       commentaire: String(entete.commentaire ?? "").trim() || null,
       lignes: JSON.stringify(lignesFinales),
       remiseMode,
       remiseValeur,
+      mainOeuvreGlobale,
       tvaTaux,
       brsTaux,
       pieces,
@@ -216,7 +222,7 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
     setErreur(null);
     if (!vehiculeChoisi) return setErreur("Choisissez le véhicule."), null;
     if (manquants.length) return setErreur(`À renseigner : ${manquants.map((c) => c.libelle.toLowerCase()).join(", ")}.`), null;
-    const lignesSaisies = lignes.filter((l) => l.libelle.trim() || l.mainOeuvre || l.piecesAchetees || l.piecesStock.length);
+    const lignesSaisies = lignes.filter((l) => l.libelle.trim() || l.precision?.trim() || l.mainOeuvre || l.piecesAchetees || l.piecesStock.length);
     if (lignesSaisies.some((l) => !l.libelle.trim())) return setErreur("Chaque ligne nomme sa tâche."), null;
     const lignesFinales = catalogueCompletePar(lignesSaisies);
     const valeurs = valeursDuService(lignesFinales);
@@ -295,6 +301,12 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
                     <ChampSaisie champ={c} valeur={entete[c.cle] ?? ""} saisie={entete} onChange={(v) => setEntete((e) => ({ ...e, [c.cle]: v }))} invalide={tentee && Boolean(c.obligatoire) && !String(entete[c.cle] ?? "").trim()} />
                   </label>
                 ))}
+                <div className="flex flex-col gap-1.5">
+                  <span className="label-champ">Immobilisation</span>
+                  <span className="flex h-9 items-center rounded-[10px] bg-surface-2 px-3 text-[13px]">
+                    {immobilisation === null ? <span className="text-attenue">Calculée des dates de travaux</span> : <span className="code font-medium">{immobilisation} jour{immobilisation > 1 ? "s" : ""}{finTravaux ? "" : " à ce jour"}</span>}
+                  </span>
+                </div>
               </div>
 
               {/* ---- Les pannes et anomalies incluses ---- */}
@@ -368,6 +380,15 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
                           ) : l.tacheNumero ? (
                             <span className="meta mt-1 block">{precisionTache(taches.find((t) => t.numero === l.tacheNumero) ?? { categorie: null, systeme: l.systeme })}</span>
                           ) : null}
+                          {l.libelle.trim() ? (
+                            <input
+                              aria-label="Précision sur la tâche"
+                              value={l.precision ?? ""}
+                              onChange={(e) => changerLigne(i, { precision: e.target.value })}
+                              placeholder="Précision libre — côté, pièce, constat…"
+                              className="mt-1.5 h-8 w-full rounded-[8px] border border-bordure-champ bg-surface px-2.5 text-[12.5px] outline-none focus:border-accent"
+                            />
+                          ) : null}
                         </div>
                         <EntreeMontant etiquette="Main-d'œuvre" valeur={l.mainOeuvre} onChange={(n) => changerLigne(i, { mainOeuvre: n })} />
                         <EntreeMontant etiquette="Pièces achetées" valeur={l.piecesAchetees} onChange={(n) => changerLigne(i, { piecesAchetees: n })} />
@@ -440,8 +461,8 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
                     ))}
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <span className="label-champ">Documents et photos — devis, facture, avant et après</span>
-                    <ChampPieces valeur={pieces} onChange={setPieces} />
+                    <span className="label-champ">Photos et documents — avant et après, devis, facture</span>
+                    <ChampPieces valeur={pieces} onChange={setPieces} separer />
                   </div>
                   <label className="flex flex-col gap-1.5">
                     <span className="label-champ">Commentaire</span>
@@ -450,7 +471,13 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
                 </div>
 
                 <dl className="flex flex-col gap-2 rounded-[12px] border border-bordure p-4 text-[13px]">
-                  <Ligne libelle="Main-d'œuvre" valeur={totaux.mainOeuvre} />
+                  <div className="flex items-center justify-between gap-2 text-texte-2">
+                    <dt title="La main-d'œuvre facturée d'un seul montant, sans ventilation par tâche">Main-d&apos;œuvre globale</dt>
+                    <dd>
+                      <EntreeMontant etiquette="Main-d'œuvre globale" valeur={mainOeuvreGlobale} onChange={setMainOeuvreGlobale} />
+                    </dd>
+                  </div>
+                  <Ligne libelle="Main-d'œuvre — total" valeur={totaux.mainOeuvre} />
                   <Ligne libelle="Pièces achetées" valeur={totaux.piecesAchetees} />
                   {totaux.remisesLignes ? <Ligne libelle="Remises des lignes" valeur={-totaux.remisesLignes} /> : null}
                   <Ligne libelle="Sous-total HT" valeur={totaux.sousTotalHT} fort />

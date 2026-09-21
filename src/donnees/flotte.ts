@@ -20,7 +20,7 @@
 
 import { cache } from "react";
 import { exigeDocument, immobilisationAdministrative } from "@/domaine/documents";
-import { echeancesDuPlan, type CompteursVehicule, type EcheanceEntretien } from "@/domaine/entretien";
+import { echeancesDuPlan, type CompteursVehicule, type EcheanceEntretien, type ProgrammeEntretien } from "@/domaine/entretien";
 import type { EtatDocument } from "@/domaine/fiche";
 import { afficher } from "@/domaine/immatriculation";
 import { idChauffeur } from "@/domaine/chauffeur";
@@ -29,6 +29,7 @@ import type { EcheanceVehicule, LigneFlotte, PosteDepense, Site, TypeDocument, V
 import { joursRestants } from "@/lib/format";
 import { clientServeur } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { programmesServeur } from "./entretien";
 import { passagesReleves, programmeParDefaut } from "./entretien-demo";
 
 export { ligneLegere } from "./flotte-demo";
@@ -174,6 +175,8 @@ interface LigneIntervention {
 /** Ce que la liste et, demain, la fiche lisent d'un coup. */
 export interface ParcBrut {
   aujourdhui: string;
+  /** Les programmes d'entretien tenus en base (0062) ; absents, les gabarits d'origine. */
+  programmes?: ProgrammeEntretien[];
   vehicules: LigneVehicule[];
   sites: Map<string, Site>;
   chauffeurs: Map<string, LigneChauffeurCourt>;
@@ -467,7 +470,7 @@ function rythmeMesure(uuid: string, parc: ParcBrut): number | null {
 
 /** Toutes les échéances du plan d'entretien d'un véhicule, confrontées à ses interventions en base ; la liste en garde la première, la Maintenance celles qui appellent une action. */
 export function echeancesEntretienDeLaBase(v: Vehicule, uuid: string, compteur: { km: number; date: string } | null, parc: ParcBrut, rythme?: number | null): EcheanceEntretien[] {
-  const programme = programmeParDefaut(v.categorie);
+  const programme = programmeParDefaut(v.categorie, parc.programmes);
   const interventions = parc.interventions.filter((i) => i.vehicule_id === uuid).map((i) => ({ numero: i.numero, date: i.date, objet: i.objet, km: i.km }));
   const compteurs: CompteursVehicule = {
     km: compteur?.km ?? null,
@@ -563,7 +566,10 @@ export function ligneDepuisLaBase(brut: LigneVehicule, parc: ParcBrut, parametre
 /* -- Ce que la page appelle -------------------------------------------------- */
 
 /** Le parc brut, lu une fois par requête : la liste Flotte et la Maintenance (travaux à faire) le partagent. */
-export const parcServeur = cache(async (): Promise<ParcBrut> => lireParc(await clientServeur(), new Date().toISOString().slice(0, 10)));
+export const parcServeur = cache(async (): Promise<ParcBrut> => {
+  const [parc, { programmes }] = await Promise.all([lireParc(await clientServeur(), new Date().toISOString().slice(0, 10)), programmesServeur()]);
+  return { ...parc, programmes };
+});
 
 /** Les lignes de la liste Flotte, statut effectif et immobilisation compris. */
 async function lignesFlotteBrut(parametres: Parametres): Promise<LigneFlotte[]> {

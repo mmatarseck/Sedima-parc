@@ -111,8 +111,9 @@ export function programmeParCode(code: string): ProgrammeEntretien | null {
 }
 
 /** Le gabarit qu'une catégorie reçoit par défaut. Le léger sert de filet. */
-export function programmeParDefaut(categorie: CategorieVehicule): ProgrammeEntretien {
-  return PROGRAMMES.find((p) => p.categories.includes(categorie)) ?? PROGRAMMES.find((p) => p.code === "leger")!;
+export function programmeParDefaut(categorie: CategorieVehicule, programmes: ProgrammeEntretien[] = PROGRAMMES): ProgrammeEntretien {
+  /* Les programmes tenus en base (0062) passent devant les gabarits d'origine ; le léger, puis le premier, servent de filet. */
+  return programmes.find((p) => p.categories.includes(categorie)) ?? programmes.find((p) => p.code === "leger") ?? programmes[0] ?? PROGRAMMES.find((p) => p.code === "leger")!;
 }
 
 /* -- Les ajustements, véhicule par véhicule --------------------------------- */
@@ -140,10 +141,10 @@ const AJUSTEMENTS: Record<string, AjustementOperation[]> = {
 };
 
 /** Le plan appliqué à un véhicule : son gabarit, et ce qu'il en change. */
-export function planDuVehicule(vehiculeId: string, categorie: CategorieVehicule): PlanVehicule {
+export function planDuVehicule(vehiculeId: string, categorie: CategorieVehicule, programmes: ProgrammeEntretien[] = PROGRAMMES): PlanVehicule {
   return {
     vehiculeId,
-    programmeCode: programmeParDefaut(categorie).code,
+    programmeCode: programmeParDefaut(categorie, programmes).code,
     ajustements: AJUSTEMENTS[vehiculeId] ?? [],
   };
 }

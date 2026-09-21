@@ -83,7 +83,7 @@ const ONGLETS: { cle: Onglet; libelle: string; ordinateurSeulement?: boolean }[]
   { cle: "affectations", libelle: "Affectations" },
   /* Conformité et Dossier réunis (métier, 21 septembre 2026) : l'échéance de
      ce qui se renouvelle, et la pièce qui le prouve, sur le même onglet. */
-  { cle: "conformite", libelle: "Conformité & dossier" },
+  { cle: "conformite", libelle: "Conformité" },
   { cle: "incidents", libelle: "Incidents & sinistres" },
   { cle: "maintenance", libelle: "Maintenance" },
   /* Les rappels sur leur propre onglet (15 septembre 2026) : ce qui reste à

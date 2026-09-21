@@ -20,6 +20,7 @@ import { normaliser } from "@/domaine/immatriculation";
 import type { Parametres } from "@/domaine/parametres";
 import type { CategorieObservation, PosteDepense, TypeDocument } from "@/domaine/types";
 import { clientServeur } from "@/lib/supabase";
+import { programmesServeur } from "./entretien";
 import { passagesReleves, planDuVehicule, programmeParDefaut } from "./entretien-demo";
 import { lignesFlotte, parcServeur } from "./flotte";
 
@@ -217,7 +218,8 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
   if (lecture.error) console.warn(`Fiche ${canonique} : lire_fiche() indisponible (${lecture.error.message}), fiche dressée sans historique.`);
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const v = ligne.vehicule;
-  const plan = { programme: programmeParDefaut(v.categorie), plan: planDuVehicule(v.id, v.categorie), passages: passagesReleves };
+  const { programmes } = await programmesServeur();
+  const plan = { programme: programmeParDefaut(v.categorie, programmes), plan: planDuVehicule(v.id, v.categorie, programmes), passages: passagesReleves };
   /* Une donnée fautive dans l'historique ne doit pas fermer la fiche : elle
      s'ouvre alors sans historique, et le journal du serveur dit pourquoi. */
   try {

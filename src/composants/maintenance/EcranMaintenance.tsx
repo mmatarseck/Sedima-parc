@@ -21,6 +21,7 @@ import {
   COULEUR_STATUT_ORDRE,
   COULEUR_URGENCE_TRAVAIL,
   estOuvert,
+  factureDe,
   NATURE_TRAVAIL,
   PRECISION_STATUT_ORDRE,
   PRECISION_URGENCE_TRAVAIL,
@@ -28,6 +29,7 @@ import {
   TON_STATUT_ORDRE,
   TON_URGENCE_TRAVAIL,
   URGENCE_TRAVAIL,
+  travauxOuverts,
   urgenceEcheance,
   type LigneInterventionFlotte,
   type LigneOrdre,
@@ -193,6 +195,24 @@ function Interieur({ travaux, ordres, signalements = [], interventions, aujourdh
     });
   }, [travaux, tousOrdres]);
 
+  /*
+   * Les pannes et les services ouverts sont aussi du travail à faire (métier,
+   * 21 septembre 2026 : « un listing des services et pannes ouverts ; si on
+   * les ferme, on les voit toujours sur les données, mais pas comme action à
+   * faire »). Une panne ouverte est à planifier — en retard si elle est
+   * critique ; prise par un service, elle est en cours. Un service ouvert que
+   * rien d'autre ne porte a sa ligne. Résolus, annulés ou clos, ils quittent
+   * cette vue et restent dans leurs listes, filtre « Tous ».
+   */
+  const travauxEtPannes = useMemo<LigneTravail[]>(
+    () =>
+      travauxOuverts(tousTravaux, tousSignalements, tousOrdres, aujourdhui, (immatriculation) => {
+        const v = lireReferentiels().vehicules.find((x) => x.immatriculation === immatriculation);
+        return { businessUnit: v?.businessUnit ?? null, site: v?.site ?? null };
+      }),
+    [tousTravaux, tousSignalements, tousOrdres, aujourdhui],
+  );
+
   const toutesInterventions = useMemo(() => {
     const fusion = [...interventionsCreees, ...interventions.filter((i) => !interventionsCreees.some((c) => c.numero === i.numero))].map((i) => surcharger(i));
     fusion.sort((a, b) => b.date.localeCompare(a.date));
@@ -205,7 +225,7 @@ function Interieur({ travaux, ordres, signalements = [], interventions, aujourdh
   const bus = useMemo(() => (Object.keys(BUSINESS_UNIT) as BusinessUnit[]).filter((b) => tousTravaux.some((t) => t.businessUnit === b) || toutesInterventions.some((i) => i.businessUnit === b)), [tousTravaux, toutesInterventions]);
   const parBu = <T extends { businessUnit: BusinessUnit | null }>(l: T) => bu === "toutes" || l.businessUnit === bu;
 
-  const travauxVisibles = useMemo(() => tousTravaux.filter(parBu), [tousTravaux, bu]); // eslint-disable-line react-hooks/exhaustive-deps
+  const travauxVisibles = useMemo(() => travauxEtPannes.filter(parBu), [travauxEtPannes, bu]); // eslint-disable-line react-hooks/exhaustive-deps
   const ordresVisibles = useMemo(() => tousOrdres.filter((o) => parBu(o) && (!depuis || o.datePrevue >= depuis || estOuvert(o.statut) || o.numero === cible)), [tousOrdres, bu, depuis, cible]); // eslint-disable-line react-hooks/exhaustive-deps
   const interventionsVisibles = useMemo(() => toutesInterventions.filter((i) => parBu(i) && (!depuis || i.date >= depuis || i.numero === cible)), [toutesInterventions, bu, depuis, cible]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -220,6 +240,8 @@ function Interieur({ travaux, ordres, signalements = [], interventions, aujourdh
 
   /* ---- Gestes ---- */
   function planifier(t?: LigneTravail) {
+    const panne = t?.nature === "panne" ? tousSignalements.find((s) => s.numero === t.origineNumero) : undefined;
+    if (panne) return planifierSignalement(panne);
     ouvrirService({
       signalements: tousSignalements,
       services: tousOrdres,
@@ -397,7 +419,7 @@ function Interieur({ travaux, ordres, signalements = [], interventions, aujourdh
         ),
       },
       { cle: "priorite", libelle: "Priorité", parDefaut: true, largeur: 115, texte: (o) => PRIORITE_SERVICE[o.priorite ?? "planifie"].libelle, rendu: (o) => <Echeance ton={PRIORITE_SERVICE[o.priorite ?? "planifie"].ton}>{PRIORITE_SERVICE[o.priorite ?? "planifie"].libelle}</Echeance> },
-      { cle: "cout", libelle: "Coût", parDefaut: true, largeur: 125, alignee: "droite", tri: (o) => (o.lignes?.length ? calculerService({ lignes: o.lignes, remiseMode: o.remiseMode ?? "montant", remiseValeur: o.remiseValeur ?? 0, tvaTaux: o.tvaTaux ?? 0, brsTaux: o.brsTaux ?? 0 }).coutTotal : o.montantEstime), rendu: (o) => { const c = o.lignes?.length ? calculerService({ lignes: o.lignes, remiseMode: o.remiseMode ?? "montant", remiseValeur: o.remiseValeur ?? 0, tvaTaux: o.tvaTaux ?? 0, brsTaux: o.brsTaux ?? 0 }).coutTotal : o.montantEstime; return c === null ? <span className="text-attenue">—</span> : <span className="code">{montant(c)}</span>; } },
+      { cle: "cout", libelle: "Coût", parDefaut: true, largeur: 125, alignee: "droite", tri: (o) => (o.lignes?.length ? calculerService(factureDe(o)).coutTotal : o.montantEstime), rendu: (o) => { const c = o.lignes?.length ? calculerService(factureDe(o)).coutTotal : o.montantEstime; return c === null ? <span className="text-attenue">—</span> : <span className="code">{montant(c)}</span>; } },
       { cle: "pannes", libelle: "Pannes incluses", parDefaut: false, largeur: 120, alignee: "droite", tri: (o) => o.signalements?.length ?? 0, rendu: (o) => <span className="code">{o.signalements?.length ?? 0}</span> },
       { cle: "type", libelle: "Type", parDefaut: true, largeur: 105, texte: (o) => (o.type === "preventif" ? "Préventif" : "Curatif"), rendu: (o) => <Pastille ton={o.type === "preventif" ? "favorable" : "vigilance"}>{o.type === "preventif" ? "Préventif" : "Curatif"}</Pastille> },
       { cle: "garage", libelle: "Garage", parDefaut: true, largeur: 200, rendu: (o) => <span className="block truncate">{o.garage}</span> },

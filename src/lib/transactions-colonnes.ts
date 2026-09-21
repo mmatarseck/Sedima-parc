@@ -227,6 +227,7 @@ function colonnesDuService(v: Record<string, unknown>): Record<string, unknown> 
   if (v.lignes !== undefined) c.lignes = jsonDe(v.lignes);
   if (v.remiseMode !== undefined) c.remise_mode = texte(v.remiseMode) ?? "montant";
   if (v.remiseValeur !== undefined) c.remise_valeur = nombre(v.remiseValeur) ?? 0;
+  if (v.mainOeuvreGlobale !== undefined) c.main_oeuvre_globale = nombre(v.mainOeuvreGlobale) ?? 0;
   if (v.tvaTaux !== undefined) c.tva_taux = nombre(v.tvaTaux) ?? 0;
   if (v.brsTaux !== undefined) c.brs_taux = nombre(v.brsTaux) ?? 0;
   if (v.pieces !== undefined) c.pieces = tableauDe(v.pieces);
@@ -999,7 +1000,7 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   ordre: {
     datePrevue: "date_prevue", objet: "objet", garage: "garage", immobilisationPrevueJours: "immobilisation_prevue_jours", montantEstime: "montant_estime", statut: "statut", dateDebut: "date_debut", dateCloture: "date_cloture", interventionNumero: "intervention_numero", commentaire: "commentaire",
     /* Le service de maintenance (0060). */
-    priorite: "priorite", dateFin: "date_fin", kilometrage: "kilometrage", numeroFacture: "numero_facture", lignes: "lignes", remiseMode: "remise_mode", remiseValeur: "remise_valeur", tvaTaux: "tva_taux", brsTaux: "brs_taux", pieces: "pieces", signalements: "signalements",
+    priorite: "priorite", dateFin: "date_fin", kilometrage: "kilometrage", numeroFacture: "numero_facture", lignes: "lignes", remiseMode: "remise_mode", remiseValeur: "remise_valeur", mainOeuvreGlobale: "main_oeuvre_globale", tvaTaux: "tva_taux", brsTaux: "brs_taux", pieces: "pieces", signalements: "signalements",
   },
   signalement: { date: "date", priorite: "priorite", systeme: "systeme", description: "description", details: "details", kilometrage: "kilometrage", pieces: "pieces", statut: "statut" },
   tache: { libelle: "libelle", description: "description", systeme: "systeme", ensemble: "ensemble", typeDefaut: "type_defaut", actif: "actif" },

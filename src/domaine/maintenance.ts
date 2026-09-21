@@ -26,13 +26,15 @@ import type { BusinessUnit } from "./types";
 
 /* -- Ce qui reste à faire -------------------------------------------------- */
 
-export type NatureTravail = "echeance" | "observation" | "immobilisation" | "incident";
+export type NatureTravail = "echeance" | "observation" | "immobilisation" | "incident" | "panne" | "service";
 
 export const NATURE_TRAVAIL: Record<NatureTravail, string> = {
   echeance: "Échéance d'entretien",
   observation: "Observation de visite",
   immobilisation: "Véhicule immobilisé",
   incident: "Incident non roulant",
+  panne: "Panne signalée",
+  service: "Service ouvert",
 };
 
 export type UrgenceTravail = "en-retard" | "a-planifier" | "a-venir" | "en-cours";
@@ -162,6 +164,8 @@ export interface LigneOrdre {
   lignes?: LigneService[];
   remiseMode?: ModeRemise;
   remiseValeur?: number;
+  /** La main-d'œuvre facturée d'un seul montant (0062). */
+  mainOeuvreGlobale?: number;
   tvaTaux?: number;
   brsTaux?: number;
   pieces?: string[];
@@ -169,8 +173,8 @@ export interface LigneOrdre {
 }
 
 /** La facture d'un service, prête pour le calcul. */
-export function factureDe(o: Pick<LigneOrdre, "lignes" | "remiseMode" | "remiseValeur" | "tvaTaux" | "brsTaux">): FactureService {
-  return { lignes: o.lignes ?? [], remiseMode: o.remiseMode ?? "montant", remiseValeur: o.remiseValeur ?? 0, tvaTaux: o.tvaTaux ?? 0, brsTaux: o.brsTaux ?? 0 };
+export function factureDe(o: Pick<LigneOrdre, "lignes" | "remiseMode" | "remiseValeur" | "tvaTaux" | "brsTaux" | "mainOeuvreGlobale">): FactureService {
+  return { lignes: o.lignes ?? [], mainOeuvreGlobale: o.mainOeuvreGlobale ?? 0, remiseMode: o.remiseMode ?? "montant", remiseValeur: o.remiseValeur ?? 0, tvaTaux: o.tvaTaux ?? 0, brsTaux: o.brsTaux ?? 0 };
 }
 
 export function estOuvert(statut: StatutOrdre): boolean {
@@ -196,4 +200,85 @@ export interface LigneInterventionFlotte extends Intervention {
   creee: boolean;
   /** Les tâches du catalogue que l'intervention a couvertes (0061) ; absentes avant l'affectation. */
   taches?: string[];
+}
+
+/* -- Les pannes et services ouverts, dans le travail à faire --------------------- */
+
+/**
+ * Le travail à faire, pannes et services ouverts compris (métier, 21 septembre
+ * 2026 : « un listing des services et pannes ouverts ; si on les ferme, on les
+ * voit toujours sur les données, mais pas comme action à faire »).
+ *
+ * Une panne ouverte est à planifier — en retard si elle est critique ; prise
+ * par un service ouvert, elle est en cours. Un service ouvert que rien d'autre
+ * ne porte a sa ligne, en cours. Résolus, annulés ou clos, ils quittent le
+ * travail à faire et restent dans leurs listes.
+ *
+ * Pur : la page Maintenance et le rapport « À faire » disent la même chose.
+ */
+export function travauxOuverts(
+  travaux: LigneTravail[],
+  signalements: SignalementATraiter[],
+  ordres: LigneOrdre[],
+  aujourdhui: string,
+  porteur: (immatriculation: string) => { businessUnit: BusinessUnit | null; site: string | null },
+): LigneTravail[] {
+  const ouverts = ordres.filter((o) => estOuvert(o.statut));
+  const jours = (d: string) => Math.max(0, Math.round((Date.parse(`${aujourdhui}T00:00:00Z`) - Date.parse(`${d}T00:00:00Z`)) / 86_400_000));
+  const jourMois = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+  const pannes: LigneTravail[] = signalements
+    .filter((s) => s.statut === "ouvert")
+    .map((s) => {
+      const service = ouverts.find((o) => o.signalements?.includes(s.numero)) ?? null;
+      return {
+        cle: `panne:${s.numero}`,
+        nature: "panne",
+        urgence: service ? "en-cours" : s.priorite === "critique" ? "en-retard" : "a-planifier",
+        type: "curatif",
+        vehiculeId: s.vehiculeId,
+        immatriculation: s.vehiculeId,
+        immatriculationAffichee: s.immatriculationAffichee,
+        vehicule: s.vehicule,
+        ...porteur(s.vehiculeId),
+        objet: s.description,
+        origineNumero: s.numero,
+        echeance: `signalée le ${jourMois(s.date)} · priorité ${s.priorite} · ${jours(s.date)} j`,
+        kmRestants: null,
+        joursRestants: null,
+        ordreNumero: service?.numero ?? null,
+      };
+    });
+  const portes = new Set([...travaux.map((t) => t.ordreNumero), ...pannes.map((p) => p.ordreNumero)].filter(Boolean));
+  const services: LigneTravail[] = ouverts
+    .filter((o) => !portes.has(o.numero))
+    .map((o) => ({
+      cle: `service:${o.numero}`,
+      nature: "service",
+      urgence: "en-cours",
+      type: o.type,
+      vehiculeId: o.immatriculation,
+      immatriculation: o.immatriculation,
+      immatriculationAffichee: o.immatriculationAffichee,
+      vehicule: o.vehicule,
+      ...porteur(o.immatriculation),
+      objet: o.objet,
+      origineNumero: o.origineNumero,
+      echeance: `${STATUT_ORDRE[o.statut].toLowerCase()} depuis le ${jourMois(o.dateDebut ?? o.datePrevue)}`,
+      kmRestants: null,
+      joursRestants: null,
+      ordreNumero: o.numero,
+    }));
+  return [...travaux, ...pannes, ...services];
+}
+
+/** Ce qu'il faut d'un signalement pour le compter au travail à faire. */
+export interface SignalementATraiter {
+  numero: string;
+  vehiculeId: string;
+  immatriculationAffichee: string;
+  vehicule: string;
+  date: string;
+  priorite: string;
+  description: string;
+  statut: string;
 }

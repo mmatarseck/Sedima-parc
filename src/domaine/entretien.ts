@@ -77,6 +77,27 @@ export interface OperationEntretien {
   coutEstime: number;
   /** Une opération de sécurité ne se reporte pas : elle passe en retard sans délai de grâce. */
   critique: boolean;
+  /** La tâche du catalogue qu'elle cite (0062) : c'est elle que le service proposera à l'échéance. */
+  tacheLibelle?: string | null;
+}
+
+/**
+ * Les mots qui, dans l'objet d'une intervention, reconnaissent une tâche — une
+ * proposition, que l'écran laisse corriger : « Remplacement des plaquettes de
+ * frein » donne « plaquette », « frein ».
+ */
+export function motsClesDe(libelle: string): string[] {
+  const VIDES = new Set(["remplacement", "inspection", "controle", "contrôle", "reparation", "réparation", "changement", "entretien", "divers", "ensemble", "assemblage", "systeme", "système", "vehicule", "véhicule", "general", "général", "avant", "arriere", "arrière", "niveau", "liquide"]);
+  return [
+    ...new Set(
+      libelle
+        .toLowerCase()
+        .replace(/[()',/]/g, " ")
+        .split(/\s+/)
+        .filter((m) => m.length >= 4 && !VIDES.has(m))
+        .map((m) => m.replace(/(s|x)$/, "")),
+    ),
+  ].slice(0, 3);
 }
 
 export interface ProgrammeEntretien {

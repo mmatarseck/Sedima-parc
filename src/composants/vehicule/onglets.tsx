@@ -817,6 +817,11 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
   const signalements = trierSignalements([...signalementsCrees, ...(fiche.signalements ?? []).filter((s) => !signalementsCrees.some((c) => c.numero === s.numero))].map(surcharger)).map((s) => ({ ...s, etat: etatSignalement(s, services) }));
   const pannesEnAttente = signalements.filter((s) => s.etat === "ouvert" || s.etat === "pris-en-charge");
   const servicesOuverts = services.filter((o) => estOuvert(o.statut));
+  /* Fermés, ils restent visibles — l'historique du véhicule —, sans geste à faire (métier, 21 septembre 2026). */
+  const pannesFermees = signalements.filter((s) => s.etat === "resolu" || s.etat === "annule");
+  const servicesFermes = services.filter((o) => !estOuvert(o.statut));
+  const [voirPannesFermees, setVoirPannesFermees] = useState(false);
+  const [voirServicesFermes, setVoirServicesFermes] = useState(false);
   const vehiculeService = { immatriculation: vf.immatriculation, immatriculationAffichee: vf.immatriculationAffichee, libelle: `${vf.marque} ${vf.appellation}` };
   const ouvrir = (o: LigneOrdre) => ouvrirService({ service: o, vehicule: vehiculeService, signalements, services });
   const reparer = (s: LigneSignalement) =>
@@ -933,6 +938,26 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
               ))}
             </ul>
           )}
+          {pannesFermees.length ? (
+            <div className="border-t border-bordure px-3 pt-2 pb-3">
+              <button type="button" onClick={() => setVoirPannesFermees((x) => !x)} className="meta px-2 font-medium hover:text-texte">
+                {voirPannesFermees ? "Masquer" : "Voir"} les {pannesFermees.length} panne{pannesFermees.length > 1 ? "s" : ""} résolue{pannesFermees.length > 1 ? "s" : ""} ou annulée{pannesFermees.length > 1 ? "s" : ""}
+              </button>
+              {voirPannesFermees ? (
+                <ul className="mt-1 flex flex-col">
+                  {pannesFermees.map((s) => (
+                    <li key={s.numero}>
+                      <button type="button" onClick={() => demander({ type: "signalement", numero: s.numero, titre: `Signalement ${s.numero} · ${s.description}`, valeurs: s as unknown as Record<string, unknown>, champs: CHAMPS.signalement })} className="flex w-full items-center gap-2 rounded-[10px] px-2 py-1.5 text-left text-texte-2 hover:bg-surface-2">
+                        <Echeance ton={ETAT_SIGNALEMENT[s.etat].ton}>{ETAT_SIGNALEMENT[s.etat].libelle}</Echeance>
+                        <span className="min-w-0 flex-1 truncate text-[12.5px]">{s.description}</span>
+                        <span className="meta shrink-0">{[date(s.date), s.serviceNumero].filter(Boolean).join(" · ")}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
         </Carte>
 
         <Carte
@@ -950,7 +975,8 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
             <p className="px-5 pb-4 text-[12.5px] text-texte-2">Un service planifie un entretien ou répare une panne ; sa clôture écrit l&apos;intervention et ses dépenses dans l&apos;atelier, ci-dessous.</p>
           ) : (
             <ul className="flex flex-col px-3 pb-3">
-              {[...servicesOuverts, ...services.filter((o) => !estOuvert(o.statut)).slice(0, 4)].map((o) => {
+              {servicesOuverts.length === 0 ? <li className="px-2 py-2 text-[12.5px] text-texte-2">Aucun service ouvert.</li> : null}
+              {[...servicesOuverts, ...(voirServicesFermes ? servicesFermes : [])].map((o) => {
                 const cout = o.lignes?.length ? calculerService(factureDe(o)).coutTotal : o.montantEstime;
                 return (
                   <li key={o.numero} data-numero={o.numero}>
@@ -966,6 +992,13 @@ export function OngletMaintenance({ fiche, cible }: { fiche: FicheVehicule; cibl
                   </li>
                 );
               })}
+              {servicesFermes.length ? (
+                <li className="border-t border-bordure pt-2">
+                  <button type="button" onClick={() => setVoirServicesFermes((x) => !x)} className="meta px-2 font-medium hover:text-texte">
+                    {voirServicesFermes ? "Masquer" : "Voir"} les {servicesFermes.length} service{servicesFermes.length > 1 ? "s" : ""} clos ou annulé{servicesFermes.length > 1 ? "s" : ""}
+                  </button>
+                </li>
+              ) : null}
             </ul>
           )}
         </Carte>

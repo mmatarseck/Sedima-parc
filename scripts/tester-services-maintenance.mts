@@ -19,7 +19,15 @@ import { apparierAtelier } from "../src/domaine/atelier";
 import { libelleClassement, systemeReconnu } from "../src/domaine/categories-maintenance";
 import { ecrituresDeCloture } from "../src/domaine/cloture-service";
 import type { LigneOrdre } from "../src/domaine/maintenance";
-import { calculerService, depensesDuService, lireLignes, peutCloturerService, type FactureService } from "../src/domaine/service";
+import { calculerService, depensesDuService, joursImmobilisation, lireLignes, peutCloturerService, type FactureService } from "../src/domaine/service";
+import { travauxOuverts } from "../src/domaine/maintenance";
+import { construireRapportDe } from "../src/domaine/assembler-rapports";
+import { RAPPORTS } from "../src/domaine/rapports";
+import { motsClesDe } from "../src/domaine/entretien";
+import { ChampPieces } from "../src/composants/interface/ChampPieces";
+import { sourceRapportsDemo } from "../src/donnees/rapports-demo";
+import { programmesDepuisLignes } from "../src/donnees/entretien";
+import { programmeParDefaut } from "../src/donnees/entretien-demo";
 import { etatSignalement, trierSignalements, type LigneSignalement } from "../src/domaine/signalements";
 import { cleTache, tacheParLibelle } from "../src/domaine/taches";
 import { colonnesModification, ligneCreation } from "../src/lib/transactions-colonnes";
@@ -133,6 +141,51 @@ attendu("à un utilisateur qui n'est pas responsable du parc, pas de bouton « C
 
 /* -- La base ---------------------------------------------------------------------------- */
 
+/* -- Retours du métier, 21 septembre 2026 soir ------------------------------------------- */
+{
+  /* La main-d'œuvre globale : 100 000 F sans ventilation, s'ajoute au sous-total et porte remise et taxes. */
+  const avecGlobale: FactureService = { ...facture, mainOeuvreGlobale: 100_000 };
+  const g = calculerService(avecGlobale);
+  attendu(`la main-d'œuvre globale entre au sous-total (${g.sousTotalHT}) et au total main-d'œuvre (${g.mainOeuvre})`, g.sousTotalHT === 698_000 && g.mainOeuvre === 275_000 && g.mainOeuvreGlobale === 100_000);
+  const dg = depensesDuService(avecGlobale, "curatif");
+  attendu("sa part du TTC devient une dépense, et les dépenses font le coût au franc", dg.some((d) => d.libelle === "Main-d'œuvre globale" && d.poste === "maintenance-curative") && dg.reduce((s, d) => s + d.montant, 0) === g.coutTotal);
+  attendu("l'immobilisation se calcule des dates : du 18 au 21, quatre jours ; sans fin, rien", joursImmobilisation("2026-09-18", "2026-09-21") === 4 && joursImmobilisation("2026-09-18", null) === null && joursImmobilisation("2026-09-21", "2026-09-18") === null);
+  attendu("une ligne garde sa précision libre", lireLignes([{ cle: "x", libelle: "Remplacement des plaquettes de frein", precision: "avant gauche" }])[0]?.precision === "avant gauche");
+
+  /* Pannes et services ouverts dans le travail à faire ; fermés, ils n'y sont plus. */
+  const panne = (numero: string, priorite: string, statut: string) => ({ numero, vehiculeId: "AA565GA", immatriculationAffichee: "AA-565-GA", vehicule: "TATA LPT", date: "2026-09-15", priorite, description: `Panne ${numero}`, statut });
+  const service = (numero: string, statut: LigneOrdre["statut"], signalements: string[]) => ({ numero, vehiculeId: "AA565GA", immatriculation: "AA565GA", immatriculationAffichee: "AA-565-GA", vehicule: "TATA LPT", businessUnit: null, site: null, type: "curatif", objet: `Service ${numero}`, origineNumero: null, origineLibelle: null, garage: "TATA", datePrevue: "2026-09-16", immobilisationPrevueJours: null, montantEstime: null, statut, dateDebut: null, dateCloture: null, interventionNumero: null, commentaire: null, demandeur: "—", creee: false, signalements }) as LigneOrdre;
+  const af = travauxOuverts([], [panne("SIG-1", "normale", "ouvert"), panne("SIG-2", "critique", "ouvert"), panne("SIG-3", "haute", "ouvert"), panne("SIG-4", "haute", "resolu")], [service("OTR-1", "en-atelier", ["SIG-3"]), service("OTR-2", "planifie", []), service("OTR-3", "clos", [])], "2026-09-21", () => ({ businessUnit: null, site: null }));
+  const u = (cle: string) => af.find((x) => x.cle === cle)?.urgence;
+  attendu(`à faire : panne ouverte à planifier, critique en retard, prise par un service en cours (${u("panne:SIG-1")}, ${u("panne:SIG-2")}, ${u("panne:SIG-3")})`, u("panne:SIG-1") === "a-planifier" && u("panne:SIG-2") === "en-retard" && u("panne:SIG-3") === "en-cours");
+  attendu("une panne résolue et un service clos ne sont plus du travail à faire ; un service ouvert seul a sa ligne", !af.some((x) => x.cle === "panne:SIG-4" || x.ordreNumero === "OTR-3") && u("service:OTR-2") === "en-cours" && !af.some((x) => x.cle === "service:OTR-1"));
+
+  /* Les rapports de maintenance : pannes et tâches. */
+  const demo = sourceRapportsDemo();
+  const avant = (iso: string, jours: number) => new Date(Date.parse(`${iso}T00:00:00Z`) - jours * 86_400_000).toISOString().slice(0, 10);
+  const source = {
+    ...demo,
+    signalements: [{ ...panne("SIG-9", "haute", "resolu"), date: avant(demo.aujourdhui, 10), systeme: "013", details: null, kilometrage: null, pieces: [], resoluLe: avant(demo.aujourdhui, 5), serviceNumero: "OTR-9", declarant: null, creee: false }] as LigneSignalement[],
+    interventions: [{ ...demo.interventions[0]!, date: demo.aujourdhui, montant: 90_000, taches: ["Remplacement des plaquettes de frein", "Remplacement des disques de frein"] }],
+    catalogueTaches: [{ libelle: "Remplacement des plaquettes de frein", categorie: "1", systeme: "013" }],
+  };
+  const lp = construireRapportDe(source, "maintenance-pannes", { periode: "12-mois", perimetre: "tout" } as never);
+  attendu(`rapport des pannes : état, système, délai de résolution (${lp.length} ligne, délai ${String(lp[0]?.delai)})`, lp.length === 1 && lp[0]!.systeme === "Freins" && lp[0]!.delai === 5);
+  const lt = construireRapportDe(source, "maintenance-taches", { periode: "12-mois", perimetre: "tout" } as never);
+  const plaquettes = lt.find((l) => l.tache === "Remplacement des plaquettes de frein");
+  attendu(`rapport des tâches : une intervention à deux tâches partage son coût (${lt.length} tâches, ${String(plaquettes?.cout)} F, ${String(plaquettes?.categorie)})`, lt.length === 2 && plaquettes?.cout === 45_000 && plaquettes.categorie === "Châssis" && plaquettes.utilisations === 1);
+  attendu("chaque rapport de maintenance est au catalogue", ["maintenance-pannes", "maintenance-taches", "maintenance-ordres"].every((id) => RAPPORTS.some((r) => r.id === id)) && RAPPORTS.find((r) => r.id === "maintenance-ordres")!.libelle === "Services de maintenance");
+
+  /* La zone de dépôt, et les programmes lus en base. */
+  attendu("attacher une pièce passe par la zone de dépôt « glisser-déposer »", renderToString(React.createElement(ChampPieces, { valeur: [], onChange: () => {}, separer: true })).match(/Glisser-déposer/g)?.length === 2);
+  const lus = programmesDepuisLignes(
+    [{ code: "leger", libelle: "Léger", precision: null, categories: ["vehicule-leger"], base: "km", actif: true }, { code: "vieux", libelle: "Retiré", precision: null, categories: [], base: "km", actif: false }],
+    [{ code: "leger.vidange-moteur", programme_code: "leger", libelle: "Vidange", groupe: "moteur", periodicite_km: 10_000, periodicite_heures: null, periodicite_mois: 12, mots_cles: ["vidange"], duree_heures: "2", cout_estime: "62000", critique: false, ordre: 1, tache_libelle: "Remplacement de l'huile moteur et du filtre" }],
+  );
+  attendu("un programme lu en base : code court, tâche citée, retirés écartés", lus.length === 1 && lus[0]!.operations[0]!.code === "vidange-moteur" && lus[0]!.operations[0]!.tacheLibelle === "Remplacement de l'huile moteur et du filtre" && programmeParDefaut("vehicule-leger", lus).code === "leger");
+  attendu("les mots-clés proposés pour une tâche", motsClesDe("Remplacement des plaquettes de frein").join() === "plaquette,frein");
+}
+
 const bac = process.env.PGLITE_DIR ?? "";
 if (bac) {
   const require = createRequire(join(bac, "package.json"));
@@ -168,6 +221,10 @@ if (bac) {
   attendu("« vidange » est un alias de la vidange moteur, système 045, catégorie 4", vidange?.systeme === "045" && vidange.categorie === "4");
   const mo = (await pg.query(`select count(*)::int as n from tache_service where lower(libelle) like 'main d%oeuvre%'`)).rows[0] as { n: number };
   attendu("la main-d'œuvre n'est pas une tâche", mo.n === 0);
+  const prog = (await pg.query(`select (select count(*)::int from programme_entretien) as p, (select count(*)::int from operation_entretien) as o, (select count(*)::int from operation_entretien where tache_libelle is null or tache_libelle not in (select libelle from tache_service)) as orphelines`)).rows[0] as { p: number; o: number; orphelines: number };
+  attendu(`0062 : les quatre programmes d'origine en base, chaque opération cite une tâche du catalogue (${prog.p} programmes, ${prog.o} opérations, ${prog.orphelines} sans tâche)`, prog.p === 4 && prog.o > 15 && prog.orphelines === 0);
+  const colonne = (await pg.query(`select count(*)::int as n from information_schema.columns where table_name = 'ordre_travail' and column_name = 'main_oeuvre_globale'`)).rows[0] as { n: number };
+  attendu("0062 : le service porte sa main-d'œuvre globale", colonne.n === 1);
 
   await pg.exec(`insert into profil (utilisateur_id, nom, role, actif) values ('${MOI}', 'Banc', 'responsable-maintenance', true) on conflict (utilisateur_id) do update set role = excluded.role;
     insert into vehicule (id, immatriculation, marque, appellation, categorie) values ('00000000-0000-0000-0000-0000000000aa', 'AA565GA', 'TATA', 'LPT1618', 'camion');
