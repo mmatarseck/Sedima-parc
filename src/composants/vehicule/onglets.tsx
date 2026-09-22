@@ -68,7 +68,9 @@ import {
   type Ton,
 } from "@/domaine/libelles";
 import { libelleUsageCourant } from "@/domaine/parametres";
-import { libelleMois } from "@/domaine/temps";
+import { jourCourant, libelleMois } from "@/domaine/temps";
+import { carburantParTonne, jourMoins } from "@/domaine/consommation";
+import { ConsommationCarburant } from "./ConsommationCarburant";
 import { date, kilometrage, montant, montantCourt, nombre, pourcentage } from "@/lib/format";
 import { GraphiqueBarresEmpilees } from "./GraphiqueBarresEmpilees";
 import { PlanEntretien } from "./PlanEntretien";
@@ -198,7 +200,11 @@ export function OngletApercu({ fiche }: { fiche: FicheVehicule }) {
   const coutParKm = kmDouzeMois && kmDouzeMois > 0 ? Math.round(totalDepenses / kmDouzeMois) : fiche.indicateurs.coutParKm;
   const totalCharges = chargesParGroupe.reduce((somme, g) => somme + g.montant, 0);
   const derniereIntervention = sansDoublon([...creations("intervention", fabriquerIntervention), ...fiche.interventions.map(surcharger)]).sort((x, y) => y.date.localeCompare(x.date))[0] ?? null;
-  const dernierPlein = sansDoublon([...creations("plein", fabriquerPlein), ...fiche.pleins.map(surcharger)]).sort((x, y) => y.date.localeCompare(x.date))[0] ?? null;
+  const tousPleins = sansDoublon([...creations("plein", fabriquerPlein), ...fiche.pleins.map(surcharger)]);
+  const dernierPlein = [...tousPleins].sort((x, y) => y.date.localeCompare(x.date))[0] ?? null;
+  /* Le carburant par tonne livrée, sur douze mois — quand le véhicule livre des bons pesés (métier, 22 septembre 2026). */
+  const aujourdhui = jourCourant();
+  const parTonne = carburantParTonne(tousPleins, [...creations("livraison", (c) => ({ date: String(c.valeurs.date ?? c.date).slice(0, 10), poidsKg: Number(c.valeurs.poidsKg) || null })), ...fiche.livraisons], jourMoins(aujourdhui, 365), aujourdhui);
 
   return (
     /* Les quatre cartes sont enfants directs de la grille, et non deux colonnes
@@ -250,6 +256,14 @@ export function OngletApercu({ fiche }: { fiche: FicheVehicule }) {
             repere={dernierPlein ? date(dernierPlein.date) : null}
             precision={dernierPlein ? `${nombre(dernierPlein.litres, 1)} L · ${montant(dernierPlein.montant)} · ${dernierPlein.source}` : "Aucun"}
           />
+          {parTonne ? (
+            <LigneRepere
+              ton="neutre"
+              libelle="Carburant par tonne livrée"
+              repere={`${nombre(parTonne.fParTonne)} F/t`}
+              precision={`${montant(parTonne.cout)} de carburant pour ${nombre(parTonne.tonnes, 1)} t livrées, sur douze mois`}
+            />
+          ) : null}
           <LigneRepere
             ton={prochaineIntervention && prochaineIntervention.kmRestants <= 1000 ? "vigilance" : "neutre"}
             libelle="Prochain entretien"
@@ -1196,7 +1210,10 @@ export function OngletCarburant({ fiche, cible }: { fiche: FicheVehicule; cible?
   const [idOuvert, setIdOuvert] = useState<string | null>(null);
   const ouvert = idOuvert ? (pleins.find((p) => p.id === idOuvert) ?? null) : null;
   const modifier = (p: PleinFiche) => demander({ type: "plein", numero: p.numero, titre: `Plein · ${nombre(p.litres, 1)} L — ${p.source}`, valeurs: valeursPlein(p) });
+  const relevesRetenus = controlerReleves([...creations("releve", fabriquerReleve), ...fiche.releves.map(surcharger)], fiche.ligne.vehicule.categorie).filter((r) => r.valide);
   return (
+    <div className="flex flex-col gap-5">
+    <ConsommationCarburant pleins={pleins} releves={relevesRetenus} referenceL100={fiche.referenceL100} moisCourant={jourCourant().slice(0, 7)} />
     <ListeEtPiece
       piece={
         ouvert ? (
@@ -1253,11 +1270,13 @@ export function OngletCarburant({ fiche, cible }: { fiche: FicheVehicule; cible?
           { cle: "prix", libelle: "Prix / L", alignee: "droite", rendu: (p) => `${nombre(p.prixLitre)} F` },
           { cle: "montant", libelle: "Montant", alignee: "droite", rendu: (p) => <span className="font-medium">{montant(p.montant)}</span> },
           { cle: "km", libelle: "Km relevé", alignee: "droite", rendu: (p) => <KmReleve km={p.km} motifRejet={p.kmMotifRejet} /> },
-          { cle: "ticket", libelle: "Ticket", rendu: (p) => <Justificatif present={Boolean(p.photo)} fichier={p.photo} /> },
+          { cle: "complet", libelle: "Plein", rendu: (p) => (p.pleinComplet === false ? <span className="text-texte-2">Partiel</span> : <span className="text-attenue-2">Complet</span>) },
+          { cle: "ticket", libelle: "Facture", rendu: (p) => <Justificatif present={Boolean(p.photo)} fichier={p.photo} /> },
         ]}
       />
     </Carte>
     </ListeEtPiece>
+    </div>
   );
 }
 
