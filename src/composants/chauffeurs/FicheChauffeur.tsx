@@ -16,7 +16,7 @@ import { enregistrerModification } from "@/lib/clotures-demo";
 import { libelleSite } from "@/composants/transactions/fabriques";
 import { TYPE_TRANSACTION, type TypeTransaction } from "@/domaine/reference";
 import { ENTREES_CHAUFFEUR, MenuAjout, type CibleAjout } from "@/composants/vehicule/MenuAjout";
-import { PERIODES, debutPeriode, type FicheChauffeur as Fiche, type PeriodeMois } from "@/domaine/chauffeur";
+import { debutPeriode, type FicheChauffeur as Fiche, type PeriodeMois } from "@/domaine/chauffeur";
 import type { Personne } from "@/domaine/discussion";
 import { APTITUDE, CONTRAT_CHAUFFEUR, MOTIF_INDISPONIBILITE } from "@/domaine/libelles";
 import { evaluer, libelleMoisLong } from "@/domaine/performance";
@@ -115,7 +115,7 @@ export function FicheChauffeur({
 }) {
   const [onglet, setOnglet] = useState<Onglet>(estOnglet(ongletInitial) ? ongletInitial : "apercu");
   useCible(cible, onglet);
-  const [periode, setPeriode] = useState<PeriodeMois>(12);
+  const periode: PeriodeMois = 12;
   const [discussionOuverte, setDiscussionOuverte] = useState(discussionInitiale);
   const [nombreMessages, setNombreMessages] = useState<number | null>(null);
 
@@ -392,22 +392,7 @@ export function FicheChauffeur({
             })}
           </div>
 
-          {/* La période, à droite des onglets : elle vaut pour toute la fiche. */}
-          <div className="mb-2 ml-auto flex h-8 items-center gap-0.5 rounded-full bg-surface-3 p-1" role="group" aria-label="Période de lecture">
-            {PERIODES.map((p) => (
-              <button
-                key={p.valeur}
-                type="button"
-                aria-pressed={periode === p.valeur}
-                onClick={() => setPeriode(p.valeur)}
-                className={`h-6 rounded-full px-2.5 text-[12px] whitespace-nowrap transition-colors ${
-                  periode === p.valeur ? "bg-surface font-semibold text-texte shadow-onglet" : "font-medium text-texte-2 hover:text-texte"
-                }`}
-              >
-                {p.libelle}
-              </button>
-            ))}
-          </div>
+          {/* La fiche se lit sur douze mois roulants, sans choix de période (métier, 22 septembre 2026). */}
         </div>
       </div>
 
