@@ -53,6 +53,8 @@ export default async function PageDisponibilite() {
       categorie: v.categorie,
       categorieFlotte: v.categorieFlotte,
       businessUnit: v.businessUnit,
+      regime: v.regime ?? "exploitation",
+      attributaire: l.attributaire ? (l.attributaire.pool ? "Pool" : l.attributaire.nom) : null,
       usage: v.usage,
       transportSpecial: v.transportSpecial,
       site: l.site?.libelle ?? null,

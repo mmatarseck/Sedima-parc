@@ -13,7 +13,7 @@ import type { LigneChauffeur } from "./chauffeur";
 import { peutConduire } from "./chauffeur";
 import type { ImmobilisationAdministrative } from "./documents";
 import { MOTIF_INDISPONIBILITE, STATUT_VEHICULE, TYPE_DOCUMENT } from "./libelles";
-import type { BusinessUnit, CategorieFlotte, CategorieVehicule, StatutVehicule, UsageVehicule } from "./types";
+import type { BusinessUnit, CategorieFlotte, CategorieVehicule, StatutVehicule, UsageVehicule, RegimeUsage } from "./types";
 
 export type EtatDisponibilite = "pret" | "sans-conducteur" | "conducteur-empeche" | "immobilise" | "hors-perimetre";
 
@@ -42,6 +42,10 @@ export interface LigneDisponibilite {
   categorie: CategorieVehicule;
   categorieFlotte: CategorieFlotte;
   businessUnit: BusinessUnit | null;
+  /** Exploitation, service ou fonction : le premier filtre de l’écran (22 septembre 2026). */
+  regime: RegimeUsage;
+  /** Pour un véhicule de service ou de fonction : la personne qui le tient (ou « Pool »), quand aucun chauffeur n’est affecté. */
+  attributaire: string | null;
   usage: UsageVehicule;
   transportSpecial: boolean;
   site: string | null;
