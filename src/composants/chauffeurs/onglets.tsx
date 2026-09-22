@@ -147,7 +147,7 @@ export function OngletApercu({ fiche, selection, voitSanctions }: { fiche: Fiche
   }
   const lignesVehicule = [...parVehicule.values()].sort((a, b) => b.km - a.km);
 
-  /* ---- Kilomètres et événements par mois ---- */
+  /* ---- Kilomètres par mois ---- */
   const mois: string[] = [];
   const [annee, m] = selection.fin.split("-").map(Number);
   for (let delta = selection.periode; delta >= 1; delta--) {
@@ -155,11 +155,6 @@ export function OngletApercu({ fiche, selection, voitSanctions }: { fiche: Fiche
     mois.push(d.toISOString().slice(0, 7));
   }
   const kmParMois = mois.map((x) => ({ libelle: libelleMois(x, true), valeur: selection.consommation.filter((c) => c.mois === x).reduce((s, c) => s + c.kmParcourus, 0) }));
-  const evenementsParMois = mois.map((x) => {
-    const contraventions = selection.contraventions.filter((c) => c.date.startsWith(x)).length;
-    const incidents = selection.incidents.filter((i) => i.declaration.dateHeure.startsWith(x)).length;
-    return { libelle: libelleMois(x, true), valeur: contraventions + incidents, precision: `${contraventions} contravention${contraventions > 1 ? "s" : ""} · ${incidents} incident${incidents > 1 ? "s" : ""}` };
-  });
 
   /* ---- Alertes ---- */
   const alertes: Alerte[] = [];
@@ -222,9 +217,7 @@ export function OngletApercu({ fiche, selection, voitSanctions }: { fiche: Fiche
           <GraphiqueBarres points={kmParMois} unite="km" hauteur={160} />
         </Carte>
 
-        <Carte titre="Contraventions et incidents par mois" precision="Ce qui est arrivé pendant qu'il conduisait">
-          <GraphiqueBarres points={evenementsParMois} hauteur={130} />
-        </Carte>
+        {/* Contraventions et incidents par mois : relèvent des rapports (métier, 22 septembre 2026). */}
       </div>
 
       <div className="flex min-w-0 flex-col gap-5">
