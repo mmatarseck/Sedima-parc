@@ -57,13 +57,28 @@ Migrations jusqu'à **0062** ; `taches-service.sql` (294 tâches) ;
 **À jouer si ce n'est pas fait**, dans l'ordre : `0063_reglements.sql` (une
 sortie de caisse qui dit ce qu'elle règle), `0064_livraisons_saisies.sql`
 (livraisons saisies), `0065_pleins_approvisionnement.sql` (`plein.remboursable`,
-`ajouter_station()`). Le code lit et écrit sans elles (colonne retirée à
+`ajouter_station()`), `0066_evenements_chauffeur.sql` (événements du chauffeur). Le code lit et écrit sans elles (colonne retirée à
 l'écriture, lecture de repli), mais sans leur apport.
 
 ## Les chantiers récents (du plus récent au plus ancien)
 
 Tout est décrit dans **`docs/SERVICES-MAINTENANCE.md`** (sections datées).
 
+1. **Performance chauffeur (0066)** : plus de piliers SQDCM. Six indicateurs
+   automatiques (`KPI_CHAUFFEUR` : accidents responsables, infractions, pannes
+   et avaries en mission, écart de consommation, présence, discipline) ; score =
+   moyenne simple des calculables ; objectifs des compteurs **par mois**.
+   Performance = mois en cours ; Aperçu = courbe du score mensuel
+   (`scoresMensuels`). Onglet **Événements** (`evenement_chauffeur`, type
+   `evenement`, préfixe EVC) : cas disciplinaire, retard, plainte (négatifs),
+   félicitation, formation (positifs) — ils font l'indicateur Discipline avec
+   les sanctions existantes. L'écart du classement « moins de 300 km » est
+   remplacé par « aucune affectation dans le mois ». Sanctions retirées de
+   l'onglet Incidents ; indisponibilités sous Affectations ; date de naissance
+   retirée ; sélecteur 3/6/12 mois retiré (12 mois roulants).
+1. **Documents du chauffeur** : comme la Conformité du véhicule — rappels et
+   scan sur la même ligne, ouvert à droite ; « Renouveler » dépose la pièce.
+1. **Planning** : filtre Exploitation / Autres (`VehiculePlanning.regime`).
 1. **Carburant (0065)** : le plein dit pompe du siège (pas de facture, pas
    remboursable) ou station (choisie, ou ajoutée à la volée par
    `ajouter_station`), facture, remboursable (défaut ; seul un plein
