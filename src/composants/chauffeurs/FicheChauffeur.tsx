@@ -59,7 +59,7 @@ const ONGLETS: { cle: Onglet; libelle: string }[] = [
   { cle: "documents", libelle: "Documents" },
   { cle: "consommation", libelle: "Consommation" },
   { cle: "contraventions", libelle: "Contraventions" },
-  { cle: "incidents", libelle: "Incidents & sanctions" },
+  { cle: "incidents", libelle: "Incidents" },
   { cle: "frais", libelle: "Frais de route" },
   { cle: "journal", libelle: "Journal" },
 ];
@@ -71,7 +71,7 @@ function estOnglet(valeur: string | undefined): valeur is Onglet {
 const ONGLET_PAR_CIBLE: Partial<Record<CibleAjout, Onglet>> = {
   affectation: "affectations",
   document: "documents",
-  indisponibilite: "journal",
+  indisponibilite: "affectations",
   contravention: "contraventions",
   incident: "incidents",
   sanction: "incidents",
@@ -405,9 +405,9 @@ export function FicheChauffeur({
         {onglet === "documents" && <OngletDocuments fiche={fiche} cible={cible} onAjouter={ajouter} />}
         {onglet === "consommation" && <OngletConsommation selection={selection} />}
         {onglet === "contraventions" && <OngletContraventions selection={selection} cible={cible} onAjouter={ajouter} />}
-        {onglet === "incidents" && <OngletIncidents selection={selection} voitSanctions={voitSanctions} cible={cible} onAjouter={ajouter} />}
+        {onglet === "incidents" && <OngletIncidents selection={selection} cible={cible} onAjouter={ajouter} />}
         {onglet === "frais" && <OngletFraisDeRoute selection={selection} cible={cible} />}
-        {onglet === "journal" && <OngletJournal fiche={fiche} voitSanctions={voitSanctions} cible={cible} onAjouter={ajouter} />}
+        {onglet === "journal" && <OngletJournal fiche={fiche} voitSanctions={voitSanctions} />}
       </div>
 
       <PanneauDiscussion

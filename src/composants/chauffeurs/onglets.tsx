@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, Lock, Plus } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 import { Carte, Definitions, TableauSimple } from "@/composants/interface/Carte";
 import { DossierPieces } from "@/composants/interface/DossierPieces";
 import { OuvrirPiece } from "@/composants/interface/OuvrirPiece";
@@ -23,7 +23,6 @@ import {
   fabriquerEvenementIndisponibilite,
   fabriquerIncidentChauffeur,
   fabriquerIndisponibilite,
-  fabriquerSanction,
 } from "@/composants/transactions/fabriques";
 import { Echeance, Pastille } from "@/composants/interface/Pastille";
 import { GraphiqueBarres } from "@/composants/vehicule/GraphiqueBarres";
@@ -372,10 +371,14 @@ export function OngletIdentite({ fiche }: { fiche: FicheChauffeur }) {
 /* ========================================================================== */
 
 export function OngletAffectations({ fiche, selection, cible, onAjouter }: { fiche: FicheChauffeur; selection: Selection; cible?: string; onAjouter?: Ajouter }) {
-  const { surcharger, demander, creations } = useEdition();
+  const { surcharger, demander, creations, sujet } = useEdition();
+  const chauffeurId = sujet.replace(/^chauffeur:/, "");
   const affectations = [...creations("affectation", fabriquerAffectationChauffeur), ...fiche.affectations.map(surcharger)];
   const total = affectations.length;
+  /* Les indisponibilités vivent avec les affectations (métier, 22 septembre 2026) : un titulaire indisponible laisse son véhicule sans conducteur. */
+  const indisponibilites = [...creations("indisponibilite", (c) => fabriquerIndisponibilite(c, chauffeurId)), ...fiche.indisponibilites.map(surcharger)];
   return (
+    <div className="flex flex-col gap-5">
     <Carte
       titre="Affectations"
       precision={`${selection.affectations.length} sur la période, ${total} au total — chaque période lui rattache les kilomètres, la consommation et les incidents du véhicule`}
@@ -406,6 +409,41 @@ export function OngletAffectations({ fiche, selection, cible, onAjouter }: { fic
         ]}
       />
     </Carte>
+
+      <Carte
+        titre="Indisponibilités"
+        precision="Périodes datées — un titulaire indisponible laisse son véhicule sans conducteur, sauf suppléant"
+        action={
+          <button type="button" onClick={() => onAjouter?.("indisponibilite")} disabled={!onAjouter} className="bouton-secondaire h-9 disabled:cursor-not-allowed disabled:opacity-50">
+            <Plus className="size-4" strokeWidth={2} />
+            Nouvelle indisponibilité
+          </button>
+        }
+        sansMarge
+      >
+        <TableauSimple<Indisponibilite> reglages="fiche-chauffeur.indisponibilites"
+          cle={(i) => i.id}
+          lignes={indisponibilites}
+          vide="Aucune indisponibilité enregistrée."
+          numero={(i) => i.numero}
+          cible={cible}
+          surModifier={(i) => demander({ type: "indisponibilite", numero: i.numero, titre: `Indisponibilité · ${MOTIF_INDISPONIBILITE[i.motif]}`, valeurs: i as unknown as Record<string, unknown> })}
+          colonnes={[
+            { cle: "numero", libelle: "Réf.", rendu: (i) => <Numero valeur={i.numero} /> },
+            { cle: "motif", libelle: "Motif", rendu: (i) => <Pastille ton={i.motif === "suspension-permis" ? "defavorable" : i.motif === "formation" ? "neutre" : "vigilance"}>{MOTIF_INDISPONIBILITE[i.motif]}</Pastille> },
+            { cle: "debut", libelle: "Début", rendu: (i) => <span className="code">{date(i.debut)}</span> },
+            { cle: "fin", libelle: "Fin", rendu: (i) => (i.fin ? <span className="code">{date(i.fin)}</span> : <span className="text-attenue">sans date</span>) },
+            {
+              cle: "jours",
+              libelle: "Durée",
+              alignee: "droite",
+              rendu: (i) => (i.fin ? `${Math.round((new Date(i.fin).getTime() - new Date(i.debut).getTime()) / (24 * 3600 * 1000)) + 1} j` : "—"),
+            },
+            { cle: "commentaire", libelle: "Commentaire", rendu: (i) => <span className="block max-w-[420px] truncate text-texte-2">{i.commentaire ?? "—"}</span> },
+          ]}
+        />
+      </Carte>
+    </div>
   );
 }
 
@@ -609,14 +647,13 @@ export function OngletContraventions({ selection, cible, onAjouter }: { selectio
 }
 
 /* ========================================================================== */
-/* Incidents et sanctions                                                     */
+/* Incidents                                                                  */
 /* ========================================================================== */
 
-export function OngletIncidents({ selection, voitSanctions, cible, onAjouter }: { selection: Selection; voitSanctions: boolean; cible?: string; onAjouter?: Ajouter }) {
+export function OngletIncidents({ selection, cible, onAjouter }: { selection: Selection; cible?: string; onAjouter?: Ajouter }) {
   const { surcharger, demander, creations, sujet } = useEdition();
   const chauffeurId = sujet.replace(/^chauffeur:/, "");
   const incidents = [...creations("incident", (c) => fabriquerIncidentChauffeur(c, chauffeurId)), ...selection.incidents.map((i) => ({ ...i, declaration: surcharger(i.declaration) }))];
-  const sanctions = [...creations("sanction", (c) => fabriquerSanction(c, chauffeurId)), ...selection.sanctions.map(surcharger)];
   const accidents = incidents.filter((i) => i.declaration.nature === "accident").length;
   const cout = coutDeclarations(incidents);
   return (
@@ -667,45 +704,7 @@ export function OngletIncidents({ selection, voitSanctions, cible, onAjouter }: 
         />
       </Carte>
 
-      {voitSanctions ? (
-      <Carte
-        titre="Sanctions"
-        precision="Avertissements, blâmes, retenues et mises à pied — une trace, chacune renvoie à ce qui l'a motivée ; les montants retenus sont une donnée de paie, suivie aux RH"
-        action={
-          <button type="button" onClick={() => onAjouter?.("sanction")} disabled={!onAjouter} className="bouton-secondaire h-9 disabled:cursor-not-allowed disabled:opacity-50">
-            <Plus className="size-4" strokeWidth={2} />
-            Nouvelle sanction
-          </button>
-        }
-        sansMarge
-      >
-        <TableauSimple<Sanction> reglages="fiche-chauffeur.sanctions"
-          cle={(s) => s.id}
-          lignes={sanctions}
-          vide="Aucune sanction sur la période."
-          numero={(s) => s.numero}
-          cible={cible}
-          surModifier={(s) => demander({ type: "sanction", numero: s.numero, titre: `Sanction · ${TYPE_SANCTION[s.type]}`, valeurs: s as unknown as Record<string, unknown> })}
-          colonnes={[
-            { cle: "numero", libelle: "Réf.", rendu: (s) => <Numero valeur={s.numero} /> },
-            { cle: "date", libelle: "Date", rendu: (s) => <span className="code whitespace-nowrap">{date(s.date)}</span> },
-            {
-              cle: "type",
-              libelle: "Type",
-              rendu: (s) => <Pastille ton={s.type === "mise-a-pied" || s.type === "blame" ? "defavorable" : "vigilance"}>{TYPE_SANCTION[s.type]}</Pastille>,
-            },
-            { cle: "motif", libelle: "Motif", rendu: (s) => <span className="block max-w-[420px] truncate">{s.motif}</span> },
-            { cle: "portee", libelle: "Durée", alignee: "droite", rendu: (s) => (s.jours ? `${s.jours} j` : "—") },
-            { cle: "lien", libelle: "Rattachée à", rendu: (s) => <span className="text-texte-2">{s.incidentId ? "Déclaration d'incident" : s.depenseId ? "Contravention" : "—"}</span> },
-          ]}
-        />
-      </Carte>
-      ) : (
-        <p className="meta flex items-center gap-2 px-1">
-          <Lock className="size-3.5" strokeWidth={1.8} />
-          Les sanctions sont réservées à la gestion de parc et à la direction.
-        </p>
-      )}
+      {/* Les sanctions ont quitté la fiche (métier, 22 septembre 2026) : un cas disciplinaire se saisit dans l'onglet Événements. */}
     </div>
   );
 }
@@ -759,16 +758,14 @@ export function OngletFraisDeRoute({ selection, cible }: { selection: Selection;
 }
 
 /* ========================================================================== */
-/* Journal — chronologie et indisponibilités                                  */
+/* Journal — la chronologie                                                   */
 /* ========================================================================== */
 
 const LIBELLE_CATEGORIE = { statut: "Situation", affectation: "Affectation", document: "Document", intervention: "Intervention", depense: "Contravention", releve: "Relevé", note: "Note" } as const;
 
-export function OngletJournal({ fiche, voitSanctions, cible, onAjouter }: { fiche: FicheChauffeur; voitSanctions: boolean; cible?: string; onAjouter?: Ajouter }) {
-  const { surcharger, demander, creations, sujet } = useEdition();
-  const chauffeurId = sujet.replace(/^chauffeur:/, "");
+export function OngletJournal({ fiche, voitSanctions }: { fiche: FicheChauffeur; voitSanctions: boolean }) {
+  const { creations } = useEdition();
   const journal = [...creations("aptitude", fabriquerEvenementAptitude), ...creations("indisponibilite", fabriquerEvenementIndisponibilite), ...fiche.journal.filter((e) => !e.confidentiel || voitSanctions)].sort((a, b) => b.date.localeCompare(a.date));
-  const indisponibilites = [...creations("indisponibilite", (c) => fabriquerIndisponibilite(c, chauffeurId)), ...fiche.indisponibilites.map(surcharger)];
   return (
     <div className="flex flex-col gap-5">
       <Carte titre="Journal du chauffeur" precision="Tout ce qui le concerne, par qui, et quand — du plus récent au plus ancien">
@@ -789,39 +786,6 @@ export function OngletJournal({ fiche, voitSanctions, cible, onAjouter }: { fich
         </ol>
       </Carte>
 
-      <Carte
-        titre="Indisponibilités"
-        precision="Périodes datées — un titulaire indisponible laisse son véhicule sans conducteur, sauf suppléant"
-        action={
-          <button type="button" onClick={() => onAjouter?.("indisponibilite")} disabled={!onAjouter} className="bouton-secondaire h-9 disabled:cursor-not-allowed disabled:opacity-50">
-            <Plus className="size-4" strokeWidth={2} />
-            Nouvelle indisponibilité
-          </button>
-        }
-        sansMarge
-      >
-        <TableauSimple<Indisponibilite> reglages="fiche-chauffeur.indisponibilites"
-          cle={(i) => i.id}
-          lignes={indisponibilites}
-          vide="Aucune indisponibilité enregistrée."
-          numero={(i) => i.numero}
-          cible={cible}
-          surModifier={(i) => demander({ type: "indisponibilite", numero: i.numero, titre: `Indisponibilité · ${MOTIF_INDISPONIBILITE[i.motif]}`, valeurs: i as unknown as Record<string, unknown> })}
-          colonnes={[
-            { cle: "numero", libelle: "Réf.", rendu: (i) => <Numero valeur={i.numero} /> },
-            { cle: "motif", libelle: "Motif", rendu: (i) => <Pastille ton={i.motif === "suspension-permis" ? "defavorable" : i.motif === "formation" ? "neutre" : "vigilance"}>{MOTIF_INDISPONIBILITE[i.motif]}</Pastille> },
-            { cle: "debut", libelle: "Début", rendu: (i) => <span className="code">{date(i.debut)}</span> },
-            { cle: "fin", libelle: "Fin", rendu: (i) => (i.fin ? <span className="code">{date(i.fin)}</span> : <span className="text-attenue">sans date</span>) },
-            {
-              cle: "jours",
-              libelle: "Durée",
-              alignee: "droite",
-              rendu: (i) => (i.fin ? `${Math.round((new Date(i.fin).getTime() - new Date(i.debut).getTime()) / (24 * 3600 * 1000)) + 1} j` : "—"),
-            },
-            { cle: "commentaire", libelle: "Commentaire", rendu: (i) => <span className="block max-w-[420px] truncate text-texte-2">{i.commentaire ?? "—"}</span> },
-          ]}
-        />
-      </Carte>
     </div>
   );
 }
