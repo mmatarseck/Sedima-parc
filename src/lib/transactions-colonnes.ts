@@ -384,7 +384,7 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       if (!r.vehiculeId) return { refus: "plein sans véhicule" };
       if (!litres || litres <= 0 || montant === null) return { refus: "plein sans litres ou sans montant" };
       const prixLitre = nombre(v.prixLitre) ?? Math.round(montant / litres);
-      return { ligne: { numero, vehicule_id: r.vehiculeId, chauffeur_id: r.chauffeurId, prestataire_id: r.prestataireId, date: texte(v.date), litres, prix_litre: Math.max(1, Math.round(prixLitre)), montant: Math.round(montant), km: nombre(v.km), plein_complet: true, source: texte(v.source) ?? "station", reference: texte(v.reference), photo: texte(v.photo) } };
+      return { ligne: { numero, vehicule_id: r.vehiculeId, chauffeur_id: r.chauffeurId, prestataire_id: r.prestataireId, date: texte(v.date), litres, prix_litre: Math.max(1, Math.round(prixLitre)), montant: Math.round(montant), km: nombre(v.km), plein_complet: v.pleinComplet === undefined ? true : booleen(v.pleinComplet), source: texte(v.source) ?? "station", reference: texte(v.reference), photo: texte(v.photo), ...(v.remboursable === undefined ? {} : { remboursable: /cuve/i.test(texte(v.source) ?? "") ? false : booleen(v.remboursable) }) } };
     }
     case "depense": {
       const montant = nombre(v.montant);
@@ -942,7 +942,7 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
 const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   releve: { date: "date", valeur: "km" },
   livraison: { date: "date", site: "site", client: "client", produits: "produits", poidsKg: "poids_kg", chauffeur: "chauffeur", heureDebut: "heure_debut", heureFin: "heure_fin", observations: "observations" },
-  plein: { date: "date", litres: "litres", prixLitre: "prix_litre", montant: "montant", reference: "reference", km: "km", source: "source", photo: "photo" },
+  plein: { date: "date", litres: "litres", prixLitre: "prix_litre", montant: "montant", reference: "reference", km: "km", source: "source", photo: "photo", pleinComplet: "plein_complet", remboursable: "remboursable" },
   depense: { date: "date", poste: "poste", libelle: "libelle", montant: "montant", beneficiaire: "beneficiaire", reference: "reference", km: "km", justificatif: "justificatif", origine: "origine", photo: "photo", numeroBc: "numero_bc", fichierBc: "fichier_bc" },
   document: { numeroPiece: "numero_piece", emetteur: "emetteur", dateEffet: "date_effet", echeance: "echeance", montant: "montant", fichier: "fichier" },
   incident: { dateHeure: "date_heure", lieu: "lieu", mission: "mission", kilometrage: "kilometrage", responsabilite: "responsabilite", statut: "statut", description: "description" },
@@ -1098,7 +1098,7 @@ const TABLEAUX = new Set(["pieces", "signalements", "pieces_reglement"]);
 /* Les colonnes que la base veut en booléen. Une case « oui/non » arrive de la
    modale en texte : sans cette liste, « non » entrerait tel quel et Postgres le
    lirait comme vrai — une fiche qu'on croit désactivée resterait proposée. */
-const BOOLEENS = new Set(["justificatif", "transport_special", "engage", "actif", "permanent", "retiree"]);
+const BOOLEENS = new Set(["plein_complet", "remboursable", "justificatif", "transport_special", "engage", "actif", "permanent", "retiree"]);
 const HORODATES = new Set(["date_heure"]);
 const PRODUITS = new Set(["produit"]);
 /* Les colonnes qui portent une plaque : elle se range sous sa forme canonique,

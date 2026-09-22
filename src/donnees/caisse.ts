@@ -142,7 +142,15 @@ async function pleinsEtServicesARegler(client: Awaited<ReturnType<typeof clientS
   });
   type V = { immatriculation: string; business_unit: BusinessUnit | null; site: { libelle: string } | null } | null;
   const [pleins, services] = await Promise.all([
-    client.from("plein").select("numero, date, litres, montant, source, reference, photo, vehicule (immatriculation, business_unit, site (libelle))").gte("date", depuis).not("source", "ilike", "%cuve%").order("date", { ascending: false }).limit(2000).returns<{ numero: string; date: string; litres: number; montant: number; source: string | null; reference: string | null; photo: string | null; vehicule: V }[]>(),
+    /* Seul un plein remboursable attend la caisse (0065) ; sans la migration, tous ceux de station. */
+    (async () => {
+      const lire = (remboursables: boolean) => {
+        const q = client.from("plein").select("numero, date, litres, montant, source, reference, photo, vehicule (immatriculation, business_unit, site (libelle))").gte("date", depuis).not("source", "ilike", "%cuve%");
+        return (remboursables ? q.eq("remboursable", true) : q).order("date", { ascending: false }).limit(2000).returns<{ numero: string; date: string; litres: number; montant: number; source: string | null; reference: string | null; photo: string | null; vehicule: V }[]>();
+      };
+      const r = await lire(true);
+      return r.error ? lire(false) : r;
+    })(),
     client.from("ordre_travail").select("numero, date_prevue, objet, garage, statut, lignes, remise_mode, remise_valeur, tva_taux, brs_taux, main_oeuvre_globale, montant_estime, numero_facture, vehicule (immatriculation, business_unit, site (libelle))").eq("mode_reglement", "caisse").neq("statut", "annule").limit(1000).returns<{ numero: string; date_prevue: string; objet: string; garage: string | null; statut: string; lignes: unknown; remise_mode: "montant" | "pourcentage" | null; remise_valeur: number | null; tva_taux: number | null; brs_taux: number | null; main_oeuvre_globale: number | null; montant_estime: number | null; numero_facture: string | null; vehicule: V }[]>(),
   ]);
   const deCarburant: DepenseCaisse[] = (pleins.error ? [] : (pleins.data ?? [])).map((p) => ({

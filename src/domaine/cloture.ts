@@ -80,6 +80,11 @@ export interface ChampEdition {
   dossier?: string;
   /** Une phrase sous le champ, quand son libellé ne suffit pas à dire ce qu'on attend. */
   precision?: string;
+  /**
+   * Ce que ce champ entraîne sur les autres quand il change, où que le formulaire
+   * s'ouvre : la pompe du siège pose la source et retire le remboursement.
+   */
+  entraine?: (valeur: string | boolean, saisie: Record<string, string | boolean>) => Record<string, string | boolean> | null;
 }
 
 /** Une modification appliquée ou demandée sur un champ d'une transaction. */

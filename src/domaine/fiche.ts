@@ -201,6 +201,10 @@ export interface PleinFiche {
   kmMotifRejet: string | null;
   /** Le ticket de la station ou le bon de sortie de la cuve, dans le seau (21 septembre 2026). */
   photo?: string | null;
+  /** Faux pour un remplissage partiel : il ne ferme pas un intervalle de consommation (0001). */
+  pleinComplet?: boolean;
+  /** Avancé par le chauffeur, la caisse le rembourse (0065). Nul quand la base ne le dit pas. */
+  remboursable?: boolean | null;
 }
 
 /** Les trois familles de charges d'un véhicule, telles que le métier les lit. */

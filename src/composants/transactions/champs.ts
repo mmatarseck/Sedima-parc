@@ -290,15 +290,45 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "numeroBc", libelle: "N° du bon de commande", type: "texte" },
     { cle: "fichierBc", libelle: "Le bon de commande", type: "photo", dossier: "reglements" },
   ],
+  /*
+   * Le plein (métier, 22 septembre 2026) : à la pompe du siège — pas de facture,
+   * pas de remboursement — ou en station — la station choisie, ou ajoutée en
+   * l'écrivant ; la facture ; remboursable par la caisse, par défaut. Complet ou
+   * partiel : seul un plein complet ferme un intervalle de consommation.
+   */
   plein: [
     DATE("date"),
+    {
+      cle: "approvisionnement",
+      libelle: "Approvisionnement",
+      type: "choix",
+      options: [
+        { valeur: "cuve", libelle: "Pompe du siège (cuve interne)" },
+        { valeur: "station", libelle: "Station-service" },
+      ],
+      obligatoire: true,
+      entraine: (v, s) => (v === "cuve" ? { source: SOURCE_CUVE, remboursable: false } : { source: /cuve/i.test(String(s.source ?? "")) ? "" : String(s.source ?? ""), remboursable: true }),
+    },
+    { cle: "source", libelle: "Pompe", type: "lecture", visibleSi: (s) => s.approvisionnement === "cuve" },
+    {
+      cle: "source",
+      libelle: "Station",
+      type: "suggestion",
+      suggestionsDe: () => optionsPrestataires(["station", "carburant"], typeof window === "undefined" ? undefined : lireCreations),
+      obligatoire: true,
+      precision: "Absente de la liste : écrivez son nom, elle s'ajoute au référentiel",
+      visibleSi: (s) => s.approvisionnement === "station",
+    },
     { cle: "litres", libelle: "Litres", type: "nombre", unite: "L", obligatoire: true },
     { cle: "prixLitre", libelle: "Prix du litre", type: "nombre", unite: "F" },
     { cle: "montant", libelle: "Montant", type: "nombre", unite: "F", obligatoire: true },
-    { cle: "reference", libelle: "Bon de sortie", type: "texte" },
     { cle: "km", libelle: "Km relevé", type: "nombre", unite: "km" },
-    /* Le ticket vit sur la ligne : il s'ouvre à droite de la liste des pleins (21 septembre 2026). */
-    { cle: "photo", libelle: "Le ticket ou le bon", type: "photo", dossier: "documents", precision: "PDF ou image" },
+    { cle: "reference", libelle: "Bon de sortie", type: "texte", visibleSi: (s) => s.approvisionnement === "cuve" },
+    { cle: "reference", libelle: "N° du ticket ou de la facture", type: "texte", visibleSi: (s) => s.approvisionnement !== "cuve" },
+    { cle: "pleinComplet", libelle: "Plein complet", type: "oui-non", precision: "Décoché : remplissage partiel — il ne ferme pas un calcul de consommation" },
+    { cle: "remboursable", libelle: "Remboursable", type: "oui-non", precision: "Avancé par le chauffeur : la caisse le remboursera", visibleSi: (s) => s.approvisionnement === "station" },
+    /* La facture vit sur la ligne : elle s'ouvre à droite de la liste des pleins (21 septembre 2026). La pompe du siège n'en a pas. */
+    { cle: "photo", libelle: "La facture", type: "photo", dossier: "documents", precision: "Le ticket ou la facture de la station, PDF ou image", visibleSi: (s) => s.approvisionnement !== "cuve" },
   ],
   intervention: [
     DATE("date"),
@@ -737,9 +767,8 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
       return [
         /* Depuis le module Carburant, on choisit d'abord le véhicule ; depuis la fiche, il est connu. */
         ...(contexte.pour === "carburant" ? [{ cle: "vehiculeId", libelle: "Véhicule", type: "choix" as const, options: optionsVehicules(), obligatoire: true }] : []),
-        { cle: "source", libelle: "Source", type: "choix", options: [{ valeur: "Cuve interne SEDIMA", libelle: "Cuve interne SEDIMA" }, { valeur: "Station Total", libelle: "Station Total" }, { valeur: "Station Shell", libelle: "Station Shell" }], obligatoire: true },
-        ...base.filter((c) => c.cle !== "photo"),
-        { cle: "photo", libelle: "Le ticket ou le bon", type: "photo", dossier: "documents", obligatoire: true, precision: "PDF ou image — il s'ouvrira à droite de la liste des pleins" },
+        /* En station, la facture est obligatoire à la saisie ; la pompe du siège n'en a pas. */
+        ...base.map((c) => (c.cle === "photo" ? { ...c, obligatoire: true } : c)),
       ];
     case "document":
       return [
@@ -909,6 +938,15 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
     default:
       return base;
   }
+}
+
+/** La source d'un plein pris à la pompe du siège. */
+export const SOURCE_CUVE = "Cuve interne SEDIMA";
+
+/** Les valeurs d'un plein existant, pour sa modification : l'approvisionnement se lit dans la source. */
+export function valeursPlein(p: { source: string; pleinComplet?: boolean | null; remboursable?: boolean | null }): Record<string, unknown> {
+  const cuve = /cuve/i.test(p.source);
+  return { ...p, approvisionnement: cuve ? "cuve" : "station", pleinComplet: p.pleinComplet ?? true, remboursable: p.remboursable ?? !cuve };
 }
 
 export const CHAMPS_CREATION_CONTRAVENTION: ChampEdition[] = [{ cle: "vehiculeId", libelle: "Véhicule", type: "choix", suggestionsDe: () => optionsVehicules(), obligatoire: true }, ...CHAMPS_CONTRAVENTION];

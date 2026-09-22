@@ -159,7 +159,8 @@ export function ModaleTransaction({
   function changer(cle: string, valeur: string | boolean) {
     setSaisie((s) => {
       const suivant = { ...s, [cle]: valeur };
-      return { ...suivant, ...(entraine?.(cle, valeur, suivant) ?? {}) };
+      const duChamp = tousChamps.find((c) => c.cle === cle && c.entraine)?.entraine?.(valeur, suivant) ?? {};
+      return { ...suivant, ...duChamp, ...(entraine?.(cle, valeur, { ...suivant, ...duChamp }) ?? {}) };
     });
   }
 

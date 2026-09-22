@@ -171,6 +171,19 @@ async function prestataireIdDe(client: SupabaseClient, nom: unknown): Promise<st
   return r.data?.id ?? null;
 }
 
+/**
+ * La station d'un plein, par son nom — posée au référentiel quand elle n'y est
+ * pas (0065, métier du 22 septembre 2026 : « à rajouter dans la foulée »). La
+ * pompe du siège n'est pas un prestataire. Sans la migration, on retombe sur la
+ * recherche par nom.
+ */
+async function stationIdDe(client: SupabaseClient, nom: unknown): Promise<string | null> {
+  if (typeof nom !== "string" || !nom.trim() || /cuve/i.test(nom)) return null;
+  const r = await client.rpc("ajouter_station", { nom: nom.trim() });
+  if (!r.error && typeof r.data === "string") return r.data;
+  return prestataireIdDe(client, nom);
+}
+
 /** Un prestataire par son numéro (« PRE-2026-00012 ») — la demande d'achat le cite ainsi. */
 async function prestataireIdParNumero(client: SupabaseClient, numero: unknown): Promise<string | null> {
   if (typeof numero !== "string" || !numero.trim()) return null;
@@ -238,6 +251,7 @@ async function rattacher(client: SupabaseClient, c: Creation, utilisateurId: str
   /* Le prestataire : par son numéro quand la fiche le porte — la fiche
      transporteur porte le sien dans son sujet —, par son nom sinon. */
   const prestataireId =
+    (c.type === "plein" ? await stationIdDe(client, v.source) : null) ??
     (await prestataireIdParNumero(client, v.prestataireNumero)) ??
     (await prestataireIdParNumero(client, v.transporteurNumero)) ??
     (s.genre === "prestataire" ? await prestataireIdParNumero(client, s.cle) : null) ??
@@ -385,7 +399,14 @@ export async function ecrireCreation(c: Creation): Promise<ResultatEcriture> {
     return { issue: "ecrite", numero: c.numero };
   }
 
+  /* Une colonne d'une migration pas encore jouée (0065 : plein.remboursable) se retire plutôt que de refuser la saisie. */
   let ecriture = await client.from(table).insert(ligne);
+  for (let essais = 0; ecriture.error?.code === "PGRST204" && essais < 3; essais++) {
+    const colonne = /'([a-z_]+)' column/.exec(ecriture.error.message)?.[1];
+    if (!colonne || !(colonne in ligne)) break;
+    delete ligne[colonne];
+    ecriture = await client.from(table).insert(ligne);
+  }
   let numero = c.numero;
   if (ecriture.error && ecriture.error.code === "23505") {
     numero = await numeroSuivant(client, table, c.type, c.numero);

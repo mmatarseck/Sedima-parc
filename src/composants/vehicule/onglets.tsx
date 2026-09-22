@@ -22,7 +22,7 @@ import { PRIORITE_SERVICE, calculerService } from "@/domaine/service";
 import { ETAT_SIGNALEMENT, PRIORITE_SIGNALEMENT, etatSignalement, trierSignalements, type LigneSignalement } from "@/domaine/signalements";
 import { systemeDe } from "@/domaine/categories-maintenance";
 import { enregistrerModification } from "@/lib/clotures-demo";
-import { CHAMPS, champsCreation } from "@/composants/transactions/champs";
+import { CHAMPS, champsCreation, valeursPlein } from "@/composants/transactions/champs";
 import { lireParametres } from "@/lib/parametres-demo";
 import { ETAT_RAPPEL, echeanceProposee, etatRappel, type Rappel } from "@/domaine/rappels";
 import { apparierAtelier } from "@/domaine/atelier";
@@ -1195,7 +1195,7 @@ export function OngletCarburant({ fiche, cible }: { fiche: FicheVehicule; cible?
      fuel ») : le clic ouvre le ticket à droite, la liste se rétracte. */
   const [idOuvert, setIdOuvert] = useState<string | null>(null);
   const ouvert = idOuvert ? (pleins.find((p) => p.id === idOuvert) ?? null) : null;
-  const modifier = (p: PleinFiche) => demander({ type: "plein", numero: p.numero, titre: `Plein · ${nombre(p.litres, 1)} L — ${p.source}`, valeurs: p as unknown as Record<string, unknown> });
+  const modifier = (p: PleinFiche) => demander({ type: "plein", numero: p.numero, titre: `Plein · ${nombre(p.litres, 1)} L — ${p.source}`, valeurs: valeursPlein(p) });
   return (
     <ListeEtPiece
       piece={

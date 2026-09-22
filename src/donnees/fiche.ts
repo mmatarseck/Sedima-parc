@@ -217,7 +217,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
     vehiculeId ? rappelsDuVehicule(client, vehiculeId, parametres) : Promise.resolve([]),
     vehiculeId ? piecesDuVehicule(client, vehiculeId) : Promise.resolve([]),
     vehiculeId ? photosDesDepenses(client, vehiculeId) : Promise.resolve(new Map<string, string>()),
-    vehiculeId ? photosDesPleins(client, vehiculeId) : Promise.resolve(new Map<string, string>()),
+    vehiculeId ? photosDesPleins(client, vehiculeId) : Promise.resolve(new Map<string, { photo: string | null; pleinComplet: boolean; remboursable: boolean | null }>()),
     /* Signalements et services (0060) : la fiche s'ouvre sans eux plutôt que de se fermer si la migration manque. */
     vehiculeId ? signalementsDuVehicule(client, vehiculeId).catch((e: unknown) => (console.warn(`Fiche ${canonique} : signalements illisibles — ${e instanceof Error ? e.message : String(e)}`), [])) : Promise.resolve([]),
     vehiculeId ? servicesDuVehicule(client, vehiculeId).catch((e: unknown) => (console.warn(`Fiche ${canonique} : services illisibles — ${e instanceof Error ? e.message : String(e)}`), [])) : Promise.resolve([]),
@@ -244,7 +244,7 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
     /* La facture d'une dépense vit sur sa ligne : on la pose ici, comme la pièce jointe d'un document. */
     const depenses = faits.depenses.map((d) => ({ ...d, photo: photosDepenses.get(d.numero) ?? null }));
     /* Le ticket d'un plein, de même (21 septembre 2026). */
-    const pleins = faits.pleins.map((p) => ({ ...p, photo: photosPleins.get(p.numero) ?? null }));
+    const pleins = faits.pleins.map((p) => ({ ...p, photo: photosPleins.get(p.numero)?.photo ?? null, pleinComplet: photosPleins.get(p.numero)?.pleinComplet ?? true, remboursable: photosPleins.get(p.numero)?.remboursable ?? null }));
     /* Les tâches du catalogue de chaque intervention (0061) : la colonne « Tâche de service » de l'atelier. */
     const interventions = faits.interventions.map((i) => ({ ...i, taches: tachesParIntervention.get(i.numero) ?? [] }));
     /* Les documents qui portent un scan rejoignent le dossier, avec les pièces
@@ -376,10 +376,18 @@ async function photosDesDepenses(client: Awaited<ReturnType<typeof clientServeur
   return new Map(lignesLues("Pièces des dépenses", lecture).map((d) => [d.numero, d.photo]));
 }
 
-/** Le ticket ou le bon de chaque plein du véhicule — même raison, même lecture bornée. */
-async function photosDesPleins(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<Map<string, string>> {
-  const lecture = await client.from("plein").select("numero, photo").eq("vehicule_id", vehiculeId).not("photo", "is", null).limit(5000).returns<{ numero: string; photo: string }[]>();
-  return new Map(lignesLues("Pièces des pleins", lecture).map((p) => [p.numero, p.photo]));
+/**
+ * Ce que `lire_fiche()` ne projette pas d'un plein — même raison, même lecture
+ * bornée : le ticket ou la facture, complet ou partiel (le calcul de
+ * consommation en dépend), remboursable (0065, lu sans lui si la migration
+ * n'est pas jouée).
+ */
+async function photosDesPleins(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<Map<string, { photo: string | null; pleinComplet: boolean; remboursable: boolean | null }>> {
+  type Ligne = { numero: string; photo: string | null; plein_complet: boolean; remboursable?: boolean };
+  const lire = (colonnes: string) => client.from("plein").select(colonnes).eq("vehicule_id", vehiculeId).limit(5000).returns<Ligne[]>();
+  let lecture = await lire("numero, photo, plein_complet, remboursable");
+  if (lecture.error) lecture = await lire("numero, photo, plein_complet");
+  return new Map(lignesLues("Pièces des pleins", lecture).map((p) => [p.numero, { photo: p.photo, pleinComplet: p.plein_complet !== false, remboursable: p.remboursable ?? null }]));
 }
 
 /** La famille d'un document, d'après son type : les visites d'un côté, tout le reste est réglementaire. */

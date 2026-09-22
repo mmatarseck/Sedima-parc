@@ -82,7 +82,7 @@ function Interieur({ ligne, faits, aujourdhui }: { ligne: LigneFlotte; faits: De
         controle: controleReleve(ligne.kilometrage && ligne.dateKilometrage ? [{ date: ligne.dateKilometrage.slice(0, 10), valeur: ligne.kilometrage }] : [], v.categorie),
       });
     /* Le prix du litre est celui du barème du jour, selon l'énergie — comme sur la fiche du bureau. */
-    else if (geste === "plein") creer({ type: "plein", titre: `Plein · ${v.immatriculationAffichee}`, champs: champsCreation("plein", { pour: "vehicule" }), valeurs: { date: aujourdhui, prixLitre: prixEnergie(v.energie, aujourdhui, lireParametres()) } });
+    else if (geste === "plein") creer({ type: "plein", titre: `Plein · ${v.immatriculationAffichee}`, champs: champsCreation("plein", { pour: "vehicule" }), valeurs: { date: aujourdhui, pleinComplet: true, remboursable: true, prixLitre: prixEnergie(v.energie, aujourdhui, lireParametres()) } });
     else if (geste === "document") creer({ type: "document", titre: `Document renouvelé · ${v.immatriculationAffichee}`, champs: champsCreation("document", { pour: "vehicule" }), valeurs: { dateEffet: aujourdhui } });
     else creer({ type: "incident", titre: `Panne · ${v.immatriculationAffichee}`, champs: champsCreation("incident", { pour: "vehicule" }), valeurs: { vehiculeId: v.id, nature: "incident", type: "panne", dateHeure: `${aujourdhui}T08:00`, statut: "declare" } });
   }

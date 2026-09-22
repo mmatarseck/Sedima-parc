@@ -9,7 +9,7 @@ import { Numero } from "@/composants/interface/Numero";
 import { OuvrirPiece } from "@/composants/interface/OuvrirPiece";
 import { Echeance, Pastille } from "@/composants/interface/Pastille";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
-import { CHAMPS, champsCreation } from "@/composants/transactions/champs";
+import { CHAMPS, SOURCE_CUVE, champsCreation, valeursPlein } from "@/composants/transactions/champs";
 import { FournisseurEdition, useEdition } from "@/composants/transactions/ContexteEdition";
 import { fabriquerLigneCuve, fabriquerPlein } from "@/composants/transactions/fabriques";
 import {
@@ -217,7 +217,7 @@ function Interieur({ pleins, cuve, stockInitial, consommations, aujourdhui, vueI
       champs: champsCreation("plein", { pour: "carburant" }),
       /* Le véhicule n'est pas encore choisi : le prix proposé est celui du gasoil,
          l'énergie de presque toute la flotte ; depuis une fiche, c'est celui du véhicule. */
-      valeurs: { date: aujourdhui, source: "Cuve interne SEDIMA", prixLitre: prixEnergie("gasoil", aujourdhui, params) },
+      valeurs: { date: aujourdhui, approvisionnement: "cuve", source: SOURCE_CUVE, remboursable: false, pleinComplet: true, prixLitre: prixEnergie("gasoil", aujourdhui, params) },
       /* Le plein est rangé sur le véhicule choisi : la fiche le voit, la cuve aussi. */
       sujetDe: (v) => `vehicule:${String(v.vehiculeId ?? "")}`,
     });
@@ -231,7 +231,7 @@ function Interieur({ pleins, cuve, stockInitial, consommations, aujourdhui, vueI
   function modifierPlein(p: { numero: string; immatriculationAffichee: string | null; source: string }) {
     const plein = tousPleins.find((x) => x.numero === p.numero);
     if (!plein) return;
-    demander({ type: "plein", numero: plein.numero, titre: `Plein ${plein.numero} · ${plein.immatriculationAffichee}`, valeurs: plein as unknown as Record<string, unknown>, champs: CHAMPS.plein });
+    demander({ type: "plein", numero: plein.numero, titre: `Plein ${plein.numero} · ${plein.immatriculationAffichee}`, valeurs: valeursPlein(plein), champs: CHAMPS.plein });
   }
   function modifierCuve(m: LigneCuve) {
     if (m.sens === "sortie") {

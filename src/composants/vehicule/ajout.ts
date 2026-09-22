@@ -132,6 +132,9 @@ export function useAjoutVehicule(fiche: FicheVehicule): (cible: CibleAjout) => b
              plein antérieur, la date saisie prime — le prix se corrige à la
              main, l'application ne devine pas à quel barème il se rattache. */
           prixLitre: type === "plein" ? prixEnergie(v.energie, jourCourant(), lireParametres()) : undefined,
+          /* Un plein est complet et remboursable par défaut (métier, 22 septembre 2026) ; l'approvisionnement se choisit. */
+          pleinComplet: type === "plein" ? true : undefined,
+          remboursable: type === "plein" ? true : undefined,
           statut: type === "visite" ? "rendez-vous" : type === "observation" ? "a-traiter" : "declare",
           roulant: "oui",
           type: type === "visite" ? "visite" : undefined,
