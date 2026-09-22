@@ -6,12 +6,15 @@ import { scoresMensuels } from "@/domaine/performance";
 import { Courbe, type PointCourbe } from "@/composants/tableau/Graphiques";
 import { FileText, Lock, Plus } from "lucide-react";
 import { Carte, Definitions, TableauSimple } from "@/composants/interface/Carte";
-import { DossierPieces } from "@/composants/interface/DossierPieces";
-import { OuvrirPiece } from "@/composants/interface/OuvrirPiece";
+import { ListeEtPiece } from "@/composants/interface/ListeEtPiece";
+import { VisionneusePiece } from "@/composants/interface/VisionneusePiece";
+import { IndicateurPiece } from "@/composants/interface/IndicateurPiece";
+import { enregistrerModification } from "@/lib/clotures-demo";
+import { useState } from "react";
 import { Numero } from "@/composants/interface/Numero";
-import { CHAMPS, CHAMPS_CONTRAVENTION, CHAMPS_FRAIS } from "@/composants/transactions/champs";
+import { CHAMPS, CHAMPS_CONTRAVENTION, CHAMPS_FRAIS, champsCreation } from "@/composants/transactions/champs";
 import { fabriquerRappel } from "@/composants/transactions/fabriques";
-import { ETAT_RAPPEL, echeanceProposee, etatRappel, type Rappel } from "@/domaine/rappels";
+import { ETAT_RAPPEL, echeanceProposee, etatRappel, preuveDuRappel, type Rappel } from "@/domaine/rappels";
 import { lireParametres } from "@/lib/parametres-demo";
 import { useEdition } from "@/composants/transactions/ContexteEdition";
 import type { CibleAjout } from "@/composants/vehicule/MenuAjout";
@@ -38,7 +41,7 @@ import type {
   IncidentChauffeur,
   PeriodeMois,
 } from "@/domaine/chauffeur";
-import type { DocumentFiche, EtatDocument } from "@/domaine/fiche";
+import type { DocumentFiche } from "@/domaine/fiche";
 import {
   APTITUDE,
   CONTRAT_CHAUFFEUR,
@@ -73,15 +76,6 @@ export interface Selection {
 /* ========================================================================== */
 /* Pièces communes                                                            */
 /* ========================================================================== */
-
-const TON_ETAT: Record<EtatDocument, Ton> = { "a-jour": "favorable", bientot: "vigilance", echu: "defavorable", manquant: "defavorable", permanent: "neutre" };
-
-function etatDocumentLibelle(d: DocumentFiche): string {
-  if (d.etat === "manquant") return "manquant";
-  if (d.joursRestants === null) return "à jour";
-  if (d.joursRestants < 0) return `échue de ${Math.abs(d.joursRestants)} j`;
-  return `dans ${d.joursRestants} j`;
-}
 
 function Vehicule({ immatriculation, affichee, precision }: { immatriculation?: string; affichee: string; precision?: string }) {
   const contenu = <span className="code font-medium">{affichee}</span>;
@@ -459,123 +453,180 @@ export function OngletAffectations({ fiche, selection, cible, onAjouter }: { fic
 /* ========================================================================== */
 
 export function OngletDocuments({ fiche, cible, onAjouter }: { fiche: FicheChauffeur; cible?: string; onAjouter?: Ajouter }) {
-  const { surcharger, demander, creations } = useEdition();
-  const documents = [...creations("document", fabriquerDocumentChauffeur), ...fiche.documents.map(surcharger)];
-  const aProbleme = documents.filter((d) => d.etat === "echu" || d.etat === "manquant").length;
-  /*
-   * Les rappels du chauffeur — permis, visite médicale — au-dessus des
-   * documents : c'est ce que la Conformité suit depuis le 16 septembre 2026,
-   * la prochaine échéance saisie par le métier. Le document, en dessous, prouve.
-   */
+  const { surcharger, demander, creer, creations } = useEdition();
   const l = fiche.ligne;
+  const documents = [...creations("document", fabriquerDocumentChauffeur), ...fiche.documents.map(surcharger)];
   const rappels = [...creations("rappel", (c) => fabriquerRappel(c, { chauffeur: { id: l.id, nomComplet: l.nomComplet } })), ...fiche.rappels.map(surcharger)];
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const echus = rappels.filter((r) => etatRappel(r.echeance, aujourdhui) === "echu").length;
+  const libelleType = (type: string) => lireParametres().documents.types.find((t) => t.id === type)?.libelle ?? TYPE_DOCUMENT[type as DocumentFiche["type"]] ?? type;
+  const documentsConnus = documents.map((d) => ({ numero: d.numero, type: d.type as string, dateEffet: d.dateEffet, echeance: d.echeance, fichier: d.fichier ?? null, numeroPiece: d.numeroPiece, emetteur: d.emetteur }));
+
+  /*
+   * COMME SUR LE VÉHICULE (métier, 22 septembre 2026) : une seule liste, le
+   * rappel — la prochaine échéance du permis, de la visite médicale — et, sur la
+   * même ligne, le scan qui le prouve ; le clic l'ouvre à droite. Une pièce dont
+   * le type n'a pas de rappel a sa ligne aussi, « non suivie » : « Suivre » en
+   * fait un rappel.
+   */
+  type LigneDocument = Rappel & { suivi: boolean };
+  const typesSuivis = new Set(rappels.map((r) => r.type as string));
+  const nonSuivis: LigneDocument[] = [...new Set(documentsConnus.filter((d) => !typesSuivis.has(d.type)).map((d) => d.type))].map((type) => {
+    const d = documentsConnus.filter((x) => x.type === type).sort((a, b) => Number(Boolean(b.fichier)) - Number(Boolean(a.fichier)) || (b.dateEffet ?? "").localeCompare(a.dateEffet ?? ""))[0]!;
+    return { id: `piece-${type}`, numero: `PIECE-${d.numero}`, porteur: "chauffeur", vehiculeId: null, immatriculation: null, immatriculationAffichee: null, vehicule: null, chauffeurId: l.id, chauffeur: l.nomComplet, chauffeurAdresse: l.id, type: type as Rappel["type"], libelle: libelleType(type), echeance: d.echeance ?? "", faitLe: d.dateEffet, documentNumero: d.numero, commentaire: null, suivi: false } as LigneDocument;
+  });
+  const lignes: LigneDocument[] = [...rappels.map((r) => ({ ...r, suivi: true })), ...nonSuivis];
+  const [ouvertNumero, setOuvertNumero] = useState<string | null>(null);
+  const ouvert = ouvertNumero ? (lignes.find((r) => r.numero === ouvertNumero) ?? null) : null;
+  const preuve = (r: Pick<Rappel, "type" | "documentNumero">) => preuveDuRappel(r, documentsConnus) ?? documentsConnus.filter((d) => d.type === r.type).sort((a, b) => (b.dateEffet ?? "").localeCompare(a.dateEffet ?? ""))[0] ?? null;
+  const preuveOuverte = ouvert ? preuve(ouvert) : null;
+
+  /* Renouveler, c'est déposer la nouvelle pièce : le document naît avec son scan, et le rappel prend la nouvelle échéance. */
   function renouveler(r: Rappel) {
     const def = lireParametres().documents.types.find((t) => t.id === r.type);
-    demander({
-      type: "rappel",
-      numero: r.numero,
+    const proposee = (def ? echeanceProposee(def, aujourdhui) : null) ?? r.echeance;
+    creer({
+      type: "document",
       titre: `Renouveler · ${r.libelle} · ${l.nomComplet}`,
-      champs: CHAMPS.rappel,
-      valeurs: { echeance: (def ? echeanceProposee(def, aujourdhui) : null) ?? r.echeance, faitLe: aujourdhui, documentNumero: r.documentNumero ?? "", commentaire: r.commentaire ?? "" },
+      champs: champsCreation("document", { pour: "chauffeur" }).map((c) =>
+        c.cle === "fichier"
+          ? { ...c, obligatoire: true, libelle: "Le scan", precision: "Permis de conduire, certificat de visite médicale — en PDF ou en image" }
+          : c.cle === "dateEffet"
+            ? { ...c, libelle: "Renouvelé le" }
+            : c.cle === "echeance"
+              ? { ...c, libelle: "Nouvelle échéance", obligatoire: true }
+              : c,
+      ),
+      valeurs: { type: r.type, dateEffet: aujourdhui, echeance: proposee },
+      apresCreation: (c) => {
+        const faitLe = String(c.valeurs.dateEffet ?? aujourdhui);
+        const echeance = String(c.valeurs.echeance || (def ? echeanceProposee(def, faitLe) : null) || proposee);
+        const avant = { echeance: r.echeance, faitLe: r.faitLe ?? "", documentNumero: r.documentNumero ?? "", commentaire: r.commentaire ?? "" };
+        enregistrerModification({
+          numero: r.numero,
+          sujet: `chauffeur:${l.id}`,
+          type: "rappel",
+          titre: `Rappel · ${r.libelle}`,
+          href: `/chauffeurs/${l.id}?onglet=documents`,
+          champs: CHAMPS.rappel,
+          avant,
+          apres: { ...avant, echeance, faitLe, commentaire: `Renouvelé le ${faitLe.split("-").reverse().join("/")} — pièce ${c.numero}` },
+          motif: `Renouvelé : pièce ${c.numero} déposée`,
+        });
+      },
     });
   }
+  function suivre(r: LigneDocument) {
+    creer({ type: "rappel", titre: `Suivre · ${r.libelle} · ${l.nomComplet}`, champs: champsCreation("rappel", { pour: "chauffeur" }), valeurs: { type: r.type, echeance: r.echeance || "" } });
+  }
+
   return (
-    <div className="flex flex-col gap-5">
-    <Carte
-      titre="Rappels"
-      precision={rappels.length ? `${rappels.length} échéance${rappels.length > 1 ? "s" : ""} suivie${rappels.length > 1 ? "s" : ""}${echus ? ` · ${echus} échue${echus > 1 ? "s" : ""}` : ""}` : "Aucun rappel — la prochaine échéance du permis ou de la visite médicale se saisit ici"}
-      action={
-        <button type="button" onClick={() => onAjouter?.("rappel")} disabled={!onAjouter} className="bouton-secondaire h-9 disabled:cursor-not-allowed disabled:opacity-50">
-          <Plus className="size-4" strokeWidth={2} />
-          Nouveau rappel
-        </button>
-      }
-      sansMarge
-    >
-      <TableauSimple<Rappel> reglages="fiche-chauffeur.rappels"
-        cle={(r) => r.numero}
-        lignes={rappels}
-        vide="Aucun rappel sur ce chauffeur."
-        numero={(r) => r.numero}
-        cible={cible}
-        surModifier={(r) => demander({ type: "rappel", numero: r.numero, titre: `Rappel · ${r.libelle}`, champs: CHAMPS.rappel, valeurs: { echeance: r.echeance, faitLe: r.faitLe ?? "", documentNumero: r.documentNumero ?? "", commentaire: r.commentaire ?? "" } })}
-        colonnes={[
-          { cle: "libelle", libelle: "Rappel", rendu: (r) => <span className="font-medium">{r.libelle}</span> },
-          { cle: "etat", libelle: "État", rendu: (r) => { const e = etatRappel(r.echeance, aujourdhui); return <Echeance ton={ETAT_RAPPEL[e].ton}>{ETAT_RAPPEL[e].libelle}</Echeance>; } },
-          { cle: "echeance", libelle: "Prochaine échéance", rendu: (r) => <span className="code whitespace-nowrap">{date(r.echeance)}</span> },
-          { cle: "faitLe", libelle: "Renouvelé le", rendu: (r) => <span className="code whitespace-nowrap">{r.faitLe ? date(r.faitLe) : "—"}</span> },
-          { cle: "document", libelle: "Pièce", rendu: (r) => (r.documentNumero ? <Numero valeur={r.documentNumero} /> : <span className="text-attenue-2">—</span>) },
-          { cle: "renouveler", libelle: "", rendu: (r) => (<button type="button" onClick={(ev) => { ev.stopPropagation(); renouveler(r); }} className="bouton-discret h-7 px-2 text-[12px]">Renouveler</button>) },
-        ]}
-      />
-    </Carte>
-    {/* Le dossier, comme celui du véhicule (métier, 17 septembre 2026) : le
-        scan du permis et de la visite médicale, ouvert sur place, déposé ou
-        retiré depuis la ligne qui le porte. */}
-    <DossierPieces
-      familles={[
-        {
-          cle: "chauffeur",
-          libelle: "Pièces du chauffeur",
-          precision: "Permis de conduire, visite médicale — le scan de chaque pièce, joint sur son document",
-          pieces: documents
-            .filter((d): d is DocumentFiche & { fichier: string } => Boolean(d.fichier))
-            .map((d) => ({ numero: d.numero, type: "document", champFichier: "fichier", famille: "reglementaire", libelle: TYPE_DOCUMENT[d.type], precision: [d.numeroPiece ? `n° ${d.numeroPiece}` : null, d.emetteur, d.echeance ? `échéance ${date(d.echeance)}` : null].filter(Boolean).join(" · "), date: d.dateEffet, fichier: d.fichier })),
-          deposer: onAjouter ? { libelle: "Déposer un document", onClick: () => onAjouter("document") } : undefined,
-        },
-      ]}
-      onRetirer={(p) => {
-        const champ = CHAMPS.document.find((c) => c.cle === "fichier");
-        if (champ) demander({ type: "document", numero: p.numero, titre: `Retirer la pièce · ${p.libelle}`, champs: [champ], valeurs: { fichier: p.fichier } });
-      }}
-      vide={`Aucune pièce n'est attachée à ${l.nomComplet}.`}
-    />
-    <Carte
-      titre="Documents"
-      precision={aProbleme > 0 ? `${aProbleme} document${aProbleme > 1 ? "s" : ""} à régulariser` : "Permis et visite médicale à jour"}
-      action={
-        <button type="button" onClick={() => onAjouter?.("document")} disabled={!onAjouter} className="bouton-secondaire h-9 disabled:cursor-not-allowed disabled:opacity-50">
-          <Plus className="size-4" strokeWidth={2} />
-          Ajouter un document
-        </button>
-      }
-      sansMarge
-    >
-      <TableauSimple<DocumentFiche> reglages="fiche-chauffeur.documents"
-        cle={(d) => d.numero}
-        lignes={documents}
-        numero={(d) => d.numero}
-        cible={cible}
-        surModifier={(d) => demander({ type: "document", numero: d.numero, titre: `Document · ${TYPE_DOCUMENT[d.type]}`, valeurs: d as unknown as Record<string, unknown> })}
-        colonnes={[
-          { cle: "numero", libelle: "Réf.", rendu: (d) => <Numero valeur={d.numero} /> },
-          { cle: "type", libelle: "Document", rendu: (d) => <span className="font-medium">{TYPE_DOCUMENT[d.type]}</span> },
-          { cle: "piece", libelle: "N° de pièce", rendu: (d) => <span className="code whitespace-nowrap text-texte-2">{d.numeroPiece ?? "—"}</span> },
-          { cle: "emetteur", libelle: "Émetteur", rendu: (d) => d.emetteur ?? "—" },
-          { cle: "effet", libelle: "Effet", rendu: (d) => <span className="code">{date(d.dateEffet)}</span> },
-          { cle: "echeance", libelle: "Échéance", rendu: (d) => <span className="code">{date(d.echeance)}</span> },
-          {
-            cle: "justificatif",
-            libelle: "Justificatif",
-            rendu: (d) =>
-              d.fichier ? (
-                <OuvrirPiece fichier={d.fichier} titre="La pièce attachée" />
-              ) : d.justificatif ? (
-                <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-texte-2" title="La pièce est déclarée fournie, mais aucun fichier n'y est attaché : « Modifier » permet de l'ajouter.">
-                  <FileText className="size-3.5 text-attenue" strokeWidth={1.8} />
-                  Fourni
-                </span>
+    <ListeEtPiece
+      piece={
+        ouvert ? (
+          <VisionneusePiece
+            fichier={preuveOuverte?.fichier ?? null}
+            libelle={ouvert.libelle}
+            precision={[preuveOuverte?.numeroPiece ? `n° ${preuveOuverte.numeroPiece}` : null, ouvert.echeance ? `échéance ${date(ouvert.echeance)}` : null, preuveOuverte?.dateEffet ? `pièce du ${date(preuveOuverte.dateEffet)}` : null].filter(Boolean).join(" · ")}
+            vide="Aucun scan pour ce document. « Renouveler » le dépose avec la nouvelle échéance."
+            onFermer={() => setOuvertNumero(null)}
+            actions={
+              ouvert.suivi ? (
+                <button type="button" onClick={() => renouveler(ouvert)} className="bouton-secondaire h-9">
+                  Renouveler
+                </button>
               ) : (
-                <span className="text-attenue-2">à fournir</span>
+                <button type="button" onClick={() => suivre(ouvert)} className="bouton-secondaire h-9">
+                  Suivre l&apos;échéance
+                </button>
+              )
+            }
+          />
+        ) : null
+      }
+    >
+      <Carte
+        titre="Documents"
+        precision={rappels.length ? `${rappels.length} échéance${rappels.length > 1 ? "s" : ""} suivie${rappels.length > 1 ? "s" : ""}${echus ? ` · ${echus} échue${echus > 1 ? "s" : ""}` : ""}${nonSuivis.length ? ` · ${nonSuivis.length} pièce${nonSuivis.length > 1 ? "s" : ""} sans échéance suivie` : ""} — un clic ouvre le scan` : "Aucune échéance suivie — le rappel du permis ou de la visite médicale se crée ici"}
+        action={
+          <span className="flex gap-2">
+            <button type="button" onClick={() => onAjouter?.("document")} disabled={!onAjouter} className="bouton-secondaire h-9 disabled:cursor-not-allowed disabled:opacity-50" title="Le scan du permis ou de la visite médicale — il rejoint la ligne de son type">
+              <FileText className="size-4" strokeWidth={1.8} />
+              Déposer une pièce
+            </button>
+            <button type="button" onClick={() => onAjouter?.("rappel")} disabled={!onAjouter} className="bouton-secondaire h-9 disabled:cursor-not-allowed disabled:opacity-50">
+              <Plus className="size-4" strokeWidth={2} />
+              Nouveau rappel
+            </button>
+          </span>
+        }
+        sansMarge
+      >
+        <TableauSimple<LigneDocument> reglages="fiche-chauffeur.rappels.2"
+          cle={(r) => r.numero}
+          lignes={lignes}
+          vide="Aucun rappel ni aucune pièce pour ce chauffeur."
+          numero={(r) => (r.suivi ? r.numero : (r.documentNumero ?? r.numero))}
+          cible={cible}
+          seulement={ouvert ? ["document", "echeance"] : undefined}
+          surLigne={(r) => setOuvertNumero((o) => (o === r.numero ? null : r.numero))}
+          ouverte={ouvertNumero}
+          surModifier={(r) => (r.suivi ? demander({ type: "rappel", numero: r.numero, titre: `Rappel · ${r.libelle}`, champs: CHAMPS.rappel, valeurs: { echeance: r.echeance, faitLe: r.faitLe ?? "", documentNumero: r.documentNumero ?? "", commentaire: r.commentaire ?? "" } }) : suivre(r))}
+          colonnes={[
+            {
+              cle: "document",
+              libelle: "Document",
+              largeur: "240px",
+              rendu: (r) => (
+                <span className="flex items-center gap-2">
+                  <IndicateurPiece present={Boolean(preuve(r)?.fichier)} />
+                  <span className={r.suivi ? "font-medium" : "font-medium text-texte-2"}>{r.libelle}</span>
+                </span>
               ),
-          },
-          { cle: "etat", libelle: "État", rendu: (d) => <Echeance ton={TON_ETAT[d.etat]}>{etatDocumentLibelle(d)}</Echeance> },
-        ]}
-      />
-    </Carte>
-    </div>
+            },
+            { cle: "numeroPiece", libelle: "N° de pièce", largeur: "150px", rendu: (r) => <span className="code whitespace-nowrap text-texte-2">{preuve(r)?.numeroPiece ?? "—"}</span> },
+            { cle: "emetteur", libelle: "Émetteur", largeur: "220px", parDefaut: false, rendu: (r) => <span className="block truncate text-texte-2">{preuve(r)?.emetteur ?? "—"}</span> },
+            {
+              cle: "echeance",
+              libelle: "Échéance de renouvellement",
+              largeur: "240px",
+              rendu: (r) => {
+                if (!r.suivi)
+                  return (
+                    <span className="flex items-center gap-2">
+                      {r.echeance ? <span className="code whitespace-nowrap text-texte-2">{date(r.echeance)}</span> : null}
+                      <Echeance ton="neutre">Non suivie</Echeance>
+                    </span>
+                  );
+                const e = etatRappel(r.echeance, aujourdhui);
+                return (
+                  <span className="flex items-center gap-2">
+                    <span className="code whitespace-nowrap">{date(r.echeance)}</span>
+                    <Echeance ton={ETAT_RAPPEL[e].ton}>{ETAT_RAPPEL[e].libelle}</Echeance>
+                  </span>
+                );
+              },
+            },
+            { cle: "faitLe", libelle: "Renouvelé le", largeur: "130px", rendu: (r) => <span className="code whitespace-nowrap">{r.faitLe ? date(r.faitLe) : "—"}</span> },
+            {
+              cle: "renouveler",
+              libelle: "",
+              largeur: "110px",
+              rendu: (r) =>
+                r.suivi ? (
+                  <button type="button" onClick={(ev) => { ev.stopPropagation(); renouveler(r); }} className="bouton-discret h-7 px-2 text-[12px]" title="Déposer le nouveau scan et porter la nouvelle échéance">
+                    Renouveler
+                  </button>
+                ) : (
+                  <button type="button" onClick={(ev) => { ev.stopPropagation(); suivre(r); }} className="bouton-discret h-7 px-2 text-[12px]" title="En faire un rappel">
+                    Suivre
+                  </button>
+                ),
+            },
+          ]}
+        />
+      </Carte>
+    </ListeEtPiece>
   );
 }
 
