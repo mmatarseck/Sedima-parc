@@ -752,6 +752,7 @@ export const RAPPORTS: DefinitionRapport[] = [
       eta("verdict", "Verdict", { parDefaut: true, largeur: 155 }),
       mnt("cout", "Coût carburant", { parDefaut: true, largeur: 155 }),
       mnt("coutParKm", "Carburant au km", { largeur: 155, total: "moyenne" }),
+      mnt("f100", "F/100 km", { parDefaut: true, largeur: 130, total: "moyenne", precision: "le carburant du mois sur cent kilomètres" }),
       mnt("prixMoyen", "Prix moyen du litre", { largeur: 170, total: "moyenne" }),
       num("pleins", "Nb de pleins", { largeur: 130 }),
       vol("moyenneParPlein", "Litres par plein", { largeur: 155, total: "moyenne" }),

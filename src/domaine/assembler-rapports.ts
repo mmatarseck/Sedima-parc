@@ -778,6 +778,7 @@ function consommation(s: SourceRapports, c: ContexteRapport): LigneRapport[] {
                 : etat("Dans la référence", "favorable", 1),
         cout: b.parGroupe.carburant,
         coutParKm: b.km > 0 ? Math.round(b.parGroupe.carburant / b.km) : null,
+        f100: b.km > 0 ? Math.round((b.parGroupe.carburant / b.km) * 100) : null,
         prixMoyen: p.litres > 0 ? Math.round(p.montant / p.litres) : null,
         pleins: p.nombre,
         moyenneParPlein: p.nombre > 0 ? arrondir(p.litres / p.nombre) : null,

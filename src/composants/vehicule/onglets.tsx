@@ -70,7 +70,6 @@ import {
 import { libelleUsageCourant } from "@/domaine/parametres";
 import { jourCourant, libelleMois } from "@/domaine/temps";
 import { carburantParTonne, jourMoins } from "@/domaine/consommation";
-import { ConsommationCarburant } from "./ConsommationCarburant";
 import { date, kilometrage, montant, montantCourt, nombre, pourcentage } from "@/lib/format";
 import { GraphiqueBarresEmpilees } from "./GraphiqueBarresEmpilees";
 import { PlanEntretien } from "./PlanEntretien";
@@ -1210,10 +1209,7 @@ export function OngletCarburant({ fiche, cible }: { fiche: FicheVehicule; cible?
   const [idOuvert, setIdOuvert] = useState<string | null>(null);
   const ouvert = idOuvert ? (pleins.find((p) => p.id === idOuvert) ?? null) : null;
   const modifier = (p: PleinFiche) => demander({ type: "plein", numero: p.numero, titre: `Plein · ${nombre(p.litres, 1)} L — ${p.source}`, valeurs: valeursPlein(p) });
-  const relevesRetenus = controlerReleves([...creations("releve", fabriquerReleve), ...fiche.releves.map(surcharger)], fiche.ligne.vehicule.categorie).filter((r) => r.valide);
   return (
-    <div className="flex flex-col gap-5">
-    <ConsommationCarburant pleins={pleins} releves={relevesRetenus} referenceL100={fiche.referenceL100} moisCourant={jourCourant().slice(0, 7)} />
     <ListeEtPiece
       piece={
         ouvert ? (
@@ -1234,7 +1230,7 @@ export function OngletCarburant({ fiche, cible }: { fiche: FicheVehicule; cible?
     >
     <Carte
       titre="Pleins"
-      precision={`${pleins.length} pleins · ${avecTicket} avec leur ticket · ${nombre(litres, 1)} L · ${montant(total)} — l'analyse mensuelle est dans l'Aperçu et dans Coûts & analyses`}
+      precision={`${pleins.length} pleins · ${avecTicket} avec leur facture · ${nombre(litres, 1)} L · ${montant(total)} — la consommation (L/100 km, F/100 km) est dans les Rapports`}
       action={
         <button type="button" onClick={() => ajouter("plein")} className="bouton-secondaire h-9" title="Le plein, le compteur et le ticket ou le bon joint">
           <Receipt className="size-4" strokeWidth={1.8} />
@@ -1276,7 +1272,6 @@ export function OngletCarburant({ fiche, cible }: { fiche: FicheVehicule; cible?
       />
     </Carte>
     </ListeEtPiece>
-    </div>
   );
 }
 
