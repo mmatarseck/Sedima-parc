@@ -595,13 +595,13 @@ export function OngletContraventions({ selection, cible, onAjouter }: { selectio
         cible={cible}
         surModifier={(c) => demander({ type: "depense", numero: c.numero, titre: `Contravention · ${c.libelle}`, valeurs: c as unknown as Record<string, unknown>, champs: CHAMPS_CONTRAVENTION })}
         colonnes={[
-          { cle: "numero", libelle: "Réf.", rendu: (c) => <Numero valeur={c.numero} /> },
-          { cle: "date", libelle: "Date", rendu: (c) => <span className="code whitespace-nowrap">{date(c.date)}</span> },
-          { cle: "vehicule", libelle: "Véhicule", rendu: (c) => <Vehicule immatriculation={c.vehiculeId} affichee={c.immatriculationAffichee} /> },
-          { cle: "libelle", libelle: "Infraction", rendu: (c) => <span className="font-medium">{c.libelle}</span> },
-          { cle: "reference", libelle: "N° de PV", rendu: (c) => <span className="code whitespace-nowrap text-texte-2">{c.reference ?? "—"}</span> },
-          { cle: "montant", libelle: "Montant", alignee: "droite", rendu: (c) => <span className="font-medium">{montant(c.montant)}</span> },
-          { cle: "retenue", libelle: "Prise en charge", rendu: (c) => (c.retenue ? <Pastille ton="vigilance">retenue chauffeur</Pastille> : <Pastille ton="neutre">parc</Pastille>) },
+          { cle: "numero", libelle: "Réf.", largeur: "150px", rendu: (c) => <Numero valeur={c.numero} /> },
+          { cle: "date", libelle: "Date", largeur: "110px", rendu: (c) => <span className="code whitespace-nowrap">{date(c.date)}</span> },
+          { cle: "vehicule", libelle: "Véhicule", largeur: "130px", rendu: (c) => <Vehicule immatriculation={c.vehiculeId} affichee={c.immatriculationAffichee} /> },
+          { cle: "libelle", libelle: "Infraction", largeur: "320px", rendu: (c) => <span className="block truncate font-medium" title={c.libelle}>{c.libelle}</span> },
+          { cle: "reference", libelle: "N° de PV", largeur: "200px", rendu: (c) => <span className="code whitespace-nowrap text-texte-2">{c.reference ?? "—"}</span> },
+          { cle: "montant", libelle: "Montant", alignee: "droite", largeur: "120px", rendu: (c) => <span className="font-medium whitespace-nowrap">{montant(c.montant)}</span> },
+          { cle: "retenue", libelle: "Prise en charge", largeur: "160px", rendu: (c) => (c.retenue ? <Pastille ton="vigilance">retenue chauffeur</Pastille> : <Pastille ton="neutre">parc</Pastille>) },
         ]}
       />
     </Carte>
