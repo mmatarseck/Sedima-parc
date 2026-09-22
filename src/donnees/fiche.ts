@@ -21,6 +21,7 @@ import type { Parametres } from "@/domaine/parametres";
 import type { CategorieObservation, PosteDepense, TypeDocument } from "@/domaine/types";
 import { clientServeur } from "@/lib/supabase";
 import type { EvenementJournal } from "@/domaine/fiche";
+import type { AjustementOperation } from "@/domaine/entretien";
 import { programmesServeur } from "./entretien";
 import { passagesReleves, planDuVehicule, programmeParDefaut } from "./entretien-demo";
 import { lignesFlotte, parcServeur } from "./flotte";
@@ -221,8 +222,11 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
   if (lecture.error) console.warn(`Fiche ${canonique} : lire_fiche() indisponible (${lecture.error.message}), fiche dressée sans historique.`);
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const v = ligne.vehicule;
-  const { programmes } = await programmesServeur();
-  const plan = { programme: programmeParDefaut(v.categorie, programmes), plan: planDuVehicule(v.id, v.categorie, programmes), passages: passagesReleves };
+  const { programmes, enBase } = await programmesServeur();
+  /* Les ajustements du véhicule viennent de la base (0062) : retraits et périodicités propres. Les exemples du jeu de démonstration n'y valent pas. */
+  const ajustements = enBase && vehiculeId ? await ajustementsDuVehicule(client, vehiculeId) : null;
+  const planVehicule = planDuVehicule(v.id, v.categorie, programmes);
+  const plan = { programme: programmeParDefaut(v.categorie, programmes), plan: ajustements ? { ...planVehicule, ajustements } : planVehicule, passages: passagesReleves };
   /* Une donnée fautive dans l'historique ne doit pas fermer la fiche : elle
      s'ouvre alors sans historique, et le journal du serveur dit pourquoi. */
   try {
@@ -265,6 +269,13 @@ async function ficheServeurBrut(brut: string, parametres: Parametres): Promise<F
 }
 
 export const ficheServeur = cache(ficheServeurBrut);
+
+/** Les ajustements du plan d'entretien du véhicule : le code de l'opération sans son programme (« leger.vidange-moteur » → « vidange-moteur »). */
+async function ajustementsDuVehicule(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<AjustementOperation[] | null> {
+  const r = await client.from("ajustement_entretien").select("operation_code, km, heures, mois, retiree, motif").eq("vehicule_id", vehiculeId).returns<{ operation_code: string; km: number | null; heures: number | null; mois: number | null; retiree: boolean; motif: string }[]>();
+  if (r.error) return null;
+  return (r.data ?? []).map((a) => ({ code: a.operation_code.replace(/^[^.:]+[.:]/, ""), km: a.km, heures: a.heures, mois: a.mois, retiree: a.retiree, motif: a.motif }));
+}
 
 /** Les suppressions de lignes du véhicule, lues dans la trace : leur résumé porte la plaque entre crochets. */
 async function suppressionsDuVehicule(client: Awaited<ReturnType<typeof clientServeur>>, immatriculation: string): Promise<EvenementJournal[]> {

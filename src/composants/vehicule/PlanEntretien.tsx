@@ -1,13 +1,13 @@
 "use client";
 
-import { Info, SlidersHorizontal } from "lucide-react";
+import { Info, SlidersHorizontal, Trash2 } from "lucide-react";
+import { CHAMPS } from "@/composants/transactions/champs";
 import { Carte, TableauSimple } from "@/composants/interface/Carte";
 import { Echeance } from "@/composants/interface/Pastille";
 import { useEdition } from "@/composants/transactions/ContexteEdition";
 import {
   ETAT_ECHEANCE,
   GROUPE_OPERATION,
-  libelleEcheance,
   libellePeriodicite,
   recalculerEcheance,
   type EcheanceEntretien,
@@ -38,7 +38,13 @@ export function PlanEntretien({ fiche }: { fiche: FicheVehicule }) {
    * afficherait la nouvelle périodicité à côté de l'ancien état, et se
    * contredirait sous les yeux de celui qui vient de la régler.
    */
-  const lignes = plan.echeances.map((e) => {
+  const lignes = plan.echeances
+    /* Une opération retirée depuis l'application disparaît aussitôt ; la base la retire au rechargement. */
+    .filter((e) => {
+      const r = (surcharger(e) as { retiree?: unknown }).retiree;
+      return !(r === true || r === "true");
+    })
+    .map((e) => {
     const saisie = surcharger(e) as EcheanceEntretien & { km?: unknown; heures?: unknown; mois?: unknown; motif?: unknown };
     const change = ["km", "heures", "mois", "motif"].some((c) => saisie[c as "km"] !== undefined);
     if (!change) return e;
@@ -78,9 +84,22 @@ export function PlanEntretien({ fiche }: { fiche: FicheVehicule }) {
       numero: e.numero,
       /* Le numéro affiché est recalculé à chaque rendu : c'est le code de
          l'opération qui désigne la ligne en base, avec le véhicule de la fiche. */
-      cleMetier: e.code,
+      /* Préfixé de son programme depuis 0062 : c'est ainsi que la base nomme l'opération. */
+      cleMetier: `${plan.programmeCode}.${e.code}`,
       titre: `Ajuster « ${e.libelle} » pour ce véhicule`,
-      valeurs: { km: e.periodicite.km, heures: e.periodicite.heures, mois: e.periodicite.mois, motif: e.motifAjustement ?? "" },
+      valeurs: { km: e.periodicite.km, heures: e.periodicite.heures, mois: e.periodicite.mois, motif: e.motifAjustement ?? "", retiree: false },
+    });
+  }
+
+  /* Retirer une opération pour ce véhicule seulement (métier, 22 septembre 2026) : le motif dit pourquoi, et la trace le garde. */
+  function retirer(e: EcheanceEntretien) {
+    demander({
+      type: "entretien",
+      numero: e.numero,
+      cleMetier: `${plan.programmeCode}.${e.code}`,
+      titre: `Retirer « ${e.libelle} » du plan de ce véhicule`,
+      champs: CHAMPS.entretien.filter((c) => c.cle === "motif" || c.cle === "retiree"),
+      valeurs: { motif: e.motifAjustement ?? "", retiree: false },
     });
   }
 
@@ -105,7 +124,7 @@ export function PlanEntretien({ fiche }: { fiche: FicheVehicule }) {
         {enRetard === 0 && aPlanifier === 0 && sansReference === 0 ? <Echeance ton="favorable">Plan à jour</Echeance> : null}
         <span className="meta ml-auto flex items-center gap-1.5">
           <SlidersHorizontal className="size-3.5 shrink-0" strokeWidth={1.9} />
-          Le crayon ajuste une périodicité pour ce véhicule seulement
+          Le crayon ajuste une périodicité, la corbeille retire l&apos;opération — pour ce véhicule seulement
         </span>
       </div>
 
@@ -174,7 +193,6 @@ export function PlanEntretien({ fiche }: { fiche: FicheVehicule }) {
                 <span className="text-attenue">—</span>
               ),
           },
-          { cle: "echeance", libelle: "Échéance", alignee: "droite", rendu: (e) => <span className="code">{libelleEcheance(e)}</span> },
           {
             cle: "etat",
             libelle: "État",
@@ -186,6 +204,15 @@ export function PlanEntretien({ fiche }: { fiche: FicheVehicule }) {
           },
           { cle: "duree", libelle: "Immobilisation", alignee: "droite", parDefaut: false, rendu: (e) => <span className="code">{e.dureeHeures} h</span> },
           { cle: "cout", libelle: "Coût estimé", alignee: "droite", parDefaut: false, rendu: (e) => <span className="code">{montant(e.coutEstime)}</span> },
+          {
+            cle: "retirer",
+            libelle: "",
+            rendu: (e) => (
+              <button type="button" onClick={(ev) => { ev.stopPropagation(); retirer(e); }} className="grid size-7 place-items-center rounded-full text-attenue hover:bg-surface-3 hover:text-defavorable" aria-label={`Retirer ${e.libelle} du plan de ce véhicule`} title="Retirer du plan de ce véhicule">
+                <Trash2 className="size-3.5" strokeWidth={1.8} />
+              </button>
+            ),
+          },
           {
             cle: "motif",
             libelle: "Motif de l'ajustement",

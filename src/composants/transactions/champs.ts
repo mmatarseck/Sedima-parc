@@ -235,6 +235,8 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
        demande pour tracer le geste : celui-ci est durable, il reste sur la
        ligne du plan et dit pourquoi ce véhicule s'écarte du gabarit. */
     { cle: "motif", libelle: "Pourquoi ce véhicule s'écarte du gabarit", type: "texte", obligatoire: true },
+    /* Retirer une opération qui n'a pas de sens pour ce véhicule (métier, 22 septembre 2026). */
+    { cle: "retiree", libelle: "Retirer cette opération du plan de ce véhicule", type: "oui-non" },
   ],
   "mise-a-disposition": [],
   prestation: [],

@@ -693,7 +693,8 @@ async function poserAjustementEntretien(
   const motifDurable = (valeur("motif") as string | undefined)?.trim() || e.motif.trim();
   if (!motifDurable) return { issue: "refusee", motif: "Non enregistré en base : un ajustement doit dire pourquoi." };
 
-  const ancien = await client.from("ajustement_entretien").select("km, heures, mois").eq("vehicule_id", vehiculeId).eq("operation_code", code).maybeSingle<{ km: number | null; heures: number | null; mois: number | null }>();
+  const ancien = await client.from("ajustement_entretien").select("km, heures, mois, retiree").eq("vehicule_id", vehiculeId).eq("operation_code", code).maybeSingle<{ km: number | null; heures: number | null; mois: number | null; retiree: boolean }>();
+  const retiree = e.diffs.some((d) => d.champ === "retiree") ? valeur("retiree") === true || valeur("retiree") === "true" : (ancien.data?.retiree ?? false);
   const depot = await client.from("ajustement_entretien").upsert(
     {
       vehicule_id: vehiculeId,
@@ -704,6 +705,7 @@ async function poserAjustementEntretien(
       heures: e.diffs.some((d) => d.champ === "heures") ? entier(valeur("heures")) : (ancien.data?.heures ?? null),
       mois: e.diffs.some((d) => d.champ === "mois") ? entier(valeur("mois")) : (ancien.data?.mois ?? null),
       motif: motifDurable,
+      retiree,
       modifie_le: new Date().toISOString(),
       modifie_par: utilisateurId,
       cree_par: utilisateurId,
