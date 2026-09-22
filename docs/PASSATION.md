@@ -50,15 +50,14 @@ PGLITE_DIR=C:/Users/mamadou.seck/AppData/Local/Temp/sedima-pglite node --import 
 
 ## Ce qui est en base (joué par le métier)
 
-Migrations jusqu'à **0062** ; `taches-service.sql` (294 tâches) ;
+Migrations jusqu'à **0066** (la prochaine sera 0067) ; `taches-service.sql` (294 tâches) ;
 `interventions-taches.sql` (696 affectations) ;
 `correctif-operations-doublons.sql` (23 opérations d'entretien).
 
-**À jouer si ce n'est pas fait**, dans l'ordre : `0063_reglements.sql` (une
+**Jouées par le métier le 22 septembre 2026** : `0063_reglements.sql` (une
 sortie de caisse qui dit ce qu'elle règle), `0064_livraisons_saisies.sql`
 (livraisons saisies), `0065_pleins_approvisionnement.sql` (`plein.remboursable`,
-`ajouter_station()`), `0066_evenements_chauffeur.sql` (événements du chauffeur). Le code lit et écrit sans elles (colonne retirée à
-l'écriture, lecture de repli), mais sans leur apport.
+`ajouter_station()`), `0066_evenements_chauffeur.sql` (événements du chauffeur).
 
 ## Les chantiers récents (du plus récent au plus ancien)
 
