@@ -667,20 +667,42 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
       },
     });
   }
-  /* La pièce qui prouve chaque rappel, et la ligne ouverte : sa pièce se lit à droite. */
+  /*
+   * LES PIÈCES SUR LES LIGNES (métier, 22 septembre 2026 : « mettre les pièces
+   * réglementaires dans les lignes directement ; au clic d'une ligne, on ouvre
+   * à côté la pièce »). Le dossier à part a quitté l'onglet : chaque ligne
+   * porte sa pièce — le document du même type, le procès-verbal pour la visite
+   * technique, la licence pour la licence de transport — et le clic l'ouvre à
+   * droite. Une pièce dont le type n'a pas de rappel a sa ligne aussi, « non
+   * suivie » : on la voit, on l'ouvre, et « Suivre » en fait un rappel.
+   */
   const documentsConnus = [
-    ...creations("document", (c) => fabriquerDocument(c, v.categorie)).map((d) => ({ numero: d.numero, type: d.type, dateEffet: d.dateEffet, fichier: d.fichier ?? null })),
-    ...fiche.documents.map((d) => ({ numero: d.numero, type: d.type, dateEffet: d.dateEffet, fichier: fiche.pieces.find((p) => p.type === "document" && p.numero === d.numero)?.fichier ?? null })),
+    ...creations("document", (c) => fabriquerDocument(c, v.categorie)).map((d) => ({ numero: d.numero, type: d.type as string, dateEffet: d.dateEffet, echeance: d.echeance ?? null, fichier: d.fichier ?? null })),
+    ...fiche.documents.map((d) => ({ numero: d.numero, type: d.type as string, dateEffet: d.dateEffet, echeance: d.echeance, fichier: fiche.pieces.find((p) => p.type === "document" && p.numero === d.numero)?.fichier ?? null })),
+    /* Une pièce de document que la liste des documents ne porte pas encore : son type se retrouve par son libellé. */
+    ...fiche.pieces.filter((p) => p.type === "document" && !fiche.documents.some((d) => d.numero === p.numero)).map((p) => ({ numero: p.numero, type: lireParametres().documents.types.find((t) => t.libelle === p.libelle)?.id ?? p.libelle, dateEffet: p.date, echeance: null as string | null, fichier: p.fichier as string | null })),
+    ...fiche.pieces.filter((p) => p.type === "visite").map((p) => ({ numero: p.numero, type: "visite-technique", dateEffet: p.date, echeance: null as string | null, fichier: p.fichier as string | null })),
+    ...fiche.pieces.filter((p) => p.type === "licence").map((p) => ({ numero: p.numero, type: "licence-transport", dateEffet: p.date, echeance: /échéance (\d{4}-\d{2}-\d{2})/.exec(p.precision)?.[1] ?? null, fichier: p.fichier as string | null })),
   ];
+  const libelleType = (type: string) => lireParametres().documents.types.find((t) => t.id === type)?.libelle ?? type;
+  type LigneConformite = Rappel & { suivi: boolean };
+  const typesSuivis = new Set(rappels.map((r) => r.type as string));
+  const nonSuivis: LigneConformite[] = [...new Set(documentsConnus.filter((d) => d.fichier && !typesSuivis.has(d.type)).map((d) => d.type))].map((type) => {
+    const d = documentsConnus.filter((x) => x.type === type && x.fichier).sort((a, b) => (b.dateEffet ?? "").localeCompare(a.dateEffet ?? ""))[0]!;
+    return { id: `piece-${type}`, numero: `PIECE-${d.numero}`, porteur: "vehicule", vehiculeId: v.id, immatriculation: v.immatriculation, immatriculationAffichee: v.immatriculationAffichee, vehicule: `${v.marque} ${v.appellation}`, chauffeurId: null, chauffeur: null, chauffeurAdresse: null, type: type as Rappel["type"], libelle: libelleType(type), echeance: d.echeance ?? "", faitLe: d.dateEffet, documentNumero: d.numero, commentaire: null, suivi: false };
+  });
+  const lignes: LigneConformite[] = [...rappels.map((r) => ({ ...r, suivi: true })), ...nonSuivis];
   const [rappelOuvert, setRappelOuvert] = useState<string | null>(null);
-  const ouvert = rappelOuvert ? (rappels.find((r) => r.numero === rappelOuvert) ?? null) : null;
+  const ouvert = rappelOuvert ? (lignes.find((r) => r.numero === rappelOuvert) ?? null) : null;
   const preuveOuverte = ouvert ? preuveDuRappel(ouvert, documentsConnus) : null;
+  /* Une pièce non suivie devient un rappel : son type, et l'échéance qu'elle porte. */
+  function suivre(l: LigneConformite) {
+    creer({ type: "rappel", titre: `Suivre · ${l.libelle} · ${v.immatriculationAffichee}`, champs: champsCreation("rappel", { pour: "vehicule", categorie: v.categorie }), valeurs: { type: l.type, echeance: l.echeance || "" } });
+  }
   /*
    * UNE SEULE LISTE, ET RIEN DE PLUS (métier, 16 septembre 2026) : le type de
-   * document, sa validité, l'échéance de renouvellement. Les documents
-   * eux-mêmes vivent au Dossier ; les visites techniques — un processus, pas
-   * une échéance — ont rejoint l'atelier, où leurs observations étaient déjà.
-   * La validité vient du type (Paramètres › Documents), relue à l'ouverture.
+   * document, sa validité, l'échéance de renouvellement. La validité vient du
+   * type (Paramètres › Documents), relue à l'ouverture.
    */
   const validiteDe = (type: string): string => {
     const def = lireParametres().documents.types.find((t) => t.id === type);
@@ -693,13 +715,19 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
           <VisionneusePiece
             fichier={preuveOuverte?.fichier ?? null}
             libelle={ouvert.libelle}
-            precision={[`échéance ${date(ouvert.echeance)}`, preuveOuverte?.dateEffet ? `pièce du ${date(preuveOuverte.dateEffet)}` : null].filter(Boolean).join(" · ")}
+            precision={[ouvert.echeance ? `échéance ${date(ouvert.echeance)}` : null, preuveOuverte?.dateEffet ? `pièce du ${date(preuveOuverte.dateEffet)}` : null, ouvert.suivi ? null : "échéance non suivie"].filter(Boolean).join(" · ")}
             vide="Aucune pièce justificative pour ce document. « Renouveler » la dépose avec la nouvelle échéance."
             onFermer={() => setRappelOuvert(null)}
             actions={
-              <button type="button" onClick={() => renouveler(ouvert)} className="bouton-secondaire h-9">
-                Renouveler
-              </button>
+              ouvert.suivi ? (
+                <button type="button" onClick={() => renouveler(ouvert)} className="bouton-secondaire h-9">
+                  Renouveler
+                </button>
+              ) : (
+                <button type="button" onClick={() => suivre(ouvert)} className="bouton-secondaire h-9" title="En faire un rappel, suivi en Conformité">
+                  Suivre l&apos;échéance
+                </button>
+              )
             }
           />
         ) : null
@@ -708,25 +736,31 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
     <div className="flex flex-col gap-5">
     <Carte
       titre="Conformité"
-      precision={rappels.length ? `${rappels.length} échéance${rappels.length > 1 ? "s" : ""} suivie${rappels.length > 1 ? "s" : ""}${rappelsEchus ? ` · ${rappelsEchus} échue${rappelsEchus > 1 ? "s" : ""}` : ""}${rappelsBientot ? ` · ${rappelsBientot} sous trente jours` : ""}` : "Aucune échéance suivie — l'assurance, la visite technique ou le certificat se saisissent ici"}
+      precision={rappels.length ? `${rappels.length} échéance${rappels.length > 1 ? "s" : ""} suivie${rappels.length > 1 ? "s" : ""}${rappelsEchus ? ` · ${rappelsEchus} échue${rappelsEchus > 1 ? "s" : ""}` : ""}${rappelsBientot ? ` · ${rappelsBientot} sous trente jours` : ""}${nonSuivis.length ? ` · ${nonSuivis.length} pièce${nonSuivis.length > 1 ? "s" : ""} sans échéance suivie` : ""} — un clic ouvre la pièce` : "Aucune échéance suivie — l'assurance, la visite technique ou le certificat se saisissent ici"}
       action={
-        <button type="button" onClick={() => ajouter("rappel")} className="bouton-secondaire h-9">
-          <Plus className="size-4" strokeWidth={2} />
-          Nouveau rappel
-        </button>
+        <span className="flex gap-2">
+          <button type="button" onClick={() => ajouter("document")} className="bouton-secondaire h-9" title="Carte grise, police d'assurance, certificat — la pièce rejoint la ligne de son type">
+            <FileText className="size-4" strokeWidth={1.8} />
+            Déposer une pièce
+          </button>
+          <button type="button" onClick={() => ajouter("rappel")} className="bouton-secondaire h-9">
+            <Plus className="size-4" strokeWidth={2} />
+            Nouveau rappel
+          </button>
+        </span>
       }
       sansMarge
     >
-      <TableauSimple<Rappel> reglages="fiche-vehicule.rappels"
+      <TableauSimple<LigneConformite> reglages="fiche-vehicule.rappels"
         cle={(r) => r.numero}
-        lignes={rappels}
-        vide="Aucun rappel sur ce véhicule."
-        numero={(r) => r.numero}
+        lignes={lignes}
+        vide="Aucun rappel ni aucune pièce sur ce véhicule."
+        numero={(r) => (r.suivi ? r.numero : r.documentNumero ?? r.numero)}
         cible={cible}
         seulement={ouvert ? ["document", "echeance"] : undefined}
         surLigne={(r) => setRappelOuvert((o) => (o === r.numero ? null : r.numero))}
         ouverte={rappelOuvert}
-        surModifier={(r) => demander({ type: "rappel", numero: r.numero, titre: `Rappel · ${r.libelle}`, champs: CHAMPS.rappel, valeurs: { echeance: r.echeance, faitLe: r.faitLe ?? "", documentNumero: r.documentNumero ?? "", commentaire: r.commentaire ?? "" } })}
+        surModifier={(r) => (r.suivi ? demander({ type: "rappel", numero: r.numero, titre: `Rappel · ${r.libelle}`, champs: CHAMPS.rappel, valeurs: { echeance: r.echeance, faitLe: r.faitLe ?? "", documentNumero: r.documentNumero ?? "", commentaire: r.commentaire ?? "" } }) : suivre(r))}
         colonnes={[
           {
             cle: "document",
@@ -734,7 +768,7 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
             rendu: (r) => (
               <span className="flex items-center gap-2">
                 <IndicateurPiece present={Boolean(preuveDuRappel(r, documentsConnus)?.fichier)} />
-                <span className="font-medium">{r.libelle}</span>
+                <span className={r.suivi ? "font-medium" : "font-medium text-texte-2"}>{r.libelle}</span>
               </span>
             ),
           },
@@ -743,6 +777,13 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
             cle: "echeance",
             libelle: "Échéance de renouvellement",
             rendu: (r) => {
+              if (!r.suivi)
+                return (
+                  <span className="flex items-center gap-2">
+                    {r.echeance ? <span className="code whitespace-nowrap text-texte-2">{date(r.echeance)}</span> : null}
+                    <Echeance ton="neutre">Non suivie</Echeance>
+                  </span>
+                );
               const e = etatRappel(r.echeance, aujourdhui);
               return (
                 <span className="flex items-center gap-2">
@@ -755,11 +796,16 @@ export function OngletConformite({ fiche, cible }: { fiche: FicheVehicule; cible
           {
             cle: "renouveler",
             libelle: "",
-            rendu: (r) => (
-              <button type="button" onClick={(ev) => { ev.stopPropagation(); renouveler(r); }} className="bouton-discret h-7 px-2 text-[12px]" title="Déposer la nouvelle pièce et porter la nouvelle échéance">
-                Renouveler
-              </button>
-            ),
+            rendu: (r) =>
+              r.suivi ? (
+                <button type="button" onClick={(ev) => { ev.stopPropagation(); renouveler(r); }} className="bouton-discret h-7 px-2 text-[12px]" title="Déposer la nouvelle pièce et porter la nouvelle échéance">
+                  Renouveler
+                </button>
+              ) : (
+                <button type="button" onClick={(ev) => { ev.stopPropagation(); suivre(r); }} className="bouton-discret h-7 px-2 text-[12px]" title="En faire un rappel, suivi en Conformité">
+                  Suivre
+                </button>
+              ),
           },
         ]}
       />

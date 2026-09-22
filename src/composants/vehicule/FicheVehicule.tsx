@@ -49,7 +49,6 @@ import {
   OngletJournal,
   OngletKilometrage,
 } from "./onglets";
-import { OngletDossier } from "./OngletDossier";
 import { OngletLivraisons } from "./OngletLivraisons";
 
 const LIBELLE_ORIGINE_RELEVE: Record<Fiche["releves"][number]["origine"], string> = {
@@ -591,14 +590,8 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
         {onglet === "apercu" && <OngletApercu fiche={fiche} />}
         {onglet === "caracteristiques" && <OngletCaracteristiques fiche={fiche} detenteur={detenteur} />}
         {onglet === "affectations" && <OngletAffectations fiche={fiche} transferts={transferts} cible={cible} />}
-        {onglet === "conformite" && (
-          <div className="flex flex-col gap-8">
-            <OngletConformite fiche={fiche} cible={cible} />
-            {/* Le dossier sous les échéances, partout : sous 1280 px la liste des
-                pièces passe au-dessus du cadre, qui reste lisible. */}
-            <OngletDossier fiche={fiche} />
-          </div>
-        )}
+        {/* Les pièces réglementaires vivent sur les lignes de la Conformité (métier, 22 septembre 2026) : plus de dossier à part. */}
+        {onglet === "conformite" && <OngletConformite fiche={fiche} cible={cible} />}
         {onglet === "incidents" && <OngletIncidents fiche={fiche} cible={cible} onDeclarer={() => setDeclaration(true)} />}
         {onglet === "maintenance" && <OngletMaintenance fiche={fiche} cible={cible} />}
         {onglet === "plan" && <OngletPlanEntretien fiche={fiche} />}

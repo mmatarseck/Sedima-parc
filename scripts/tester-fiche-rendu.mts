@@ -189,10 +189,11 @@ if (!rendues.has("AA019EA")) {
         React.createElement(FournisseurEdition, { sujet: `vehicule:${v.immatriculation}`, href: `/flotte/${v.immatriculation}` } as any,
           React.createElement(FicheVehicule, { fiche: garnie, ongletInitial: "dossier", discussionInitiale: false, cible: undefined } as any)),
       );
-      const familles = html.includes("Pièces réglementaires (2)") && html.includes("Visites techniques (1)") && !html.includes("Factures et autres dépenses");
-      const nomme = html.includes("Carte grise") && html.includes("Assurance") && html.includes("Procès-verbal de visite technique");
-      console.log(`${familles && nomme ? "ok   " : "ÉCHEC"} le dossier garni range ses trois pièces en deux familles et les nomme`);
-      if (!familles || !nomme) echecs++;
+      /* Les pièces vivent sur les lignes de la Conformité depuis le 22 septembre 2026 : plus de familles à part, une ligne par type, « non suivie » sans rappel. */
+      const surLesLignes = !html.includes("Pièces réglementaires (") && html.includes("Non suivie");
+      const nomme = html.includes("Carte grise") && html.includes("Assurance") && html.includes("Visite technique");
+      console.log(`${surLesLignes && nomme ? "ok   " : "ÉCHEC"} les pièces réglementaires se lisent sur les lignes de la Conformité, une par type`);
+      if (!surLesLignes || !nomme) echecs++;
     } catch (e) {
       echecs++;
       console.log(`ÉCHEC dossier garni : ${(e as Error).message}`);

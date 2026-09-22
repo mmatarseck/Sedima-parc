@@ -47,7 +47,7 @@ attendu("la ligne du rappel montre le trombone et ouvre sa pièce à droite", co
 const ficheVehicule = readFileSync("src/composants/vehicule/FicheVehicule.tsx", "utf8");
 const listeOnglets = ficheVehicule.slice(ficheVehicule.indexOf("const ONGLETS"), ficheVehicule.indexOf("function estOnglet"));
 attendu("un seul onglet « Conformité » (métier : « renommer en Conformité uniquement »), plus d'onglet « Dossier »", listeOnglets.includes(`{ cle: "conformite", libelle: "Conformité" }`) && !listeOnglets.includes(`cle: "dossier"`));
-attendu("il porte les échéances puis le dossier, sur tous les écrans", /onglet === "conformite" && \(\s*<div className="flex flex-col gap-8">\s*<OngletConformite[\s\S]*?<OngletDossier fiche=\{fiche\} \/>/.test(ficheVehicule) && !ficheVehicule.includes(`<div className="hidden lg:block">\n            <OngletDossier`));
+attendu("il porte les échéances et leurs pièces sur les mêmes lignes, sans dossier à part", ficheVehicule.includes(`{onglet === "conformite" && <OngletConformite fiche={fiche} cible={cible} />}`) && !ficheVehicule.includes("<OngletDossier"));
 attendu("une ancienne adresse « onglet=dossier » ouvre la Conformité", ficheVehicule.includes(`if (valeur === "dossier") return "conformite";`));
 attendu("le menu « Ajouter » ouvre la saisie de facture pour une intervention ou une dépense", /if \(cible === "intervention" \|\| cible === "depense"\) \{\s*saisirFacture\(/.test(ficheVehicule));
 attendu("plus aucune date figée au 2 septembre dans la fiche", !ficheVehicule.includes(`"2026-09-02"`) && !readFileSync("src/composants/vehicule/ajout.ts", "utf8").includes(`"2026-09-02"`));
