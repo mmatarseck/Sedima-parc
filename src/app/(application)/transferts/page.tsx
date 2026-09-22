@@ -1,10 +1,10 @@
-import { EcranTransferts } from "@/composants/transferts/EcranTransferts";
-import { titrePage } from "@/domaine/marque";
-import { transfertsServeur } from "@/donnees/transferts";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: titrePage("Fiches de transfert") };
-
-/** Les fiches de transfert du périmètre — de la base quand elle est branchée. */
-export default async function PageTransferts() {
-  return <EcranTransferts initial={await transfertsServeur()} />;
+/**
+ * La liste générale des fiches de transfert n'est plus une page (métier,
+ * 22 septembre 2026 : « pas nécessaire ; on l'a par véhicule, et un rapport
+ * peut être créé dans ce sens »). L'ancienne adresse mène au rapport.
+ */
+export default function PageTransferts() {
+  redirect("/rapports/flotte-transferts");
 }

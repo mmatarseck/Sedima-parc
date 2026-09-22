@@ -38,6 +38,7 @@ import { relevesServeur } from "./releves";
 import { transporteursServeur } from "./transporteurs";
 import { visitesServeur } from "./visites";
 import { signalementsServeur } from "./signalements";
+import { transfertsServeur } from "./transferts";
 import { tachesPourFormulaires } from "./taches";
 
 /** Les initiales d'un nom : « Babacar Ndiaye » → « BN ». */
@@ -147,7 +148,7 @@ async function sourceRapportsServeurBrut(parametres: Parametres): Promise<Source
     parcLegerServeur(parametres),
   ]);
   /* Pannes et catalogue (0060) : le rapport se dresse sans eux plutôt que pas du tout, si la migration manque. */
-  const [signalements, catalogueTaches] = await Promise.all([signalementsServeur().catch(() => []), tachesPourFormulaires().catch(() => [])]);
+  const [signalements, catalogueTaches, transferts] = await Promise.all([signalementsServeur().catch(() => []), tachesPourFormulaires().catch(() => []), transfertsServeur().catch(() => [])]);
   const affectations = affectationsDepuisLeParc(await parcServeur());
   const pieces = await piecesReglementairesServeur();
   const sansFiches: Omit<SourceRapports, "resumesFiche"> = {
@@ -175,6 +176,7 @@ async function sourceRapportsServeurBrut(parametres: Parametres): Promise<Source
     parcLeger,
     pieces,
     signalements,
+    transferts,
     catalogueTaches: catalogueTaches.map((t) => ({ libelle: t.libelle, categorie: t.categorie, systeme: t.systeme })),
   };
   /* Ce que la fiche apporte, dérivé des lecteurs. */

@@ -26,6 +26,7 @@ import { ETAPE_ACHAT, SENS_CAISSE, TON_ETAPE_ACHAT, URGENCE_ACHAT, coutDe } from
 import { LIBELLE_ETAT_PLEIN, SENS_CUVE, etatPlein } from "@/domaine/carburant";
 import { NATURE_TRAVAIL, STATUT_ORDRE, TON_URGENCE_TRAVAIL, URGENCE_TRAVAIL, factureDe, travauxOuverts } from "@/domaine/maintenance";
 import { CATEGORIES_MAINTENANCE, systemeDe } from "@/domaine/categories-maintenance";
+import { STATUT_TRANSFERT, libellePartie, statutTransfert, type Transfert } from "@/domaine/transferts";
 import { PRIORITE_SERVICE, calculerService, joursImmobilisation } from "@/domaine/service";
 import { ETAT_SIGNALEMENT, PRIORITE_SIGNALEMENT, etatSignalement, type LigneSignalement } from "@/domaine/signalements";
 import { STATUT_CHAUFFEUR, nonConforme } from "@/domaine/chauffeur";
@@ -167,6 +168,8 @@ export interface SourceRapports {
    * démonstration n'en a pas (16 septembre 2026).
    */
   pieces: PieceReglementaire[];
+  /** Les fiches de transfert — la liste générale a quitté l'application pour ce rapport (22 septembre 2026). */
+  transferts?: Transfert[];
   /** Les pannes signalées (0060) ; absentes de la démonstration. */
   signalements?: LigneSignalement[];
   /** Le catalogue des tâches de service, pour ranger les interventions par tâche, système et catégorie (0060-0061). */
@@ -893,6 +896,31 @@ function aFaire(s: SourceRapports): LigneRapport[] {
     ordreNumero: t.ordreNumero,
     origineNumero: t.origineNumero,
   }));
+}
+
+/** Les fiches de transfert de la période, une ligne par remise. */
+function transferts(s: SourceRapports, c: ContexteRapport): LigneRapport[] {
+  const { debut, fin } = resoudrePeriode(c.periode, s.aujourdhui);
+  const RANG: Record<string, number> = { "a-signer": 0, "signee-remettant": 1, "signee-recipiendaire": 1, complete: 2, annulee: 3 };
+  return (s.transferts ?? [])
+    .filter((t) => dansLaPeriode(t.date.slice(0, 10), debut, fin))
+    .map((t) => {
+      const st = statutTransfert(t);
+      return {
+        ...situation(s, t.vehicule.id),
+        numero: t.numero,
+        date: t.date.slice(0, 10),
+        motif: t.motif,
+        remettant: libellePartie(t.remettant),
+        recipiendaire: libellePartie(t.recipiendaire),
+        km: t.km,
+        carburant: t.carburant,
+        reserves: t.reserves.length,
+        equipementsManquants: t.equipements.filter((e) => !e.present).length,
+        statut: etat(STATUT_TRANSFERT[st].libelle, STATUT_TRANSFERT[st].ton, RANG[st] ?? 9),
+        creePar: t.creePar,
+      };
+    });
 }
 
 /**
@@ -2001,6 +2029,8 @@ export function construireRapportDe(s: SourceRapports, id: string, c: ContexteRa
       return ordres(s, c);
     case "maintenance-a-faire":
       return aFaire(s);
+    case "flotte-transferts":
+      return transferts(s, c);
     case "maintenance-pannes":
       return pannes(s, c);
     case "maintenance-taches":

@@ -448,8 +448,8 @@ function CarteTransferts({ immatriculation, initial }: { immatriculation: string
       precision={liste.length ? `${liste.length} remise${liste.length > 1 ? "s" : ""}${aSigner ? ` · ${aSigner} à signer` : ""} · une fiche complète ouvre l'affectation qui suit et ferme la précédente` : "Compteur, carburant, documents, équipements, réserves et deux signatures à chaque remise du véhicule"}
       action={
         <span className="flex items-center gap-2.5">
-          <Link href="/transferts" className="bouton-discret h-9 px-3 text-[12.5px]">
-            Toutes les fiches
+          <Link href="/rapports/flotte-transferts" className="bouton-discret h-9 px-3 text-[12.5px]" title="Le rapport des fiches de transfert, tout le parc">
+            Rapport
           </Link>
           {peutCreer ? (
             <Link href={`/transferts/nouveau?vehicule=${immatriculation}`} className="bouton-secondaire h-9">
