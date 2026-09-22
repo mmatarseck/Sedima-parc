@@ -177,12 +177,12 @@ export interface LigneOrdre {
 }
 
 /** La facture d'un service, prête pour le calcul. */
-export type ModeReglement = "caisse" | "bon-de-commande" | "facture";
+/** Deux modes de paiement, pas un de plus (métier, 22 septembre 2026) : la facture est une pièce, pas un paiement. */
+export type ModeReglement = "caisse" | "bon-de-commande";
 
 export const MODE_REGLEMENT: Record<ModeReglement, { libelle: string; precision: string }> = {
   caisse: { libelle: "Caisse parc", precision: "Réglé par une sortie de caisse, qui le cite" },
   "bon-de-commande": { libelle: "Bon de commande", precision: "Réglé par un bon de commande : son numéro et sa pièce" },
-  facture: { libelle: "Facture (virement)", precision: "Réglé sur facture, hors caisse" },
 };
 
 export function factureDe(o: Pick<LigneOrdre, "lignes" | "remiseMode" | "remiseValeur" | "tvaTaux" | "brsTaux" | "mainOeuvreGlobale">): FactureService {

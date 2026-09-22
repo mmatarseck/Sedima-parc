@@ -305,7 +305,7 @@ export function FormulaireDeclaration({ vehiculeId, aujourdhui, onFermer, onEnre
     if (rel.issue === "creee") suites.push(verdictKm && !verdictKm.valide ? `Relevé ${rel.creation.numero} enregistré, signalé incohérent (${verdictKm.motifRejet})` : `Relevé ${rel.creation.numero} enregistré`);
     /* Dépannage : une dépense rattachée au véhicule. */
     if (s.depannage && valeurs.coutDepannage) {
-      const dep = enregistrerCreation({ sujet, type: "depense", champs: CHAMPS.depense, valeurs: { date: jour, poste: "divers", origine: "facture", libelle: `Dépannage — ${s.prestataire.trim()}`, montant: valeurs.coutDepannage, beneficiaire: s.prestataire.trim(), reference: numero, km, justificatif: false }, motif: `Déclaration ${numero}` });
+      const dep = enregistrerCreation({ sujet, type: "depense", champs: CHAMPS.depense, valeurs: { date: jour, poste: "divers", origine: "caisse", libelle: `Dépannage — ${s.prestataire.trim()}`, montant: valeurs.coutDepannage, beneficiaire: s.prestataire.trim(), reference: numero, km, justificatif: false }, motif: `Déclaration ${numero}` });
       if (dep.issue === "creee") suites.push(`Dépense de dépannage ${dep.creation.numero} (${montant(valeurs.coutDepannage as number)})`);
     }
     /* Sanction : sur la fiche du conducteur, une trace. */

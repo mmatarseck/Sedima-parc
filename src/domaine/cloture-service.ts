@@ -45,7 +45,7 @@ export function ecrituresDeCloture(o: LigneOrdre, jour: string, cle: string, veh
   const date = o.dateFin ?? jour;
   const reference = [o.numero, o.numeroFacture, o.numeroBc ? `BC ${o.numeroBc}` : null, cle].filter(Boolean).join(" · ");
   /* Le règlement du service (0063) donne l'origine de ses dépenses ; réglé par la caisse, c'est le service que la sortie cite, pas chaque dépense. */
-  const origineFacture = o.modeReglement ?? "facture";
+  const origineFacture = o.modeReglement ?? "caisse";
   const pieceBc = o.modeReglement === "bon-de-commande" ? ((o.piecesReglement ?? [])[0] ?? null) : null;
   const piece = (o.pieces ?? [])[0] ?? null;
 

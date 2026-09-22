@@ -291,6 +291,8 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
 
   const peutClore = Boolean(existant) && !clos && peutCloturerService(lireRole());
   function clore() {
+    /* On ne clôt pas un service sans dire comment il se paie : ses dépenses en prennent l'origine. */
+    if (!modeReglement) return setErreur("Avant de clore : réglé par la caisse, ou par bon de commande ?");
     const service = enregistrer();
     if (!service) return;
     const r = cloturerService({ ...existant!, ...service }, aujourdhui);
@@ -554,12 +556,12 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
                     ) : null}
                     {modeReglement ? (
                       <>
-                        <span className="label-champ">{modeReglement === "bon-de-commande" ? "Le bon de commande" : modeReglement === "caisse" ? "La pièce de caisse" : "La preuve du règlement"}</span>
+                        <span className="label-champ">{modeReglement === "bon-de-commande" ? "Le bon de commande" : modeReglement === "caisse" ? "La pièce de caisse" : "La pièce du règlement"}</span>
                         <ChampPieces valeur={piecesReglement} onChange={setPiecesReglement} dossier="reglements" />
                         {modeReglement === "caisse" ? <span className="meta">Le service se règle en Caisse : « Sortie de caisse » › Service › {existant?.numero ?? "ce service"}.</span> : null}
                       </>
                     ) : (
-                      <span className="meta">Caisse, bon de commande ou facture : le choix dit comment le service se paie, et où le suivre.</span>
+                      <span className="meta">Caisse ou bon de commande : le choix dit comment le service se paie, et où le suivre.</span>
                     )}
                   </div>
                   <label className="flex flex-col gap-1.5">

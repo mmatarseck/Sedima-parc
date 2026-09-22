@@ -476,7 +476,7 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "remiseMode", libelle: "Remise globale en", type: "choix", options: [{ valeur: "montant", libelle: "francs" }, { valeur: "pourcentage", libelle: "pour cent" }] },
     { cle: "remiseValeur", libelle: "Remise globale", type: "nombre" },
     { cle: "mainOeuvreGlobale", libelle: "Main-d'œuvre globale", type: "nombre", unite: "F" },
-    { cle: "modeReglement", libelle: "Réglé par", type: "choix", options: [{ valeur: "caisse", libelle: "Caisse parc" }, { valeur: "bon-de-commande", libelle: "Bon de commande" }, { valeur: "facture", libelle: "Facture (virement)" }] },
+    { cle: "modeReglement", libelle: "Réglé par", type: "choix", options: [{ valeur: "caisse", libelle: "Caisse parc" }, { valeur: "bon-de-commande", libelle: "Bon de commande" }] },
     { cle: "numeroBc", libelle: "N° du bon de commande", type: "texte" },
     { cle: "piecesReglement", libelle: "BC ou pièce de caisse", type: "pieces" },
     { cle: "tvaTaux", libelle: "TVA", type: "nombre", unite: "%" },
@@ -714,8 +714,8 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
     case "depense":
       return [
         { cle: "poste", libelle: "Poste", type: "choix", options: options(POSTE_DEPENSE).filter((o) => !["carburant", "amortissement", "salaire"].includes(o.valeur)), obligatoire: true },
-        /* Comment elle se règle (métier, 22 septembre 2026) : par la caisse — une sortie la citera —, par un bon de commande — son numéro et sa pièce —, ou sur facture. */
-        { cle: "origine", libelle: "Réglée par", type: "choix", options: [{ valeur: "caisse", libelle: "Caisse parc — une sortie de caisse la réglera" }, { valeur: "bon-de-commande", libelle: "Bon de commande" }, { valeur: "facture", libelle: "Facture (virement)" }], obligatoire: true },
+        /* Comment elle se règle (métier, 22 septembre 2026) : par la caisse — une sortie la citera — ou par un bon de commande — son numéro et sa pièce. */
+        { cle: "origine", libelle: "Réglée par", type: "choix", options: [{ valeur: "caisse", libelle: "Caisse parc — une sortie de caisse la réglera" }, { valeur: "bon-de-commande", libelle: "Bon de commande" }], obligatoire: true },
         { cle: "numeroBc", libelle: "N° du bon de commande", type: "texte", obligatoire: true, visibleSi: (v) => v.origine === "bon-de-commande" },
         { cle: "fichierBc", libelle: "Le bon de commande", type: "photo", dossier: "reglements", precision: "Le BC signé, en PDF ou en image", visibleSi: (v) => v.origine === "bon-de-commande" },
         /* À la saisie, la pièce est obligatoire : le champ de la modification cède la place au sien. */

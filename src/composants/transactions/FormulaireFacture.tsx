@@ -82,6 +82,9 @@ export interface EntreeFacture {
   km: number | null;
   origine: string;
   fichier: string;
+  /** Le bon de commande qui règle la facture (0063), quand c'en est un. */
+  numeroBc?: string | null;
+  fichierBc?: string | null;
   /** L'intervention — en atelier seulement. */
   type?: string;
   objet?: string;
@@ -112,6 +115,7 @@ export function ecrituresDeLaFacture(f: EntreeFacture): { type: "intervention" |
         beneficiaire: f.fournisseur,
         reference,
         origine: f.origine,
+        ...(f.origine === "bon-de-commande" && f.numeroBc ? { numeroBc: f.numeroBc, fichierBc: f.fichierBc ?? null } : {}),
         justificatif: true,
         photo: f.fichier,
         /* Le compteur se lit une fois : sur l'intervention quand il y en a une,
@@ -140,7 +144,7 @@ export function FormulaireFacture({
   const [saisie, setSaisie] = useState<Record<string, string | boolean>>(() => ({
     date: jourCourant(),
     type: "curatif",
-    origine: atelier ? "facture" : "caisse",
+    origine: atelier ? "bon-de-commande" : "caisse",
   }));
   const [lignes, setLignes] = useState<Ligne[]>([{ poste: postes[0]!, libelle: "", montant: "" }]);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -167,12 +171,13 @@ export function FormulaireFacture({
         libelle: "Réglée par",
         type: "choix",
         options: [
-          { valeur: "facture", libelle: "Facture fournisseur" },
           { valeur: "bon-de-commande", libelle: "Bon de commande" },
-          { valeur: "caisse", libelle: "Caisse parc" },
+          { valeur: "caisse", libelle: "Caisse parc — une sortie de caisse la réglera" },
         ],
         obligatoire: true,
       },
+      { cle: "numeroBc", libelle: "N° du bon de commande", type: "texte", obligatoire: true, visibleSi: (v) => v.origine === "bon-de-commande" },
+      { cle: "fichierBc", libelle: "Le bon de commande", type: "photo", dossier: "reglements", precision: "Le BC signé, en PDF ou en image", visibleSi: (v) => v.origine === "bon-de-commande" },
     );
     if (atelier) {
       champs.push(
@@ -193,7 +198,8 @@ export function FormulaireFacture({
   }, [atelier, vehicule]);
 
   const total = lignes.reduce((s, l) => s + (nombre(l.montant) ?? 0), 0);
-  const manquants = entete.filter((c) => c.obligatoire && !String(saisie[c.cle] ?? "").trim());
+  const visibles = entete.filter((c) => c.visibleSi?.(saisie) ?? true);
+  const manquants = visibles.filter((c) => c.obligatoire && !String(saisie[c.cle] ?? "").trim());
   const lignesInvalides = lignes.map((l) => !l.poste || !l.libelle.trim() || !((nombre(l.montant) ?? 0) > 0));
   const valide = manquants.length === 0 && lignes.length > 0 && !lignesInvalides.some(Boolean);
 
@@ -230,6 +236,8 @@ export function FormulaireFacture({
       km: nombre(String(saisie.km ?? "")),
       origine: String(saisie.origine),
       fichier: String(saisie.fichier),
+      numeroBc: String(saisie.numeroBc ?? "").trim() || null,
+      fichierBc: String(saisie.fichierBc ?? "") || null,
       type: String(saisie.type ?? "curatif"),
       objet: String(saisie.objet ?? ""),
       immobilisationJours: nombre(String(saisie.immobilisationJours ?? "")),
@@ -276,7 +284,7 @@ export function FormulaireFacture({
             {/* ---- La facture ---- */}
             <h3 className="titre-bloc mb-3 border-b border-bordure pb-1.5 text-[13px]">{atelier ? "La facture" : "La pièce"}</h3>
             <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
-              {entete.map((c) => {
+              {visibles.map((c) => {
                 const large = c.type === "texte-long" || c.type === "photo";
                 const manque = tentee && c.obligatoire && !String(saisie[c.cle] ?? "").trim();
                 return (
