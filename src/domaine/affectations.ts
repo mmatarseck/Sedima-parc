@@ -10,7 +10,7 @@
 import type { LigneChauffeur } from "./chauffeur";
 import { peutConduire } from "./chauffeur";
 import { STATUT_VEHICULE } from "./libelles";
-import type { CategorieVehicule, RoleAffectation, StatutVehicule } from "./types";
+import type { CategorieVehicule, RoleAffectation, StatutVehicule, RegimeUsage } from "./types";
 
 export interface AffectationPlanning {
   numero: string;
@@ -33,6 +33,8 @@ export interface VehiculePlanning {
   engage: boolean;
   site: string | null;
   siteId: string | null;
+  /** Exploitation, service ou fonction — le filtre « exploitation ou autres » du planning (22 septembre 2026). Un camion de transporteur est d'exploitation. */
+  regime: RegimeUsage;
   affectations: AffectationPlanning[];
   /**
    * Renseigné pour un camion de transporteur — il n'appartient pas au parc.

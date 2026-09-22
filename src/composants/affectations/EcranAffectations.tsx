@@ -67,6 +67,8 @@ function Interieur({ vehicules, chauffeurs, chauffeursTiers, aujourdhui }: { veh
   }, [version, chauffeurs, chauffeursTiers]);
 
   const [perimetre, setPerimetre] = useState<Perimetre>("tous");
+  /* Véhicules d'exploitation, ou les autres — service et fonction (métier, 22 septembre 2026). */
+  const [usage, setUsage] = useState<"tous" | "exploitation" | "autres">("tous");
 
   const planning = useMemo<VehiculePlanning[]>(() => vehicules.map((v) => ({ ...v, affectations: [...(creees.get(v.id) ?? []), ...v.affectations] })), [vehicules, creees]);
   /* Les compteurs et les conflits ne portent que sur le parc : un camion de
@@ -74,7 +76,8 @@ function Interieur({ vehicules, chauffeurs, chauffeursTiers, aujourdhui }: { veh
      son chauffeur ne peut pas entrer en conflit avec les nôtres. */
   const duParc = useMemo(() => planning.filter((v) => !estTiers(v)), [planning]);
   const lesTiers = useMemo(() => planning.filter(estTiers), [planning]);
-  const affiches = useMemo(() => (perimetre === "parc" ? duParc : perimetre === "tiers" ? lesTiers : planning), [perimetre, duParc, lesTiers, planning]);
+  const parUsage = (liste: VehiculePlanning[]) => (usage === "tous" ? liste : liste.filter((v) => (v.regime === "exploitation") === (usage === "exploitation")));
+  const affiches = useMemo(() => parUsage(perimetre === "parc" ? duParc : perimetre === "tiers" ? lesTiers : planning), [perimetre, duParc, lesTiers, planning, usage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* Le zoom : un curseur de 0 à 100, en pixels par jour ; les trois repères
      sont des positions du curseur. Mois par défaut. */
@@ -281,7 +284,28 @@ function Interieur({ vehicules, chauffeurs, chauffeursTiers, aujourdhui }: { veh
           {/* Le périmètre : le parc, les transporteurs, ou les deux. On organise
               la même journée d'exploitation, mais on ne la lit pas toujours en
               entier — et les compteurs du bandeau, eux, ne portent que le parc. */}
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex flex-wrap items-center gap-3">
+            <div className="flex h-8 items-center gap-0.5 rounded-full bg-surface-3 p-1" role="group" aria-label="Usage des véhicules">
+              {(
+                [
+                  { cle: "tous", libelle: "Tous usages", compte: planning.length },
+                  { cle: "exploitation", libelle: "Exploitation", compte: planning.filter((v) => v.regime === "exploitation").length },
+                  { cle: "autres", libelle: "Autres", compte: planning.filter((v) => v.regime !== "exploitation").length },
+                ] as const
+              ).map((u) => (
+                <button
+                  key={u.cle}
+                  type="button"
+                  aria-pressed={usage === u.cle}
+                  onClick={() => setUsage(u.cle)}
+                  title={u.cle === "autres" ? "Véhicules de service et de fonction" : undefined}
+                  className={`h-6 rounded-full px-2.5 text-[12px] whitespace-nowrap transition-colors ${usage === u.cle ? "bg-surface font-semibold text-texte shadow-onglet" : "font-medium text-texte-2 hover:text-texte"}`}
+                >
+                  {u.libelle}
+                  <span className={`ml-1.5 ${usage === u.cle ? "text-attenue" : "text-attenue-2"}`}>{u.compte}</span>
+                </button>
+              ))}
+            </div>
             <div className="flex h-8 items-center gap-0.5 rounded-full bg-surface-3 p-1" role="group" aria-label="Périmètre du planning">
               {(
                 [

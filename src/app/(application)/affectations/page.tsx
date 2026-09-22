@@ -57,6 +57,7 @@ export default async function PageAffectations() {
       engage: v.engage,
       site: l.site?.libelle ?? null,
       siteId: v.siteId,
+      regime: v.regime ?? "exploitation",
       affectations: (affectationsPar.get(v.immatriculation) ?? []).map((a) => ({ numero: a.numero, chauffeurId: a.chauffeurId, chauffeur: a.chauffeur, role: a.role, debut: a.debut, fin: a.fin, motif: a.motif })),
       tiers: null,
     };
@@ -89,6 +90,7 @@ export default async function PageAffectations() {
       engage: false,
       site: null,
       siteId: null,
+      regime: "exploitation",
       affectations: habituel
         ? [{ numero: `HAB-${c.immatriculation}`, chauffeurId: habituel.id, chauffeur: habituel.nom, role: "titulaire", debut: depuis, fin: null, motif: "Chauffeur habituel du transporteur" }]
         : [],
