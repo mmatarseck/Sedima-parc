@@ -58,6 +58,14 @@ function valeurSortie(champ: ChampEdition, saisie: string | boolean): unknown {
   return s;
 }
 
+/** Ce que le contrôle avant validation rend : une note, et une alerte bloquante. */
+export interface ControleSaisie {
+  note?: string | null;
+  alerte?: string | null;
+  /** Le libellé de la case qui confirme malgré l'alerte. */
+  confirmation?: string;
+}
+
 type Issue = "appliquee" | "en-attente" | "rien" | "creee" | "mois-clos" | "invalide";
 
 export function ModaleTransaction({
@@ -76,6 +84,7 @@ export function ModaleTransaction({
   apresCreation,
   apresModification,
   entraine,
+  controle,
 }: {
   mode: "modification" | "creation";
   sujet: string;
@@ -89,6 +98,12 @@ export function ModaleTransaction({
   apresModification?: (apres: Record<string, unknown>) => void;
   /** Ce qu'un champ entraîne sur les autres : choisir la dépense réglée remplit le libellé et le montant. */
   entraine?: (cle: string, valeur: string | boolean, saisie: Record<string, string | boolean>) => Record<string, string | boolean> | null;
+  /**
+   * Le contrôle de cohérence avant validation (métier, 22 septembre 2026, pour le
+   * relevé kilométrique) : une note — le dernier relevé — en bas du formulaire,
+   * et une alerte qui bloque l'enregistrement tant qu'on ne l'a pas confirmée.
+   */
+  controle?: (saisie: Record<string, string | boolean>) => ControleSaisie;
   type: TypeTransaction;
   /** Nul à la création : le numéro est attribué à l'enregistrement. */
   numero: string | null;
@@ -115,6 +130,7 @@ export function ModaleTransaction({
   const router = useRouter();
   const [suppression, setSuppression] = useState<{ ton: "ok" | "erreur"; texte: string } | null>(null);
   const [supprimant, setSupprimant] = useState(false);
+  const [forcer, setForcer] = useState(false);
 
   const champDate = CHAMP_DATE[type];
   const moisInitial = champDate ? moisDe(String(valeurs[champDate] ?? "")) : "";
@@ -161,7 +177,11 @@ export function ModaleTransaction({
   /* Une référence saisie mais introuvable, du mauvais type ou d'un autre
      véhicule bloque l'enregistrement : c'est tout l'objet du contrôle. */
   const referencesInvalides = champs.filter((c) => c.type === "reference" && String(saisie[c.cle] ?? "").trim() !== "" && resoudreReference(String(saisie[c.cle] ?? ""), c.references, immatFormulaire).etat !== "valide");
-  const peutEnregistrer = manquants.length === 0 && referencesInvalides.length === 0 && (creation || motif.trim().length >= 3) && issue === null && !bloqueParCloture;
+  const verdict = useMemo(() => controle?.(saisie) ?? null, [controle, saisie]);
+  const alerte = verdict?.alerte ?? null;
+  /* Une confirmation vaut pour l'alerte lue, pas pour la suivante. */
+  useEffect(() => setForcer(false), [alerte]);
+  const peutEnregistrer = manquants.length === 0 && referencesInvalides.length === 0 && (creation || motif.trim().length >= 3) && issue === null && !bloqueParCloture && (!alerte || forcer);
 
   /* Les champs groupés dans l'ordre où ils viennent : une section par titre
      déclaré, et un groupe sans titre pour les types qui n'en déclarent pas —
@@ -180,6 +200,8 @@ export function ModaleTransaction({
     if (!peutEnregistrer) return;
     const apres: Record<string, unknown> = { ...valeurs };
     for (const c of champs) apres[c.cle] = valeurSortie(c, saisie[c.cle] ?? "");
+    /* Confirmée malgré l'alerte : la saisie reste, avec son motif — le contrôle l'écartera des calculs. */
+    if (alerte && forcer) apres.motifRejet = alerte;
 
     if (creation) {
       const resultat = enregistrerCreation({ sujet: sujetDe ? sujetDe(apres) : sujet, type, champs, valeurs: apres, motif: motif.trim() });
@@ -346,6 +368,18 @@ export function ModaleTransaction({
               </div>
             ))}
 
+            {/* ---- Contrôle avant validation ---- */}
+            {verdict?.note ? <p className="mt-5 rounded-[10px] bg-surface-2 px-4 py-2.5 text-[12.5px] leading-relaxed text-texte-2">{verdict.note}</p> : null}
+            {alerte ? (
+              <div className="mt-3 rounded-[10px] bg-defavorable-fond px-4 py-3 text-[12.5px] leading-relaxed">
+                <p className="font-medium text-defavorable">Contrôle de cohérence : {alerte}.</p>
+                <label className="mt-2 flex items-start gap-2 text-texte-2">
+                  <input type="checkbox" checked={forcer} onChange={(e) => setForcer(e.target.checked)} className="mt-0.5 accent-accent" />
+                  {verdict?.confirmation ?? "Enregistrer quand même : la saisie est gardée, mais écartée des calculs."}
+                </label>
+              </div>
+            ) : null}
+
             {/* ---- Motif ---- */}
             <label className="mt-5 flex flex-col gap-1.5">
               <span className="label-champ">
@@ -397,6 +431,8 @@ export function ModaleTransaction({
                 `À renseigner : ${manquants.map((c) => c.libelle.toLowerCase()).join(", ")}.`
               ) : referencesInvalides.length ? (
                 <span className="font-medium text-defavorable">Rattachement à vérifier : {referencesInvalides.map((c) => c.libelle.toLowerCase()).join(", ")}.</span>
+              ) : alerte && !forcer ? (
+                <span className="font-medium text-defavorable">Saisie incohérente : corrigez-la, ou confirmez-la.</span>
               ) : !creation && motif.trim().length < 3 ? (
                 "Le motif est obligatoire."
               ) : bloqueParCloture ? (

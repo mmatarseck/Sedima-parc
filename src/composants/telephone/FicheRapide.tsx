@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { controleReleve } from "@/composants/vehicule/ajout";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { FileCheck, Fuel, Gauge, TriangleAlert, X } from "lucide-react";
@@ -71,7 +72,15 @@ function Interieur({ ligne, faits, aujourdhui }: { ligne: LigneFlotte; faits: De
   const documente = acces ? acces.niveaux.documents === "saisie" || acces.niveaux.documents === "gestion" : false;
 
   function ouvrir(geste: "releve" | "plein" | "panne" | "document") {
-    if (geste === "releve") creer({ type: "releve", titre: `Relevé · ${v.immatriculationAffichee}`, champs: champsCreation("releve", { pour: "vehicule" }), valeurs: { date: aujourdhui, source: "Téléphone" } });
+    /* Le dernier relevé connu du parc en bas du formulaire, et le contrôle de cohérence avant validation. */
+    if (geste === "releve")
+      creer({
+        type: "releve",
+        titre: `Relevé · ${v.immatriculationAffichee}`,
+        champs: champsCreation("releve", { pour: "vehicule" }),
+        valeurs: { date: aujourdhui, source: "Téléphone" },
+        controle: controleReleve(ligne.kilometrage && ligne.dateKilometrage ? [{ date: ligne.dateKilometrage.slice(0, 10), valeur: ligne.kilometrage }] : [], v.categorie),
+      });
     /* Le prix du litre est celui du barème du jour, selon l'énergie — comme sur la fiche du bureau. */
     else if (geste === "plein") creer({ type: "plein", titre: `Plein · ${v.immatriculationAffichee}`, champs: champsCreation("plein", { pour: "vehicule" }), valeurs: { date: aujourdhui, prixLitre: prixEnergie(v.energie, aujourdhui, lireParametres()) } });
     else if (geste === "document") creer({ type: "document", titre: `Document renouvelé · ${v.immatriculationAffichee}`, champs: champsCreation("document", { pour: "vehicule" }), valeurs: { dateEffet: aujourdhui } });

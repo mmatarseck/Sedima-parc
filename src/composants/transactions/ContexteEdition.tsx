@@ -11,6 +11,7 @@ import type { DemandeService } from "@/composants/maintenance/FormulaireService"
 /* La modale — et avec elle les champs, le catalogue des références et les
    listes de choix — ne se charge qu'à la première ouverture : un lecteur qui
    ne crée rien ne la télécharge pas (revue de performance du 8 septembre 2026). */
+import type { ControleSaisie } from "./ModaleTransaction";
 const ModaleTransaction = dynamic(() => import("./ModaleTransaction").then((m) => m.ModaleTransaction), { ssr: false });
 const FormulaireFacture = dynamic(() => import("./FormulaireFacture").then((m) => m.FormulaireFacture), { ssr: false });
 const FormulaireService = dynamic(() => import("@/composants/maintenance/FormulaireService").then((m) => m.FormulaireService), { ssr: false });
@@ -66,6 +67,8 @@ export interface DemandeCreation {
   apresCreation?: (creation: Creation) => void;
   /** Ce qu'un champ entraîne sur les autres dans le formulaire : la dépense réglée remplit le libellé et le montant. */
   entraine?: (cle: string, valeur: string | boolean, saisie: Record<string, string | boolean>) => Record<string, string | boolean> | null;
+  /** Le contrôle de cohérence avant validation : le relevé kilométrique contre la série du véhicule. */
+  controle?: (saisie: Record<string, string | boolean>) => ControleSaisie;
 }
 
 interface Edition {
@@ -184,6 +187,7 @@ export function FournisseurEdition({ sujet, href, children }: { sujet: string; h
           sujetDe={courante.d.sujetDe}
           apresCreation={courante.d.apresCreation}
           entraine={courante.d.entraine}
+          controle={courante.d.controle}
           type={courante.d.type}
           numero={null}
           titre={courante.d.titre}

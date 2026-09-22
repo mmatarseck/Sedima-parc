@@ -3,14 +3,17 @@
 import { useCallback } from "react";
 import { champsCreation } from "@/composants/transactions/champs";
 import { useEdition } from "@/composants/transactions/ContexteEdition";
-import { fabriquerLigneOrdre, fabriquerSignalement } from "@/composants/transactions/fabriques";
+import { fabriquerLigneOrdre, fabriquerReleve, fabriquerSignalement } from "@/composants/transactions/fabriques";
+import type { ControleSaisie } from "@/composants/transactions/ModaleTransaction";
+import { controlerReleves } from "@/domaine/releves";
 import type { LigneOrdre } from "@/domaine/maintenance";
 import type { LigneSignalement } from "@/domaine/signalements";
 import type { FicheVehicule } from "@/domaine/fiche";
 import { prixEnergie } from "@/domaine/parametres";
 import { jourCourant } from "@/domaine/temps";
 import { TYPE_TRANSACTION, type TypeTransaction } from "@/domaine/reference";
-import { date } from "@/lib/format";
+import type { CategorieVehicule } from "@/domaine/types";
+import { date, kilometrage } from "@/lib/format";
 import { lireParametres } from "@/lib/parametres-demo";
 import type { CibleAjout } from "./MenuAjout";
 
@@ -24,6 +27,31 @@ import type { CibleAjout } from "./MenuAjout";
  * l'onglet Carburant ne donne pas exactement le même formulaire que depuis le
  * menu.
  * ==========================================================================*/
+
+/**
+ * Le contrôle d'un relevé kilométrique avant validation (métier, 22 septembre
+ * 2026) : le dernier relevé retenu en bas du formulaire, et le contrôle de
+ * cohérence rejoué sur la série — plutôt que de découvrir après coup la saisie
+ * écartée. Partagé par la fiche du bureau et la fiche rapide du téléphone.
+ */
+export function controleReleve(serie: { date: string; valeur: number; source?: string }[], categorie: CategorieVehicule): (saisie: Record<string, string | boolean>) => ControleSaisie {
+  return (saisie) => {
+    const jour = String(saisie.date ?? "").slice(0, 10) || jourCourant();
+    const brut = String(saisie.valeur ?? "").trim();
+    const valeur = Number(brut.replace(/\s/g, "").replace(",", "."));
+    const avant = serie.filter((r) => r.date <= jour).sort((x, y) => y.date.localeCompare(x.date) || y.valeur - x.valeur)[0] ?? null;
+    const note = avant ? `Dernier relevé : ${kilometrage(avant.valeur)} le ${date(avant.date)}${avant.source ? ` — ${avant.source}` : ""}.` : "Aucun relevé retenu avant cette date.";
+    if (!brut || !Number.isFinite(valeur)) return { note };
+    const essai = controlerReleves([...serie, { date: jour, valeur }], categorie);
+    /* Le nouveau relevé passe, mais peut en écarter un qui suit : on le dit aussi. */
+    const ecarte = essai.slice(0, -1).find((r) => !r.valide);
+    return {
+      note,
+      alerte: essai.at(-1)!.motifRejet ?? (ecarte ? `il écarterait le relevé du ${date(ecarte.date)} (${kilometrage(ecarte.valeur)})` : null),
+      confirmation: "Enregistrer quand même : le relevé est gardé, mais le contrôle l'écarte de l'odomètre et des échéances.",
+    };
+  };
+}
 
 export const TITRE_CREATION: Partial<Record<CibleAjout, string>> = {
   plein: "Nouveau plein",
@@ -76,7 +104,12 @@ export function useAjoutVehicule(fiche: FicheVehicule): (cible: CibleAjout) => b
       const type = cible as TypeTransaction;
       const titre = TITRE_CREATION[cible];
       if (!titre || !(type in TYPE_TRANSACTION)) return false;
+      /* Le relevé kilométrique (métier, 22 septembre 2026) : le dernier relevé
+         retenu en bas du formulaire, et le contrôle de cohérence rejoué avant
+         la validation — plutôt que de découvrir après coup la saisie écartée. */
+      const controle = type === "releve" ? controleReleve(controlerReleves([...creations("releve", fabriquerReleve), ...fiche.releves], v.categorie).filter((r) => r.valide), v.categorie) : undefined;
       creer({
+        controle,
         type,
         titre: `${titre} · ${v.immatriculationAffichee}`,
         champs: champsCreation(type, {
@@ -107,6 +140,6 @@ export function useAjoutVehicule(fiche: FicheVehicule): (cible: CibleAjout) => b
       });
       return true;
     },
-    [creer, saisirFacture, ouvrirService, creations, fiche.signalements, fiche.services, fiche.visitesTechniques, v.appellation, v.categorie, v.energie, v.immatriculation, v.immatriculationAffichee, v.marque],
+    [creer, saisirFacture, ouvrirService, creations, fiche.releves, fiche.signalements, fiche.services, fiche.visitesTechniques, v.appellation, v.categorie, v.energie, v.immatriculation, v.immatriculationAffichee, v.marque],
   );
 }
