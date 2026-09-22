@@ -4,6 +4,12 @@
 est dans les documents cités ; ce fichier dit où l'on en est et comment on
 travaille.*
 
+**État au soir du 22 septembre 2026** : tout est commité **et poussé**
+(`origin/main`), migrations jouées **jusqu'à 0066** — la prochaine sera 0067.
+Rien n'attend le métier, sauf les vérifications listées en fin de fichier.
+Le seul fichier modifié dans l'arbre est `next-env.d.ts`, que `next dev`
+réécrit : il ne se commite pas.
+
 ## Comment on travaille ici
 
 - **Langue** : tout en français — code, commentaires, commits, documents,
@@ -40,10 +46,14 @@ PGLITE_DIR=C:/Users/mamadou.seck/AppData/Local/Temp/sedima-pglite node --import 
 
 - `tester-services-maintenance` — 82 contrôles : services, pannes, catalogue,
   0059 à 0063, rapports de maintenance, règlements.
+- `tester-fiche-chauffeur` — la liste, le classement, et depuis le
+  22 septembre 2026 : six indicateurs, score = moyenne simple, effet d'un
+  événement disciplinaire et d'une félicitation, évolution mensuelle.
 - Aussi : `tester-fiche-rendu`, `tester-fiche`, `tester-atelier`,
-  `tester-maintenance`, `tester-rapports`, `tester-caisse-cuve`,
-  `tester-caisse-reelle`, `tester-facture`, `tester-conformite-incidents`,
-  `tester-piece-a-droite`.
+  `tester-maintenance`, `tester-rapports`, `tester-livraisons`,
+  `tester-caisse-cuve`, `tester-caisse-reelle`, `tester-facture`,
+  `tester-conformite-incidents`, `tester-piece-a-droite`, `tester-ecritures`,
+  `tester-parc-leger`, `tester-toutes-fiches`.
 - `npx tsc --noEmit -p .` (lent : jusqu'à ~3 min) et `npm run verifier-charte`.
 - `tester-conformite` échouait déjà avant ces chantiers (jeu de démonstration
   sans documents) : connu, non traité.
@@ -125,6 +135,37 @@ Tout est décrit dans **`docs/SERVICES-MAINTENANCE.md`** (sections datées).
     `docs/PROPOSITION-MAINTENANCE.md` (décisions du métier).
 
 ## Ce qui reste ouvert
+
+### À vérifier dans l'application (rien ne l'a été dans un navigateur)
+
+- Saisir un plein **en station** en écrivant le nom d'une station inconnue :
+  elle doit apparaître au référentiel des prestataires, type « station »
+  (`ajouter_station`, 0065).
+- Créer un **cas disciplinaire** dans l'onglet Événements d'un chauffeur :
+  l'indicateur « Discipline » de l'onglet Performance doit baisser (100 → 50
+  sur le mois), et le score global avec lui.
+- Les **filtres** ajoutés le 22 septembre : Disponibilité (régime + BU),
+  Planning (Exploitation / Autres).
+
+### Décisions prises par l'assistant, à confirmer par le métier
+
+- **Classement** : « moins de 300 km dans le mois » a été remplacé par
+  « aucune affectation dans le mois » — les kilomètres sont trop rarement
+  connus en base pour décider d'une prime.
+- **Seuils mensuels** du barème : un accident responsable met l'indicateur à 0,
+  une infraction à 50, une panne ou avarie en mission à 67
+  (`KPI_CHAUFFEUR`, `domaine/performance.ts`).
+- **Sanctions** : plus créables depuis la fiche (la section a été retirée).
+  Une sanction choisie dans une déclaration d'incident s'enregistre encore et
+  compte dans « Discipline », mais ne s'affiche plus nulle part.
+- Le **rapport de performance** ne porte pas l'indicateur Discipline
+  (confidentiel) ; les cinq autres y sont.
+- **F par tonne livrée** est resté sur l'Aperçu du véhicule alors que les
+  courbes de consommation ont quitté la fiche pour les rapports.
+- La **fiche prestataire** garde son sélecteur 3 / 6 / 12 mois ; celui de la
+  fiche chauffeur a été retiré (12 mois roulants).
+
+### Chantiers non faits
 
 - **Question posée au métier, sans réponse** : ajouter le règlement (BC, n°,
   pièce) à la saisie de facture de l'atelier (`FormulaireFacture`, « Saisir
