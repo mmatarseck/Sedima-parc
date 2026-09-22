@@ -664,7 +664,6 @@ export function champsVehicule(): ChampEdition[] {
          interdit un plan car sans attributaire (`plan_car_nomme`, 0004). On ne
          le propose donc pas à la création, où personne ne tient encore le
          véhicule ; l'écriture le dit si l'attribution manque. */
-      { cle: "planCar", libelle: "Plan car", type: "cases", precision: "Véhicule de fonction cédé à son attributaire au terme", visibleSi: (s) => String(s.regime ?? "") === "fonction" },
       { cle: "categorieFlotte", libelle: "Catégorie de flotte", type: "choix", options: options(CATEGORIE_FLOTTE), obligatoire: true },
       { cle: "usage", libelle: "Usage (vrac, frigorifique, plateau…)", type: "suggestion", options: optionsUsages(), obligatoire: true },
       { cle: "businessUnit", libelle: "Business unit", type: "choix", options: options(BUSINESS_UNIT) },

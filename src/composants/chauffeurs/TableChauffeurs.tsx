@@ -4,7 +4,6 @@ import { Echeance, Pastille } from "@/composants/interface/Pastille";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
 import { STATUT_CHAUFFEUR, nonConforme, prochaineEcheance, type EcheanceChauffeur, type LigneChauffeur } from "@/domaine/chauffeur";
 import { APTITUDE, CONTRAT_CHAUFFEUR, MOTIF_INDISPONIBILITE, TYPE_DOCUMENT, formulerEcheance, tonEcheance } from "@/domaine/libelles";
-import { kilometrage } from "@/lib/format";
 import { PastilleStatutChauffeur } from "./PastilleStatutChauffeur";
 
 /* ============================================================================
@@ -107,30 +106,7 @@ const COLONNES: ColonneListe<LigneChauffeur>[] = [
       );
     },
   },
-  {
-    cle: "km",
-    libelle: "Km 12 mois",
-    alignee: "droite",
-    parDefaut: true,
-    largeur: 128,
-    rendu: (l) => (l.kmDouzeMois === null ? <span className="text-attenue-2">—</span> : <span className="code block truncate">{kilometrage(l.kmDouzeMois)}</span>),
-  },
-  {
-    cle: "contraventions",
-    libelle: "Contraventions",
-    alignee: "droite",
-    parDefaut: true,
-    largeur: 128,
-    rendu: (l) => (l.contraventionsDouzeMois === 0 ? <span className="text-attenue-2">0</span> : <span className={`code ${l.contraventionsDouzeMois >= 2 ? "font-medium text-vigilance" : ""}`}>{l.contraventionsDouzeMois}</span>),
-  },
-  {
-    cle: "incidents",
-    libelle: "Incidents",
-    alignee: "droite",
-    parDefaut: true,
-    largeur: 104,
-    rendu: (l) => (l.incidentsDouzeMois === 0 ? <span className="text-attenue-2">0</span> : <span className={`code ${l.incidentsDouzeMois >= 2 ? "font-medium text-vigilance" : ""}`}>{l.incidentsDouzeMois}</span>),
-  },
+  /* Km, contraventions et incidents sur douze mois relèvent des rapports (métier, 22 septembre 2026). */
   { cle: "telephone", libelle: "Téléphone", parDefaut: false, largeur: 130, rendu: (l) => <span className="code block truncate">{l.chauffeur.telephone ?? "—"}</span> },
   {
     cle: "statut",

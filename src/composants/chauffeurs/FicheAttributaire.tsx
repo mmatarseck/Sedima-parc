@@ -5,7 +5,7 @@ import { Carte, Definitions } from "@/composants/interface/Carte";
 import { BoutonFicheAttributaire } from "./BoutonFicheAttributaire";
 import { Pastille } from "@/composants/interface/Pastille";
 import { BUSINESS_UNIT } from "@/domaine/libelles";
-import { ETAT_LEGER, REGIME_USAGE, SITUATION_ATTRIBUTAIRE, echeancierPlanCar, type LigneAttributaire } from "@/domaine/parc-leger";
+import { ETAT_LEGER, REGIME_USAGE, SITUATION_ATTRIBUTAIRE, type LigneAttributaire } from "@/domaine/parc-leger";
 import type { ParametresParcLeger } from "@/domaine/parametres";
 import { kilometrage, montant } from "@/lib/format";
 
@@ -28,7 +28,7 @@ import { kilometrage, montant } from "@/lib/format";
  * liste Flotte.
  * ==========================================================================*/
 
-export function FicheAttributaire({ ligne, regles, aujourdhui }: { ligne: LigneAttributaire; regles: ParametresParcLeger; aujourdhui: string }) {
+export function FicheAttributaire({ ligne }: { ligne: LigneAttributaire; regles: ParametresParcLeger; aujourdhui: string }) {
   const a = ligne.attributaire;
   const situation = SITUATION_ATTRIBUTAIRE[ligne.situation];
 
@@ -92,28 +92,7 @@ export function FicheAttributaire({ ligne, regles, aujourdhui }: { ligne: LigneA
             />
           </Carte>
 
-          <Carte
-            titre="Carburant"
-            precision={
-              ligne.forfaitMensuel === null
-                ? "Aucun forfait : le carburant de cette personne n'est pas pris en charge au forfait"
-                : "Forfait mensuel sur carte, porté en charge sur la business unit de l'agent"
-            }
-          >
-            <Definitions
-              elements={[
-                { libelle: "Forfait mensuel", valeur: ligne.forfaitMensuel === null ? "aucun" : montant(ligne.forfaitMensuel) },
-                /* Le montant du dossier prime ; à défaut, celui des paramètres —
-                   et la fiche dit lequel des deux s'applique. */
-                {
-                  libelle: "Origine du montant",
-                  valeur: ligne.forfait === null ? null : ligne.forfait.montantMensuel === null ? `Paramètre du parc léger (${montant(regles.forfaitCarburantMensuel)})` : "Propre au dossier",
-                },
-                { libelle: "Carte", valeur: ligne.forfait?.carte ?? null },
-                { libelle: "Business unit portant la charge", valeur: a.businessUnit ? BUSINESS_UNIT[a.businessUnit] : null },
-              ]}
-            />
-          </Carte>
+          {/* Le forfait carburant et le plan car relèvent de la DCH : l'application ne les suit pas (métier, 22 septembre 2026). */}
         </div>
 
         <Carte
@@ -128,7 +107,6 @@ export function FicheAttributaire({ ligne, regles, aujourdhui }: { ligne: LigneA
             <div className="flex flex-col gap-4">
               {ligne.vehicules.map((v) => {
                 const etat = ETAT_LEGER[v.etat];
-                const echeancier = v.planCar ? echeancierPlanCar(v.planCar, regles.planCarDureeMois, aujourdhui) : null;
                 return (
                   <div key={v.id} className="rounded-[10px] border border-bordure p-4">
                     <div className="flex flex-wrap items-center gap-3">
@@ -154,14 +132,6 @@ export function FicheAttributaire({ ligne, regles, aujourdhui }: { ligne: LigneA
                           { libelle: "Régime d'usage", valeur: REGIME_USAGE[v.regime].libelle },
                           { libelle: "Kilométrage", valeur: v.kilometrage === null ? null : kilometrage(v.kilometrage) },
                           { libelle: "Lot 2026", valeur: v.lot },
-                          {
-                            libelle: "Plan car",
-                            valeur: echeancier
-                              ? echeancier.cessionPrevue
-                                ? `${echeancier.moisEcoules}/${echeancier.dureeMois} mois — cession prévue ${echeancier.cessionPrevue}`
-                                : `${echeancier.dureeMois} mois — date de début à renseigner pour dater la cession`
-                              : "non",
-                          },
                           { libelle: "Dossier", valeur: v.commentaire },
                         ]}
                       />

@@ -360,7 +360,6 @@ export function OngletCaracteristiques({ fiche, detenteur }: { fiche: FicheVehic
             elements={[
               { libelle: fiche.ligne.attributaire.pool ? "Pool" : "Nom", valeur: fiche.ligne.attributaire.nom },
               { libelle: "Fonction", valeur: fiche.ligne.attributaire.fonction },
-              { libelle: "Plan car", valeur: fiche.ligne.attributaire.planCar ? "Oui" : "Non" },
               { libelle: "Régime d'usage", valeur: i.utilisation },
             ]}
           />

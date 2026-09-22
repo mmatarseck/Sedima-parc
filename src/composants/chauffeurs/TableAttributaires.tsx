@@ -4,7 +4,6 @@ import { Pastille } from "@/composants/interface/Pastille";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
 import { BUSINESS_UNIT } from "@/domaine/libelles";
 import { ETAT_LEGER, REGIME_USAGE, SITUATION_ATTRIBUTAIRE, type LigneAttributaire } from "@/domaine/parc-leger";
-import { montant } from "@/lib/format";
 
 /* ============================================================================
  * Liste des autres conducteurs — les attributaires.
@@ -20,7 +19,6 @@ import { montant } from "@/lib/format";
 
 const FILTRES: FiltreListe<LigneAttributaire>[] = [
   { cle: "tous", libelle: "Tous", retient: () => true },
-  { cle: "plan-car", libelle: "Plan car", retient: (l) => l.situation === "plan-car" },
   { cle: "fonction", libelle: "Véhicule de fonction", retient: (l) => l.vehicules.some((v) => v.regime === "fonction") },
   { cle: "service", libelle: "Véhicule de service", retient: (l) => l.vehicules.some((v) => v.regime === "service") },
   { cle: "sans-vehicule", libelle: "Sans véhicule", retient: (l) => l.situation === "sans-vehicule" },
@@ -84,29 +82,7 @@ const COLONNES: ColonneListe<LigneAttributaire>[] = [
     rendu: (l) => (l.vehiculePrincipal ? <Pastille ton={ETAT_LEGER[l.vehiculePrincipal.etat].ton}>{ETAT_LEGER[l.vehiculePrincipal.etat].libelle}</Pastille> : <span className="text-attenue-2">—</span>),
     texte: (l) => (l.vehiculePrincipal ? ETAT_LEGER[l.vehiculePrincipal.etat].libelle : ""),
   },
-  {
-    cle: "plan-car",
-    libelle: "Plan car",
-    parDefaut: true,
-    largeur: 120,
-    rendu: (l) => {
-      const p = l.vehicules.find((v) => v.planCar)?.planCar;
-      if (!p) return <span className="text-attenue-2">—</span>;
-      return <Pastille ton={p.statut === "cede" ? "neutre" : "favorable"}>{p.statut === "cede" ? "Cédé" : "En cours"}</Pastille>;
-    },
-    texte: (l) => (l.vehicules.some((v) => v.planCar) ? "plan car" : ""),
-  },
-  {
-    cle: "forfait",
-    libelle: "Forfait carburant",
-    alignee: "droite",
-    parDefaut: true,
-    largeur: 150,
-    /* Le montant vient du dossier, ou du paramètre quand le dossier ne dit rien
-       — c'est ce qui est réellement porté en charge chaque mois. */
-    rendu: (l) => (l.forfaitMensuel === null ? <span className="text-attenue-2">—</span> : <span className="code block truncate">{montant(l.forfaitMensuel)}</span>),
-    texte: (l) => (l.forfaitMensuel === null ? "" : String(l.forfaitMensuel)),
-  },
+  /* Le plan car et le forfait carburant relèvent de la DCH : l'application ne les suit pas (métier, 22 septembre 2026). */
   { cle: "carte", libelle: "Carte carburant", parDefaut: false, largeur: 150, rendu: (l) => <span className="code block truncate">{l.forfait?.carte ?? "—"}</span> },
   { cle: "lot", libelle: "Lot de cascade", parDefaut: false, largeur: 130, rendu: (l) => <span className="block truncate">{l.vehiculePrincipal?.lot ?? <span className="text-attenue-2">—</span>}</span> },
 ];
