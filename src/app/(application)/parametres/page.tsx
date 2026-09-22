@@ -44,7 +44,7 @@ const GROUPES: { titre: string; precision: string; sections: Section[] }[] = [
   {
     titre: "Chauffeurs",
     precision: "Ce qui mesure et rémunère la conduite",
-    sections: [{ href: "/parametres/sqdcm", libelle: "Barème SQDCM des chauffeurs", precision: "Indicateurs, objectifs, tolérances, poids des piliers, tranches de prime — le barème que le chauffeur doit pouvoir lire", icone: Trophy }],
+    sections: [{ href: "/parametres/sqdcm", libelle: "Barème de performance des chauffeurs", precision: "Six indicateurs, objectifs, tolérances, tranches de prime — le barème que le chauffeur doit pouvoir lire", icone: Trophy }],
   },
   {
     titre: "Alertes et notifications",

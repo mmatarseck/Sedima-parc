@@ -7,7 +7,7 @@ import { Lock, Minus, Trophy, TrendingDown, TrendingUp } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { Carte, TableauSimple } from "@/composants/interface/Carte";
 import { Echeance, Pastille } from "@/composants/interface/Pastille";
-import { BAREME_PRIME, KM_MINIMAL_PAR_MOIS, PILIERS, libelleMoisLong, type LigneClassement, type Pilier } from "@/domaine/performance";
+import { BAREME_PRIME, KPI_CHAUFFEUR, libelleMoisLong, type LigneClassement } from "@/domaine/performance";
 import { voitSanctionsCourant } from "@/lib/acces-courant";
 import { nombre } from "@/lib/format";
 
@@ -35,7 +35,6 @@ function tonScore(score: number | null): "favorable" | "vigilance" | "defavorabl
   return "defavorable";
 }
 
-const COULEUR_PILIER: Record<Pilier, string> = { S: "text-defavorable", Q: "text-vigilance", D: "text-accent-fonce", C: "text-encre", M: "text-attenue" };
 
 function Evolution({ rang, precedent }: { rang: number | null; precedent: number | null }) {
   if (rang === null) return null;
@@ -90,7 +89,7 @@ export function Classement({
 
       <TitreEcran
         titre="Chauffeur du mois"
-        sousTitre={`${classes.length} classés sur ${lignes.length} · score SQDCM du mois, piliers pondérés ${PILIERS.map((p) => `${p.code} ${p.poids}`).join(" · ")}`}
+        sousTitre={`${classes.length} classés sur ${lignes.length} · score du mois : moyenne des ${KPI_CHAUFFEUR.length} indicateurs calculables`}
         actions={
           <div className="flex h-9 items-center gap-0.5 rounded-full bg-surface-3 p-1" role="group" aria-label="Mois">
             {mois.map((m) => (
@@ -142,7 +141,7 @@ export function Classement({
       </div>
 
       {/* ---- Tableau ---- */}
-      <Carte titre={`Classement — ${libelleMoisLong(moisChoisi)}`} precision="À score égal : le pilier Sécurité, puis les kilomètres. Les non classables sont en fin de liste, sans rang." sansMarge>
+      <Carte titre={`Classement — ${libelleMoisLong(moisChoisi)}`} precision="À score égal : les accidents, puis les kilomètres. Les non classables sont en fin de liste, sans rang." sansMarge>
         <TableauSimple<LigneClassement> reglages="chauffeurs.classement" figerEnTete="page"
           cle={(l) => l.evaluation.chauffeurId}
           lignes={lignes}
@@ -178,14 +177,16 @@ export function Classement({
               },
             },
             { cle: "km", libelle: "Km", alignee: "droite", rendu: (l) => nombre(l.evaluation.kmParcourus) },
-            ...PILIERS.map((p) => ({
-              cle: p.code,
-              libelle: p.code,
+            ...KPI_CHAUFFEUR.map((d) => ({
+              cle: d.code,
+              libelle: d.nom,
               alignee: "droite" as const,
-              largeur: "64px",
+              largeur: "110px",
+              parDefaut: false,
               rendu: (l: LigneClassement) => {
-                const s = l.evaluation.piliers.find((x) => x.pilier === p.code)?.score ?? null;
-                return <span className={`${COULEUR_PILIER[p.code]} ${s !== null && s < 60 ? "font-semibold" : ""}`}>{s ?? "—"}</span>;
+                if (d.confidentiel && !habilite) return <span className="text-attenue-2">—</span>;
+                const k = l.evaluation.kpis.find((x) => x.definition.code === d.code)?.score ?? null;
+                return <span className={k !== null && k < 60 ? "font-semibold text-defavorable" : ""}>{k ?? "—"}</span>;
               },
             })),
             {
@@ -222,22 +223,19 @@ export function Classement({
       <Carte titre="Comment le classement est établi" precision="Les mêmes règles pour tous, lisibles par chacun">
         <div className="grid grid-cols-1 gap-x-8 gap-y-4 text-[13px] leading-relaxed text-texte-2 md:grid-cols-3">
           <div>
-            <p className="label-champ mb-1.5">Les cinq piliers</p>
+            <p className="label-champ mb-1.5">Les six indicateurs</p>
             <ul className="flex flex-col gap-1">
-              {PILIERS.map((p) => (
-                <li key={p.code} className="flex gap-2">
-                  <span className={`w-4 shrink-0 font-semibold ${COULEUR_PILIER[p.code]}`}>{p.code}</span>
-                  <span>
-                    <span className="text-texte">{p.libelle}</span> · {p.poids} % — {p.precision.toLowerCase()}
-                  </span>
+              {KPI_CHAUFFEUR.map((d) => (
+                <li key={d.code} className="text-texte" title={d.definition}>
+                  {d.nom}
                 </li>
               ))}
             </ul>
           </div>
           <div>
             <p className="label-champ mb-1.5">Le score</p>
-            <p>Chaque indicateur vaut 100 quand son objectif est tenu, puis descend en droite ligne jusqu&apos;à zéro à la tolérance. Un pilier est la moyenne de ses indicateurs ; le score global, la moyenne pondérée des piliers.</p>
-            <p className="mt-2">Éliminatoires : plus d&apos;un accident dans le mois (minimum de points), sanction lourde, inaptitude ou documents de conduite non valides, moins de {KM_MINIMAL_PAR_MOIS} km. Les indicateurs « à venir » (tonnage, coût par tonne) attendent les livraisons de SediLiv.</p>
+            <p>Chaque indicateur vaut 100 quand son objectif est tenu, puis descend en droite ligne jusqu&apos;à zéro à la tolérance. Le score est la moyenne simple des indicateurs calculables : un indicateur sans donnée ne compte pas.</p>
+            <p className="mt-2">Éliminatoires : plus d&apos;un accident dans le mois (minimum de points), sanction lourde, inaptitude ou documents de conduite non valides, aucune affectation dans le mois.</p>
           </div>
           <div>
             <p className="label-champ mb-1.5">La prime variable</p>
@@ -250,7 +248,6 @@ export function Classement({
                 </li>
               ))}
             </ul>
-            <p className="mt-2">Objectifs, poids et barème sont des paramètres, à porter dans Paramètres quand le module existera.</p>
           </div>
         </div>
       </Carte>

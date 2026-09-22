@@ -1,7 +1,7 @@
 import { EcranBaremeSqdcm } from "@/composants/parametres/EcranBaremeSqdcm";
 import { titrePage } from "@/domaine/marque";
 
-export const metadata = { title: titrePage("Barème SQDCM") };
+export const metadata = { title: titrePage("Barème de performance") };
 
 /**
  * Le barème qui décide de la prime des chauffeurs. Il vit dans les paramètres

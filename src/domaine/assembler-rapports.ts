@@ -1161,7 +1161,7 @@ function performance(s: SourceRapports): LigneRapport[] {
   const noms = new Map(lignes.map((c) => [c.id, c.nomComplet]));
   return classer(s.fichesChauffeurs, moisRevolu).map((l) => {
     const e = l.evaluation;
-    const pilier = (code: string) => e.piliers.find((p) => p.pilier === code)?.score ?? null;
+    const kpi = (code: string) => e.kpis.find((k) => k.definition.code === code)?.score ?? null;
     const tranche = BAREME_PRIME.find((t) => t.cle === e.tranche.cle) ?? e.tranche;
     const gagne = l.rangPrecedent !== null && l.rang !== null ? l.rangPrecedent - l.rang : null;
     return {
@@ -1173,11 +1173,11 @@ function performance(s: SourceRapports): LigneRapport[] {
       score: e.score === null ? null : Math.round(e.score),
       tranche: etat(tranche.libelle, tranche.partPct >= 75 ? "favorable" : tranche.partPct > 0 ? "vigilance" : "defavorable", tranche.seuil),
       prime: e.classable ? tranche.partPct : 0,
-      securite: pilier("S"),
-      qualite: pilier("Q"),
-      delai: pilier("D"),
-      cout: pilier("C"),
-      moral: pilier("M"),
+      kpiAcc: kpi("ACC"),
+      kpiInf: kpi("INF"),
+      kpiInc: kpi("INC"),
+      kpiCons: kpi("CONS"),
+      kpiPres: kpi("PRES"),
       km: Math.round(e.kmParcourus),
       rangPrecedent: l.rangPrecedent,
       evolution: gagne === null ? null : gagne > 0 ? `+${gagne} place${gagne > 1 ? "s" : ""}` : gagne < 0 ? `${gagne} place${gagne < -1 ? "s" : ""}` : "Stable",

@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, Plus } from "lucide-react";
+import { EFFET_EVENEMENT, NATURE_EVENEMENT, type EvenementChauffeur } from "@/domaine/evenements-chauffeur";
+import { scoresMensuels } from "@/domaine/performance";
+import { Courbe, type PointCourbe } from "@/composants/tableau/Graphiques";
+import { FileText, Lock, Plus } from "lucide-react";
 import { Carte, Definitions, TableauSimple } from "@/composants/interface/Carte";
 import { DossierPieces } from "@/composants/interface/DossierPieces";
 import { OuvrirPiece } from "@/composants/interface/OuvrirPiece";
@@ -47,7 +50,6 @@ import {
   STATUT_DECLARATION,
   TYPE_DOCUMENT,
   TYPE_INCIDENT,
-  TYPE_SANCTION,
   type Ton,
 } from "@/domaine/libelles";
 import type { Indisponibilite, Sanction } from "@/domaine/types";
@@ -131,8 +133,14 @@ interface Alerte {
   precision: string;
 }
 
-export function OngletApercu({ fiche, selection, voitSanctions }: { fiche: FicheChauffeur; selection: Selection; voitSanctions: boolean }) {
+export function OngletApercu({ fiche, selection, aujourdhui }: { fiche: FicheChauffeur; selection: Selection; aujourdhui: string }) {
   const l = fiche.ligne;
+
+  /* ---- Le score, mois par mois (métier, 22 septembre 2026) : les douze derniers mois, mois en cours compris, l'année d'avant en fond ---- */
+  const [aS, mS] = aujourdhui.split("-").map(Number);
+  const moisScore = Array.from({ length: 24 }, (_, i) => new Date(Date.UTC(aS!, mS! - 24 + i, 1)).toISOString().slice(0, 7));
+  const scores = scoresMensuels(fiche, moisScore, aujourdhui);
+  const pointsScore: PointCourbe[] = scores.slice(12).map((x, i) => ({ mois: x.mois, valeur: x.score, precedent: scores[i]!.score, moisPrecedent: scores[i]!.mois }));
 
   /* ---- Consommation par véhicule ---- */
   const parVehicule = new Map<string, { affichee: string; immatriculation: string; km: number; litres: number; referenceKm: number; cout: number }>();
@@ -185,6 +193,10 @@ export function OngletApercu({ fiche, selection, voitSanctions }: { fiche: Fiche
   return (
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       <div className="flex min-w-0 flex-col gap-5">
+        <Carte titre="Score mensuel" precision="Moyenne des six indicateurs, chaque mois · le mois en cours à droite, l'année d'avant en pointillé · le détail est dans Performance">
+          <Courbe points={pointsScore} cible={75} sens="sup" teinte="var(--color-accent)" unite="/ 100" />
+        </Carte>
+
         <Carte titre="Consommation par véhicule" precision={`${PRECISION_PERIODE(selection)} · référence pondérée par les kilomètres`} sansMarge>
           <TableauSimple reglages="fiche-chauffeur.consommation-vehicules"
             cle={(v) => v.immatriculation}
@@ -291,11 +303,6 @@ export function OngletApercu({ fiche, selection, voitSanctions }: { fiche: Fiche
             elements={[
               { libelle: "Jours d'immobilisation causés", valeur: `${selection.incidents.reduce((s, i) => s + i.immobilisationJours, 0)} j` },
               { libelle: "Coût des incidents", valeur: coutDeclarations(selection.incidents) ?? "non suivi" },
-              ...(voitSanctions
-                ? [
-                    { libelle: "Sanctions", valeur: selection.sanctions.length === 0 ? "Aucune" : `${selection.sanctions.length} — ${selection.sanctions.map((s) => TYPE_SANCTION[s.type].toLowerCase()).join(", ")}` },
-                  ]
-                : []),
             ]}
           />
         </Carte>
@@ -706,6 +713,55 @@ export function OngletIncidents({ selection, cible, onAjouter }: { selection: Se
 
       {/* Les sanctions ont quitté la fiche (métier, 22 septembre 2026) : un cas disciplinaire se saisit dans l'onglet Événements. */}
     </div>
+  );
+}
+
+/* ========================================================================== */
+/* Événements — ce que le score ne peut pas déduire seul (0066)               */
+/* ========================================================================== */
+
+export function OngletEvenements({ evenements, voitSanctions, cible, onAjouter }: { evenements: EvenementChauffeur[] | undefined; voitSanctions: boolean; cible?: string; onAjouter?: Ajouter }) {
+  const { surcharger, demander } = useEdition();
+  if (!voitSanctions) {
+    return (
+      <p className="meta flex items-center gap-2 px-1">
+        <Lock className="size-3.5" strokeWidth={1.8} />
+        Les événements — cas disciplinaires, félicitations… — sont réservés à la gestion de parc et à la direction.
+      </p>
+    );
+  }
+  const liste = (evenements ?? []).map(surcharger).sort((a, b) => b.date.localeCompare(a.date));
+  const negatifs = liste.filter((e) => NATURE_EVENEMENT[e.nature]?.effet === "negatif").length;
+  const positifs = liste.filter((e) => NATURE_EVENEMENT[e.nature]?.effet === "positif").length;
+  return (
+    <Carte
+      titre="Événements"
+      precision={`Ce que l'application ne déduit pas des faits du parc — cas disciplinaires, retards, plaintes, félicitations, formations · ${negatifs} négatif${negatifs > 1 ? "s" : ""}, ${positifs} positif${positifs > 1 ? "s" : ""} · l'indicateur « Discipline » du score en tient compte`}
+      action={
+        <button type="button" onClick={() => onAjouter?.("evenement")} disabled={!onAjouter} className="bouton-secondaire h-9 disabled:cursor-not-allowed disabled:opacity-50">
+          <Plus className="size-4" strokeWidth={2} />
+          Nouvel événement
+        </button>
+      }
+      sansMarge
+    >
+      <TableauSimple<EvenementChauffeur> reglages="fiche-chauffeur.evenements"
+        cle={(e) => e.numero}
+        lignes={liste}
+        vide="Aucun événement enregistré."
+        numero={(e) => e.numero}
+        cible={cible}
+        surModifier={(e) => demander({ type: "evenement", numero: e.numero, titre: `Événement · ${NATURE_EVENEMENT[e.nature]?.libelle ?? e.nature}`, valeurs: e as unknown as Record<string, unknown> })}
+        colonnes={[
+          { cle: "numero", libelle: "Réf.", largeur: "150px", rendu: (e) => <Numero valeur={e.numero} /> },
+          { cle: "date", libelle: "Date", largeur: "110px", rendu: (e) => <span className="code whitespace-nowrap">{date(e.date)}</span> },
+          { cle: "nature", libelle: "Nature", largeur: "240px", rendu: (e) => <span className="font-medium">{NATURE_EVENEMENT[e.nature]?.libelle ?? e.nature}</span> },
+          { cle: "effet", libelle: "Effet sur le score", largeur: "190px", rendu: (e) => { const f = EFFET_EVENEMENT[NATURE_EVENEMENT[e.nature]?.effet ?? "neutre"]; return <Pastille ton={f.ton}>{f.libelle}</Pastille>; } },
+          { cle: "description", libelle: "Ce qui s'est passé", rendu: (e) => <span className="block max-w-[480px] truncate text-texte-2" title={e.description}>{e.description}</span> },
+          { cle: "piece", libelle: "Pièce", largeur: "110px", rendu: (e) => (e.piece ? <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-accent-fonce"><FileText className="size-3.5" strokeWidth={1.8} />Jointe</span> : <span className="text-attenue-2">—</span>) },
+        ]}
+      />
+    </Carte>
   );
 }
 

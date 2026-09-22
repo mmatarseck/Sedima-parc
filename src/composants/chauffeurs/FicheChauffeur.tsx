@@ -13,7 +13,7 @@ import { CHAMPS_CREATION_CONTRAVENTION, champsCreation } from "@/composants/tran
 import { useEdition } from "@/composants/transactions/ContexteEdition";
 import { PhotoChauffeur } from "@/composants/chauffeurs/PhotoChauffeur";
 import { enregistrerModification } from "@/lib/clotures-demo";
-import { libelleSite } from "@/composants/transactions/fabriques";
+import { fabriquerEvenementChauffeur, libelleSite } from "@/composants/transactions/fabriques";
 import { TYPE_TRANSACTION, type TypeTransaction } from "@/domaine/reference";
 import { ENTREES_CHAUFFEUR, MenuAjout, type CibleAjout } from "@/composants/vehicule/MenuAjout";
 import { debutPeriode, type FicheChauffeur as Fiche, type PeriodeMois } from "@/domaine/chauffeur";
@@ -31,6 +31,7 @@ import {
   OngletConsommation,
   OngletContraventions,
   OngletDocuments,
+  OngletEvenements,
   OngletFraisDeRoute,
   OngletIdentite,
   OngletIncidents,
@@ -38,12 +39,10 @@ import {
   type Selection,
 } from "./onglets";
 
-type Onglet = "apercu" | "performance" | "identite" | "affectations" | "documents" | "consommation" | "contraventions" | "incidents" | "frais" | "journal";
+type Onglet = "apercu" | "performance" | "identite" | "affectations" | "documents" | "consommation" | "contraventions" | "incidents" | "evenements" | "frais" | "journal";
 
 /** Ce que le serveur calcule en comparant tous les chauffeurs, et que la fiche ne peut pas déduire seule. */
 export interface ContexteFiche {
-  /** Kilomètres moyens des chauffeurs qui ont roulé, par profondeur de période. */
-  kmMoyenParPeriode: Record<PeriodeMois, number | null>;
   classement: ClassementDuMois;
 }
 
@@ -60,6 +59,7 @@ const ONGLETS: { cle: Onglet; libelle: string }[] = [
   { cle: "consommation", libelle: "Consommation" },
   { cle: "contraventions", libelle: "Contraventions" },
   { cle: "incidents", libelle: "Incidents" },
+  { cle: "evenements", libelle: "Événements" },
   { cle: "frais", libelle: "Frais de route" },
   { cle: "journal", libelle: "Journal" },
 ];
@@ -74,7 +74,8 @@ const ONGLET_PAR_CIBLE: Partial<Record<CibleAjout, Onglet>> = {
   indisponibilite: "affectations",
   contravention: "contraventions",
   incident: "incidents",
-  sanction: "incidents",
+  sanction: "evenements",
+  evenement: "evenements",
   aptitude: "identite",
 };
 
@@ -162,9 +163,14 @@ export function FicheChauffeur({
   const accidents = selection.incidents.filter((i) => i.declaration.nature === "accident").length;
   const montantFrais = selection.fraisDeRoute.reduce((s, x) => s + x.montant, 0);
 
-  const evaluation = useMemo(() => evaluer(fiche, debut, aujourdhui, { kmMoyenCohorte: contexte.kmMoyenParPeriode[periode] }), [fiche, debut, aujourdhui, contexte, periode]);
+  /* Les événements saisis dans l'application comptent tout de suite (0066). */
+  const evenements = creations("evenement", fabriquerEvenementChauffeur);
+  const ficheAJour = useMemo(() => ({ ...fiche, evenements: [...evenements, ...(fiche.evenements ?? [])].filter((x, i, t) => t.findIndex((y) => y.numero === x.numero) === i) }), [fiche, evenements.map((x) => x.numero).join()]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* La Performance lit le mois en cours (métier, 22 septembre 2026). */
+  const debutMois = `${aujourdhui.slice(0, 7)}-01`;
+  const evaluation = useMemo(() => evaluer(ficheAJour, debutMois, aujourdhui), [ficheAJour, debutMois, aujourdhui]);
 
-  const entreesAjout = useMemo(() => ENTREES_CHAUFFEUR.filter((e) => e.cle !== "sanction" || voitSanctions), [voitSanctions]);
+  const entreesAjout = useMemo(() => ENTREES_CHAUFFEUR.filter((e) => e.cle !== "evenement" || voitSanctions), [voitSanctions]);
 
   const personnes: Personne[] = useMemo(
     () => [...(utilisateurs ?? personnesUtilisateurs()), { id: `chauffeur:${l.id}`, nom: l.nomComplet, initiales: l.initiales, precision: "Chauffeur" }],
@@ -181,7 +187,7 @@ export function FicheChauffeur({
     aptitude: "Décision d'aptitude",
     contravention: "Nouvelle contravention",
     incident: "Déclarer un incident ou un accident",
-    sanction: "Nouvelle sanction",
+    evenement: "Nouvel événement",
   };
   function ajouter(cible: CibleAjout) {
     const titre = TITRE_CREATION[cible];
@@ -254,7 +260,7 @@ export function FicheChauffeur({
               {c.actif ? (
                 <Link
                   href="/chauffeurs/classement"
-                  title={`Classement SQDCM de ${libelleMoisLong(contexte.classement.mois).toLowerCase()} — voir le classement`}
+                  title={`Classement de ${libelleMoisLong(contexte.classement.mois).toLowerCase()} — voir le classement`}
                   className={`inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium transition-colors ${
                     contexte.classement.rang === 1
                       ? "bg-accent text-white hover:bg-accent-fonce"
@@ -398,14 +404,15 @@ export function FicheChauffeur({
 
       {/* ---- Contenu de l'onglet : la seule zone qui défile ---- */}
       <div role="tabpanel" className="defilement-discret min-h-0 flex-1 px-8 py-6 lg:overflow-y-auto">
-        {onglet === "apercu" && <OngletApercu fiche={fiche} selection={selection} voitSanctions={voitSanctions} />}
-        {onglet === "performance" && <OngletPerformance fiche={fiche} evaluation={evaluation} classement={contexte.classement} voitSanctions={voitSanctions} />}
+        {onglet === "apercu" && <OngletApercu fiche={ficheAJour} selection={selection} aujourdhui={aujourdhui} />}
+        {onglet === "performance" && <OngletPerformance evaluation={evaluation} classement={contexte.classement} voitSanctions={voitSanctions} actif={l.chauffeur.actif} />}
         {onglet === "identite" && <OngletIdentite fiche={fiche} />}
         {onglet === "affectations" && <OngletAffectations fiche={fiche} selection={selection} cible={cible} onAjouter={ajouter} />}
         {onglet === "documents" && <OngletDocuments fiche={fiche} cible={cible} onAjouter={ajouter} />}
         {onglet === "consommation" && <OngletConsommation selection={selection} />}
         {onglet === "contraventions" && <OngletContraventions selection={selection} cible={cible} onAjouter={ajouter} />}
         {onglet === "incidents" && <OngletIncidents selection={selection} cible={cible} onAjouter={ajouter} />}
+        {onglet === "evenements" && <OngletEvenements evenements={ficheAJour.evenements} voitSanctions={voitSanctions} cible={cible} onAjouter={ajouter} />}
         {onglet === "frais" && <OngletFraisDeRoute selection={selection} cible={cible} />}
         {onglet === "journal" && <OngletJournal fiche={fiche} voitSanctions={voitSanctions} />}
       </div>

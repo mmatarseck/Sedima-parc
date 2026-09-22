@@ -33,6 +33,7 @@ export type TypeTransaction =
   | "attelage"
   | "incident"
   | "sanction"
+  | "evenement"
   | "indisponibilite"
   | "statut"
   | "archive"
@@ -95,7 +96,9 @@ export const TYPE_TRANSACTION: Record<TypeTransaction, DefinitionTypeTransaction
      dispose du véhicule, elle n'en est pas l'outil de travail. */
   attribution: { prefixe: "ATR", libelle: "Attribution", ongletVehicule: "affectations", ongletChauffeur: null },
   incident: { prefixe: "INC", libelle: "Incident ou accident", ongletVehicule: "journal", ongletChauffeur: "incidents" },
-  sanction: { prefixe: "SAN", libelle: "Sanction", ongletVehicule: null, ongletChauffeur: "incidents" },
+  sanction: { prefixe: "SAN", libelle: "Sanction", ongletVehicule: null, ongletChauffeur: "evenements" },
+  /* Ce que l'application ne déduit pas des faits du parc : cas disciplinaire, félicitation… (0066). */
+  evenement: { prefixe: "EVC", libelle: "Événement du chauffeur", ongletVehicule: null, ongletChauffeur: "evenements" },
   indisponibilite: { prefixe: "IND", libelle: "Indisponibilité", ongletVehicule: null, ongletChauffeur: "journal" },
   statut: { prefixe: "STA", libelle: "Changement de statut", ongletVehicule: "journal", ongletChauffeur: null },
   /* Archiver ou désarchiver un véhicule (0054) : le même geste, selon l'état de la ligne. */

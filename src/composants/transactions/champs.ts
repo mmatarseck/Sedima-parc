@@ -17,6 +17,7 @@ import { SOURCE_TARIF, STATUT_AFFRETEMENT } from "@/domaine/transporteurs";
 import { ENERGIE } from "@/domaine/libelles";
 import { STATUT_ORDRE } from "@/domaine/maintenance";
 import { REGIME_USAGE } from "@/domaine/parc-leger";
+import { NATURE_EVENEMENT } from "@/domaine/evenements-chauffeur";
 import { TYPES_GARAGE, TYPE_PRESTATAIRE } from "@/domaine/prestataires";
 import { lireCreations } from "@/lib/clotures-demo";
 import { APTITUDE, BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_OBSERVATION, CONTRAT_CHAUFFEUR, GRAVITE_OBSERVATION, MISSION_INCIDENT, MOTIF_IMMOBILISATION, MOTIF_INDISPONIBILITE, MOTIF_SORTIE, NATURE_INCIDENT, POSTE_DEPENSE, RESPONSABILITE, ROLE_AFFECTATION, STATUT_DECLARATION, STATUT_OBSERVATION, STATUT_VEHICULE, STATUT_VISITE, TYPE_INCIDENT, TYPE_SANCTION, TYPE_VISITE } from "@/domaine/libelles";
@@ -422,6 +423,13 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "type", libelle: "Type", type: "choix", options: options(TYPE_SANCTION), obligatoire: true },
     { cle: "jours", libelle: "Jours", type: "nombre", unite: "j" },
     { cle: "motif", libelle: "Motif", type: "texte-long", obligatoire: true },
+  ],
+  /* Un événement du chauffeur (0066) — ce que le score ne peut pas déduire seul. */
+  evenement: [
+    DATE("date"),
+    { cle: "nature", libelle: "Nature", type: "choix", options: Object.entries(NATURE_EVENEMENT).map(([valeur, n]) => ({ valeur, libelle: `${n.libelle} — ${n.effet === "negatif" ? "pèse sur le score" : n.effet === "positif" ? "compte en sa faveur" : "sans effet sur le score"}` })), obligatoire: true },
+    { cle: "description", libelle: "Ce qui s'est passé", type: "texte-long", obligatoire: true },
+    { cle: "piece", libelle: "La pièce", type: "photo", dossier: "documents", precision: "Lettre, rapport, attestation — facultative" },
   ],
   indisponibilite: [
     { cle: "motif", libelle: "Motif", type: "choix", options: options(MOTIF_INDISPONIBILITE), obligatoire: true },

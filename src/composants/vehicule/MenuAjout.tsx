@@ -40,6 +40,7 @@ export type CibleAjout =
   | "signalement"
   | "contravention"
   | "sanction"
+  | "evenement"
   | "indisponibilite"
   | "aptitude"
   | "attelage"
@@ -93,7 +94,7 @@ export const ENTREES_CHAUFFEUR: EntreeAjout[] = [
   { cle: "aptitude", libelle: "Décision d'aptitude", precision: "Apte, apte avec réserve, inapte — avec motif", icone: ShieldCheck, livre: true },
   { cle: "contravention", libelle: "Contravention", precision: "Sur le véhicule conduit, avec ou sans retenue", icone: Receipt, livre: true },
   { cle: "incident", libelle: "Incident ou accident", precision: "Déclaration en quatre étapes, sur le véhicule", icone: TriangleAlert, livre: true },
-  { cle: "sanction", libelle: "Sanction", precision: "Avertissement, blâme, retenue, mise à pied", icone: Gavel, livre: true },
+  { cle: "evenement", libelle: "Événement", precision: "Cas disciplinaire, retard, plainte, félicitation, formation", icone: Gavel, livre: true },
 ];
 
 /**

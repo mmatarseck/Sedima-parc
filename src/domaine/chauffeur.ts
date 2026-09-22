@@ -263,6 +263,8 @@ export interface FicheChauffeur {
   contraventions: ContraventionChauffeur[];
   incidents: IncidentChauffeur[];
   sanctions: Sanction[];
+  /** Les événements saisis à la main — cas disciplinaires, félicitations… (0066). Absents avant la migration. */
+  evenements?: import("./evenements-chauffeur").EvenementChauffeur[];
   indisponibilites: Indisponibilite[];
   fraisDeRoute: FraisDeRoute[];
   /** Relevés saisis à la main pendant sa conduite (pleins, dépenses) — pas la balise. */

@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
 import { FicheChauffeur, type ContexteFiche } from "@/composants/chauffeurs/FicheChauffeur";
 import { FournisseurEdition } from "@/composants/transactions/ContexteEdition";
-import { debutPeriode, type PeriodeMois } from "@/domaine/chauffeur";
 import { titrePage } from "@/domaine/marque";
-import { classer, kmMoyen } from "@/domaine/performance";
+import { classer } from "@/domaine/performance";
 import { jourCourant } from "@/domaine/temps";
 import { ficheChauffeurServeur, fichesChauffeursServeur } from "@/donnees/fiche-chauffeur";
 import { personnesServeur } from "@/lib/personnes-serveur";
@@ -38,10 +37,8 @@ export default async function PageChauffeur({ params, searchParams }: Props) {
      toutes les fiches du périmètre — celles de la base par lire_fiches_chauffeurs()
      (0020), celles de la démonstration sinon. */
   const fiches = await fichesChauffeursServeur();
-  const kmMoyenParPeriode = Object.fromEntries(([3, 6, 12] as PeriodeMois[]).map((p) => [p, kmMoyen(fiches, debutPeriode(p, reference), aujourdhui)])) as Record<PeriodeMois, number | null>;
   const classement = classer(fiches, moisRevolu);
   const contexte: ContexteFiche = {
-    kmMoyenParPeriode,
     classement: {
       mois: moisRevolu,
       rang: classement.find((l) => l.evaluation.chauffeurId === fiche.ligne.id)?.rang ?? null,

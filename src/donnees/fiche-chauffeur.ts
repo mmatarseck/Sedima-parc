@@ -12,7 +12,8 @@ import { parametresServeur } from "@/lib/parametres-serveur";
 import { createHash } from "node:crypto";
 import { cache } from "react";
 import { assemblerFicheChauffeur, type FaitsFicheChauffeur } from "@/domaine/assembler-fiche-chauffeur";
-import type { FicheChauffeur } from "@/domaine/chauffeur";
+import { idChauffeur, type FicheChauffeur } from "@/domaine/chauffeur";
+import { estNature, type EvenementChauffeur } from "@/domaine/evenements-chauffeur";
 import { afficher } from "@/domaine/immatriculation";
 import type { BusinessUnit, CategorieVehicule, DeclarationIncident, Indisponibilite, Sanction, TypeDocument } from "@/domaine/types";
 import { clientServeur } from "@/lib/supabase";
@@ -92,10 +93,30 @@ async function ficheChauffeurServeurBrut(id: string): Promise<FicheChauffeur | n
      que la fiche porte, sans identifiant de table (17 septembre 2026). */
   const pieces = await piecesJointesDuChauffeur(client, faits.documents.map((d) => d.numero));
   const documents = faits.documents.map((d) => ({ ...d, fichier: pieces.get(d.numero) ?? null }));
-  return assemblerFicheChauffeur(ligne, { ...faits, documents, rappels }, aujourdhui);
+  const evenements = (await evenementsParChauffeur(client)).get(ligne.id) ?? [];
+  return { ...assemblerFicheChauffeur(ligne, { ...faits, documents, rappels }, aujourdhui), evenements };
 }
 
 export const ficheChauffeurServeur = cache(ficheChauffeurServeurBrut);
+
+/**
+ * Les événements des chauffeurs (0066), par identifiant d'adresse — la table
+ * porte l'identifiant de la base, la fiche celui du nom : le nom fait le lien,
+ * comme partout ailleurs sur la fiche. Sans la migration, ou sans le droit de
+ * voir les sanctions, aucun : le score se calcule sans.
+ */
+async function evenementsParChauffeur(client: Awaited<ReturnType<typeof clientServeur>>): Promise<Map<string, EvenementChauffeur[]>> {
+  type Ligne = { numero: string; date: string; nature: string; description: string; piece: string | null; chauffeur: { nom: string; prenom: string } | null };
+  const lecture = await client.from("evenement_chauffeur").select("numero, date, nature, description, piece, chauffeur (nom, prenom)").order("date", { ascending: false }).limit(5000).returns<Ligne[]>();
+  const parChauffeur = new Map<string, EvenementChauffeur[]>();
+  if (lecture.error) return parChauffeur;
+  for (const e of lecture.data ?? []) {
+    if (!e.chauffeur) continue;
+    const id = idChauffeur(`${e.chauffeur.prenom} ${e.chauffeur.nom}`);
+    parChauffeur.set(id, [...(parChauffeur.get(id) ?? []), { numero: e.numero, date: e.date, nature: estNature(e.nature) ? e.nature : "autre", description: e.description, piece: e.piece }]);
+  }
+  return parChauffeur;
+}
 
 interface FicheChauffeurEnListe {
   id: string;
@@ -119,9 +140,10 @@ async function fichesChauffeursServeurBrut(): Promise<FicheChauffeur[]> {
   if (lecture.error) console.warn(`Fiches chauffeurs : lire_fiches_chauffeurs() indisponible (${lecture.error.message}), classement sans historique.`);
   const parIdentifiant = new Map((Array.isArray(lecture.data) ? lecture.data : []).map((f) => [f.identifiant, f.fiche]));
   const aujourdhui = new Date().toISOString().slice(0, 10);
+  const evenements = await evenementsParChauffeur(client);
   return lignes.map((ligne) => {
     const j = parIdentifiant.get(ligne.id) ?? null;
-    return assemblerFicheChauffeur(ligne, j ? faitsChauffeurDepuisJson(j, ligne.id) : FAITS_VIDES, aujourdhui);
+    return { ...assemblerFicheChauffeur(ligne, j ? faitsChauffeurDepuisJson(j, ligne.id) : FAITS_VIDES, aujourdhui), evenements: evenements.get(ligne.id) ?? [] };
   });
 }
 

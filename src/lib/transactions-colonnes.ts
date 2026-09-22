@@ -33,6 +33,7 @@ export type TableBranchee =
   | "intervention"
   | "indisponibilite"
   | "sanction"
+  | "evenement_chauffeur"
   | "ordre_travail"
   | "mouvement_caisse"
   | "mouvement_cuve"
@@ -70,6 +71,7 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   intervention: "intervention",
   indisponibilite: "indisponibilite",
   sanction: "sanction",
+  evenement: "evenement_chauffeur",
   ordre: "ordre_travail",
   caisse: "mouvement_caisse",
   cuve: "mouvement_cuve",
@@ -786,6 +788,12 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       if (!texte(v.motif)) return { refus: "sanction sans motif" };
       return { ligne: { numero, chauffeur_id: r.chauffeurId, date: texte(v.date), type: texte(v.type) ?? "avertissement", motif: texte(v.motif), jours: nombre(v.jours) } };
     }
+    case "evenement": {
+      /* Un événement du chauffeur (0066) : sa nature, ce qui s'est passé, la pièce au besoin. */
+      if (!r.chauffeurId) return { refus: "événement sans chauffeur" };
+      if (!texte(v.nature) || !texte(v.description)) return { refus: "événement sans nature ou sans description" };
+      return { ligne: { numero, chauffeur_id: r.chauffeurId, date: texte(v.date), nature: texte(v.nature), description: texte(v.description), piece: texte(v.piece) } };
+    }
     case "prestataire": {
       const raisonSociale = texte(v.raisonSociale);
       if (!raisonSociale) return { refus: "prestataire sans raison sociale" };
@@ -1006,6 +1014,7 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   intervention: { date: "date", type: "type", objet: "objet", km: "km", immobilisationJours: "immobilisation_jours", montant: "montant", reference: "reference", fichier: "fichier" },
   indisponibilite: { motif: "motif", debut: "debut", fin: "fin", commentaire: "commentaire" },
   sanction: { date: "date", type: "type", jours: "jours", motif: "motif" },
+  evenement: { date: "date", nature: "nature", description: "description", piece: "piece" },
   caisse: { date: "date", libelle: "libelle", montant: "montant", beneficiaire: "beneficiaire", piece: "piece", justificatif: "justificatif", objetReglement: "objet_reglement", depenseNumero: "depense_numero" },
   cuve: { date: "date", libelle: "libelle", litres: "litres", prixLitre: "prix_litre", montant: "montant", fournisseur: "fournisseur", piece: "piece", commentaire: "commentaire" },
   achat: { date: "date", objet: "objet", poste: "poste", montantEstime: "montant_estime", fournisseur: "fournisseur", urgence: "urgence", etape: "etape", visaPar: "visa_par", visaLe: "visa_le", validePar: "valide_par", valideeLe: "validee_le", numeroDemandeX3: "numero_demande_x3", numeroBonCommande: "numero_bon_commande", montantEngage: "montant_engage", dateLivraison: "date_livraison", dateFacture: "date_facture", montantReel: "montant_reel", dateReglement: "date_reglement", depenseNumero: "depense_numero", commentaireDecision: "commentaire_decision", fichier: "fichier" },

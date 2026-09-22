@@ -9,6 +9,7 @@
  * ==========================================================================*/
 
 import { lireLignes } from "@/domaine/service";
+import { estNature, type EvenementChauffeur } from "@/domaine/evenements-chauffeur";
 import type { LigneSignalement } from "@/domaine/signalements";
 import { idChauffeur, initialesDe, type AffectationChauffeur, type ContraventionChauffeur, type EcheanceChauffeur, type FraisDeRoute, type IncidentChauffeur, type LigneChauffeur } from "@/domaine/chauffeur";
 import type { Creation } from "@/domaine/cloture";
@@ -244,6 +245,12 @@ export function fabriquerIncidentChauffeur(c: Creation, chauffeurId: string): In
 export function fabriquerSanction(c: Creation, chauffeurId: string): Sanction {
   const v = c.valeurs;
   return { id: c.numero, numero: c.numero, chauffeurId, date: s(v.date) ?? c.date.slice(0, 10), type: (s(v.type) as Sanction["type"]) ?? "avertissement", motif: s(v.motif) ?? "", jours: n(v.jours), incidentId: null, depenseId: null };
+}
+
+/** Un événement du chauffeur saisi dans l'application (0066). */
+export function fabriquerEvenementChauffeur(c: Creation): EvenementChauffeur {
+  const v = c.valeurs;
+  return { numero: c.numero, date: s(v.date) ?? c.date.slice(0, 10), nature: estNature(v.nature) ? v.nature : "autre", description: s(v.description) ?? "", piece: s(v.piece) };
 }
 
 export function fabriquerIndisponibilite(c: Creation, chauffeurId: string): Indisponibilite {
