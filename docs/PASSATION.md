@@ -71,8 +71,8 @@ Tout est décrit dans **`docs/SERVICES-MAINTENANCE.md`** (sections datées).
    consommation retirée de la fiche (métier) : L/100 km et F/100 km dans le
    rapport « Consommation de carburant » ; Aperçu : F par tonne livrée sur 12 mois.
    **En base, aucun des 720 pleins des 12 derniers mois ne porte le compteur** :
-   les courbes aux 100 km restent vides (la carte montre litres et francs par
-   mois) tant que le « Km relevé » n'est pas saisi au plein.
+   les L/100 km du rapport restent vides pour la plupart des véhicules
+   tant que le « Km relevé » n'est pas saisi au plein.
 1. **Relevé kilométrique** : dernier relevé en bas du formulaire, contrôle de
    cohérence avant validation (`controleReleve` dans `vehicule/ajout.ts`,
    prop `controle` de la modale ; alerte bloquante, confirmable).
