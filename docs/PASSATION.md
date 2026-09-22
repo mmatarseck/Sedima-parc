@@ -54,13 +54,33 @@ Migrations jusqu'à **0062** ; `taches-service.sql` (294 tâches) ;
 `interventions-taches.sql` (696 affectations) ;
 `correctif-operations-doublons.sql` (23 opérations d'entretien).
 
-**À jouer si ce n'est pas fait** : `supabase/migrations/0063_reglements.sql`
-— sans elle, une sortie de caisse qui dit ce qu'elle règle ne s'écrit pas.
+**À jouer si ce n'est pas fait**, dans l'ordre : `0063_reglements.sql` (une
+sortie de caisse qui dit ce qu'elle règle), `0064_livraisons_saisies.sql`
+(livraisons saisies), `0065_pleins_approvisionnement.sql` (`plein.remboursable`,
+`ajouter_station()`). Le code lit et écrit sans elles (colonne retirée à
+l'écriture, lecture de repli), mais sans leur apport.
 
 ## Les chantiers récents (du plus récent au plus ancien)
 
 Tout est décrit dans **`docs/SERVICES-MAINTENANCE.md`** (sections datées).
 
+1. **Carburant (0065)** : le plein dit pompe du siège (pas de facture, pas
+   remboursable) ou station (choisie, ou ajoutée à la volée par
+   `ajouter_station`), facture, remboursable (défaut ; seul un plein
+   remboursable attend la caisse), complet ou partiel. Onglet Carburant :
+   courbes L/100 km et F/100 km (`domaine/consommation.ts`, `Courbe` du
+   tableau de bord), plein à plein ; Aperçu : F par tonne livrée sur 12 mois.
+   **En base, aucun des 720 pleins des 12 derniers mois ne porte le compteur** :
+   les courbes aux 100 km restent vides (la carte montre litres et francs par
+   mois) tant que le « Km relevé » n'est pas saisi au plein.
+1. **Relevé kilométrique** : dernier relevé en bas du formulaire, contrôle de
+   cohérence avant validation (`controleReleve` dans `vehicule/ajout.ts`,
+   prop `controle` de la modale ; alerte bloquante, confirmable).
+1. **Disponibilité** : filtres Tout le parc / Exploitation / Service /
+   Fonction (+ BU) ; colonnes Statut et Chauffeur affecté (nom, attributaire,
+   ou « Non affecté ») ; capacité par catégorie et « Ce qui manque » retirés.
+1. **Chauffeurs** : Km/contraventions/incidents quittent la liste (rapports) ;
+   forfait carburant et plan car ne se suivent plus (DCH).
 1. **Règlements (0063)** : une dépense ou un service dit comment il se règle
    (caisse / bon de commande avec n° et pièce / facture) ; une sortie de caisse
    dit ce qu'elle règle (plein, service, autre dépense) et cite l'élément
@@ -104,5 +124,7 @@ Tout est décrit dans **`docs/SERVICES-MAINTENANCE.md`** (sections datées).
   tâche.
 - Observations de visite technique à rattacher aux signalements.
 - Le téléphone de l'atelier ne connaît pas le formulaire de service.
+- Possible doublon d'import dans les pleins : PLN-R-000829 et PLN-R-005671
+  ont les mêmes valeurs — à vérifier avant d'en supprimer un.
 - Aucun écran n'a été vérifié dans un navigateur sur ces chantiers : l'accès
   demande une connexion que l'assistant ne fait pas.
