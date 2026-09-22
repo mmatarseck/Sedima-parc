@@ -616,7 +616,7 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "permisNumero", libelle: "N° de permis", type: "texte" },
     { cle: "permisEcheance", libelle: "Échéance du permis", type: "date" },
     { cle: "visiteMedicaleEcheance", libelle: "Échéance visite médicale", type: "date" },
-    { cle: "dateNaissance", libelle: "Date de naissance", type: "date" },
+    /* La date de naissance n'est plus demandée : donnée personnelle dont le parc n'a pas besoin (métier, 22 septembre 2026). */
     { cle: "dateEmbauche", libelle: "Date d'entrée", type: "date" },
     /* L'identité complète de l'onglet du même nom : une modale, une trace. */
     { cle: "dateSortie", libelle: "Date de sortie", type: "date" },

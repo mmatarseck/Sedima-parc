@@ -323,7 +323,6 @@ export function OngletIdentite({ fiche }: { fiche: FicheChauffeur }) {
           elements={[
             { libelle: "Nom", valeur: c.nom },
             { libelle: "Prénom", valeur: c.prenom },
-            { libelle: "Date de naissance", valeur: i.dateNaissance ? `${date(i.dateNaissance)} · ${i.age} ans` : null },
             { libelle: "Téléphone", valeur: <span className="code">{c.telephone}</span> },
             { libelle: "Adresse", valeur: i.adresse },
             { libelle: "Contact d'urgence", valeur: i.contactUrgence },
