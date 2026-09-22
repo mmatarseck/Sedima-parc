@@ -27,6 +27,20 @@ export interface LivraisonFiche {
   transporteur: string | null;
   chauffeur: string | null;
   source: string;
+  /** Saisies dans l'application (0064), facultatives : « 07:30 ». */
+  heureDebut?: string | null;
+  heureFin?: string | null;
+  observations?: string | null;
+  /** Vraie pour une livraison saisie dans l'application, qui se modifie ; un bon de Sage X3 se lit. */
+  saisie?: boolean;
+}
+
+/** La durée d'une livraison, en minutes, quand ses deux heures sont dites. */
+export function dureeLivraison(l: Pick<LivraisonFiche, "heureDebut" | "heureFin">): number | null {
+  const m = (h: string | null | undefined) => (h && /^\d{1,2}:\d{2}/.test(h) ? Number(h.slice(0, h.indexOf(":"))) * 60 + Number(h.slice(h.indexOf(":") + 1, h.indexOf(":") + 3)) : null);
+  const a = m(l.heureDebut);
+  const b = m(l.heureFin);
+  return a !== null && b !== null && b >= a ? b - a : null;
 }
 
 export interface MoisLivraisons {

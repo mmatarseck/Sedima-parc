@@ -11,7 +11,7 @@ import type { TypeTransaction } from "./reference";
  * c'est ainsi que le journal du véhicule la retrouve.
  * ==========================================================================*/
 
-export const TYPES_SUPPRIMABLES: ReadonlySet<TypeTransaction> = new Set<TypeTransaction>(["signalement", "ordre", "intervention", "depense", "plein", "incident", "releve", "document", "rappel", "visite", "observation", "affectation", "attelage", "indisponibilite", "caisse", "cuve", "achat"]);
+export const TYPES_SUPPRIMABLES: ReadonlySet<TypeTransaction> = new Set<TypeTransaction>(["signalement", "ordre", "intervention", "depense", "plein", "incident", "releve", "document", "rappel", "visite", "observation", "affectation", "attelage", "indisponibilite", "caisse", "cuve", "achat", "livraison"]);
 
 export function estSupprimable(type: TypeTransaction): boolean {
   return TYPES_SUPPRIMABLES.has(type);

@@ -56,7 +56,9 @@ export type TypeTransaction =
   | "prestation"
   | "tarif"
   | "signalement"
-  | "tache";
+  | "tache"
+  /* Une livraison saisie dans l'application (0064) ; celles de Sage X3 gardent leur numéro « BL… ». */
+  | "livraison";
 
 export interface DefinitionTypeTransaction {
   prefixe: string;
@@ -72,6 +74,7 @@ export const TYPE_TRANSACTION: Record<TypeTransaction, DefinitionTypeTransaction
   intervention: { prefixe: "INT", libelle: "Intervention", ongletVehicule: "entretien", ongletChauffeur: null },
   document: { prefixe: "DOC", libelle: "Document", ongletVehicule: "conformite", ongletChauffeur: "documents" },
   releve: { prefixe: "REL", libelle: "Relevé kilométrique", ongletVehicule: "kilometrage", ongletChauffeur: null },
+  livraison: { prefixe: "LIV", libelle: "Livraison", ongletVehicule: "livraisons", ongletChauffeur: null },
   /* Une ligne du relevé de transport : un chargement parti un jour donné. À ne
      pas confondre avec le relevé kilométrique, qui porte un compteur. */
   transport: { prefixe: "TRP", libelle: "Ligne de relevé de transport", ongletVehicule: null, ongletChauffeur: null },

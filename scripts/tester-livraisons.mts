@@ -15,7 +15,10 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { livraisonsParMois, resumeLivraisons, type LivraisonFiche } from "../src/domaine/livraisons";
+import { dureeLivraison, livraisonsParMois, resumeLivraisons, type LivraisonFiche } from "../src/domaine/livraisons";
+import { ligneCreation } from "../src/lib/transactions-colonnes";
+import { construireRapportDe } from "../src/domaine/assembler-rapports";
+import { sourceRapportsDemo } from "../src/donnees/rapports-demo";
 
 const bac = process.env.PGLITE_DIR ?? "";
 const require = createRequire(join(bac, "package.json"));
@@ -106,7 +109,20 @@ attendu(`AA 633 JL, le tracteur le plus chargé : ${aa633.map((m) => `${m.mois} 
 const apres = await un<{ d: string | null }>(`select derniere_saisie()::text as d`);
 attendu(`la fraîcheur du tableau de bord voit les livraisons (${avant.d} → ${apres.d})`, apres.d !== null && (avant.d === null || Date.parse(apres.d) >= Date.parse(avant.d)));
 const politiques = await un<{ n: number }>(`select count(*)::int as n from pg_policies where tablename = 'livraison'`);
-attendu(`la table est sous RLS, avec ${politiques.n} politiques`, politiques.n === 3);
+attendu(`la table est sous RLS, avec ${politiques.n} politiques — lecture, saisie, correction, retrait (0064)`, politiques.n === 4);
+
+/* 0064 : une livraison saisie dans l'application, ses heures et ses observations. */
+const saisie = ligneCreation("livraison", "LIV-2026-90001", { date: "2026-09-22", site: "UAB", client: "Dépôt Touba", poidsKg: "10 000", heureDebut: "7h30", heureFin: "11:15", observations: "Client absent à l'arrivée" }, { vehiculeId: "00000000-0000-0000-0000-0000000000aa" } as never);
+attendu("une livraison saisie s'écrit : véhicule, client, poids, heures lues « 7h30 » comme « 07:30 », observations", "ligne" in saisie && saisie.ligne.heure_debut === "7:30" && saisie.ligne.heure_fin === "11:15" && saisie.ligne.source === "saisie" && saisie.ligne.observations === "Client absent à l'arrivée");
+attendu("sans client, une livraison ne s'écrit pas", "refus" in ligneCreation("livraison", "LIV-2026-90002", { date: "2026-09-22", site: "UAB" }, { vehiculeId: "x" } as never));
+attendu("la durée d'une livraison se lit de ses heures, et seulement de ses deux heures", dureeLivraison({ heureDebut: "07:30", heureFin: "11:15" }) === 225 && dureeLivraison({ heureDebut: "07:30", heureFin: null }) === null);
+if ("ligne" in saisie) {
+  await pg.exec(`insert into livraison (numero, date, site, client, poids_kg, mode, vehicule_id, source, heure_debut, heure_fin, observations) select 'LIV-2026-90001', '2026-09-22', 'UAB', 'Dépôt Touba', 10000, 'parc', id, 'saisie', '07:30', '11:15', 'Client absent' from vehicule where immatriculation = 'AA633JL'`);
+  const lue = await un<{ h: string; o: string }>(`select heure_debut::text as h, observations as o from livraison where numero = 'LIV-2026-90001'`);
+  attendu(`0064 : la base garde les heures et les observations (${lue.h})`, lue.h.startsWith("07:30") && lue.o === "Client absent");
+}
+const rapport = construireRapportDe({ ...sourceRapportsDemo(), livraisons: [{ numero: "A", date: "2026-08-02", vehiculeId: "AA633JL", client: "X", poidsKg: 5000, heureDebut: "08:00", heureFin: "09:00", saisie: true }, { numero: "B", date: "2026-08-03", vehiculeId: "AA633JL", client: "Y", poidsKg: null, heureDebut: null, heureFin: null, saisie: false }] }, "flotte-livraisons", { periode: "tout", perimetre: "tout" } as never);
+attendu(`le rapport « Livraisons » résume par véhicule et par mois (${rapport.length} ligne, ${String(rapport[0]?.tonnage)} t, ${String(rapport[0]?.dureeMoyenne)} min)`, rapport.length === 1 && rapport[0]!.bons === 2 && rapport[0]!.tonnage === 5 && rapport[0]!.bonsSansPoids === 1 && rapport[0]!.dureeMoyenne === 60);
 
 console.log(echecs === 0 ? "\ntout passe" : `\n${echecs} contrôle(s) en échec`);
 process.exit(echecs === 0 ? 0 : 1);

@@ -27,6 +27,8 @@ import { LIBELLE_ETAT_PLEIN, SENS_CUVE, etatPlein } from "@/domaine/carburant";
 import { NATURE_TRAVAIL, STATUT_ORDRE, TON_URGENCE_TRAVAIL, URGENCE_TRAVAIL, factureDe, travauxOuverts } from "@/domaine/maintenance";
 import { CATEGORIES_MAINTENANCE, systemeDe } from "@/domaine/categories-maintenance";
 import { STATUT_TRANSFERT, libellePartie, statutTransfert, type Transfert } from "@/domaine/transferts";
+import { dureeLivraison } from "@/domaine/livraisons";
+import type { LivraisonParc } from "@/donnees/livraisons";
 import { PRIORITE_SERVICE, calculerService, joursImmobilisation } from "@/domaine/service";
 import { ETAT_SIGNALEMENT, PRIORITE_SIGNALEMENT, etatSignalement, type LigneSignalement } from "@/domaine/signalements";
 import { STATUT_CHAUFFEUR, nonConforme } from "@/domaine/chauffeur";
@@ -168,6 +170,8 @@ export interface SourceRapports {
    * démonstration n'en a pas (16 septembre 2026).
    */
   pieces: PieceReglementaire[];
+  /** Les livraisons du parc, par véhicule (0044, 0064). */
+  livraisons?: LivraisonParc[];
   /** Les fiches de transfert — la liste générale a quitté l'application pour ce rapport (22 septembre 2026). */
   transferts?: Transfert[];
   /** Les pannes signalées (0060) ; absentes de la démonstration. */
@@ -896,6 +900,33 @@ function aFaire(s: SourceRapports): LigneRapport[] {
     ordreNumero: t.ordreNumero,
     origineNumero: t.origineNumero,
   }));
+}
+
+/** Les livraisons, une ligne par véhicule et par mois — ce que l'onglet de la fiche montrait, pour tout le parc. */
+function livraisonsParMoisEtVehicule(s: SourceRapports, c: ContexteRapport): LigneRapport[] {
+  const { debut, fin } = resoudrePeriode(c.periode, s.aujourdhui);
+  const groupes = new Map<string, LivraisonParc[]>();
+  for (const l of (s.livraisons ?? []).filter((x) => dansLaPeriode(x.date, debut, fin))) {
+    const cle = `${l.vehiculeId}|${l.date.slice(0, 7)}`;
+    groupes.set(cle, [...(groupes.get(cle) ?? []), l]);
+  }
+  const MOIS = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" });
+  return [...groupes].map(([cle, liste]) => {
+    const [vehiculeId, mois] = cle.split("|") as [string, string];
+    const pesees = liste.filter((l) => l.poidsKg !== null);
+    const durees = liste.map((l) => dureeLivraison(l)).filter((d): d is number => d !== null);
+    return {
+      ...situation(s, vehiculeId),
+      mois: MOIS.format(new Date(`${mois}-01T12:00:00Z`)),
+      bons: liste.length,
+      jours: new Set(liste.map((l) => l.date)).size,
+      tonnage: pesees.length ? Math.round(pesees.reduce((t, l) => t + (l.poidsKg ?? 0), 0) / 100) / 10 : null,
+      bonsSansPoids: liste.length - pesees.length,
+      clients: new Set(liste.map((l) => l.client).filter(Boolean)).size,
+      dureeMoyenne: durees.length ? Math.round(durees.reduce((t, d) => t + d, 0) / durees.length) : null,
+      saisies: liste.filter((l) => l.saisie).length,
+    };
+  });
 }
 
 /** Les fiches de transfert de la période, une ligne par remise. */
@@ -2029,6 +2060,8 @@ export function construireRapportDe(s: SourceRapports, id: string, c: ContexteRa
       return ordres(s, c);
     case "maintenance-a-faire":
       return aFaire(s);
+    case "flotte-livraisons":
+      return livraisonsParMoisEtVehicule(s, c);
     case "flotte-transferts":
       return transferts(s, c);
     case "maintenance-pannes":

@@ -66,6 +66,9 @@ interface LivraisonBase {
   transporteur_libelle: string | null;
   chauffeur: string | null;
   source: string;
+  heure_debut?: string | null;
+  heure_fin?: string | null;
+  observations?: string | null;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -73,8 +76,11 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Les bons de livraison du véhicule (0044). Table pas encore jouée, ou véhicule à recevoir sans identifiant : aucun bon, pas d'erreur. */
 async function livraisonsDuVehicule(client: Awaited<ReturnType<typeof clientServeur>>, vehiculeId: string): Promise<LivraisonFiche[]> {
   if (!UUID.test(vehiculeId)) return [];
-  const lecture = await client.from("livraison").select("numero, date, site, client, produits, poids_kg, quantites, lignes, transporteur_libelle, chauffeur, source").eq("vehicule_id", vehiculeId).order("date", { ascending: false }).limit(5000).returns<LivraisonBase[]>();
-  return lignesLues("Livraisons du véhicule", lecture).map((l) => ({ numero: l.numero, date: l.date, site: l.site, client: l.client, produits: l.produits, poidsKg: l.poids_kg === null ? null : Number(l.poids_kg), quantites: l.quantites ?? {}, lignes: l.lignes, transporteur: l.transporteur_libelle, chauffeur: l.chauffeur, source: l.source }));
+  const colonnes = "numero, date, site, client, produits, poids_kg, quantites, lignes, transporteur_libelle, chauffeur, source";
+  /* Les heures et les observations (0064) : sans la migration, la liste se lit sans elles. */
+  let lecture = await client.from("livraison").select(`${colonnes}, heure_debut, heure_fin, observations`).eq("vehicule_id", vehiculeId).order("date", { ascending: false }).limit(5000).returns<LivraisonBase[]>();
+  if (lecture.error) lecture = await client.from("livraison").select(colonnes).eq("vehicule_id", vehiculeId).order("date", { ascending: false }).limit(5000).returns<LivraisonBase[]>();
+  return lignesLues("Livraisons du véhicule", lecture).map((l) => ({ numero: l.numero, date: l.date, site: l.site, client: l.client, produits: l.produits, poidsKg: l.poids_kg === null ? null : Number(l.poids_kg), quantites: l.quantites ?? {}, lignes: l.lignes, transporteur: l.transporteur_libelle, chauffeur: l.chauffeur, source: l.source, heureDebut: l.heure_debut?.slice(0, 5) ?? null, heureFin: l.heure_fin?.slice(0, 5) ?? null, observations: l.observations ?? null, saisie: l.source === "saisie" }));
 }
 
 interface AttelageBase {

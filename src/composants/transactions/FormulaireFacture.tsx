@@ -308,11 +308,20 @@ export function FormulaireFacture({
                 Ajouter une ligne
               </button>
             </div>
+            {/* Les en-têtes des lignes (métier, 22 septembre 2026 : « on ne sait pas à quoi ces champs font référence »). */}
+            <div className="hidden grid-cols-[190px_minmax(0,1fr)_150px_36px] gap-2 px-2 pb-1 text-[11.5px] font-medium text-texte-2 sm:grid">
+              <span>Poste de dépense</span>
+              <span>Ce qui a été acheté ou fait</span>
+              <span className="text-right">Montant</span>
+              <span />
+            </div>
             <ul className="flex flex-col gap-2">
               {lignes.map((l, i) => (
                 <li key={i} className={`grid grid-cols-1 items-start gap-2 rounded-[10px] border p-2 sm:grid-cols-[190px_minmax(0,1fr)_150px_auto] ${tentee && lignesInvalides[i] ? "border-defavorable" : "border-bordure"}`}>
                   {(["poste", "libelle", "montant"] as const).map((cle) => (
                     <div key={cle} className="min-w-0">
+                      {/* Sur un écran étroit, les en-têtes ne tiennent pas : chaque champ dit le sien. */}
+                      <span className="meta mb-1 block sm:hidden">{cle === "poste" ? "Poste de dépense" : cle === "montant" ? "Montant" : "Ce qui a été acheté ou fait"}</span>
                       <ChampSaisie champ={champLigne(cle)} valeur={l[cle]} saisie={l as unknown as Record<string, string>} onChange={(v) => changerLigne(i, cle, String(v))} invalide={tentee && (cle === "montant" ? !((nombre(l.montant) ?? 0) > 0) : !String(l[cle]).trim())} />
                     </div>
                   ))}

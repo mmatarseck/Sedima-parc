@@ -325,6 +325,18 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "fichier", libelle: "Le document", type: "photo", dossier: "documents", precision: "Le scan ou la photo : carte grise, police d'assurance, procès-verbal de visite" },
   ],
   releve: [DATE("date"), { cle: "valeur", libelle: "Compteur", type: "nombre", unite: "km", obligatoire: true }],
+  /* Une livraison (0064) : le bon, le client, ce qui est livré ; les heures et les observations au besoin (métier, 22 septembre 2026). */
+  livraison: [
+    DATE("date"),
+    { cle: "site", libelle: "Site d'expédition", type: "suggestion", options: ["UAB", "MINOTERIE", "NDIAR ABATTOIR", "COUVOIR", "FERMES"].map((s) => ({ valeur: s, libelle: s })), obligatoire: true },
+    { cle: "client", libelle: "Client ou destination", type: "texte", obligatoire: true },
+    { cle: "produits", libelle: "Produits", type: "texte" },
+    { cle: "poidsKg", libelle: "Poids livré", type: "nombre", unite: "kg" },
+    { cle: "chauffeur", libelle: "Chauffeur", type: "texte" },
+    { cle: "heureDebut", libelle: "Heure de début", type: "texte", precision: "Facultative — « 07:30 »" },
+    { cle: "heureFin", libelle: "Heure de fin", type: "texte", precision: "Facultative — « 11:15 »" },
+    { cle: "observations", libelle: "Observations", type: "texte-long", precision: "Retard, client absent, marchandise refusée, route coupée…" },
+  ],
   affectation: [DATE("debut", "Début"), { cle: "fin", libelle: "Fin", type: "date" }, { cle: "motif", libelle: "Motif", type: "texte" }],
   /*
    * Qui tient ce véhicule de service ou de fonction.

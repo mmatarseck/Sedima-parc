@@ -153,6 +153,7 @@ export const CHAMP_DATE: Record<TypeTransaction, string> = {
   intervention: "date",
   document: "dateEffet",
   releve: "date",
+  livraison: "date",
   affectation: "debut",
   attribution: "debut",
   attelage: "debut",

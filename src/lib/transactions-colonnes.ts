@@ -23,6 +23,7 @@ import { PRODUIT_TRANSPORTE, type ProduitTransporte } from "@/domaine/releve-tra
 
 export type TableBranchee =
   | "releve_kilometrique"
+  | "livraison"
   | "plein"
   | "depense"
   | "document"
@@ -59,6 +60,7 @@ export type TableBranchee =
 
 const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   releve: "releve_kilometrique",
+  livraison: "livraison",
   plein: "plein",
   depense: "depense",
   document: "document",
@@ -368,6 +370,13 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       if (!r.vehiculeId) return { refus: "relevé sans véhicule" };
       if (km === null) return { refus: "relevé sans compteur" };
       return { ligne: { numero, vehicule_id: r.vehiculeId, date: texte(v.date), km: Math.round(km), origine: "saisie" } };
+    }
+    case "livraison": {
+      /* Une livraison saisie (0064) : du parc, portée par le véhicule de la fiche. */
+      if (!r.vehiculeId) return { refus: "livraison sans véhicule" };
+      if (!texte(v.site) || !texte(v.client)) return { refus: "livraison sans site ou sans client" };
+      const heure = (x: unknown) => (/^\d{1,2}[:h]\d{2}$/.test(String(x ?? "").trim()) ? String(x).trim().replace("h", ":") : null);
+      return { ligne: { numero, date: texte(v.date), site: texte(v.site), client: texte(v.client), produits: texte(v.produits), poids_kg: nombre(v.poidsKg), mode: "parc", vehicule_id: r.vehiculeId, chauffeur: texte(v.chauffeur), source: "saisie", heure_debut: heure(v.heureDebut), heure_fin: heure(v.heureFin), observations: texte(v.observations) } };
     }
     case "plein": {
       const litres = nombre(v.litres);
@@ -932,6 +941,7 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
    annulant et ressaisissant, comme le bureau le fait. */
 const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   releve: { date: "date", valeur: "km" },
+  livraison: { date: "date", site: "site", client: "client", produits: "produits", poidsKg: "poids_kg", chauffeur: "chauffeur", heureDebut: "heure_debut", heureFin: "heure_fin", observations: "observations" },
   plein: { date: "date", litres: "litres", prixLitre: "prix_litre", montant: "montant", reference: "reference", km: "km", source: "source", photo: "photo" },
   depense: { date: "date", poste: "poste", libelle: "libelle", montant: "montant", beneficiaire: "beneficiaire", reference: "reference", km: "km", justificatif: "justificatif", origine: "origine", photo: "photo", numeroBc: "numero_bc", fichierBc: "fichier_bc" },
   document: { numeroPiece: "numero_piece", emetteur: "emetteur", dateEffet: "date_effet", echeance: "echeance", montant: "montant", fichier: "fichier" },

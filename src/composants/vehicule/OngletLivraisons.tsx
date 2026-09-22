@@ -1,81 +1,89 @@
 "use client";
 
 /* ============================================================================
- * Livraisons — les bons de livraison que le véhicule a portés.
+ * Livraisons — les bons de livraison que le véhicule a portés, et ceux qu'on
+ * saisit ici.
  *
- * Demande du métier (11 septembre 2026) : « préparer les données de livraison
- * et associer aux différents véhicules ». Les bons viennent de Sage X3, par la
- * plaque (0044). Le mois dit combien de bons, de jours et de tonnes ; la liste
- * dit à qui. Un bon en sacs ou en unités n'a pas de poids : il se compte à
- * part, et un mois sans bon pesé n'affiche pas « 0 t ».
+ * Les bons viennent de Sage X3, par la plaque (0044). Métier, 22 septembre
+ * 2026 : « possibilité de rajouter des livraisons, les éditer, avec les heures
+ * de début et de fin en optionnel, et d'autres informations qualitatives » —
+ * une livraison saisie (0064) se crée, se modifie et se supprime d'ici ; un
+ * bon de Sage X3 se lit. Le résumé par mois a quitté l'onglet pour le rapport
+ * « Livraisons ».
  * ==========================================================================*/
 
+import { Plus } from "lucide-react";
 import { Carte, TableauSimple } from "@/composants/interface/Carte";
+import { CHAMPS } from "@/composants/transactions/champs";
+import { useEdition } from "@/composants/transactions/ContexteEdition";
+import type { Creation } from "@/domaine/cloture";
 import type { FicheVehicule } from "@/domaine/fiche";
-import { livraisonsParMois, quantitesLisibles, resumeLivraisons, type LivraisonFiche, type MoisLivraisons } from "@/domaine/livraisons";
+import { dureeLivraison, quantitesLisibles, resumeLivraisons, type LivraisonFiche } from "@/domaine/livraisons";
+import { jourCourant } from "@/domaine/temps";
 import { date, nombre } from "@/lib/format";
 
-const MOIS = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" });
-const libelleMois = (m: string) => MOIS.format(new Date(`${m}-01T12:00:00`));
 const tonnes = (kg: number | null) => (kg === null ? "—" : `${nombre(kg / 1000, 1)} t`);
 const tiret = <span className="text-attenue-2">—</span>;
 
+/** Une livraison créée dans le navigateur, avant que la base la confirme. */
+function fabriquerLivraison(c: Creation): LivraisonFiche {
+  const v = c.valeurs;
+  const t = (x: unknown) => (typeof x === "string" && x.trim() ? x.trim() : null);
+  const poids = Number(String(v.poidsKg ?? "").replace(/\s/g, "").replace(",", "."));
+  return { numero: c.numero, date: String(v.date ?? c.date.slice(0, 10)), site: String(v.site ?? ""), client: t(v.client), produits: t(v.produits), poidsKg: Number.isFinite(poids) && String(v.poidsKg ?? "") !== "" ? poids : null, quantites: {}, lignes: 1, transporteur: null, chauffeur: t(v.chauffeur), source: "saisie", heureDebut: t(v.heureDebut), heureFin: t(v.heureFin), observations: t(v.observations), saisie: true };
+}
+
 export function OngletLivraisons({ fiche, cible }: { fiche: FicheVehicule; cible?: string }) {
-  const bons = fiche.livraisons;
-  if (bons.length === 0) {
-    return (
-      <Carte titre="Livraisons" precision="Les bons de livraison Sage X3 qui portent la plaque de ce véhicule">
-        <p className="meta">
-          Aucun bon de livraison ne porte cette plaque. Les extractions chargées couvrent l&apos;UAB de novembre 2025 à août 2026 (sauf du 9 juillet au 2 août), la minoterie et l&apos;abattoir de janvier au 8 juillet 2026.
-        </p>
-      </Carte>
-    );
+  const { creer, demander, creations, surcharger } = useEdition();
+  const creees = creations("livraison", fabriquerLivraison);
+  const vus = new Set<string>();
+  const bons = [...creees, ...fiche.livraisons.map(surcharger)].filter((b) => (vus.has(b.numero) ? false : (vus.add(b.numero), true))).sort((a, b) => b.date.localeCompare(a.date) || b.numero.localeCompare(a.numero));
+
+  function ajouter() {
+    creer({ type: "livraison", titre: `Nouvelle livraison · ${fiche.ligne.vehicule.immatriculationAffichee}`, champs: CHAMPS.livraison, valeurs: { date: jourCourant() } });
   }
-  const r = resumeLivraisons(bons);
-  const mois = livraisonsParMois(bons);
+  function modifier(b: LivraisonFiche) {
+    if (!b.saisie) return;
+    demander({ type: "livraison", numero: b.numero, titre: `Livraison ${b.numero} · ${b.client ?? ""}`, champs: CHAMPS.livraison, valeurs: { date: b.date, site: b.site, client: b.client ?? "", produits: b.produits ?? "", poidsKg: b.poidsKg ?? "", chauffeur: b.chauffeur ?? "", heureDebut: b.heureDebut ?? "", heureFin: b.heureFin ?? "", observations: b.observations ?? "" } });
+  }
+
+  const r = bons.length ? resumeLivraisons(bons) : null;
   return (
-    <div className="flex flex-col gap-5">
-      <Carte
-        titre="Livraisons par mois"
-        precision={`${nombre(r.bons)} bons du ${date(r.premier)} au ${date(r.dernier)} · ${tonnes(r.poidsKg)}${r.bonsSansPoids > 0 ? ` · ${nombre(r.bonsSansPoids)} sans poids (sacs ou unités)` : ""} · ${nombre(r.clients)} clients`}
-        sansMarge
-      >
-        <TableauSimple<MoisLivraisons>
-          reglages="fiche-vehicule.livraisons-mois"
-          cle={(m) => m.mois}
-          lignes={mois}
-          filtrable={false}
-          colonnes={[
-            { cle: "mois", libelle: "Mois", rendu: (m) => <span className="font-medium first-letter:uppercase">{libelleMois(m.mois)}</span> },
-            { cle: "bons", libelle: "Bons", alignee: "droite", rendu: (m) => nombre(m.bons) },
-            { cle: "jours", libelle: "Jours de livraison", alignee: "droite", rendu: (m) => nombre(m.jours) },
-            { cle: "poids", libelle: "Tonnage", alignee: "droite", rendu: (m) => (m.poidsKg === null ? tiret : <span className="font-medium">{tonnes(m.poidsKg)}</span>) },
-            { cle: "sans-poids", libelle: "Bons sans poids", alignee: "droite", rendu: (m) => (m.bonsSansPoids > 0 ? nombre(m.bonsSansPoids) : tiret) },
-            { cle: "clients", libelle: "Clients", alignee: "droite", rendu: (m) => nombre(m.clients) },
-          ]}
-        />
-      </Carte>
-      <Carte titre="Bons de livraison" precision="Du plus récent au plus ancien — la plaque et le chauffeur sont ceux que Sage X3 écrit sur le bon" sansMarge>
-        <TableauSimple<LivraisonFiche>
-          reglages="fiche-vehicule.livraisons"
-          cle={(b) => b.numero}
-          lignes={bons}
-          fixe
-          numero={(b) => b.numero}
-          cible={cible}
-          colonnes={[
-            { cle: "numero", libelle: "Bon", largeur: "150px", rendu: (b) => <span className="code whitespace-nowrap">{b.numero}</span> },
-            { cle: "date", libelle: "Date", largeur: "110px", rendu: (b) => <span className="code whitespace-nowrap">{date(b.date)}</span> },
-            { cle: "site", libelle: "Site", largeur: "130px", rendu: (b) => <span className="block truncate">{b.site}</span> },
-            { cle: "client", libelle: "Client", rendu: (b) => <span className="block truncate font-medium">{b.client ?? "—"}</span> },
-            { cle: "produits", libelle: "Produits", parDefaut: false, rendu: (b) => <span className="block truncate text-texte-2">{b.produits ?? "—"}</span> },
-            { cle: "chauffeur", libelle: "Chauffeur", largeur: "170px", rendu: (b) => <span className="block truncate">{b.chauffeur ?? "—"}</span> },
-            { cle: "quantites", libelle: "Quantités", alignee: "droite", largeur: "180px", parDefaut: false, rendu: (b) => <span className="whitespace-nowrap text-texte-2">{quantitesLisibles(b.quantites, (n) => nombre(n))}</span> },
-            { cle: "poids", libelle: "Poids", alignee: "droite", largeur: "100px", rendu: (b) => (b.poidsKg === null ? tiret : tonnes(b.poidsKg)) },
-            { cle: "source", libelle: "Source", largeur: "150px", parDefaut: false, rendu: (b) => <span className="text-texte-2">{b.source}</span> },
-          ]}
-        />
-      </Carte>
-    </div>
+    <Carte
+      titre="Livraisons"
+      precision={r ? `${nombre(r.bons)} bons du ${date(r.premier)} au ${date(r.dernier)} · ${tonnes(r.poidsKg)} · ${nombre(r.clients)} clients — le résumé par mois est dans les Rapports` : "Les bons de Sage X3 qui portent la plaque de ce véhicule, et les livraisons saisies ici"}
+      action={
+        <button type="button" onClick={ajouter} className="bouton-secondaire h-9" title="Le client, le poids, les heures et les observations au besoin">
+          <Plus className="size-4" strokeWidth={2} />
+          Ajouter une livraison
+        </button>
+      }
+      sansMarge
+    >
+      <TableauSimple<LivraisonFiche>
+        reglages="fiche-vehicule.livraisons.2"
+        cle={(b) => b.numero}
+        lignes={bons}
+        fixe
+        vide="Aucune livraison sur ce véhicule — « Ajouter une livraison » en saisit une."
+        numero={(b) => b.numero}
+        cible={cible}
+        surModifier={(b) => (b.saisie ? modifier(b) : undefined)}
+        colonnes={[
+          { cle: "numero", libelle: "Bon", largeur: "150px", rendu: (b) => <span className="code whitespace-nowrap">{b.numero}</span> },
+          { cle: "date", libelle: "Date", largeur: "110px", rendu: (b) => <span className="code whitespace-nowrap">{date(b.date)}</span> },
+          { cle: "site", libelle: "Site", largeur: "130px", rendu: (b) => <span className="block truncate">{b.site}</span> },
+          { cle: "client", libelle: "Client", rendu: (b) => <span className="block truncate font-medium">{b.client ?? "—"}</span> },
+          { cle: "heures", libelle: "Heures", largeur: "130px", rendu: (b) => (b.heureDebut || b.heureFin ? <span className="code whitespace-nowrap">{b.heureDebut ?? "—"} → {b.heureFin ?? "—"}</span> : tiret) },
+          { cle: "duree", libelle: "Durée", alignee: "droite", largeur: "90px", parDefaut: false, rendu: (b) => { const d = dureeLivraison(b); return d === null ? tiret : <span className="code">{Math.floor(d / 60)} h {String(d % 60).padStart(2, "0")}</span>; } },
+          { cle: "produits", libelle: "Produits", parDefaut: false, rendu: (b) => <span className="block truncate text-texte-2">{b.produits ?? "—"}</span> },
+          { cle: "chauffeur", libelle: "Chauffeur", largeur: "170px", rendu: (b) => <span className="block truncate">{b.chauffeur ?? "—"}</span> },
+          { cle: "observations", libelle: "Observations", largeur: "220px", rendu: (b) => (b.observations ? <span className="block truncate text-texte-2" title={b.observations}>{b.observations}</span> : tiret) },
+          { cle: "quantites", libelle: "Quantités", alignee: "droite", largeur: "180px", parDefaut: false, rendu: (b) => <span className="whitespace-nowrap text-texte-2">{quantitesLisibles(b.quantites, (n) => nombre(n))}</span> },
+          { cle: "poids", libelle: "Poids", alignee: "droite", largeur: "100px", rendu: (b) => (b.poidsKg === null ? tiret : tonnes(b.poidsKg)) },
+          { cle: "source", libelle: "Source", largeur: "130px", parDefaut: false, rendu: (b) => <span className="text-texte-2">{b.saisie ? "Saisie" : b.source}</span> },
+        ]}
+      />
+    </Carte>
   );
 }
