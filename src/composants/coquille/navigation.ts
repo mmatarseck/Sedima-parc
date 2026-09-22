@@ -76,7 +76,7 @@ export const NAVIGATION: GroupeNavigation[] = [
          regarde en passant. Elle vit dans la barre du haut, à côté de la
          cloche, avec le nombre de celles qui attendent (`LienDemandes`). La
          route `/demandes` reste, et le téléphone garde la sienne. */
-      { module: "couts", href: "/caisse", libelle: "Caisse & achats", icone: Wallet, livre: true },
+      { module: "couts", href: "/caisse", libelle: "Caisse", icone: Wallet, livre: true },
       { module: "transporteurs", href: "/prestataires", libelle: "Prestataires", icone: Store, livre: true },
     ],
   },

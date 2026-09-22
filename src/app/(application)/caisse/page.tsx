@@ -7,7 +7,7 @@ import { caisseServeur } from "@/donnees/caisse";
 import { parametresServeur } from "@/lib/parametres-serveur";
 import { prestataires } from "@/donnees/referentiels";
 
-export const metadata = { title: titrePage("Caisse & achats") };
+export const metadata = { title: titrePage("Caisse") };
 
 /**
  * Caisse & achats — module F du lot 1, une seule entrée du rail.
@@ -22,7 +22,10 @@ export default async function PageCaisse({ searchParams }: { searchParams: Promi
   const [{ vue, ref }, liste, caisse, achats] = await Promise.all([searchParams, prestataires(), parametresServeur().then(caisseServeur), achatsServeur()]);
   /* Base branchée : le journal, les dépenses à régler et les demandes d'achat viennent des tables. */
   const typeCible = ref ? typeDuNumero(ref) : null;
-  const vueRetenue: VueCaisse = vue === "achats" || typeCible === "achat" ? "achats" : "journal";
+  /* Les demandes d'achat quittent l'écran (métier, 22 septembre 2026) : le service de maintenance porte le devis, la facture et le bon de commande. */
+  void vue;
+  void typeCible;
+  const vueRetenue: VueCaisse = "journal";
 
   return (
     <EcranCaisse

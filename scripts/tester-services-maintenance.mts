@@ -25,6 +25,9 @@ import { construireRapportDe } from "../src/domaine/assembler-rapports";
 import { RAPPORTS } from "../src/domaine/rapports";
 import { motsClesDe } from "../src/domaine/entretien";
 import { estSupprimable, plaqueDuResume, resumeSuppression } from "../src/domaine/suppression";
+import { optionsSystemesDe, prochainEnsemble } from "../src/domaine/categories-maintenance";
+import { CHAMPS as CHAMPS_EDITION, champsCreation } from "../src/composants/transactions/champs";
+import { aReglerDepuisLaBase } from "../src/donnees/caisse";
 import { ChampPieces } from "../src/composants/interface/ChampPieces";
 import { sourceRapportsDemo } from "../src/donnees/rapports-demo";
 import { programmesDepuisLignes } from "../src/donnees/entretien";
@@ -198,6 +201,45 @@ attendu("à un utilisateur qui n'est pas responsable du parc, pas de bouton « C
   attendu("l'atelier : colonne « Tâche de service », pas de doublon local/base, pas de cadre sans pièce", onglets.includes(`libelle: "Tâche de service"`) && onglets.includes("const interventions = sansDoublon(") && onglets.includes("c === l.cle || !l.fichier ? null : l.cle"));
 }
 
+/* -- 22 septembre 2026 : la tâche saisie dans l'ordre, et les règlements ----------------------- */
+{
+  const pris = [{ systeme: "013", ensemble: "010" }, { systeme: "013", ensemble: "017" }, { systeme: "013", ensemble: "999" }, { systeme: "017", ensemble: "001" }];
+  attendu("l'ensemble se génère : le premier code libre du système, le divers mis à part", prochainEnsemble("013", pris) === "018" && prochainEnsemble("024", pris) === "001" && prochainEnsemble(null, pris) === null);
+  const champsTache = CHAMPS_EDITION.tache;
+  const champ = (cle: string) => champsTache.find((c) => c.cle === cle)!;
+  attendu("la tâche d'abord, puis la catégorie, puis un système de cette catégorie ; l'ensemble se lit", champsTache.map((c) => c.cle).slice(0, 4).join() === "libelle,categorie,systeme,ensemble" && !champ("categorie").visibleSi!({ libelle: "" }) && champ("categorie").visibleSi!({ libelle: "Graissage" }) && !champ("systeme").visibleSi!({ categorie: "" }) && champ("ensemble").type === "lecture");
+  const systemesChassis = champ("systeme").suggestionsDe!({ categorie: "1" }).map((o) => o.valeur);
+  attendu(`les systèmes proposés sont ceux de la catégorie choisie (${systemesChassis.join(", ")})`, systemesChassis.includes("013") && systemesChassis.includes("017") && !systemesChassis.includes("045") && optionsSystemesDe("4").every((o) => o.valeur.startsWith("04")));
+
+  /* La sortie de caisse : ce qu'elle règle, puis l'élément ouvert de ce genre. */
+  const depensesOuvertes = [
+    { valeur: "DEP-1", libelle: "Dépense", objet: "depense" as const },
+    { valeur: "PLE-1", libelle: "Plein", objet: "carburant" as const },
+    { valeur: "OTR-1", libelle: "Service", objet: "service" as const },
+  ];
+  const sortie = champsCreation("caisse", { pour: "caisse", sens: "sortie", depenses: depensesOuvertes });
+  const regle = sortie.find((c) => c.cle === "depenseNumero")!;
+  attendu("une sortie de caisse dit ce qu'elle règle, puis choisit parmi ce qui est ouvert de ce genre", sortie[0]!.cle === "objetReglement" && regle.suggestionsDe!({ objetReglement: "carburant" }).map((o) => o.valeur).join() === "PLE-1" && regle.suggestionsDe!({ objetReglement: "service" }).map((o) => o.valeur).join() === "OTR-1" && !regle.visibleSi!({}));
+  const base = { date: "2026-09-20", libelle: "x", montant: 1, poste: "divers" as const, beneficiaire: null, justificatif: true, vehiculeId: "", immatriculation: "", immatriculationAffichee: "—", businessUnit: null, site: null };
+  const ouverts = aReglerDepuisLaBase(
+    [
+      { ...base, numero: "DEP-1", reference: null },
+      { ...base, numero: "DEP-2", reference: "OTR-2026-00001 · FAC-260920-ABCD" },
+      { ...base, numero: "OTR-2026-00001", objet: "service", reference: null },
+      { ...base, numero: "PLE-1", objet: "carburant", reference: null },
+    ],
+    [{ numero: "CAI-1", date: "2026-09-21", sens: "sortie", libelle: "x", montant: 1, beneficiaire: null, piece: null, justificatif: true, depense_numero: "PLE-1", enregistre_par: null }],
+  ).map((d) => d.numero);
+  attendu(`reste à régler : la dépense, le service ; pas la dépense écrite par le service, ni le plein déjà cité (${ouverts.join(", ")})`, [...ouverts].sort().join() === "DEP-1,OTR-2026-00001");
+  const depenseChamps = champsCreation("depense", { pour: "vehicule" });
+  const bc = depenseChamps.find((c) => c.cle === "numeroBc")!;
+  attendu("une dépense réglée par bon de commande demande son numéro et sa pièce", Boolean(bc.obligatoire) && bc.visibleSi!({ origine: "bon-de-commande" }) && !bc.visibleSi!({ origine: "caisse" }) && depenseChamps.some((c) => c.cle === "fichierBc"));
+
+  /* La clôture d'un service réglé par bon de commande : ses dépenses le citent. */
+  const parBc = ecrituresDeCloture({ ...service, modeReglement: "bon-de-commande", numeroBc: "CMD2-26090123", piecesReglement: ["pieces/reglements/bc.pdf"] }, "2026-09-21", "FAC-260921-TEST", "uuid").filter((e) => e.type === "depense");
+  attendu("un service réglé par BC écrit des dépenses « bon de commande », son numéro et sa pièce, le BC cité en référence", parBc.filter((e) => e.valeurs.origine !== "stock").every((e) => e.valeurs.origine === "bon-de-commande" && e.valeurs.numeroBc === "CMD2-26090123" && e.valeurs.fichierBc === "pieces/reglements/bc.pdf" && String(e.valeurs.reference).includes("BC CMD2-26090123")));
+}
+
 const bac = process.env.PGLITE_DIR ?? "";
 if (bac) {
   const require = createRequire(join(bac, "package.json"));
@@ -244,6 +286,14 @@ if (bac) {
   attendu(`le correctif ôte les opérations en double du jeu de départ, rejouable (${doublees} → ${apres})`, doublees === 2 * prog.o && apres === prog.o);
   const colonne = (await pg.query(`select count(*)::int as n from information_schema.columns where table_name = 'ordre_travail' and column_name = 'main_oeuvre_globale'`)).rows[0] as { n: number };
   attendu("0062 : le service porte sa main-d'œuvre globale", colonne.n === 1);
+  const colonnes63 = (await pg.query(`select count(*)::int as n from information_schema.columns where (table_name, column_name) in (('depense', 'numero_bc'), ('depense', 'fichier_bc'), ('ordre_travail', 'mode_reglement'), ('ordre_travail', 'numero_bc'), ('ordre_travail', 'pieces_reglement'), ('mouvement_caisse', 'objet_reglement'))`)).rows[0] as { n: number };
+  let refusObjet = "";
+  try {
+    await pg.exec(`insert into mouvement_caisse (numero, date, sens, libelle, montant, objet_reglement) values ('CAI-2026-99999', '2026-09-22', 'sortie', 'Banc', 1000, 'autre-chose')`);
+  } catch (e) {
+    refusObjet = String((e as Error).message);
+  }
+  attendu(`0063 : le règlement des dépenses, des services et des sorties de caisse (${colonnes63.n} colonnes ; un objet inconnu refusé)`, colonnes63.n === 6 && refusObjet.includes("objet_reglement"));
 
   await pg.exec(`insert into profil (utilisateur_id, nom, role, actif) values ('${MOI}', 'Banc', 'responsable-maintenance', true) on conflict (utilisateur_id) do update set role = excluded.role;
     insert into vehicule (id, immatriculation, marque, appellation, categorie) values ('00000000-0000-0000-0000-0000000000aa', 'AA565GA', 'TATA', 'LPT1618', 'camion');

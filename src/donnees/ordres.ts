@@ -76,6 +76,9 @@ interface ColonnesService {
   remise_mode: ModeRemise | null;
   remise_valeur: number | string | null;
   main_oeuvre_globale?: number | string | null;
+  mode_reglement?: string | null;
+  numero_bc?: string | null;
+  pieces_reglement?: string[] | null;
   tva_taux: number | string | null;
   brs_taux: number | string | null;
   pieces: string[] | null;
@@ -94,6 +97,9 @@ export function serviceDepuisColonnes(o: LigneOrdre, c: ColonnesService | undefi
     remiseMode: c.remise_mode ?? "montant",
     remiseValeur: Number(c.remise_valeur ?? 0),
     mainOeuvreGlobale: Number(c.main_oeuvre_globale ?? 0),
+    modeReglement: (c.mode_reglement as LigneOrdre["modeReglement"]) ?? null,
+    numeroBc: c.numero_bc ?? null,
+    piecesReglement: c.pieces_reglement ?? [],
     tvaTaux: Number(c.tva_taux ?? 0),
     brsTaux: Number(c.brs_taux ?? 0),
     pieces: c.pieces ?? [],
@@ -108,10 +114,15 @@ export async function colonnesDesServices(client: Awaited<ReturnType<typeof clie
   const lecture = await requete.limit(2000).returns<ColonnesService[]>();
   /* La main-d'œuvre globale (0062), lue à part : sans la migration, elle manque seule. */
   let globale = client.from("ordre_travail").select("numero, main_oeuvre_globale");
+  /* Le règlement (0063), lu à part de même. */
+  let reglement = client.from("ordre_travail").select("numero, mode_reglement, numero_bc, pieces_reglement");
+  if (filtre) reglement = reglement.eq("vehicule_id", filtre.vehiculeId);
+  const lectureReglement = await reglement.limit(2000).returns<{ numero: string; mode_reglement: string | null; numero_bc: string | null; pieces_reglement: string[] | null }[]>();
+  const reglementParNumero = new Map((lectureReglement.error ? [] : (lectureReglement.data ?? [])).map((g) => [g.numero, g]));
   if (filtre) globale = globale.eq("vehicule_id", filtre.vehiculeId);
   const lectureGlobale = await globale.limit(2000).returns<{ numero: string; main_oeuvre_globale: number | string | null }[]>();
   const parNumero = new Map((lectureGlobale.error ? [] : (lectureGlobale.data ?? [])).map((g) => [g.numero, g.main_oeuvre_globale]));
-  return new Map((lecture.error ? [] : (lecture.data ?? [])).map((c) => [c.numero, { ...c, main_oeuvre_globale: parNumero.get(c.numero) ?? 0 }]));
+  return new Map((lecture.error ? [] : (lecture.data ?? [])).map((c) => [c.numero, { ...c, main_oeuvre_globale: parNumero.get(c.numero) ?? 0, mode_reglement: reglementParNumero.get(c.numero)?.mode_reglement ?? null, numero_bc: reglementParNumero.get(c.numero)?.numero_bc ?? null, pieces_reglement: reglementParNumero.get(c.numero)?.pieces_reglement ?? [] }]));
 }
 
 async function ordresServeurBrut(): Promise<LigneOrdre[]> {

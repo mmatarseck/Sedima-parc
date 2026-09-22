@@ -120,7 +120,7 @@ export function EcranCaisse(props: Props) {
 
 function Interieur({ mouvements, depensesARegler, achats, prestataires, soldeInitial, aujourdhui, vueInitiale, cible }: Props) {
   const { demander, creer, surcharger, version, actualiser } = useEdition();
-  const [vue, setVue] = useState<VueCaisse>(vueInitiale);
+  const [vue] = useState<VueCaisse>(vueInitiale);
   const [periode, setPeriode] = useState<Periode>("365");
   const [bu, setBu] = useState<BusinessUnit | "toutes">("toutes");
   const [voletRegler, setVoletRegler] = useState(false);
@@ -205,7 +205,7 @@ function Interieur({ mouvements, depensesARegler, achats, prestataires, soldeIni
   const engageNonRegle = dansX3.reduce((s, a) => s + coutDe(a).montant, 0);
 
   /* ---- Gestes ---- */
-  const optionsDepenses = useMemo(() => resteARegler.map((d) => ({ valeur: d.numero, libelle: libelleDepense(d) })), [resteARegler]);
+  const optionsDepenses = useMemo(() => resteARegler.map((d) => ({ valeur: d.numero, libelle: libelleDepense(d), objet: d.objet ?? ("depense" as const) })), [resteARegler]);
 
   function approvisionner() {
     creer({
@@ -232,9 +232,9 @@ function Interieur({ mouvements, depensesARegler, achats, prestataires, soldeIni
       titre: d ? `Régler ${d.numero} · ${d.immatriculationAffichee}` : "Sortie de caisse",
       champs: champsCreation("caisse", { pour: "caisse", sens: "sortie", depenses: optionsDepenses }),
       valeurs: d
-        ? { date: aujourdhui, depenseNumero: d.numero, libelle: d.libelle, montant: d.montant, beneficiaire: d.beneficiaire, piece: d.reference, justificatif: d.justificatif }
+        ? { date: aujourdhui, objetReglement: d.objet ?? "depense", depenseNumero: d.numero, libelle: d.libelle, montant: d.montant, beneficiaire: d.beneficiaire, piece: d.reference, justificatif: d.justificatif }
         : { date: aujourdhui, justificatif: true },
-      entraine: (cle, valeur) => (cle === "depenseNumero" ? reprendreDepense(String(valeur)) : null),
+      entraine: (cle, valeur) => (cle === "depenseNumero" ? reprendreDepense(String(valeur)) : cle === "objetReglement" ? { depenseNumero: "", libelle: "", montant: "", beneficiaire: "", piece: "" } : null),
     });
   }
 
@@ -454,7 +454,7 @@ function Interieur({ mouvements, depensesARegler, achats, prestataires, soldeIni
   return (
     <div className="flex flex-col gap-5 px-8 py-7 lg:h-full">
       <TitreEcran
-        titre="Caisse & achats"
+        titre="Caisse"
         sousTitre={
           vue === "journal"
             ? `Solde ${montant(solde)} · ${mouvementsVisibles.length} mouvement${mouvementsVisibles.length > 1 ? "s" : ""} · ${sansJustificatif} sans justificatif · au ${date(aujourdhui)}`
@@ -462,15 +462,6 @@ function Interieur({ mouvements, depensesARegler, achats, prestataires, soldeIni
         }
         actions={
           <>
-            <Segments
-              valeur={vue}
-              options={[
-                { cle: "journal" as VueCaisse, libelle: "Journal de caisse" },
-                { cle: "achats" as VueCaisse, libelle: "Demandes d'achat" },
-              ]}
-              onChange={setVue}
-              etiquette="Vue"
-            />
             <Segments valeur={periode} options={PERIODES} onChange={setPeriode} etiquette="Période" />
             <Segments
               valeur={bu}
@@ -507,8 +498,15 @@ function Interieur({ mouvements, depensesARegler, achats, prestataires, soldeIni
               <Wallet className="size-4" strokeWidth={1.9} />
             </span>
             <span className="min-w-0 flex-1 text-[13px] text-texte">
-              <span className="font-semibold">{resteARegler.length}</span> dépense{resteARegler.length > 1 ? "s" : ""} en attente de règlement — <span className="code font-medium">{montant(montantARegler)}</span>
-              <span className="meta ml-2">une sortie de caisse cite toujours la dépense qu&apos;elle règle</span>
+              <span className="font-semibold">{resteARegler.length}</span> à régler en caisse — <span className="code font-medium">{montant(montantARegler)}</span>
+              <span className="meta ml-2">
+                {[["depense", "dépenses"], ["carburant", "pleins"], ["service", "services"]]
+                  .map(([o, l]) => [resteARegler.filter((d) => (d.objet ?? "depense") === o).length, l] as const)
+                  .filter(([n]) => n > 0)
+                  .map(([n, l]) => `${n} ${l}`)
+                  .join(" · ")}{" "}
+                — une sortie de caisse cite toujours ce qu&apos;elle règle
+              </span>
             </span>
             <ChevronDown className={`size-4 shrink-0 text-attenue transition-transform ${voletRegler ? "rotate-180" : ""}`} strokeWidth={1.8} />
           </button>
@@ -522,6 +520,7 @@ function Interieur({ mouvements, depensesARegler, achats, prestataires, soldeIni
                   <Link href={`/flotte/${d.immatriculation}`} className="code text-[12.5px] font-medium text-accent-fonce hover:underline">
                     {d.immatriculationAffichee}
                   </Link>
+                  <span className="meta shrink-0">{d.objet === "carburant" ? "Carburant" : d.objet === "service" ? "Service" : "Dépense"}</span>
                   <span className="min-w-0 flex-1 truncate text-[13px] text-texte">{d.libelle}</span>
                   <span className="code text-[13px] font-medium text-texte">{montant(d.montant)}</span>
                   <button type="button" onClick={() => sortie(d)} className="bouton-principal h-7 px-2.5 text-[12px]">

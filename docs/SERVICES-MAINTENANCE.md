@@ -21,6 +21,7 @@ supabase/migrations/0059_depense_origine_stock.sql   -- une dépense peut venir 
 supabase/migrations/0060_services_maintenance.sql    -- catalogue, signalements, service, clôture, droits, prix de référence
 supabase/migrations/0061_intervention_tache.sql      -- les tâches de chaque intervention, les utilisations comptées sur le parc
 supabase/migrations/0062_programmes_entretien.sql    -- main-d'œuvre globale d'un service, programmes d'entretien en base et éditables
+supabase/migrations/0063_reglements.sql              -- comment une dépense, un plein ou un service se règle : caisse, BC, facture
 supabase/taches-service.sql                          -- le catalogue tiré de Fleetio, revu : 294 tâches
 supabase/interventions-taches.sql                    -- les 581 interventions du parc affectées au catalogue
 ```
@@ -367,6 +368,39 @@ au clic d'une pièce que la liste se replie et que la pièce s'affiche à droite
   d'entretien… » propose les opérations du programme du véhicule, ou tout le
   programme. Chacune devient une ligne, sur sa tâche du catalogue, et le
   service passe préventif.
+
+## 22 septembre 2026 — tâches saisies dans l'ordre, règlements rattachés
+
+**Nouvelle tâche de service** (Paramètres › Catalogue, et « Modifier ») : la
+tâche d'abord ; la **catégorie** s'ouvre ensuite ; puis le **système**, dont la
+liste ne montre que ceux de la catégorie choisie. L'**ensemble** se génère —
+le premier code libre du système après le plus haut pris, « 999 » mis à part —
+et se lit sans se saisir. Une tâche créée depuis un service reçoit le sien de
+même.
+
+**Caisse** : les demandes d'achat quittent l'écran, qui s'appelle désormais
+« Caisse ». Le service de maintenance porte le devis, la facture et le bon de
+commande. Les demandes existantes restent en base.
+
+**La règle des règlements** (0063), en trois lignes :
+
+1. Une dépense et un service disent **comment ils se règlent** : *caisse parc*
+   (une sortie de caisse le réglera), *bon de commande* (son numéro, obligatoire,
+   et sa pièce), ou *facture* (virement, hors caisse).
+2. Une **sortie de caisse** dit d'abord **ce qu'elle règle** — un plein, un
+   service ou une autre dépense —, puis choisit l'élément ouvert de ce genre ;
+   libellé, montant et bénéficiaire se remplissent.
+3. Ce qui se règle par la caisse reste **à régler** tant qu'aucune sortie ne le
+   cite : les dépenses « caisse », les pleins pris en station (90 derniers
+   jours ; la cuve interne ne se paie pas en caisse), les services « caisse » —
+   pour leur net à payer, BRS retenue.
+
+Dans le **service** : « Devis ou facture du fournisseur » (et les photos), puis
+**« Réglé par »** — caisse, bon de commande (n° du BC) ou facture — et la pièce
+du règlement : le BC ou la pièce de caisse. À la clôture, les dépenses du
+service prennent ce règlement pour origine ; réglé par BC, elles portent son
+numéro et sa pièce, et la référence le cite. Réglé par la caisse, c'est le
+**service** que la sortie cite, pas chacune de ses dépenses.
 
 ## Ce qui reste
 

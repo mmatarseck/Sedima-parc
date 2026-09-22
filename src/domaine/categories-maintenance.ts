@@ -87,6 +87,31 @@ export function libelleClassement(t: { categorie?: string | null; systeme?: stri
 }
 
 /** Les systèmes, rangés par catégorie : les listes de choix des formulaires. */
+/** Les catégories, pour une liste de choix : « 1 — Châssis ». */
+export function optionsCategories(): { valeur: string; libelle: string }[] {
+  return Object.entries(CATEGORIES_MAINTENANCE).map(([valeur, libelle]) => ({ valeur, libelle: `${valeur} — ${libelle}` }));
+}
+
+/** Les systèmes d'une catégorie seulement : la liste qui s'ouvre une fois la catégorie choisie. */
+export function optionsSystemesDe(categorie: string | null | undefined): { valeur: string; libelle: string }[] {
+  return SYSTEMES_MAINTENANCE.filter((s) => s.categorie === categorie)
+    .sort((a, b) => a.code.localeCompare(b.code))
+    .map((s) => ({ valeur: s.code, libelle: `${s.code} — ${s.libelle}` }));
+}
+
+/**
+ * L'ensemble d'une nouvelle tâche, généré (métier, 22 septembre 2026 :
+ * « l'ensemble, code à trois chiffres, doit être généré et non modifiable ») :
+ * le premier code libre du système après le plus haut pris, « 999 » — le
+ * divers — mis à part.
+ */
+export function prochainEnsemble(systeme: string | null | undefined, pris: { systeme: string | null; ensemble?: string | null }[]): string | null {
+  if (!systeme) return null;
+  const codes = pris.filter((t) => t.systeme === systeme && t.ensemble && /^\d{3}$/.test(t.ensemble) && t.ensemble !== "999").map((t) => Number(t.ensemble));
+  const suivant = (codes.length ? Math.max(...codes) : 0) + 1;
+  return suivant >= 999 ? "999" : String(suivant).padStart(3, "0");
+}
+
 export function optionsSystemes(): { valeur: string; libelle: string }[] {
   return [...SYSTEMES_MAINTENANCE]
     .sort((a, b) => a.categorie.localeCompare(b.categorie) || a.libelle.localeCompare(b.libelle, "fr"))

@@ -232,6 +232,10 @@ function colonnesDuService(v: Record<string, unknown>): Record<string, unknown> 
   if (v.brsTaux !== undefined) c.brs_taux = nombre(v.brsTaux) ?? 0;
   if (v.pieces !== undefined) c.pieces = tableauDe(v.pieces);
   if (v.signalements !== undefined) c.signalements = tableauDe(v.signalements);
+  /* Le règlement (0063) : écrit seulement quand il est dit, pour qu'une base sans 0063 prenne encore les services. */
+  if (texte(v.modeReglement)) c.mode_reglement = texte(v.modeReglement);
+  if (texte(v.numeroBc)) c.numero_bc = texte(v.numeroBc);
+  if (tableauDe(v.piecesReglement)?.length) c.pieces_reglement = tableauDe(v.piecesReglement);
   return c;
 }
 
@@ -378,7 +382,7 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       const libelle = texte(v.libelle);
       if (montant === null || !libelle) return { refus: "dépense sans montant ou sans libellé" };
       if (!r.vehiculeId && !texte(v.beneficiaire)) return { refus: "dépense sans véhicule ni bénéficiaire" };
-      return { ligne: { numero, vehicule_id: r.vehiculeId, chauffeur_id: r.chauffeurId, prestataire_id: r.prestataireId, date: texte(v.date), poste: texte(v.poste) ?? "divers", libelle, montant: Math.round(montant), beneficiaire: texte(v.beneficiaire), reference: texte(v.reference), origine: texte(v.origine) ?? "caisse", justificatif: booleen(v.justificatif) || Boolean(texte(v.photo)), km: nombre(v.km), photo: texte(v.photo) } };
+      return { ligne: { numero, vehicule_id: r.vehiculeId, chauffeur_id: r.chauffeurId, prestataire_id: r.prestataireId, date: texte(v.date), poste: texte(v.poste) ?? "divers", libelle, montant: Math.round(montant), beneficiaire: texte(v.beneficiaire), reference: texte(v.reference), origine: texte(v.origine) ?? "caisse", justificatif: booleen(v.justificatif) || Boolean(texte(v.photo)), km: nombre(v.km), photo: texte(v.photo), ...(texte(v.numeroBc) ? { numero_bc: texte(v.numeroBc), fichier_bc: texte(v.fichierBc) } : {}) } };
     }
     case "document": {
       const typeDoc = texte(v.type);
@@ -477,7 +481,7 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       const depenseNumero = texte(v.depenseNumero);
       if (!montant || montant <= 0) return { refus: "mouvement de caisse sans montant" };
       if (!texte(v.libelle)) return { refus: "mouvement de caisse sans libellé" };
-      return { ligne: { numero, date: texte(v.date), sens: depenseNumero ? "sortie" : (texte(v.sens) ?? "entree"), libelle: texte(v.libelle), montant: Math.round(montant), beneficiaire: texte(v.beneficiaire), piece: texte(v.piece), justificatif: booleen(v.justificatif), depense_numero: depenseNumero, enregistre_par: texte(v.enregistrePar) } };
+      return { ligne: { numero, date: texte(v.date), sens: depenseNumero ? "sortie" : (texte(v.sens) ?? "entree"), libelle: texte(v.libelle), montant: Math.round(montant), beneficiaire: texte(v.beneficiaire), piece: texte(v.piece), justificatif: booleen(v.justificatif), depense_numero: depenseNumero, enregistre_par: texte(v.enregistrePar), ...(texte(v.objetReglement) ? { objet_reglement: texte(v.objetReglement) } : {}) } };
     }
     case "cuve": {
       /* Une livraison porte un libellé ; un relevé de jauge n'en a pas, il dit ce que la cuve contient. */
@@ -929,7 +933,7 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
 const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   releve: { date: "date", valeur: "km" },
   plein: { date: "date", litres: "litres", prixLitre: "prix_litre", montant: "montant", reference: "reference", km: "km", source: "source", photo: "photo" },
-  depense: { date: "date", poste: "poste", libelle: "libelle", montant: "montant", beneficiaire: "beneficiaire", reference: "reference", km: "km", justificatif: "justificatif", origine: "origine", photo: "photo" },
+  depense: { date: "date", poste: "poste", libelle: "libelle", montant: "montant", beneficiaire: "beneficiaire", reference: "reference", km: "km", justificatif: "justificatif", origine: "origine", photo: "photo", numeroBc: "numero_bc", fichierBc: "fichier_bc" },
   document: { numeroPiece: "numero_piece", emetteur: "emetteur", dateEffet: "date_effet", echeance: "echeance", montant: "montant", fichier: "fichier" },
   incident: { dateHeure: "date_heure", lieu: "lieu", mission: "mission", kilometrage: "kilometrage", responsabilite: "responsabilite", statut: "statut", description: "description" },
   affectation: { debut: "debut", fin: "fin", motif: "motif" },
@@ -992,7 +996,7 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   intervention: { date: "date", type: "type", objet: "objet", km: "km", immobilisationJours: "immobilisation_jours", montant: "montant", reference: "reference", fichier: "fichier" },
   indisponibilite: { motif: "motif", debut: "debut", fin: "fin", commentaire: "commentaire" },
   sanction: { date: "date", type: "type", jours: "jours", motif: "motif" },
-  caisse: { date: "date", libelle: "libelle", montant: "montant", beneficiaire: "beneficiaire", piece: "piece", justificatif: "justificatif" },
+  caisse: { date: "date", libelle: "libelle", montant: "montant", beneficiaire: "beneficiaire", piece: "piece", justificatif: "justificatif", objetReglement: "objet_reglement", depenseNumero: "depense_numero" },
   cuve: { date: "date", libelle: "libelle", litres: "litres", prixLitre: "prix_litre", montant: "montant", fournisseur: "fournisseur", piece: "piece", commentaire: "commentaire" },
   achat: { date: "date", objet: "objet", poste: "poste", montantEstime: "montant_estime", fournisseur: "fournisseur", urgence: "urgence", etape: "etape", visaPar: "visa_par", visaLe: "visa_le", validePar: "valide_par", valideeLe: "validee_le", numeroDemandeX3: "numero_demande_x3", numeroBonCommande: "numero_bon_commande", montantEngage: "montant_engage", dateLivraison: "date_livraison", dateFacture: "date_facture", montantReel: "montant_reel", dateReglement: "date_reglement", depenseNumero: "depense_numero", commentaireDecision: "commentaire_decision", fichier: "fichier" },
   visite: { type: "type", centre: "centre", dateRendezVous: "date_rendez_vous", heure: "heure", datePassage: "date_passage", statut: "statut", numeroPv: "numero_pv", dateLimiteContreVisite: "date_limite_contre_visite", commentaire: "commentaire", fichier: "fichier" },
@@ -1000,7 +1004,7 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   ordre: {
     datePrevue: "date_prevue", objet: "objet", garage: "garage", immobilisationPrevueJours: "immobilisation_prevue_jours", montantEstime: "montant_estime", statut: "statut", dateDebut: "date_debut", dateCloture: "date_cloture", interventionNumero: "intervention_numero", commentaire: "commentaire",
     /* Le service de maintenance (0060). */
-    priorite: "priorite", dateFin: "date_fin", kilometrage: "kilometrage", numeroFacture: "numero_facture", lignes: "lignes", remiseMode: "remise_mode", remiseValeur: "remise_valeur", mainOeuvreGlobale: "main_oeuvre_globale", tvaTaux: "tva_taux", brsTaux: "brs_taux", pieces: "pieces", signalements: "signalements",
+    priorite: "priorite", dateFin: "date_fin", kilometrage: "kilometrage", numeroFacture: "numero_facture", lignes: "lignes", remiseMode: "remise_mode", remiseValeur: "remise_valeur", mainOeuvreGlobale: "main_oeuvre_globale", modeReglement: "mode_reglement", numeroBc: "numero_bc", piecesReglement: "pieces_reglement", tvaTaux: "tva_taux", brsTaux: "brs_taux", pieces: "pieces", signalements: "signalements",
   },
   signalement: { date: "date", priorite: "priorite", systeme: "systeme", description: "description", details: "details", kilometrage: "kilometrage", pieces: "pieces", statut: "statut" },
   tache: { libelle: "libelle", description: "description", systeme: "systeme", ensemble: "ensemble", typeDefaut: "type_defaut", actif: "actif" },
@@ -1080,7 +1084,7 @@ const NUMERIQUES = new Set([
 const DECIMALES = new Set(["litres", "tonnage", "tonnage_pese", "tonnage_livre", "carburant_litres", "tonnes_transportees", "quantite", "remise_valeur", "tva_taux", "brs_taux"]);
 /* Les colonnes JSON et les tableaux (0058, 0060) : ni un texte, ni un nombre. */
 const JSONS = new Set(["lignes"]);
-const TABLEAUX = new Set(["pieces", "signalements"]);
+const TABLEAUX = new Set(["pieces", "signalements", "pieces_reglement"]);
 /* Les colonnes que la base veut en booléen. Une case « oui/non » arrive de la
    modale en texte : sans cette liste, « non » entrerait tel quel et Postgres le
    lirait comme vrai — une fiche qu'on croit désactivée resterait proposée. */

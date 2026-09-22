@@ -10,9 +10,9 @@ import { ChampSaisie } from "@/composants/transactions/ChampSaisie";
 import { CHAMPS } from "@/composants/transactions/champs";
 import { optionsPrestataires, optionsVehicules } from "@/composants/transactions/options";
 import type { ChampEdition } from "@/domaine/cloture";
-import { optionsSystemes } from "@/domaine/categories-maintenance";
-import type { LigneOrdre } from "@/domaine/maintenance";
-import { STATUT_ORDRE } from "@/domaine/maintenance";
+import { optionsSystemes, prochainEnsemble } from "@/domaine/categories-maintenance";
+import type { LigneOrdre, ModeReglement } from "@/domaine/maintenance";
+import { MODE_REGLEMENT, STATUT_ORDRE } from "@/domaine/maintenance";
 import { TYPES_GARAGE } from "@/domaine/prestataires";
 import { PRIORITE_SERVICE, TAUX_BRS, TAUX_TVA, calculerService, joursImmobilisation, peutCloturerService, type LigneService, type ModeRemise, type PrioriteService } from "@/domaine/service";
 import { ETAT_SIGNALEMENT, PRIORITE_SIGNALEMENT, etatSignalement, trierSignalements, type LigneSignalement } from "@/domaine/signalements";
@@ -126,6 +126,10 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
   const [tvaTaux, setTvaTaux] = useState<number>(existant ? (existant.tvaTaux ?? 0) : TAUX_TVA);
   const [brsTaux, setBrsTaux] = useState<number>(existant?.brsTaux ?? 0);
   const [pieces, setPieces] = useState<string[]>(existant?.pieces ?? []);
+  /* Le règlement (0063) : comment le service se paie, et la pièce qui le prouve — le BC, ou la pièce de caisse. */
+  const [modeReglement, setModeReglement] = useState<ModeReglement | null>(existant?.modeReglement ?? null);
+  const [numeroBc, setNumeroBc] = useState<string>(existant?.numeroBc ?? "");
+  const [piecesReglement, setPiecesReglement] = useState<string[]>(existant?.piecesReglement ?? []);
   const [inclus, setInclus] = useState<string[]>(existant?.signalements ?? demande.propose?.signalements ?? []);
   const [stock, setStock] = useState<PieceDisponible[] | null>(null);
   const [programmes, setProgrammes] = useState<ProgrammeEntretien[] | null>(null);
@@ -233,6 +237,9 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
       tvaTaux,
       brsTaux,
       pieces,
+      modeReglement,
+      numeroBc: modeReglement === "bon-de-commande" ? numeroBc.trim() || null : null,
+      piecesReglement,
       signalements: inclus,
       origineNumero: existant?.origineNumero ?? demande.propose?.origineNumero ?? (inclus[0] ?? null),
     };
@@ -244,7 +251,7 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
       if (l.tacheNumero || !l.libelle.trim()) return l;
       const existante = tacheParLibelle(lireReferentiels().taches, l.libelle);
       if (existante) return { ...l, tacheNumero: existante.numero, systeme: existante.systeme };
-      const r = enregistrerCreation({ sujet: "catalogue", type: "tache", champs: CHAMPS.tache, valeurs: { libelle: l.libelle.trim(), systeme: l.systeme ?? "999", typeDefaut: entete.type, actif: true }, motif: "Créée depuis un service de maintenance" });
+      const r = enregistrerCreation({ sujet: "catalogue", type: "tache", champs: CHAMPS.tache, valeurs: { libelle: l.libelle.trim(), systeme: l.systeme ?? "999", ensemble: prochainEnsemble(l.systeme ?? "999", lireReferentiels().taches) ?? "999", typeDefaut: entete.type, actif: true }, motif: "Créée depuis un service de maintenance" });
       return r.issue === "creee" ? { ...l, tacheNumero: r.creation.numero } : l;
     });
   }
@@ -256,6 +263,7 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
     if (manquants.length) return setErreur(`À renseigner : ${manquants.map((c) => c.libelle.toLowerCase()).join(", ")}.`), null;
     const lignesSaisies = lignes.filter((l) => l.libelle.trim() || l.precision?.trim() || l.mainOeuvre || l.piecesAchetees || l.piecesStock.length);
     if (lignesSaisies.some((l) => !l.libelle.trim())) return setErreur("Chaque ligne nomme sa tâche."), null;
+    if (modeReglement === "bon-de-commande" && !numeroBc.trim()) return setErreur("Réglé par bon de commande : donnez son numéro."), null;
     const lignesFinales = catalogueCompletePar(lignesSaisies);
     const valeurs = valeursDuService(lignesFinales);
     const sujet = `vehicule:${vehiculeChoisi.immatriculation}`;
@@ -523,8 +531,36 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
                     ))}
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <span className="label-champ">Photos et documents — avant et après, devis, facture</span>
+                    <span className="label-champ">Devis ou facture du fournisseur — et les photos, avant et après</span>
                     <ChampPieces valeur={pieces} onChange={setPieces} separer />
+                  </div>
+                  {/* ---- Le règlement : caisse, bon de commande ou facture (métier, 22 septembre 2026) ---- */}
+                  <div className="flex flex-col gap-2 rounded-[12px] border border-bordure p-3.5">
+                    <span className="label-champ">Réglé par</span>
+                    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Mode de règlement">
+                      {(Object.keys(MODE_REGLEMENT) as ModeReglement[]).map((m) => (
+                        <button key={m} type="button" aria-pressed={modeReglement === m} onClick={() => setModeReglement(modeReglement === m ? null : m)} title={MODE_REGLEMENT[m].precision} className={`h-8 rounded-full border px-3 text-[12.5px] ${modeReglement === m ? "border-accent bg-accent-fond font-semibold text-accent-tres-fonce" : "border-bordure text-texte-2 hover:bg-surface-2"}`}>
+                          {MODE_REGLEMENT[m].libelle}
+                        </button>
+                      ))}
+                    </div>
+                    {modeReglement === "bon-de-commande" ? (
+                      <label className="flex flex-col gap-1.5">
+                        <span className="label-champ">
+                          N° du bon de commande <span className="text-defavorable">●</span>
+                        </span>
+                        <input value={numeroBc} onChange={(e) => setNumeroBc(e.target.value)} placeholder="CMD2-26090123" className="code h-9 rounded-[10px] border border-bordure-champ bg-surface px-3 text-[13px] outline-none focus:border-accent" />
+                      </label>
+                    ) : null}
+                    {modeReglement ? (
+                      <>
+                        <span className="label-champ">{modeReglement === "bon-de-commande" ? "Le bon de commande" : modeReglement === "caisse" ? "La pièce de caisse" : "La preuve du règlement"}</span>
+                        <ChampPieces valeur={piecesReglement} onChange={setPiecesReglement} dossier="reglements" />
+                        {modeReglement === "caisse" ? <span className="meta">Le service se règle en Caisse : « Sortie de caisse » › Service › {existant?.numero ?? "ce service"}.</span> : null}
+                      </>
+                    ) : (
+                      <span className="meta">Caisse, bon de commande ou facture : le choix dit comment le service se paie, et où le suivre.</span>
+                    )}
                   </div>
                   <label className="flex flex-col gap-1.5">
                     <span className="label-champ">Commentaire</span>

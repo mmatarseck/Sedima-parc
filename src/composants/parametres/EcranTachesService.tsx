@@ -9,7 +9,7 @@ import { Echeance, Pastille } from "@/composants/interface/Pastille";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
 import { CHAMPS } from "@/composants/transactions/champs";
 import { FournisseurEdition, useEdition } from "@/composants/transactions/ContexteEdition";
-import { CATEGORIES_MAINTENANCE, systemeDe } from "@/domaine/categories-maintenance";
+import { CATEGORIES_MAINTENANCE, prochainEnsemble, systemeDe } from "@/domaine/categories-maintenance";
 import type { Creation } from "@/domaine/cloture";
 import type { TacheService } from "@/domaine/taches";
 import { lireCreations } from "@/lib/clotures-demo";
@@ -67,11 +67,17 @@ function Interieur({ taches }: { taches: TacheService[] }) {
   const toutes = useMemo(() => [...creees, ...taches.filter((t) => !creees.some((c) => c.numero === t.numero))].map((t) => surcharger(t)), [creees, taches, surcharger]);
   const aClasser = toutes.filter((t) => t.aClasser).length;
 
+  /* La catégorie choisie ouvre ses systèmes ; le système choisi donne l'ensemble, généré (métier, 22 septembre 2026). */
+  const entraine = (cle: string, valeur: string | boolean, saisie: Record<string, string | boolean>): Record<string, string | boolean> | null => {
+    if (cle === "categorie") return systemeDe(String(saisie.systeme ?? ""))?.categorie === valeur ? null : { systeme: "", ensemble: "" };
+    if (cle === "systeme") return { ensemble: prochainEnsemble(String(valeur), toutes) ?? "" };
+    return null;
+  };
   function nouvelle() {
-    creer({ type: "tache", titre: "Nouvelle tâche de service", champs: CHAMPS.tache, valeurs: { actif: true } });
+    creer({ type: "tache", titre: "Nouvelle tâche de service", champs: CHAMPS.tache, valeurs: { actif: true }, entraine });
   }
   function modifier(t: TacheService) {
-    demander({ type: "tache", numero: t.numero, titre: `Tâche · ${t.libelle}`, champs: CHAMPS.tache, valeurs: t as unknown as Record<string, unknown> });
+    demander({ type: "tache", numero: t.numero, titre: `Tâche · ${t.libelle}`, champs: CHAMPS.tache, valeurs: { ...t, categorie: t.categorie ?? systemeDe(t.systeme)?.categorie ?? "" } as unknown as Record<string, unknown>, entraine: (cle, valeur, saisie) => (cle === "systeme" && valeur === t.systeme ? { ensemble: t.ensemble ?? "" } : entraine(cle, valeur, saisie)) });
   }
 
   const colonnes = useMemo<ColonneListe<TacheService>[]>(

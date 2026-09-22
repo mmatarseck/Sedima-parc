@@ -110,6 +110,10 @@ export function ChampSaisie({
       </div>
     );
   }
+  /* Une valeur calculée, qui se lit sans se saisir : l'ensemble d'une tâche, généré. */
+  if (champ.type === "lecture") {
+    return <span className="code flex h-9 items-center rounded-[10px] bg-surface-2 px-3 text-[13px] text-texte-2">{String(v ?? "") || "—"}</span>;
+  }
   if (champ.type === "choix") {
     /*
      * On écrit pour filtrer, même là où l'on ne peut pas créer.

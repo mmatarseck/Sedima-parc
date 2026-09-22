@@ -51,6 +51,8 @@ function decaler(iso: string, jours: number): string {
 /** Une dépense de fiche véhicule, augmentée de son porteur — la matière du journal. */
 export interface DepenseCaisse {
   numero: string;
+  /** Ce que la sortie réglera (0063) : une autre dépense, un plein, un service. Une dépense par défaut. */
+  objet?: "depense" | "carburant" | "service";
   date: string;
   libelle: string;
   montant: number;

@@ -23,7 +23,7 @@ import { APTITUDE, BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_OBSERVATION, CONTR
 import type { TypeTransaction } from "@/domaine/reference";
 import type { CategorieVehicule } from "@/domaine/types";
 import { cleNom, nomMarqueConnu } from "@/domaine/parametres";
-import { optionsSystemes } from "@/domaine/categories-maintenance";
+import { optionsCategories, optionsSystemes, optionsSystemesDe } from "@/domaine/categories-maintenance";
 import { PRIORITE_SERVICE } from "@/domaine/service";
 import { ETAT_SIGNALEMENT, PRIORITE_SIGNALEMENT } from "@/domaine/signalements";
 import { lireParametres } from "@/lib/parametres-demo";
@@ -285,6 +285,8 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     /* La facture vit sur la ligne (16 septembre 2026) : on la joint, on la
        remplace et on la retire d'ici, et elle s'ouvre à côté de la liste. */
     { cle: "photo", libelle: "La facture ou le reçu", type: "photo" },
+    { cle: "numeroBc", libelle: "N° du bon de commande", type: "texte" },
+    { cle: "fichierBc", libelle: "Le bon de commande", type: "photo", dossier: "reglements" },
   ],
   plein: [
     DATE("date"),
@@ -472,6 +474,9 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "remiseMode", libelle: "Remise globale en", type: "choix", options: [{ valeur: "montant", libelle: "francs" }, { valeur: "pourcentage", libelle: "pour cent" }] },
     { cle: "remiseValeur", libelle: "Remise globale", type: "nombre" },
     { cle: "mainOeuvreGlobale", libelle: "Main-d'œuvre globale", type: "nombre", unite: "F" },
+    { cle: "modeReglement", libelle: "Réglé par", type: "choix", options: [{ valeur: "caisse", libelle: "Caisse parc" }, { valeur: "bon-de-commande", libelle: "Bon de commande" }, { valeur: "facture", libelle: "Facture (virement)" }] },
+    { cle: "numeroBc", libelle: "N° du bon de commande", type: "texte" },
+    { cle: "piecesReglement", libelle: "BC ou pièce de caisse", type: "pieces" },
     { cle: "tvaTaux", libelle: "TVA", type: "nombre", unite: "%" },
     { cle: "brsTaux", libelle: "BRS", type: "nombre", unite: "%" },
     { cle: "pieces", libelle: "Documents et photos", type: "pieces" },
@@ -495,9 +500,11 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
   ],
   /* Une tâche du catalogue de maintenance, classée comme Fleetio (0060). */
   tache: [
+    /* Dans l'ordre, et l'un après l'autre (métier, 22 septembre 2026) : la tâche, puis sa catégorie, puis un système de cette catégorie ; l'ensemble se génère. */
     { cle: "libelle", libelle: "Tâche", type: "texte", obligatoire: true },
-    { cle: "systeme", libelle: "Catégorie › système", type: "choix", options: optionsSystemes(), obligatoire: true },
-    { cle: "ensemble", libelle: "Ensemble (code à trois chiffres)", type: "texte" },
+    { cle: "categorie", libelle: "Catégorie", type: "choix", options: optionsCategories(), obligatoire: true, visibleSi: (s) => String(s.libelle ?? "").trim() !== "" },
+    { cle: "systeme", libelle: "Système", type: "choix", suggestionsDe: (s) => optionsSystemesDe(String(s.categorie ?? "")), obligatoire: true, visibleSi: (s) => String(s.categorie ?? "") !== "" },
+    { cle: "ensemble", libelle: "Ensemble (code généré)", type: "lecture", visibleSi: (s) => String(s.systeme ?? "") !== "", precision: "Le premier code libre du système — il ne se saisit pas" },
     { cle: "typeDefaut", libelle: "Nature habituelle", type: "choix", options: [{ valeur: "preventif", libelle: "Préventif" }, { valeur: "curatif", libelle: "Curatif" }] },
     { cle: "description", libelle: "Description", type: "texte-long" },
     { cle: "actif", libelle: "Proposée dans les services", type: "oui-non" },
@@ -690,8 +697,8 @@ export interface ContexteCreation {
   visites?: { valeur: string; libelle: string }[];
   /** Sens d'un mouvement de caisse : on ne saisit pas une entrée comme une sortie. */
   sens?: "entree" | "sortie";
-  /** Les dépenses caisse en attente de règlement, à rattacher au mouvement. */
-  depenses?: { valeur: string; libelle: string }[];
+  /** Ce qui attend la caisse — dépenses, pleins, services (0063) —, à rattacher au mouvement. */
+  depenses?: { valeur: string; libelle: string; objet?: "depense" | "carburant" | "service" }[];
 }
 
 /**
@@ -705,7 +712,10 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
     case "depense":
       return [
         { cle: "poste", libelle: "Poste", type: "choix", options: options(POSTE_DEPENSE).filter((o) => !["carburant", "amortissement", "salaire"].includes(o.valeur)), obligatoire: true },
-        { cle: "origine", libelle: "Origine du décaissement", type: "choix", options: [{ valeur: "caisse", libelle: "Caisse parc" }, { valeur: "bon-de-commande", libelle: "Bon de commande" }, { valeur: "facture", libelle: "Facture" }], obligatoire: true },
+        /* Comment elle se règle (métier, 22 septembre 2026) : par la caisse — une sortie la citera —, par un bon de commande — son numéro et sa pièce —, ou sur facture. */
+        { cle: "origine", libelle: "Réglée par", type: "choix", options: [{ valeur: "caisse", libelle: "Caisse parc — une sortie de caisse la réglera" }, { valeur: "bon-de-commande", libelle: "Bon de commande" }, { valeur: "facture", libelle: "Facture (virement)" }], obligatoire: true },
+        { cle: "numeroBc", libelle: "N° du bon de commande", type: "texte", obligatoire: true, visibleSi: (v) => v.origine === "bon-de-commande" },
+        { cle: "fichierBc", libelle: "Le bon de commande", type: "photo", dossier: "reglements", precision: "Le BC signé, en PDF ou en image", visibleSi: (v) => v.origine === "bon-de-commande" },
         /* À la saisie, la pièce est obligatoire : le champ de la modification cède la place au sien. */
         ...base.filter((c) => c.cle !== "photo"),
         { cle: "photo", libelle: "Photo de la pièce", type: "photo", obligatoire: true },
@@ -817,7 +827,12 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
             { cle: "piece", libelle: "Bordereau ou pièce", type: "texte" },
             { cle: "justificatif", libelle: "Justificatif fourni", type: "oui-non" },
           ]
-        : [{ cle: "depenseNumero", libelle: "Dépense réglée", type: "choix", options: contexte.depenses ?? [], obligatoire: true }, ...base];
+        : [
+            /* Ce que la sortie règle, puis l'élément ouvert de ce genre (métier, 22 septembre 2026). */
+            { cle: "objetReglement", libelle: "La sortie règle", type: "choix", options: [{ valeur: "carburant", libelle: "Un plein de carburant" }, { valeur: "service", libelle: "Un service de maintenance" }, { valeur: "depense", libelle: "Une autre dépense" }], obligatoire: true },
+            { cle: "depenseNumero", libelle: "Ce qui est réglé", type: "choix", suggestionsDe: (v) => (contexte.depenses ?? []).filter((d) => (d.objet ?? "depense") === v.objetReglement), obligatoire: true, visibleSi: (v) => Boolean(v.objetReglement) },
+            ...base,
+          ];
     case "achat":
       /* À la demande, on cite le véhicule, le poste et l'origine ; ce qui se
          relève dans X3 (bon, montants) viendra avec les décisions. Le

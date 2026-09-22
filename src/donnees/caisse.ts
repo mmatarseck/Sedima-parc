@@ -17,6 +17,7 @@ import { afficher } from "@/domaine/immatriculation";
 import type { Parametres } from "@/domaine/parametres";
 import type { BusinessUnit, PosteDepense } from "@/domaine/types";
 import { clientServeur } from "@/lib/supabase";
+import { calculerService, lireLignes } from "@/domaine/service";
 import type { DepenseCaisse } from "./caisse-demo";
 
 export interface LigneCaisseBase {
@@ -93,10 +94,15 @@ export function journalDepuisLaBase(mouvements: LigneCaisseBase[], depenses: Dep
   return avecSolde(lignes, soldeInitial);
 }
 
-/** Les dépenses payées par la caisse qu'aucune sortie ne règle encore, les plus récentes en premier. */
+/**
+ * Ce qui attend la caisse, et qu'aucune sortie ne cite encore, le plus récent en premier :
+ * les dépenses payées par la caisse, les pleins pris en station, les services réglés par la
+ * caisse (0063). Une dépense écrite par la clôture d'un service (sa référence cite l'OTR) se
+ * règle avec son service, pas seule.
+ */
 export function aReglerDepuisLaBase(depenses: DepenseCaisse[], mouvements: LigneCaisseBase[]): DepenseCaisse[] {
   const reglees = new Set(mouvements.map((m) => m.depense_numero).filter((n): n is string => n !== null));
-  return depenses.filter((d) => !reglees.has(d.numero)).sort((a, b) => b.date.localeCompare(a.date) || b.numero.localeCompare(a.numero));
+  return depenses.filter((d) => !reglees.has(d.numero) && !(d.objet !== "service" && /\bOTR-/.test(d.reference ?? ""))).sort((a, b) => b.date.localeCompare(a.date) || b.numero.localeCompare(a.numero));
 }
 
 export interface CaisseServeur {
@@ -114,8 +120,59 @@ async function caisseServeurBrut(parametres: Parametres): Promise<CaisseServeur>
     client.from("depense").select("numero, date, libelle, montant, poste, beneficiaire, reference, justificatif, vehicule (immatriculation, business_unit, site (libelle))").eq("origine", "caisse").order("date", { ascending: false }).limit(5000).returns<LigneDepenseCaisseBase[]>(),
   ]);
   const lignesCaisse = lignesLues("Mouvements de caisse", mouvements);
-  const lignesDepenses = lignesLues("Dépenses de caisse", depenses).map(depenseCaisseDepuisLigne);
+  const lignesDepenses = [...lignesLues("Dépenses de caisse", depenses).map(depenseCaisseDepuisLigne), ...(await pleinsEtServicesARegler(client))];
   return { mouvements: journalDepuisLaBase(lignesCaisse, lignesDepenses, p.soldeInitial), depensesARegler: aReglerDepuisLaBase(lignesDepenses, lignesCaisse), soldeInitial: p.soldeInitial, seuil: p.seuil };
 }
 
 export const caisseServeur = cache(caisseServeurBrut);
+
+/**
+ * Les pleins pris en station des quatre-vingt-dix derniers jours — la cuve interne ne se paie
+ * pas en caisse — et les services dont le règlement est « caisse » (0063). Sans 0063, les
+ * services manquent seuls.
+ */
+async function pleinsEtServicesARegler(client: Awaited<ReturnType<typeof clientServeur>>): Promise<DepenseCaisse[]> {
+  const depuis = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
+  const vehicule = (v: { immatriculation: string; business_unit: BusinessUnit | null; site: { libelle: string } | null } | null) => ({
+    vehiculeId: v?.immatriculation ?? "",
+    immatriculation: v?.immatriculation ?? "",
+    immatriculationAffichee: v ? afficher(v.immatriculation) : "—",
+    businessUnit: v?.business_unit ?? null,
+    site: v?.site?.libelle ?? null,
+  });
+  type V = { immatriculation: string; business_unit: BusinessUnit | null; site: { libelle: string } | null } | null;
+  const [pleins, services] = await Promise.all([
+    client.from("plein").select("numero, date, litres, montant, source, reference, photo, vehicule (immatriculation, business_unit, site (libelle))").gte("date", depuis).not("source", "ilike", "%cuve%").order("date", { ascending: false }).limit(2000).returns<{ numero: string; date: string; litres: number; montant: number; source: string | null; reference: string | null; photo: string | null; vehicule: V }[]>(),
+    client.from("ordre_travail").select("numero, date_prevue, objet, garage, statut, lignes, remise_mode, remise_valeur, tva_taux, brs_taux, main_oeuvre_globale, montant_estime, numero_facture, vehicule (immatriculation, business_unit, site (libelle))").eq("mode_reglement", "caisse").neq("statut", "annule").limit(1000).returns<{ numero: string; date_prevue: string; objet: string; garage: string | null; statut: string; lignes: unknown; remise_mode: "montant" | "pourcentage" | null; remise_valeur: number | null; tva_taux: number | null; brs_taux: number | null; main_oeuvre_globale: number | null; montant_estime: number | null; numero_facture: string | null; vehicule: V }[]>(),
+  ]);
+  const deCarburant: DepenseCaisse[] = (pleins.error ? [] : (pleins.data ?? [])).map((p) => ({
+    numero: p.numero,
+    objet: "carburant",
+    date: p.date,
+    libelle: `Plein de ${Number(p.litres)} L — ${p.source ?? "station"}`,
+    montant: Number(p.montant),
+    poste: "carburant",
+    beneficiaire: p.source,
+    reference: p.reference,
+    justificatif: Boolean(p.photo),
+    ...vehicule(p.vehicule),
+  }));
+  const deServices: DepenseCaisse[] = (services.error ? [] : (services.data ?? [])).map((o) => {
+    const lignes = lireLignes(o.lignes);
+    const t = lignes.length || o.main_oeuvre_globale ? calculerService({ lignes, mainOeuvreGlobale: Number(o.main_oeuvre_globale ?? 0), remiseMode: o.remise_mode ?? "montant", remiseValeur: Number(o.remise_valeur ?? 0), tvaTaux: Number(o.tva_taux ?? 0), brsTaux: Number(o.brs_taux ?? 0) }) : null;
+    return {
+      numero: o.numero,
+      objet: "service",
+      date: o.date_prevue,
+      libelle: `Service — ${o.objet}`,
+      /* Ce que la caisse verse au garage : le net à payer, BRS retenue. */
+      montant: t ? t.netAPayer : Number(o.montant_estime ?? 0),
+      poste: "maintenance-curative",
+      beneficiaire: o.garage,
+      reference: o.numero_facture,
+      justificatif: Boolean(o.numero_facture),
+      ...vehicule(o.vehicule),
+    };
+  });
+  return [...deCarburant, ...deServices];
+}

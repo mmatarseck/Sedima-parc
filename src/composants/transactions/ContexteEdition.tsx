@@ -45,6 +45,8 @@ export interface DemandeEdition {
   valeurs: Record<string, unknown>;
   /** Champs à proposer ; ceux du type par défaut. */
   champs?: ChampEdition[];
+  /** Ce qu'un champ entraîne sur les autres pendant la saisie : le système choisi donne l'ensemble d'une tâche. */
+  entraine?: (cle: string, valeur: string | boolean, saisie: Record<string, string | boolean>) => Record<string, string | boolean> | null;
   /**
    * Ce que la modification entraîne ailleurs, une fois appliquée : changer la
    * plaque d'un véhicule change l'adresse de sa fiche, qui doit suivre.
@@ -168,6 +170,7 @@ export function FournisseurEdition({ sujet, href, children }: { sujet: string; h
           titre={courante.d.titre}
           champs={courante.d.champs}
           apresModification={courante.d.apresModification}
+          entraine={courante.d.entraine}
           valeurs={surcharger({ numero: courante.d.numero, ...courante.d.valeurs })}
           href={href}
           onFermer={() => setCourante(null)}

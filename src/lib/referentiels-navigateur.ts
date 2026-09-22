@@ -53,7 +53,7 @@ export interface ReferentielsChoix {
   camionsTiers: { immatriculation: string; immatriculationAffichee: string; transporteurNumero: string; actif: boolean }[];
   chauffeursTiers: { id: string; nom: string; transporteurNumero: string; actif: boolean }[];
   /** Le catalogue des tâches de maintenance (0060), celles qu'on propose : actives. */
-  taches: { numero: string; libelle: string; categorie: string | null; systeme: string | null; typeDefaut: "preventif" | "curatif" | null; alias: string[] }[];
+  taches: { numero: string; libelle: string; categorie: string | null; systeme: string | null; ensemble?: string | null; typeDefaut: "preventif" | "curatif" | null; alias: string[] }[];
 }
 
 export const REFERENTIELS_VIDES: ReferentielsChoix = {

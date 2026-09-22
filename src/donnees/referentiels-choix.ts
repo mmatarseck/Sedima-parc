@@ -69,7 +69,7 @@ async function referentielsChoixBrut(parametres: Parametres): Promise<Referentie
       prestataires: referentielPrestataires.map((p) => ({ numero: p.numero, raisonSociale: p.raisonSociale, ville: p.ville ?? null, type: p.type, actif: p.actif })),
       camionsTiers: tiers.camions.map((c) => ({ immatriculation: c.immatriculation, immatriculationAffichee: c.immatriculationAffichee, transporteurNumero: c.transporteurNumero, actif: c.actif })),
       chauffeursTiers: tiers.chauffeurs.map((c) => ({ id: c.id, nom: c.nom, transporteurNumero: c.transporteurNumero, actif: c.actif })),
-      taches: taches.map((t) => ({ numero: t.numero, libelle: t.libelle, categorie: t.categorie, systeme: t.systeme, typeDefaut: t.typeDefaut, alias: t.alias })),
+      taches: taches.map((t) => ({ numero: t.numero, libelle: t.libelle, categorie: t.categorie, systeme: t.systeme, ensemble: t.ensemble, typeDefaut: t.typeDefaut, alias: t.alias })),
     };
   } catch (e) {
     console.error(`Référentiels des formulaires : lecture impossible — ${e instanceof Error ? e.message : String(e)}`);

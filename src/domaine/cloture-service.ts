@@ -43,7 +43,10 @@ export function ecrituresDeCloture(o: LigneOrdre, jour: string, cle: string, veh
   const totaux = calculerService(facture);
   const sujet = `vehicule:${o.immatriculation}`;
   const date = o.dateFin ?? jour;
-  const reference = [o.numero, o.numeroFacture, cle].filter(Boolean).join(" · ");
+  const reference = [o.numero, o.numeroFacture, o.numeroBc ? `BC ${o.numeroBc}` : null, cle].filter(Boolean).join(" · ");
+  /* Le règlement du service (0063) donne l'origine de ses dépenses ; réglé par la caisse, c'est le service que la sortie cite, pas chaque dépense. */
+  const origineFacture = o.modeReglement ?? "facture";
+  const pieceBc = o.modeReglement === "bon-de-commande" ? ((o.piecesReglement ?? [])[0] ?? null) : null;
   const piece = (o.pieces ?? [])[0] ?? null;
 
   const ecritures: EcritureCloture[] = [
@@ -73,7 +76,8 @@ export function ecrituresDeCloture(o: LigneOrdre, jour: string, cle: string, veh
         montant: d.montant,
         beneficiaire: d.origine === "stock" ? "Magasin SEDIMA" : o.garage,
         reference,
-        origine: d.origine,
+        origine: d.origine === "stock" ? "stock" : origineFacture,
+        ...(d.origine !== "stock" && o.numeroBc ? { numeroBc: o.numeroBc, fichierBc: pieceBc } : {}),
         justificatif: Boolean(piece) || d.origine === "stock",
         photo: d.origine === "stock" ? null : piece,
         km: null,

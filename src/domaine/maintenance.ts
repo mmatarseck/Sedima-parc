@@ -166,6 +166,10 @@ export interface LigneOrdre {
   remiseValeur?: number;
   /** La main-d'œuvre facturée d'un seul montant (0062). */
   mainOeuvreGlobale?: number;
+  /** Comment le service se règle (0063) : caisse, bon de commande ou facture ; son BC ; la pièce du règlement. */
+  modeReglement?: ModeReglement | null;
+  numeroBc?: string | null;
+  piecesReglement?: string[];
   tvaTaux?: number;
   brsTaux?: number;
   pieces?: string[];
@@ -173,6 +177,14 @@ export interface LigneOrdre {
 }
 
 /** La facture d'un service, prête pour le calcul. */
+export type ModeReglement = "caisse" | "bon-de-commande" | "facture";
+
+export const MODE_REGLEMENT: Record<ModeReglement, { libelle: string; precision: string }> = {
+  caisse: { libelle: "Caisse parc", precision: "Réglé par une sortie de caisse, qui le cite" },
+  "bon-de-commande": { libelle: "Bon de commande", precision: "Réglé par un bon de commande : son numéro et sa pièce" },
+  facture: { libelle: "Facture (virement)", precision: "Réglé sur facture, hors caisse" },
+};
+
 export function factureDe(o: Pick<LigneOrdre, "lignes" | "remiseMode" | "remiseValeur" | "tvaTaux" | "brsTaux" | "mainOeuvreGlobale">): FactureService {
   return { lignes: o.lignes ?? [], mainOeuvreGlobale: o.mainOeuvreGlobale ?? 0, remiseMode: o.remiseMode ?? "montant", remiseValeur: o.remiseValeur ?? 0, tvaTaux: o.tvaTaux ?? 0, brsTaux: o.brsTaux ?? 0 };
 }
