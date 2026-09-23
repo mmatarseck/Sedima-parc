@@ -85,9 +85,24 @@ for (const [cle, lignes] of presents) {
   const candidates = lignes.filter((p) => /^PLN-[RC]-/.test(p.numero)).sort((a, b) => a.cree_le.localeCompare(b.cree_le) || a.numero.localeCompare(b.numero));
   aRetirer.push(...candidates.slice(0, lignes.length - voulu));
 }
+/*
+ * Un plein dont le véhicule n'est pas au parc ne peut pas entrer : `plein.vehicule_id`
+ * est obligatoire, et la sous-requête des parties rendrait nul. Le premier
+ * correctif l'ignorait et le SQL Editor l'a refusé (23502, PLN-C-00025) — la
+ * transaction entière est retombée, rien n'a été écrit. Ces pleins sont
+ * écartés et comptés : ce sont des véhicules sortis avant la reprise.
+ */
+const connues = new Set(immat.values());
+const ecartes = new Map<string, number>();
 for (const [cle, lignes] of attendus) {
   const la = presents.get(cle)?.length ?? 0;
-  if (lignes.length > la) aAjouter.push(...lignes.slice(la));
+  if (lignes.length <= la) continue;
+  const plaque = cle.split("|")[0]!;
+  if (!connues.has(plaque)) {
+    ecartes.set(plaque, (ecartes.get(plaque) ?? 0) + lignes.length - la);
+    continue;
+  }
+  aAjouter.push(...lignes.slice(la));
 }
 
 /* -- Le SQL ------------------------------------------------------------------------ */
@@ -113,7 +128,8 @@ const sql = `-- ================================================================
 -- comptés deux fois (tableau de bord, consommation, rapports).
 --
 --   * ${aRetirer.length} pleins retirés (en double) — ${Math.round(litresRetires).toLocaleString("fr-FR")} litres, années ${annees(aRetirer) || "—"} ;
---   * ${insertions.length} pleins ajoutés (manquants) — années ${annees(aAjouter.map((c) => ({ date: c.cle.split("|")[1]! }))) || "—"}.
+--   * ${insertions.length} pleins ajoutés (manquants) — années ${annees(aAjouter.map((c) => ({ date: c.cle.split("|")[1]! }))) || "—"} ;
+--   * ${[...ecartes.values()].reduce((s, x) => s + x, 0)} pleins des parties écartés : leur véhicule n'est pas au parc (${[...ecartes.keys()].sort().join(", ") || "aucun"}).
 --
 -- Rien de saisi dans l'application n'est touché : seules des lignes PLN-R et
 -- PLN-C (chargements) sont retirées. Rejouable : les retraits visent des
@@ -133,5 +149,6 @@ select count(*) as pleins_de_chargement from plein where numero like 'PLN-R-%' o
 `;
 writeFileSync(join(process.cwd(), "supabase", "correctif-pleins-doublons.sql"), sql);
 console.log(`Parties : ${canon.length} pleins. Base : ${base.length}. À retirer : ${aRetirer.length} (${Math.round(litresRetires)} L, ${annees(aRetirer)}). À ajouter : ${insertions.length}.`);
+console.log(`Écartés (véhicule absent du parc) : ${JSON.stringify(Object.fromEntries(ecartes))}`);
 console.log(`Retraits par lot : ${JSON.stringify(Object.fromEntries([...new Set(aRetirer.map((p) => p.cree_le.slice(0, 16)))].map((l) => [l, aRetirer.filter((p) => p.cree_le.slice(0, 16) === l).length])))}`);
 console.log(`Taille du fichier : ${Math.round(sql.length / 1024)} Ko`);
