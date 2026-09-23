@@ -1,5 +1,5 @@
 -- ============================================================================
--- SEDIMA Parc — mise à jour du 23 septembre 2026 : statuts, chauffeurs, DK 1306 BB.
+-- SEDIMA Parc — mise à jour du 23 septembre 2026 : statuts, chauffeurs.
 --
 -- **Ce n'est pas une migration.** Rapprochement de la base avec :
 --
@@ -85,30 +85,10 @@ select s.matricule, s.prenom, s.nom, 'cdi'
  where not exists (select 1 from chauffeur c where c.matricule_rh = s.matricule);
 
 -- 3. DK 1306 BB ----------------------------------------------------------------
--- Mitsubishi L200 de 2016, dans la « Liste des Pickups » de la fiche parc
--- (maintenance abattoirs, en service) et dans le plan de renouvellement
--- (lot 2-15 : « libère DK1306BB pour Ibrahima Faye »), mais absent de la base :
--- ses pleins n'avaient pas pu être chargés. Créé sur le modèle de son
--- jumeau DK 1307 BB (même modèle, même année), caractéristiques de la fiche.
-insert into vehicule (immatriculation, marque, appellation, type_modele, categorie, categorie_flotte, usage, transport_special, energie,
-                      business_unit, site_id, statut, engage, premiere_mise_en_circulation, date_immatriculation,
-                      puissance_cv, cylindree, ptac, poids_vide, charge_utile, regime, commentaire)
-select 'DK1306BB', 'Mitsubishi', 'L200', 'KL3TJNJTL', v.categorie, v.categorie_flotte, v.usage, false, v.energie,
-       'abattoir', (select id from site where code = 'ABAT'), 'en-service', false, '2016-05-20', '2016-05-20',
-       10, 2477, 2850, 1775, 1075, 'service',
-       'Créé le 23/09/2026 depuis la fiche parc (maintenance abattoirs, Cheikhou Keïta) ; le plan de renouvellement le libère pour Ibrahima Faye.'
-  from vehicule v
- where v.immatriculation = 'DK1307BB'
-on conflict (immatriculation) do nothing;
-
--- Ses quatre pleins des parties du carburant (décembre 2024, cumuls d'avril à
--- juin 2026), écartés par le correctif des pleins faute de véhicule.
-insert into plein (numero, vehicule_id, date, litres, prix_litre, montant, km, plein_complet, source, reference) values
-  ('PLN-C-09001', (select id from vehicule where immatriculation = 'DK1306BB'), '2024-12-23', 64.23, 755, round(64.23 * 755), null, true, 'Pompe — suivi hebdomadaire', 'Tarif officiel du 07/01/2023'),
-  ('PLN-C-09002', (select id from vehicule where immatriculation = 'DK1306BB'), '2026-04-30', 64.78, 680, round(64.78 * 680), null, false, 'Cumul mensuel — suivi carburant', 'Tarif officiel du 06/12/2025'),
-  ('PLN-C-09003', (select id from vehicule where immatriculation = 'DK1306BB'), '2026-05-31', 20.01, 680, round(20.01 * 680), null, false, 'Cumul mensuel — suivi carburant', 'Tarif officiel du 06/12/2025'),
-  ('PLN-C-09004', (select id from vehicule where immatriculation = 'DK1306BB'), '2026-06-30', 20.11, 680, round(20.11 * 680), null, false, 'Cumul mensuel — suivi carburant', 'Tarif officiel du 06/12/2025')
-on conflict (numero) do nothing;
+-- **Retiré le 23/09 au soir.** La première version créait DK 1306 BB, lu sur la
+-- fiche parc ; c'était un doublon : le véhicule est en base sous sa nouvelle
+-- plaque AB 098 JC (carte grise du 06/05/2026). Voir correctif-dk1306bb.sql,
+-- qui rattache ses pleins et supprime le doublon.
 
 commit;
 
@@ -116,5 +96,5 @@ commit;
 select immatriculation, statut from vehicule
  where immatriculation in ('AA105VA', 'AA285PT', 'AA180CQ', 'AA186CQ', 'AA291PT', 'AA350JN', 'AA226SX', 'AA927CA', 'AB364HK',
                            'AA053AP', 'AA905CW', 'DK5680BL', 'AA568GA', 'AB681HE', 'AA433AJ', 'DK8077BD', 'AA278JE', 'DK4922BB',
-                           'DK5347BM', 'AA547JD', 'AA139HP', 'AB741AP', 'DK1306BB')
+                           'DK5347BM', 'AA547JD', 'AA139HP', 'AB741AP')
  order by statut, immatriculation;

@@ -68,6 +68,21 @@ for (let de = 0; ; de += 1000) {
   base.push(...(x.data as Ligne[]));
   if (x.data!.length < 1000) break;
 }
+/*
+ * Les plaques des parties qui ont changé depuis : le véhicule a été
+ * réimmatriculé, son historique vit sous la nouvelle plaque. Sans cette table,
+ * le rapprochement croirait ses pleins en trop sous l'une et manquants sous
+ * l'autre (DK 1306 BB, 23 septembre 2026).
+ */
+const REIMMATRICULES: Record<string, string> = { DK1306BB: "AB098JC", DK2348BD: "AB078JS", DK7485BK: "AB364HK" };
+for (const c of canon) {
+  const [plaque, ...reste] = c.cle.split("|");
+  const nouvelle = REIMMATRICULES[plaque!];
+  if (nouvelle) {
+    c.cle = [nouvelle, ...reste].join("|");
+    c.ligne = c.ligne.replace(`immatriculation = '${plaque}'`, `immatriculation = '${nouvelle}'`);
+  }
+}
 const cleBase = (p: Ligne) => [immat.get(p.vehicule_id) ?? "?", p.date, Number(p.litres), p.prix_litre, p.km ?? "", p.plein_complet, p.source].join("|");
 
 /* -- La différence, en multiensemble ------------------------------------------------ */

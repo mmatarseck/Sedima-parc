@@ -27,9 +27,7 @@ l'assistant.*
      Ndiaye 98474, Birago Wane 98469, Fallou Ndiaye 98493, Samba Thioub 98476,
      Ousmane Diarra 98468) ; Abdourahim Djitté et Demba Sy passés en CDI ; deux
      chauffeurs créés, El Hadji Dabo (98376) et Khadim Sène (99697).
-   - **DK 1306 BB** (Mitsubishi L200, 2016) créé : il figurait sur la fiche et
-     dans le plan de renouvellement, pas en base. Ses 4 pleins écartés par le
-     correctif du carburant sont rajoutés.
+   - ~~DK 1306 BB créé~~ — **erreur, corrigée** : voir plus bas.
 2. **`supabase/releve-complement-2026-09-23.sql`** : le relevé de tonnage
    « 11X » du 18/09 apporte **178 voyages du 4 au 17 septembre** (428 t par le
    parc, 3 515 t par les transporteurs). Écrit par
@@ -37,14 +35,33 @@ l'assistant.*
    base. La feuille « SEM DU 11 AU 17-09 » portait encore le titre de la
    semaine du 4 : ses dates ont été recalées sur le nom de la feuille.
 
-Les deux fichiers ont été rejoués deux fois dans PGlite sans erreur.
+Les deux fichiers ont été rejoués deux fois dans PGlite sans erreur, puis joués
+en production le 23/09.
+
+## Ajouts du soir (grand livre RECAP 31082026, déjà chargé le 18/09)
+
+3. **`supabase/correctif-dk1306bb.sql`** — DK 1306 BB n'était pas absent : il
+   a été **réimmatriculé AB 098 JC** (carte grise du 06/05/2026) ; la fiche parc
+   garde l'ancienne plaque. Le doublon créé par le fichier 1 est supprimé, ses
+   4 pleins passent sur AB 098 JC, avec 3 dépenses du grand livre restées sans
+   véhicule qui nomment DK 1306 BB (1 043 500 F). Le fichier 1 ne recrée plus
+   le doublon, et `reconcilier-pleins.mts` connaît désormais les plaques
+   réimmatriculées (DK 1306 BB, DK 2348 BD, DK 7485 BK).
+4. **`supabase/ajout-aa866yh.sql`** — le Toyota Prado du DG : fiche parc du 23/09
+   et immobilisation IMM-201-01572 du grand livre (acquis le 06/05/2026,
+   46 600 000 F, 4 ans). Attribué à Franck Bavard depuis le 06/05/2026.
+
+Le reste du classeur — entretien, fournitures, livraisons de la cuve,
+immobilisations — est en base depuis le 18/09 (docs/GRAND-LIVRE-2026.md). La
+feuille TRANSPORTEURS (786,8 M F au 31/08, sans date ni pièce) ne se charge pas.
 
 ## À trancher par le métier
 
 ### Véhicules
 
-- **AA 866 YH, Toyota Prado du DG Franck** : sur la fiche parc, absent de la
-  base. À créer par *Flotte › Nouveau véhicule* (caractéristiques inconnues).
+- **AA 866 YH** : créé par le fichier 4 ; châssis et carte grise à compléter.
+- **La fiche parc garde des plaques anciennes** : DK 1306 BB (AB 098 JC), et
+  sans doute d'autres. À corriger dans la fiche.
 - **Plaques qui ne concordent pas** : AA 783 SN sur la fiche contre AA 783 BN
   en base (TATA, Ziguinchor) ; AA 078 JS contre AB 078 JS (L200, Bakary Sow) ;
   DK 6875 DF contre DK 6875 BF (L200 SC, « réformé à Notto »). La base a
@@ -80,8 +97,8 @@ Les deux fichiers ont été rejoués deux fois dans PGlite sans erreur.
   absents du parc (AA 018 EA, AB 820 EL, AA 265 JC, AA 372 YJ, AA 339 EN, DK
   2517 BG, DK 8741 BG, TH 4207 D, AA 708 BB, AA 972 AJ). Ce sont d'autres
   entités, des véhicules sortis, ou des plaques mal saisies (AA 372 YJ pour AA
-  372 WJ ?). Deux véhicules sortis y sont encore assurés (DK 2348 BD, DK 7485
-  BK).
+  372 WJ ?). DK 2348 BD et DK 7485 BK y figurent sous leur ancienne plaque : ce sont AB
+  078 JS et AB 364 HK, réimmatriculés.
 - Six véhicules ont en base une échéance d'assurance antérieure au 31/12/2026
   (AA 565 GA, AB 932 EF, AA 633 JL, AA 985 MR, AA 236 MR, AA 105 VA) alors que
   la fiche couvre l'année civile. À vérifier sur les attestations.
