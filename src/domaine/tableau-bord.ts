@@ -2,16 +2,12 @@
  * Tableau de bord SQDCM — le référentiel d'indicateurs du parc.
  *
  * Conforme à la maquette « Parc SEDIMA » validée par la Direction des
- * Opérations : cinq axes, **trente-huit indicateurs disponibles**, dont les
- * **six du référentiel DO** — D_TDPA, D_TICV, D_NPVEL, C_CDM_SEDI, C_CDM_TR,
- * C_TED_EXT — affichés par défaut parce qu'ils tiennent sur une seule ligne.
- * Les autres portent la mention « proposé » et s'ajoutent depuis « Choisir les
- * indicateurs » ; la sélection est mémorisée par compte.
- *
- * **Le score d'un axe est la part de ses indicateurs affichés qui tiennent leur
- * cible** — la règle de la maquette, et non un barème à tolérance : elle se
- * refait de tête, ce qui est la première qualité d'un tableau de bord. Un axe
- * dont aucun indicateur n'est affiché est grisé et ne montre pas de score.
+ * Opérations : cinq axes, dont les **six indicateurs du référentiel DO** —
+ * D_TDPA, D_TICV, D_NPVEL, C_CDM_SEDI, C_CDM_TR, C_TED_EXT. Depuis le
+ * 8 septembre 2026, ces indicateurs de période vivent **en courbes** (huit au
+ * plus, choisies par compte) ; la rangée du haut est faite de pastilles de
+ * l'état du moment (`pastilles.ts`). Le score par axe de la maquette et la
+ * sélection à cinq, qui n'étaient plus lus, ont été retirés le 23 septembre 2026.
  *
  * **Rien ne se saisit ici.** Chaque valeur se calcule sur des faits
  * enregistrés ailleurs, et chaque pastille porte le lien vers l'écran où elle
@@ -85,14 +81,22 @@ export interface FaitsVehiculeMois {
   curativesSansDuree: number;
   /** Véhicules immobilisés depuis une date inconnue : la disponibilité ne se calcule pas non plus (0041). */
   immobilisationsSansDebut: number;
+  /** Toutes les charges du mois, **carburant des pleins compris** (audit du 23 septembre 2026 : la fiche du véhicule les comptait, le tableau de bord non). */
   cout: number;
   coutMaintenance: number;
   coutCuratif: number;
+  /** La part du coût qui vient des pleins. */
+  coutCarburant?: number;
+  /** Tonnes livrées par ce véhicule dans le mois, bons de livraison à l'appui (0044) ; nulles quand les bons ne couvrent pas le mois. */
+  tonnesLivrees?: number | null;
 }
 
 /** L'identité d'un véhicule, pour filtrer sans recharger. */
 export interface VehiculeTableau {
+  /** L'immatriculation : c'est la clé des faits mensuels. */
   id: string;
+  /** L'identifiant en base : c'est la clé des situations journalières, que les filtres doivent aussi reconnaître. */
+  uuid?: string;
   immatriculation: string;
   immatriculationAffichee: string;
   libelle: string;
@@ -130,6 +134,15 @@ export interface FaitsFlotteMois {
   tonnesTiers: number | null;
   /** Tonnes portées par le parc sur le mois — relevé de transport ; nulles de même. */
   tonnesInternes: number | null;
+  /**
+   * D'où viennent les tonnes du mois. Les **bons de livraison** (0044) couvrent
+   * toutes les usines — aliment, minoterie, abattoir — quand le relevé de
+   * transport ne tient que l'aliment de l'UAB ; rapporter les charges de tout
+   * le parc aux seules tonnes de l'UAB gonflait le coût à la tonne (audit du
+   * 23 septembre 2026). Les bons font foi quand ils couvrent le mois, le relevé
+   * sinon.
+   */
+  sourceTonnes?: "livraisons" | "releve" | null;
 }
 
 /** Ce qui se lit au jour dit, et non sur une période. */
@@ -155,7 +168,7 @@ export interface SituationJour {
    * ses comptes ne sont pas des zéros : les courbes qui en vivent disent « — »
    * (11 septembre 2026, même règle que la carte grise).
    */
-  registres: { incidents: boolean; contraventions: boolean; indisponibilites: boolean };
+  registres: { incidents: boolean; contraventions: boolean; indisponibilites: boolean; salubrite?: boolean };
 }
 
 /** Les faits d'une période, tous véhicules retenus confondus. */
@@ -198,6 +211,27 @@ export interface Cumul {
   cout: number;
   coutMaintenance: number;
   coutCuratif: number;
+  coutCarburant: number;
+  /*
+   * **Les ratios au kilomètre ne se font que sur les véhicules dont on connaît
+   * les kilomètres** (audit du 23 septembre 2026). Le compteur n'est relevé que
+   * sur une poignée de véhicules ; diviser les litres et les charges de *tout*
+   * le parc par ces seuls kilomètres donnait 443 L/100 km et 1 434 F/km. Chaque
+   * terme ci-dessous ne retient que les véhicules-mois qui ont des kilomètres.
+   */
+  /** Charges des véhicules-mois dont les kilomètres sont connus. */
+  coutSurKm: number;
+  /** Litres des véhicules-mois dont les kilomètres **et** les litres sont connus. */
+  litresSurKm: number;
+  /** Les kilomètres qui leur correspondent. */
+  kmAvecLitres: number;
+  accidentsSurKm: number;
+  /** Tonnes livrées par les véhicules retenus, bons à l'appui ; nulles si les bons ne couvrent pas la période. */
+  tonnesLivrees: number | null;
+  /** Coût du carburant des seuls véhicules-mois qui ont livré. */
+  carburantLivreurs: number;
+  /** Tonnes de ces mêmes véhicules-mois. */
+  tonnesLivreurs: number;
   /** Jours d'immobilisation des seuls véhicules de transport spécial. */
   joursImmobilisesSpeciaux: number;
   curativesSansDureeSpeciaux: number;
@@ -211,6 +245,8 @@ export interface Cumul {
   tonnesTiers: number | null;
   /** Tonnes portées par le parc, relevé de transport à l'appui. */
   tonnesInternes: number | null;
+  /** Vrai quand les tonnes de chaque mois de la période viennent des bons de livraison, toutes usines. */
+  tonnesDesBons: boolean;
   jour: SituationJour;
 }
 
@@ -230,7 +266,7 @@ export function cumuler(faits: FaitsVehiculeMois[], flotte: FaitsFlotteMois[], j
     engages: Math.round(faits.filter((f) => f.engage).length / nombreMois),
     joursVehicules: somme((f) => (f.engage ? f.jours : 0)),
     km: somme((f) => f.km),
-    litres: somme((f) => f.litres),
+    litres: Math.round(somme((f) => f.litres) * 10) / 10,
     litresReference: somme((f) => f.litresReference),
     joursImmobilises: somme((f) => (f.engage ? f.joursImmobilises : 0)),
     nonConformes: Math.round((faits.filter((f) => f.engage && f.nonConforme).length / nombreMois) * 10) / 10,
@@ -251,6 +287,15 @@ export function cumuler(faits: FaitsVehiculeMois[], flotte: FaitsFlotteMois[], j
     cout: somme((f) => f.cout),
     coutMaintenance: somme((f) => f.coutMaintenance),
     coutCuratif: somme((f) => f.coutCuratif),
+    coutCarburant: somme((f) => f.coutCarburant ?? 0),
+    coutSurKm: somme((f) => (f.km > 0 ? f.cout : 0)),
+    litresSurKm: Math.round(somme((f) => (f.km > 0 && f.litres > 0 ? f.litres : 0)) * 10) / 10,
+    kmAvecLitres: somme((f) => (f.km > 0 && f.litres > 0 ? f.km : 0)),
+    accidentsSurKm: somme((f) => (f.km > 0 ? f.accidents : 0)),
+    /* Un seul véhicule-mois sans bons suffit à rendre le total inconnu : un zéro y serait une absence de mesure. */
+    tonnesLivrees: faits.some((f) => f.tonnesLivrees === null || f.tonnesLivrees === undefined) ? null : Math.round(somme((f) => f.tonnesLivrees ?? 0) * 10) / 10,
+    carburantLivreurs: somme((f) => ((f.tonnesLivrees ?? 0) > 0 ? (f.coutCarburant ?? 0) : 0)),
+    tonnesLivreurs: somme((f) => ((f.tonnesLivrees ?? 0) > 0 ? (f.tonnesLivrees ?? 0) : 0)),
     joursImmobilisesSpeciaux: somme((f) => (f.transportSpecial ? f.joursImmobilises : 0)),
     curativesSansDureeSpeciaux: somme((f) => (f.transportSpecial ? f.curativesSansDuree : 0)),
     immobilisationsSansDebutSpeciaux: somme((f) => (f.transportSpecial ? f.immobilisationsSansDebut : 0)),
@@ -261,6 +306,7 @@ export function cumuler(faits: FaitsVehiculeMois[], flotte: FaitsFlotteMois[], j
     /* Un mois sans tonnes rend le cumul inconnu : le compléter par zéro fausserait tout ratio. */
     tonnesTiers: flotte.some((f) => f.tonnesTiers === null) ? null : flotte.reduce((s, f) => s + (f.tonnesTiers ?? 0), 0),
     tonnesInternes: flotte.some((f) => f.tonnesInternes === null) ? null : flotte.reduce((s, f) => s + (f.tonnesInternes ?? 0), 0),
+    tonnesDesBons: flotte.length > 0 && flotte.every((f) => f.sourceTonnes === "livraisons"),
     jour,
   };
 }
@@ -336,7 +382,8 @@ export const INDICATEURS: DefinitionIndicateur[] = [
     cible: { sens: "inf", valeur: 1 },
     decimales: 1,
     href: "/incidents",
-    calcul: (c) => (c.km > 0 && c.jour.registres.incidents ? Math.round((c.accidents / c.km) * 100_000 * 10) / 10 : null),
+    /* Les accidents des seuls véhicules dont on connaît les kilomètres : ceux des autres n'ont pas de dénominateur. */
+    calcul: (c) => (c.km > 0 && c.jour.registres.incidents ? Math.round((c.accidentsSurKm / c.km) * 100_000 * 10) / 10 : null),
   },
   { id: "s3", axe: "S", libelle: "Contraventions", forme: "barres", cibleTexte: "Cible ≤ 5 par mois", cible: { sens: "inf", valeur: 5 }, parMois: true, href: "/couts?vue=postes", calcul: (c) => (c.jour.registres.contraventions ? c.contraventions : null) },
   { id: "s4", axe: "S", libelle: "Score de conduite télématique", unite: "/100", cibleTexte: "Cible ≥ 80 · source Teltonika", cible: { sens: "sup", valeur: 80 }, href: "/", aVenir: "Télématique Teltonika — lot 3" },
@@ -358,7 +405,8 @@ export const INDICATEURS: DefinitionIndicateur[] = [
     decimales: 1,
     instantane: true,
     href: "/conformite",
-    calcul: (c) => pct(c.jour.vehiculesSpeciauxConformes, c.jour.vehiculesSpeciaux),
+    /* Aucun certificat de salubrité au parc : le registre n'est pas tenu, et 0 % n'est pas une mesure (audit du 23 septembre 2026). */
+    calcul: (c) => (c.jour.registres.salubrite === false ? null : pct(c.jour.vehiculesSpeciauxConformes, c.jour.vehiculesSpeciaux)),
   },
   { id: "q6", axe: "Q", libelle: "Réclamations qualité transport", cibleTexte: "Cible ≤ 5 par mois", cible: { sens: "inf", valeur: 5 }, parMois: true, href: "/", aVenir: "Réclamations clients SediLiv — lot 3" },
 
@@ -419,6 +467,22 @@ export const INDICATEURS: DefinitionIndicateur[] = [
   { id: "d8", axe: "D", libelle: "Kilomètres à vide", unite: "%", cibleTexte: "Cible ≤ 15 %", cible: { sens: "inf", valeur: 15 }, href: "/", aVenir: "Missions SediLiv — lot 3" },
   { id: "d9", axe: "D", libelle: "Véhicules prêts à charger", cibleTexte: "Sur les véhicules engagés", instantane: true, href: "/disponibilite", calcul: (c) => c.jour.pretsACharger },
   { id: "d10", axe: "D", libelle: "Véhicules bloqués faute de pièce", cibleTexte: "En attente de réception", cible: { sens: "inf", valeur: 0 }, href: "/maintenance?vue=ordres", aVenir: "Réception des pièces — suivie dans Sage X3" },
+  /*
+   * Ce que le parc livre, sur les bons de Sage X3 (0044) — 16 771 bons de
+   * novembre 2025 à août 2026, que le tableau de bord ne lisait pas (audit du
+   * 23 septembre 2026). Ils suivent les filtres : chaque bon porte le camion.
+   */
+  { id: "d11", axe: "D", libelle: "Tonnes livrées par le parc", unite: "t", forme: "barres", cibleTexte: "Bons de livraison portés par un véhicule du parc", href: "/rapports", calcul: (c) => (c.tonnesLivrees !== null && c.tonnesLivrees > 0 ? Math.round(c.tonnesLivrees) : null) },
+  {
+    id: "d12",
+    axe: "D",
+    libelle: "Tonnes livrées par véhicule engagé",
+    unite: "t/mois",
+    cibleTexte: "Le rendement du parc engagé, par mois",
+    decimales: 1,
+    href: "/rapports",
+    calcul: (c) => (c.tonnesLivrees !== null && c.tonnesLivrees > 0 && c.engages > 0 ? Math.round((c.tonnesLivrees / c.engages / Math.max(1, c.nombreMois)) * 10) / 10 : null),
+  },
 
   /* ---- C — Coût ---- */
   /*
@@ -438,12 +502,16 @@ export const INDICATEURS: DefinitionIndicateur[] = [
     code: "C_CDM_SEDI",
     libelle: "Coût de transport — flotte SEDIMA",
     unite: "F/t",
-    cibleTexte: "Cible ≤ 14 000 · charges du parc rapportées aux tonnes portées",
+    cibleTexte: "Cible ≤ 14 000 · charges du parc, carburant compris, rapportées aux tonnes des bons de livraison",
     cible: { sens: "inf", valeur: 14_000 },
     href: "/releve",
     /* Un coût nul sur un mois à peine commencé n'est pas « le transport est
        gratuit » : c'est « on n'a pas encore mesuré ». On n'affiche rien. */
-    calcul: (c) => (c.tonnesInternes !== null && c.tonnesInternes > 0 && c.cout > 0 ? Math.round(c.cout / c.tonnesInternes) : null),
+    /* Les charges de tout le parc ne se rapportent qu'aux tonnes de tout le parc :
+       le relevé de transport ne tient que l'aliment de l'UAB, et le rapport
+       sortait deux à trois fois trop haut. Seuls les bons de livraison, qui
+       couvrent toutes les usines, font le dénominateur (audit du 23 septembre 2026). */
+    calcul: (c) => (c.tonnesDesBons && c.tonnesInternes !== null && c.tonnesInternes > 0 && c.cout > 0 ? Math.round(c.cout / c.tonnesInternes) : null),
   },
   {
     id: "c2",
@@ -487,9 +555,10 @@ export const INDICATEURS: DefinitionIndicateur[] = [
          jours d'un mois, la location des véhicules tiers court déjà quand le parc
          n'a pas encore enregistré de dépense, et le rapport vaudrait 100 % par
          construction. Mieux vaut ne rien afficher que d'afficher cela. */
-      if (c.cout <= 0) return null;
-      const total = c.coutTransportTiers + c.cout;
-      return total > 0 ? Math.round((c.coutTransportTiers / total) * 1000) / 10 : null;
+      /* Et l'inverse : un mois commencé où les coûts des tiers ne sont pas encore
+         saisis sortait à 0 %, « dans la cible » (audit du 23 septembre 2026). */
+      if (c.cout <= 0 || c.coutTransportTiers <= 0) return null;
+      return Math.round((c.coutTransportTiers / (c.coutTransportTiers + c.cout)) * 1000) / 10;
     },
   },
   {
@@ -504,16 +573,32 @@ export const INDICATEURS: DefinitionIndicateur[] = [
     href: "/transporteurs",
     calcul: (c) => (c.coutTransportTiers > 0 ? c.coutTransportTiers : null),
   },
-  { id: "c4", axe: "C", libelle: "Coût kilométrique complet", unite: "F/km", cibleTexte: "Toutes charges incluses", href: "/couts", calcul: (c) => (c.km > 0 ? Math.round(c.cout / c.km) : null) },
+  { id: "c4", axe: "C", libelle: "Coût kilométrique complet", unite: "F/km", cibleTexte: "Toutes charges incluses, carburant compris · véhicules au compteur relevé", href: "/couts", calcul: (c) => (c.km > 0 ? Math.round(c.coutSurKm / c.km) : null) },
   {
     id: "c5",
     axe: "C",
     libelle: "Consommation moyenne du parc",
     unite: "L/100",
-    cibleTexte: "Contre la référence des catégories",
+    cibleTexte: "Véhicules au compteur relevé · contre la référence des catégories",
     decimales: 1,
     href: "/couts?vue=carburant",
-    calcul: (c) => (c.km > 0 && c.litres > 0 ? Math.round((c.litres / c.km) * 1000) / 10 : null),
+    calcul: (c) => (c.kmAvecLitres > 0 && c.litresSurKm > 0 ? Math.round((c.litresSurKm / c.kmAvecLitres) * 1000) / 10 : null),
+  },
+  /*
+   * Le carburant rapporté aux tonnes livrées, comme l'Aperçu de la fiche
+   * véhicule (22 septembre 2026), mais pour le parc. Il se passe du compteur,
+   * rarement relevé : les bons de livraison donnent le dénominateur. Seuls les
+   * véhicules-mois qui ont livré comptent — un véhicule de service qui fait le
+   * plein sans livrer n'a rien à diviser.
+   */
+  {
+    id: "c14",
+    axe: "C",
+    libelle: "Carburant par tonne livrée",
+    unite: "F/t",
+    cibleTexte: "Pleins des véhicules livreurs, rapportés à leurs tonnes",
+    href: "/couts?vue=carburant",
+    calcul: (c) => (c.tonnesLivreurs > 0 && c.carburantLivreurs > 0 ? Math.round(c.carburantLivreurs / c.tonnesLivreurs) : null),
   },
   { id: "c6", axe: "C", libelle: "Écarts de facturation détectés", unite: "F", cibleTexte: "Récupérés sur transporteurs", href: "/couts", aVenir: "Facturation transporteurs — lot 3" },
   { id: "c7", axe: "C", libelle: "Dépenses de parc", unite: "F", forme: "barres", cibleTexte: "Sur la période retenue", href: "/couts?vue=postes", calcul: (c) => c.cout },
@@ -550,61 +635,6 @@ export const INDICATEURS: DefinitionIndicateur[] = [
   },
 ];
 
-/** Les six indicateurs du référentiel DO — la sélection par défaut de la maquette. */
-export const SELECTION_DEFAUT = ["d1", "d2", "d3", "c1", "c2", "c3"];
-
-/**
- * La rangée de pastilles du tableau de bord refondu (7 septembre 2026) : cinq
- * au plus, sur une seule ligne, quels que soient les axes. Au-delà, le choix
- * se grise ; il faut en décocher une pour en prendre une autre.
- */
-export const MAX_PASTILLES = 5;
-export const PASTILLES_DEFAUT = ["d1", "c2", "c3", "d3", "s1"];
-
-/** Une sélection relue du stockage, bornée à la rangée. */
-export function limiterPastilles(selection: string[]): string[] {
-  return selection.filter((id) => INDICATEURS.some((d) => d.id === id)).slice(0, MAX_PASTILLES);
-}
-
-/**
- * Trois indicateurs par axe au maximum — règle du métier du 3 septembre au soir.
- * Un axe qui en montre davantage ne se lit plus d'un coup d'œil, et le tableau
- * de bord cesse d'être un tableau de bord.
- */
-export const MAX_PAR_AXE = 3;
-
-/**
- * Borne une sélection à trois par axe, dans l'ordre du référentiel. Sert à
- * relire une sélection enregistrée avant que la règle n'existe.
- */
-export function limiter(selection: string[]): string[] {
-  const garde: string[] = [];
-  for (const axe of AXES) {
-    const surLAxe = selection.filter((id) => INDICATEUR_PAR_ID.get(id)?.axe === axe.cle);
-    garde.push(...surLAxe.slice(0, MAX_PAR_AXE));
-  }
-  return garde;
-}
-
-/** Ce qui est déjà retenu sur un axe, dans l'ordre du référentiel. */
-export function selectionDeAxe(selection: string[], axe: CleAxe): string[] {
-  return INDICATEURS.filter((d) => d.axe === axe && selection.includes(d.id)).map((d) => d.id);
-}
-
-/**
- * Ajoute ou retire un indicateur en tenant la limite de trois par axe : au-delà,
- * le plus anciennement retenu de l'axe cède sa place. La case ne se refuse
- * jamais en silence — c'est le plus ancien qui sort, pas le nouveau qui échoue.
- */
-export function basculer(selection: string[], id: string): string[] {
-  const d = INDICATEUR_PAR_ID.get(id);
-  if (!d) return selection;
-  if (selection.includes(id)) return selection.filter((x) => x !== id);
-  const surLAxe = selection.filter((x) => INDICATEUR_PAR_ID.get(x)?.axe === d.axe);
-  const aRetirer = surLAxe.length >= MAX_PAR_AXE ? surLAxe.slice(0, surLAxe.length - MAX_PAR_AXE + 1) : [];
-  return [...selection.filter((x) => !aRetirer.includes(x)), id];
-}
-
 export const INDICATEUR_PAR_ID = new Map(INDICATEURS.map((i) => [i.id, i]));
 
 /**
@@ -623,8 +653,15 @@ export const INDICATEURS_COURBE = INDICATEURS.filter((d) => d.calcul !== undefin
    au-delà, la page défile, et c'est un choix. */
 export const MAX_COURBES = 8;
 
-/** Les courbes proposées d'emblée : disponibilité, coût, consommation, accidents. */
-export const COURBES_DEFAUT = ["d1", "c4", "c5", "s1"];
+/*
+ * Les courbes proposées d'emblée. Jusqu'au 23 septembre 2026 : disponibilité,
+ * coût au kilomètre, consommation, accidents — quatre courbes vides en
+ * production (durées d'immobilisation, compteurs et registre des incidents non
+ * tenus). Le défaut montre désormais ce que la base sait dire : le coût à la
+ * tonne du parc, le taux d'externalisation (deux indicateurs DO), les tonnes
+ * livrées et les dépenses. Les quatre autres restent à un clic.
+ */
+export const COURBES_DEFAUT = ["c1", "c3", "d11", "c7"];
 
 /* -- Évaluation ---------------------------------------------------------------- */
 
@@ -671,42 +708,4 @@ export function evaluerIndicateur(d: DefinitionIndicateur, cumul: Cumul): Valeur
   if (cible === null) return { definition: d, valeur, etat: "sans-cible", cible: null };
   const tenue = d.cible!.sens === "inf" ? valeur <= cible : valeur >= cible;
   return { definition: d, valeur, etat: tenue ? "ok" : "ko", cible };
-}
-
-export interface AxeEvalue {
-  axe: Axe;
-  /** Les indicateurs affichés de cet axe, dans l'ordre du référentiel. */
-  indicateurs: ValeurIndicateur[];
-  /**
-   * Part des indicateurs affichés qui tiennent leur cible, en points.
-   * Nul quand l'axe n'a aucun indicateur affiché ou aucun de mesurable.
-   */
-  score: number | null;
-  /** Combien d'indicateurs affichés attendent encore leur source. */
-  nonAlimentes: number;
-}
-
-/**
- * Le score d'un axe, à la règle de la maquette : la part des indicateurs
- * affichés qui tiennent leur cible. Ceux qui n'ont pas de source branchée, et
- * ceux qui n'ont pas de cible chiffrée, sont écartés du calcul — on ne note
- * pas ce qu'on ne mesure pas.
- */
-export function evaluerAxes(cumul: Cumul, selection: string[]): AxeEvalue[] {
-  return AXES.map((axe) => {
-    const indicateurs = INDICATEURS.filter((d) => d.axe === axe.cle && selection.includes(d.id)).map((d) => evaluerIndicateur(d, cumul));
-    const notes = indicateurs.filter((v) => v.etat === "ok" || v.etat === "ko");
-    return {
-      axe,
-      indicateurs,
-      score: notes.length ? Math.round((100 * notes.filter((v) => v.etat === "ok").length) / notes.length) : null,
-      nonAlimentes: indicateurs.filter((v) => v.etat === "non-alimente").length,
-    };
-  });
-}
-
-/** La couleur d'un score, aux seuils de la maquette : 80 et 50. */
-export function couleurScore(score: number | null): string {
-  if (score === null) return "var(--color-attenue-2)";
-  return score >= 80 ? "var(--color-favorable)" : score >= 50 ? "var(--color-vigilance)" : "var(--color-defavorable)";
 }

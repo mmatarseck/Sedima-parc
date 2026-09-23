@@ -284,6 +284,22 @@ export interface LigneAchat {
 }
 
 /**
+ * Une demande est réglée quand elle est à l'étape « réglée », **même sans date
+ * de règlement**. L'historique chargé de Sage X3 (676 demandes) porte l'étape
+ * sans la date : juger sur la seule date les laissait toutes « engagées », et
+ * les engagements en cours montaient à un milliard de francs (audit du
+ * 23 septembre 2026). Une refusée n'engage rien non plus.
+ */
+export function achatClos(l: Pick<LigneAchat, "etape" | "dateReglement">): boolean {
+  return l.dateReglement !== null || l.etape === "reglee" || l.etape === "refusee";
+}
+
+/** Commandée (bon de commande émis) et pas encore close : ce qui engage la trésorerie. */
+export function achatEngage(l: Pick<LigneAchat, "etape" | "dateReglement" | "numeroBonCommande">): boolean {
+  return l.numeroBonCommande !== null && !achatClos(l);
+}
+
+/**
  * Le coût d'une demande, au plus juste de ce que l'on sait : facturé, sinon
  * engagé, sinon estimé. C'est ce montant que porte l'analyse par véhicule.
  */

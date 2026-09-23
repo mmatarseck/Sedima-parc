@@ -10,6 +10,23 @@ Rien n'attend le métier, sauf les vérifications listées en fin de fichier.
 Le seul fichier modifié dans l'arbre est `next-env.d.ts`, que `next dev`
 réécrit : il ne se commite pas.
 
+## Audit du 23 septembre 2026 — à lire d'abord
+
+Détail : **`docs/AUDIT-APPLICATION-2026-09.md`**. En bref :
+
+- Corrigé dans le code : les pastilles du tableau de bord et le classement des
+  chauffeurs tournaient en production **sur la démonstration**
+  (`.maybeSingle()` sur des fonctions qui rendent un tableau) ; filtres BU /
+  catégorie / site qui vidaient les pastilles (UUID contre plaque) ;
+  engagements d'achat à 1 milliard (étape « réglée » sans date) ; carburant
+  absent des coûts du tableau de bord et de l'écran Coûts ; ratios au km sur
+  des dénominateurs partiels ; coût à la tonne du parc rapporté aux seules
+  tonnes UAB ; trois nouveaux indicateurs sur les bons de livraison.
+- **À jouer par le métier** : `0067_tableau_livraisons.sql` (la prochaine
+  migration sera **0068**), puis `supabase/correctif-pleins-doublons.sql`
+  (1 032 pleins chargés deux fois le 10 septembre, 1 032 pleins de 2022
+  manquants).
+
 ## Comment on travaille ici
 
 - **Langue** : tout en français — code, commentaires, commits, documents,

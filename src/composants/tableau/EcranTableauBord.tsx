@@ -35,7 +35,7 @@ import { date as formaterDate, montantCourt, nombre } from "@/lib/format";
  *
  * Une seule vue, sans défilement sur un écran de travail. Trois rangées :
  *
- *   1. **cinq pastilles au plus**, choisies par le compte, chacune complète :
+ *   1. **six pastilles au plus**, choisies par le compte, chacune complète :
  *      valeur sur la période, écart à la période précédente, cible, et la
  *      courbe des douze mois en pied ;
  *   2. **les courbes**, huit au plus sur deux rangées, chacune sur sa propre échelle, avec la
@@ -327,7 +327,11 @@ export function EcranTableauBord({
      elles se calculent sur les situations journalières, bornées au périmètre
      — BU, catégorie, site — mais pas à la période, qui ne vaut que pour les
      courbes. La référence est hier en fin de journée, ou la semaine passée. */
-  const situationsRetenues = useMemo(() => (filtreVehicule ? situations.map((s) => ({ ...s, vehicules: s.vehicules.filter((v) => retenus.has(v.vehiculeId)) })) : situations), [situations, retenus, filtreVehicule]);
+  /* Les situations nomment le véhicule par son identifiant en base, les faits
+     par sa plaque : le filtre doit reconnaître les deux. Sans cela, poser une
+     BU vidait toutes les pastilles (audit du 23 septembre 2026). */
+  const retenusSituations = useMemo(() => new Set([...retenus, ...vehicules.filter((v) => retenus.has(v.id) && v.uuid).map((v) => v.uuid!)]), [retenus, vehicules]);
+  const situationsRetenues = useMemo(() => (filtreVehicule ? situations.map((s) => ({ ...s, vehicules: s.vehicules.filter((v) => retenusSituations.has(v.vehiculeId)) })) : situations), [situations, retenusSituations, filtreVehicule]);
   const pastilles = useMemo(() => (monte ? selection : PASTILLES_DEFAUT).map((id) => evaluerPastille(PASTILLE_PAR_ID.get(id)!, situationsRetenues, seuils)), [monte, selection, situationsRetenues, seuils]);
 
   const series = useMemo(

@@ -22,7 +22,7 @@
 
 import { bilanVehicule, qualifier, VERDICT_COUT, type BilanVehicule, type Perimetre } from "@/domaine/couts";
 import { conducteurDuJour, etatDisponibilite, ETAT_DISPONIBILITE } from "@/domaine/disponibilite";
-import { ETAPE_ACHAT, SENS_CAISSE, TON_ETAPE_ACHAT, URGENCE_ACHAT, coutDe } from "@/domaine/caisse";
+import { ETAPE_ACHAT, SENS_CAISSE, TON_ETAPE_ACHAT, URGENCE_ACHAT, achatClos, coutDe } from "@/domaine/caisse";
 import { LIBELLE_ETAT_PLEIN, SENS_CUVE, etatPlein } from "@/domaine/carburant";
 import { NATURE_TRAVAIL, STATUT_ORDRE, TON_URGENCE_TRAVAIL, URGENCE_TRAVAIL, factureDe, travauxOuverts } from "@/domaine/maintenance";
 import { CATEGORIES_MAINTENANCE, systemeDe } from "@/domaine/categories-maintenance";
@@ -1931,10 +1931,13 @@ function cycleAchats(s: SourceRapports, c: ContexteRapport): LigneRapport[] {
         total: joursEntre(d.date, d.dateReglement),
         /* L'âge ne vaut que pour ce qui n'est pas clos : une demande réglée
            n'a pas d'âge, elle a une durée. */
-        age: d.dateReglement === null ? joursEntre(d.date, s.aujourdhui) : null,
-        delaiTenu:
-          d.dateReglement === null
-            ? etat("En cours", "neutre", 2)
+        age: achatClos(d) ? null : joursEntre(d.date, s.aujourdhui),
+        delaiTenu: !achatClos(d)
+          ? etat("En cours", "neutre", 2)
+          : d.etape === "refusee"
+            ? etat("Refusée", "neutre", 3)
+            : d.dateReglement === null
+            ? etat("Réglée, date inconnue", "neutre", 3)
             : convenu === null || paiement === null
               ? etat("Sans délai convenu", "neutre", 3)
               : paiement <= convenu

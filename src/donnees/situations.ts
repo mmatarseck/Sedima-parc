@@ -15,6 +15,7 @@
 import { cache } from "react";
 import type { FaitsFlotteJour, FaitsVehiculeJour, SituationJournaliere } from "@/domaine/pastilles";
 import type { StatutVehicule } from "@/domaine/types";
+import { authentificationReelle } from "@/lib/session-demo";
 import { clientServeur } from "@/lib/supabase";
 import { situationsJournalieres } from "./situation-demo";
 
@@ -66,7 +67,7 @@ interface FlotteJson {
   tiers_factures_montant?: number | string | null;
 }
 
-interface SituationJson {
+export interface SituationJson {
   jour: string;
   vehicules: VehiculeJson[];
   flotte: FlotteJson;
@@ -81,7 +82,7 @@ function plusJours(jour: string, k: number): string {
   return new Date(Date.parse(`${jour}T00:00:00Z`) + k * 86_400_000).toISOString().slice(0, 10);
 }
 
-function situationDepuisJson(s: SituationJson): SituationJournaliere {
+export function situationDepuisJson(s: SituationJson): SituationJournaliere {
   const vehicules: FaitsVehiculeJour[] = s.vehicules.map((v) => ({
     vehiculeId: v.vehicule_id,
     jour: s.jour,
@@ -130,11 +131,26 @@ function situationDepuisJson(s: SituationJson): SituationJournaliere {
 
 /** Les situations des `profondeur` derniers jours, du plus ancien à `aujourdhui`. */
 async function situationsServeurBrut(aujourdhui: string, profondeur = 28): Promise<SituationJournaliere[]> {
+  /* Sans base, la démonstration. */
+  if (!authentificationReelle()) return situationsJournalieres(aujourdhui, profondeur);
   const client = await clientServeur();
-  const lecture = await client.rpc("situation_journaliere", { depuis: plusJours(aujourdhui, 1 - profondeur), jusqua: aujourdhui }).maybeSingle<SituationJson[]>();
-  /* Fonction pas encore jouée en base : la démonstration prend le relais, comme pour le parc. */
-  if (lecture.error || !Array.isArray(lecture.data)) return situationsJournalieres(aujourdhui, profondeur);
-  return lecture.data.map(situationDepuisJson);
+  /*
+   * **Pas de `.maybeSingle()` ici** (audit du 23 septembre 2026). La fonction
+   * rend un tableau JSON, et PostgREST lit un tableau comme autant de lignes :
+   * sur vingt-huit jours, `.maybeSingle()` répondait PGRST116, et la branche
+   * de repli servait… les situations de démonstration. Les pastilles du
+   * tableau de bord montraient en production des chiffres inventés, sans que
+   * rien ne le dise.
+   *
+   * Base branchée, une lecture en échec ne se remplace plus par la
+   * démonstration : elle rend une série vide, et les pastilles disent « — ».
+   */
+  const lecture = await client.rpc("situation_journaliere", { depuis: plusJours(aujourdhui, 1 - profondeur), jusqua: aujourdhui });
+  if (lecture.error || !Array.isArray(lecture.data)) {
+    console.warn(`Situations journalières : situation_journaliere() illisible (${lecture.error?.message ?? "réponse inattendue"}).`);
+    return [];
+  }
+  return (lecture.data as SituationJson[]).map(situationDepuisJson);
 }
 
 export const situationsServeur = cache(situationsServeurBrut);

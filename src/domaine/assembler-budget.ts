@@ -12,7 +12,7 @@
  * ==========================================================================*/
 
 import { attenduADate, PROFIL_PAR_POSTE, SEUIL_ENVELOPPE, suivre, synthetiser, type Enveloppe, type SuiviEnveloppe, type SyntheseBudget } from "./budget";
-import type { LigneAchat } from "./caisse";
+import { achatEngage, type LigneAchat } from "./caisse";
 import type { BusinessUnit, PosteDepense } from "./types";
 
 /* -- Ce qu'il faut savoir pour dresser le budget ------------------------------ */
@@ -122,7 +122,7 @@ function consommeDe(s: SourceBudget): Map<string, number> {
 
 /** Une demande engage le budget dès le bon de commande, jusqu'au règlement. */
 function engage(d: LigneAchat, exercice: string): boolean {
-  return d.numeroBonCommande !== null && d.dateReglement === null && d.etape !== "refusee" && d.date.slice(0, 4) === exercice;
+  return achatEngage(d) && d.date.slice(0, 4) === exercice;
 }
 
 function montantEngage(d: LigneAchat): number {

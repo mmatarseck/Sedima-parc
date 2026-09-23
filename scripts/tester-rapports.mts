@@ -60,7 +60,7 @@ const consommations = consommationsDepuisLaBase(pleins, parc, aujourdhui);
 const interventions = ((await pg.query(`select x.numero, x.vehicule_id, x.date, x.type, x.objet, x.montant, x.immobilisation_jours, x.km, x.reference, ${vehiculeJson} as vehicule, (select jsonb_build_object('raison_sociale', p.raison_sociale) from prestataire p where p.id = x.prestataire_id) as prestataire from intervention x order by x.date desc`)).rows as any[]).map((r) => ({ ...r, date: iso(r.date) }) as LigneInterventionBase).map(interventionDepuisLigne);
 const t0 = performance.now();
 const depensesCout = ((await pg.query(`select x.date, x.poste, x.montant, (select jsonb_build_object('immatriculation', v.immatriculation) from vehicule v where v.id = x.vehicule_id) as vehicule from depense x where x.vehicule_id is not null`)).rows as any[]).map((r) => ({ ...r, date: iso(r.date) }) as LigneDepenseCout);
-const couts = donneesCoutsDepuisLaBase(lignes, depensesCout, consommations, interventions, aujourdhui);
+const couts = donneesCoutsDepuisLaBase(lignes, depensesCout, consommations, interventions, aujourdhui, [], pleins);
 console.log(`parc : ${lignes.length} lignes, ${depensesCout.length} dépenses avec poste, ${pleins.length} pleins, ${interventions.length} interventions ; coûts de ${couts.length} véhicules en ${Math.round(performance.now() - t0)} ms`);
 
 /* Les dépenses des douze derniers mois, véhicule par véhicule : la base et la démonstration doivent dire la même somme — sur le parc de transport, le parc léger ne coûtant en démonstration que des forfaits que la base ne porte pas encore. */

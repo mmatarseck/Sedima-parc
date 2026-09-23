@@ -46,8 +46,13 @@ function moisServis(aujourdhui: string): string[] {
  * banc d'essai. Le parc léger apporte ses forfaits carburant en dépense de
  * carburant, sur chaque véhicule de fonction en circulation.
  */
-export function donneesCoutsDepuisLaBase(lignes: LigneFlotte[], depenses: LigneDepenseCout[], consommations: ConsommationMensuelleFlotte[], interventions: LigneInterventionFlotte[], aujourdhui: string, forfaits: DepenseForfait[] = []): DonneesVehicule[] {
+export function donneesCoutsDepuisLaBase(lignes: LigneFlotte[], depenses: LigneDepenseCout[], consommations: ConsommationMensuelleFlotte[], interventions: LigneInterventionFlotte[], aujourdhui: string, forfaits: DepenseForfait[] = [], pleins: { immatriculation: string; date: string; montant: number }[] = []): DonneesVehicule[] {
   const mois = moisServis(aujourdhui);
+  /* Les pleins comptent désormais par la consommation (plus bas). Une dépense
+     « carburant » qui reproduit un plein — même véhicule, même jour, même
+     montant, comme le jeu de départ en écrit une par plein — ne se compte pas
+     une seconde fois. */
+  const dejaEnPlein = new Set(pleins.map((p) => `${p.immatriculation}|${p.date}|${Math.round(p.montant)}`));
   const retenu = new Set(mois);
   const parVehicule = new Map<string, Map<string, MoisVehicule>>();
   const de = (immat: string, m: string): MoisVehicule => {
@@ -65,6 +70,7 @@ export function donneesCoutsDepuisLaBase(lignes: LigneFlotte[], depenses: LigneD
   };
   for (const d of depenses) {
     if (!d.vehicule) continue;
+    if (d.poste === "carburant" && dejaEnPlein.has(`${d.vehicule.immatriculation}|${d.date}|${Math.round(Number(d.montant))}`)) continue;
     const m = d.date.slice(0, 7);
     if (!retenu.has(m)) continue;
     const x = de(d.vehicule.immatriculation, m);
@@ -80,6 +86,10 @@ export function donneesCoutsDepuisLaBase(lignes: LigneFlotte[], depenses: LigneD
     const x = de(c.vehiculeId, c.mois);
     x.km += c.kmParcourus;
     x.litres += c.litres;
+    /* Les pleins sont une charge, comme sur la fiche du véhicule : en base, ils ne
+       passent pas par les dépenses, et le premier poste du parc manquait aux
+       coûts (audit du 23 septembre 2026). */
+    x.parPoste.carburant = (x.parPoste.carburant ?? 0) + c.cout;
   }
   for (const i of interventions) {
     const m = i.date.slice(0, 7);
@@ -128,7 +138,7 @@ async function coutsServeurBrut(parametres: Parametres): Promise<DonneesVehicule
     interventionsServeur(),
     parcLegerServeur(parametres),
   ]);
-  return donneesCoutsDepuisLaBase(lignes, lignesLues("Dépenses des coûts", depenses), carburant.consommations, interventions, aujourdhui, depensesForfaitsDe(parcLeger, aujourdhui, parametres.parcLeger.forfaitCarburantMensuel));
+  return donneesCoutsDepuisLaBase(lignes, lignesLues("Dépenses des coûts", depenses), carburant.consommations, interventions, aujourdhui, depensesForfaitsDe(parcLeger, aujourdhui, parametres.parcLeger.forfaitCarburantMensuel), carburant.pleins);
 }
 
 export const coutsServeur = cache(coutsServeurBrut);

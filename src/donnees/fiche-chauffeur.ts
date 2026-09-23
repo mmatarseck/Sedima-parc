@@ -136,7 +136,10 @@ const FAITS_VIDES: FaitsFicheChauffeur = { adresse: null, contactUrgence: null, 
 async function fichesChauffeursServeurBrut(): Promise<FicheChauffeur[]> {
   const lignes = await lignesChauffeurs();
   const client = await clientServeur();
-  const lecture = await client.rpc("lire_fiches_chauffeurs").maybeSingle<FicheChauffeurEnListe[] | null>();
+  /* Un tableau JSON : `.maybeSingle()` le prenait pour vingt lignes et répondait
+     PGRST116, si bien que le classement tournait sans historique (audit du
+     23 septembre 2026). */
+  const lecture = await client.rpc("lire_fiches_chauffeurs").returns<FicheChauffeurEnListe[] | null>();
   if (lecture.error) console.warn(`Fiches chauffeurs : lire_fiches_chauffeurs() indisponible (${lecture.error.message}), classement sans historique.`);
   const parIdentifiant = new Map((Array.isArray(lecture.data) ? lecture.data : []).map((f) => [f.identifiant, f.fiche]));
   const aujourdhui = new Date().toISOString().slice(0, 10);

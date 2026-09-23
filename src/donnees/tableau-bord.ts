@@ -14,7 +14,7 @@
 
 import { cache } from "react";
 import { REFERENCE_L100 } from "@/domaine/assembler-fiche";
-import type { LigneAchat } from "@/domaine/caisse";
+import { achatClos, achatEngage, type LigneAchat } from "@/domaine/caisse";
 import { immobilisationAdministrative } from "@/domaine/documents";
 import type { EtatDocument } from "@/domaine/fiche";
 import { afficher } from "@/domaine/immatriculation";
@@ -49,6 +49,10 @@ export interface TableauJson {
   mises_a_disposition: { mois: string; statut: MiseADisposition["statut"]; jours_calendaires: number; jours_panne: number; prix_jour: number; convention: MiseADisposition["convention"]; montant_facture: number | null; carburant_montant: number; tonnes_transportees: number | string | null; regime?: RegimeFiscal }[];
   prestations: { date: string; statut: Prestation["statut"]; quantite: number | string; prix_unitaire: number; convention: Prestation["convention"]; montant_facture: number | null; regime?: RegimeFiscal }[];
   releves_transport: { date: string; mode: LigneReleve["mode"]; produit: LigneReleve["produit"]; tonnage: number | string; tonnage_pese: number | string | null }[];
+  /** Les bons de livraison, agrégés par véhicule, mois et mode (0067) ; absents tant que la migration n'est pas jouée. */
+  livraisons?: { vehicule_id: string | null; mois: string; mode: string; tonnes: number | string; bons: number }[];
+  /** Les jours du mois qui portent au moins un bon (0067) : c'est la couverture. */
+  livraisons_jours?: { mois: string; jours: number }[];
 }
 
 export const PROFONDEUR_MOIS = 24;
@@ -76,20 +80,35 @@ function etatALaDate(d: { dateEffet: string | null; echeance: string | null }, d
 function plusJours(jour: string, k: number): string {
   return new Date(Date.parse(`${jour}T00:00:00Z`) + k * 86_400_000).toISOString().slice(0, 10);
 }
-/** Le compteur à une date, lu sur des points (date, km) croissants : le dernier point avant, sinon le premier après. */
+/**
+ * Le compteur à une date, lu sur des points (date, km) croissants : **interpolé**
+ * entre le point d'avant et celui d'après ; hors des points, le plus proche.
+ *
+ * Interpolé depuis l'audit du 23 septembre 2026. Le compteur n'est relevé que
+ * de loin en loin — décembre, puis juillet — et la lecture « dernier point
+ * avant » versait tous les kilomètres de décembre à juillet sur le seul mois
+ * de juillet : 41 000 km en un mois, 4 L/100 km de consommation. Répartis au
+ * prorata des jours, ils restent une estimation, mais une estimation honnête.
+ */
 function kmVers(points: { date: string; km: number }[], date: string): number | null {
-  let avant: number | null = null;
+  if (points.length === 0) return null;
+  let avant: { date: string; km: number } | null = null;
   for (const p of points) {
-    if (p.date <= date) avant = p.km;
-    else return avant ?? p.km;
+    if (p.date <= date) {
+      avant = p;
+      continue;
+    }
+    if (!avant) return p.km;
+    const part = (Date.parse(date) - Date.parse(avant.date)) / (Date.parse(p.date) - Date.parse(avant.date));
+    return avant.km + (p.km - avant.km) * part;
   }
-  return avant;
+  return avant!.km;
 }
 /** Les kilomètres parcourus entre deux dates, compteur du début exclu si l'on a mieux ensuite. */
 function kmEntre(points: { date: string; km: number }[], debut: string, fin: string): number {
   const a = kmVers(points, plusJours(debut, -1));
   const b = kmVers(points, fin);
-  return a !== null && b !== null && b > a ? b - a : 0;
+  return a !== null && b !== null && b > a ? Math.round(b - a) : 0;
 }
 
 /** Les mois de la profondeur, du plus ancien au courant. */
@@ -128,7 +147,9 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
   };
   const relevesPar = parVehicule(j.releves);
   const pleinsPar = parVehicule(j.pleins);
-  const depensesPar = parVehicule(j.depenses.filter((d) => d.poste !== "amortissement" && d.poste !== "salaire"));
+  /* Une dépense « carburant » qui reproduit un plein (même véhicule, jour et montant) ne se compte pas en plus du plein. */
+  const dejaEnPlein = new Set(j.pleins.map((p) => `${p.vehicule_id}|${p.date}|${Math.round(n(p.montant))}`));
+  const depensesPar = parVehicule(j.depenses.filter((d) => d.poste !== "amortissement" && d.poste !== "salaire" && !(d.poste === "carburant" && dejaEnPlein.has(`${d.vehicule_id}|${d.date}|${Math.round(n(d.montant))}`))));
   const interventionsPar = parVehicule(j.interventions);
   const incidentsPar = parVehicule(j.incidents.map((i) => ({ ...i, date: i.date_heure.slice(0, 10) })));
   const documentsPar = parVehicule(j.documents);
@@ -139,6 +160,24 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
   const parametresVehicule = { ...parametres, documents: { types: parametres.documents.types.filter((t) => t.porteur === "vehicule") } };
   const statutsPar = new Map<string, TableauJson["statuts"]>();
   for (const s of j.statuts) statutsPar.set(s.immatriculation, [...(statutsPar.get(s.immatriculation) ?? []), s]);
+
+  /*
+   * Les bons de livraison (0067). Un mois n'est « livré » que si ses bons
+   * couvrent l'essentiel de ses jours : le fichier de juillet 2026 s'arrête le
+   * 8, et un tiers de mois de tonnes rapporté à un mois de charges triplerait
+   * le coût à la tonne — la même règle que `releveCouvre` pour le relevé.
+   */
+  const moisLivres = new Set((j.livraisons_jours ?? []).filter((l) => l.jours >= 0.65 * (joursDuMois.get(l.mois) ?? 31)).map((l) => l.mois));
+  const tonnesLivreesPar = new Map<string, number>();
+  const tonnesLivreesMois = new Map<string, { parc: number; tiers: number }>();
+  for (const l of j.livraisons ?? []) {
+    const t = n(l.tonnes);
+    const m = tonnesLivreesMois.get(l.mois) ?? { parc: 0, tiers: 0 };
+    if (l.mode === "parc") m.parc += t;
+    else if (l.mode === "transporteur") m.tiers += t;
+    tonnesLivreesMois.set(l.mois, m);
+    if (l.mode === "parc" && l.vehicule_id) tonnesLivreesPar.set(`${l.vehicule_id}|${l.mois}`, (tonnesLivreesPar.get(`${l.vehicule_id}|${l.mois}`) ?? 0) + t);
+  }
 
   const vehicules: VehiculeTableau[] = [];
   const faits: FaitsVehiculeMois[] = [];
@@ -152,7 +191,7 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
     const ligne = ligneParImmat.get(v.immatriculation) ?? null;
     if (!ligne) continue;
     const immatriculationAffichee = afficher(v.immatriculation);
-    vehicules.push({ id: v.immatriculation, immatriculation: v.immatriculation, immatriculationAffichee, libelle: `${v.marque} ${v.appellation}`, categorie: v.categorie, categorieFlotte: v.categorie_flotte, businessUnit: v.business_unit, site: v.site });
+    vehicules.push({ id: v.immatriculation, uuid: v.id, immatriculation: v.immatriculation, immatriculationAffichee, libelle: `${v.marque} ${v.appellation}`, categorie: v.categorie, categorieFlotte: v.categorie_flotte, businessUnit: v.business_unit, site: v.site });
 
     /* Les points de compteur : relevés valides et compteurs des pleins, croissants. */
     const points = [...(relevesPar.get(v.id) ?? []).map((r) => ({ date: r.date, km: r.km })), ...(pleinsPar.get(v.id) ?? []).filter((p) => p.km !== null).map((p) => ({ date: p.date, km: p.km! }))].sort((a, b) => a.date.localeCompare(b.date) || a.km - b.km);
@@ -211,7 +250,10 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
         curativesSansDuree: interventions.filter((i) => i.type === "curatif" && i.immobilisation_jours === null).length,
         /* Arrêté depuis une date inconnue : il a pu l'être pendant n'importe quelle période. */
         immobilisationsSansDebut: debutInconnu ? 1 : 0,
-        cout: depenses.reduce((s, d) => s + n(d.montant), 0),
+        /* Les pleins sont une charge du véhicule, comme sur sa fiche (`assembler-fiche`) : sans eux, le premier poste du parc manquait au coût. */
+        cout: depenses.reduce((s, d) => s + n(d.montant), 0) + pleins.reduce((s, p) => s + n(p.montant), 0),
+        coutCarburant: pleins.reduce((s, p) => s + n(p.montant), 0),
+        tonnesLivrees: cle === "semaine" || !moisLivres.has(cle) ? null : Math.round((tonnesLivreesPar.get(`${v.id}|${cle}`) ?? 0) * 10) / 10,
         coutMaintenance: depenses.filter((d) => groupeDuPoste(d.poste) === "maintenance").reduce((s, d) => s + n(d.montant), 0),
         coutCuratif: depenses.filter((d) => d.poste === "maintenance-curative").reduce((s, d) => s + n(d.montant), 0),
       };
@@ -251,6 +293,12 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
   const actifsAu = (jour: string) => j.chauffeurs.filter((c) => (!c.date_embauche || c.date_embauche <= jour) && (!c.date_sortie || c.date_sortie > jour)).length;
   const indisponiblesSur = (debut: string, fin: string) => j.indisponibilites.reduce((s, i) => s + joursDans(i.debut, i.fin, debut, fin), 0);
 
+  /* Les tonnes d'un mois : les bons quand ils le couvrent — toutes les usines —, sinon le relevé de transport — l'aliment de l'UAB. */
+  const tonnesDuMois = (x: string, releve: { interne: number; externe: number } | null): Pick<FaitsFlotteMois, "tonnesInternes" | "tonnesTiers" | "sourceTonnes"> => {
+    const l = moisLivres.has(x) ? tonnesLivreesMois.get(x) : undefined;
+    if (l) return { tonnesInternes: Math.round(l.parc * 10) / 10, tonnesTiers: Math.round(l.tiers * 10) / 10, sourceTonnes: "livraisons" };
+    return releve ? { tonnesInternes: releve.interne, tonnesTiers: releve.externe, sourceTonnes: "releve" } : { tonnesInternes: null, tonnesTiers: null, sourceTonnes: null };
+  };
   const flotte: FaitsFlotteMois[] = mois.map((x) => {
     if (`${x}-01` > aujourdhui) return { mois: x, joursIndisponibiliteChauffeurs: 0, joursChauffeurs: 0, coutTransportTiers: 0, coutAffretements: 0, coutMisesADisposition: 0, coutPrestations: 0, taxeTransportTiers: 0, tonnesTiers: null, tonnesInternes: null };
     const debut = `${x}-01`;
@@ -267,7 +315,7 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
     const taxe = aff.reduce((s, a) => s + ventiler(coutAffretement(a), a.regime).tva, 0) + Math.round(madMois.reduce((s, m) => s + ventiler(coutMiseADisposition(m).location, m.regime).tva, 0) * partDuMois) + pres.reduce((s, p) => s + ventiler(coutPrestation(p), p.regime).tva, 0);
     const tonnes = tonnagesPar(relevesTransport.filter((l) => l.date >= debut && l.date <= fin));
     const couvert = releveCouvre(bornes, debut, fin);
-    return { mois: x, joursIndisponibiliteChauffeurs: indisponiblesSur(debut, fin), joursChauffeurs: actifsAu(fin) * jours, coutTransportTiers: coutAff + coutMad + coutPres, coutAffretements: coutAff, coutMisesADisposition: coutMad, coutPrestations: coutPres, taxeTransportTiers: taxe, tonnesTiers: couvert ? tonnes.externe : null, tonnesInternes: couvert ? tonnes.interne : null };
+    return { mois: x, joursIndisponibiliteChauffeurs: indisponiblesSur(debut, fin), joursChauffeurs: actifsAu(fin) * jours, coutTransportTiers: coutAff + coutMad + coutPres, coutAffretements: coutAff, coutMisesADisposition: coutMad, coutPrestations: coutPres, taxeTransportTiers: taxe, ...tonnesDuMois(x, couvert ? tonnes : null) };
   });
   const flotteSemaine: FaitsFlotteMois[] = [
     (() => {
@@ -284,8 +332,9 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
   ];
 
   /* ---- La situation du jour ---- */
-  const reglees = achats.filter((d) => d.dateReglement !== null);
-  const engagementsEnCours = achats.filter((d) => d.numeroBonCommande !== null && d.dateReglement === null && d.etape !== "refusee").reduce((s, d) => s + (d.montantReel ?? d.montantEngage ?? d.montantEstime), 0);
+  /* Le cycle ne se mesure que sur une date de règlement ; l'engagement, lui, s'éteint à l'étape « réglée » même sans date (voir `achatClos`). */
+  const reglees = achats.filter((d) => d.dateReglement !== null && achatClos(d));
+  const engagementsEnCours = achats.filter(achatEngage).reduce((s, d) => s + (d.montantReel ?? d.montantEngage ?? d.montantEstime), 0);
   const cycleAchatJours = reglees.length ? Math.round(reglees.reduce((s, d) => s + (Date.parse(d.dateReglement!) - Date.parse(d.date)) / 86_400_000, 0) / reglees.length) : null;
   const engages = (dernier?.vehicules ?? []).filter((x) => x.engage);
   const jour: SituationJour = {
@@ -300,7 +349,7 @@ export function donneesDepuisLaBase(j: TableauJson, lignes: LigneFlotte[], situa
     vehiculesSpeciaux,
     vehiculesSpeciauxConformes,
     /* Un registre vide sur la profondeur du tableau n'est pas tenu : ses zéros ne sont pas des mesures. */
-    registres: { incidents: j.incidents.length > 0, contraventions: j.depenses.some((x) => x.poste === "contravention"), indisponibilites: j.indisponibilites.length > 0 },
+    registres: { incidents: j.incidents.length > 0, contraventions: j.depenses.some((x) => x.poste === "contravention"), indisponibilites: j.indisponibilites.length > 0, salubrite: j.documents.some((d) => d.type_document_id === "certificat-salubrite") },
   };
 
   alertes.sort((x, y) => (x.niveau === y.niveau ? 0 : x.niveau === "critique" ? -1 : 1));
