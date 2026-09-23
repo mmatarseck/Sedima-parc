@@ -22,10 +22,12 @@ Détail : **`docs/AUDIT-APPLICATION-2026-09.md`**. En bref :
   absent des coûts du tableau de bord et de l'écran Coûts ; ratios au km sur
   des dénominateurs partiels ; coût à la tonne du parc rapporté aux seules
   tonnes UAB ; trois nouveaux indicateurs sur les bons de livraison.
-- **À jouer par le métier** : `0067_tableau_livraisons.sql` (la prochaine
-  migration sera **0068**), puis `supabase/correctif-pleins-doublons.sql`
-  (1 032 pleins chargés deux fois le 10 septembre, 1 032 pleins de 2022
-  manquants).
+- **Joués par le métier le 23 septembre 2026** : `0067_tableau_livraisons.sql`
+  (la prochaine migration sera **0068**) et `supabase/correctif-pleins-doublons.sql`.
+  Contrôle après coup : 5 857 pleins (1 032 doubles retirés, 1 018 pleins de
+  2022 rajoutés, 14 écartés faute de véhicule au parc) ; 17 000 à 21 000 L par
+  mois depuis juillet 2025, au lieu du double. Les 103 groupes identiques qui
+  restent sont dans les classeurs eux-mêmes.
 
 ## Comment on travaille ici
 
