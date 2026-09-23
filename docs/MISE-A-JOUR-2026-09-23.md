@@ -88,8 +88,8 @@ Les deux fichiers ont été rejoués deux fois dans PGlite sans erreur.
 
 ### Chauffeurs
 
-- **15 chauffeurs actifs en base n'apparaissent pas sur la liste RH du 22/09**,
-  dont Badji Kadji, Pape Sène, Ibrahima Camara, Alioune Thiam, Semou Diop, Modou
+- **14 chauffeurs actifs en base n'apparaissent pas sur la liste RH du 22/09**
+  : Badji Kadji, Pape Sène, Ibrahima Camara, Alioune Thiam, Semou Diop, Modou
   Gueye, Cheikh Ba, Mandione Diène, Elhadji Mansour Diagne, Assane Sarr, Ndiaga
   Sylla, Ousmane Faye, Moussa Balla Diallo et Pape Mbaye Diagne. Sont-ils
   partis, intérimaires, ou salariés d'une autre entité ? Personne n'a été sorti.
