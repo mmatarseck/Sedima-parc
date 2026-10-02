@@ -1,14 +1,82 @@
-# Passation — où en est SEDIMA Parc (22 septembre 2026)
+# Passation — où en est SEDIMA Parc (2 octobre 2026)
 
 *À lire en premier dans une nouvelle conversation. Le détail de chaque chantier
 est dans les documents cités ; ce fichier dit où l'on en est et comment on
 travaille.*
 
-**État au soir du 22 septembre 2026** : tout est commité **et poussé**
-(`origin/main`), migrations jouées **jusqu'à 0066** — la prochaine sera 0067.
-Rien n'attend le métier, sauf les vérifications listées en fin de fichier.
-Le seul fichier modifié dans l'arbre est `next-env.d.ts`, que `next dev`
-réécrit : il ne se commite pas.
+**État au 2 octobre 2026** : tout est sur `origin/main` (dernier commit
+`3351c4c` puis cette passation) ; migrations jouées en production **jusqu'à
+0067** — la prochaine sera **0068** ; tous les fichiers SQL ponctuels du
+23 septembre sont joués (voir `docs/MISE-A-JOUR-2026-09-23.md`). Rien n'attend
+en base.
+
+## Nouvelle façon de travailler (à partir du 2 octobre 2026) — tout en ligne
+
+Le métier ne travaille plus sur le poste (OneDrive, PGlite local, SQL Editor à
+la main) : **tout se fait dans le cloud**, avec les connecteurs **GitHub,
+Supabase et Vercel** (via Composio ou les connecteurs de claude.ai).
+
+| Quoi | Où | Règle |
+| --- | --- | --- |
+| Code | GitHub `mmatarseck/Sedima-parc` | **Jamais de commit direct sur `main`.** Une branche par chantier (`claude/<sujet-court>`), commits en français, puis une **pull request** vers `main`. |
+| Vérification | GitHub Actions (`.github/workflows/verification.yml`) | Tourne sur chaque PR : `npm ci`, `typecheck`, `verifier-charte`, `build`. Une PR rouge ne se fusionne pas. |
+| Aperçu | Vercel | Chaque branche poussée a son **déploiement d'aperçu** ; le métier valide dessus. `main` = la production. |
+| Mise en production | GitHub | **Le métier fusionne** la PR une fois l'aperçu validé (ou demande explicitement à l'assistant de le faire). |
+| Base | Supabase, projet `mafnzghuexfcxctupyqb` (production) | Lectures de contrôle : `execute_sql` en **lecture seule**, sans demander. **Toute écriture** (migration, correctif, chargement) : le fichier SQL est d'abord commité sur la branche, puis **appliqué seulement après accord explicite du métier**, et **après** la fusion de la PR qui en dépend (ou juste avant, si le code de la PR en a besoin pour marcher). |
+
+**Les migrations** restent des fichiers `supabase/migrations/NNNN_nom.sql`,
+numérotés à la suite (0068 la prochaine), **rejouables**. Les appliquer par
+`apply_migration` du connecteur Supabase en reprenant **le contenu exact du
+fichier**, puis vérifier par une lecture (`list_migrations`, ou une requête sur
+ce que la migration crée). Les correctifs de données (`supabase/correctif-*.sql`,
+`supabase/mise-a-jour-*.sql`) passent par `execute_sql`, une fois le fichier
+commité et validé par le métier — **jamais de suppression ou de mise à jour de
+masse sans avoir montré d'abord le décompte** de ce qui sera touché.
+
+**Les bancs d'essai** (PGlite) tournent dans l'environnement cloud :
+
+```bash
+npm ci
+mkdir -p /tmp/pglite && npm i --prefix /tmp/pglite @electric-sql/pglite@^0.5.8
+PGLITE_DIR=/tmp/pglite node --import tsx --import ./scripts/rendu/hook.mjs scripts/tester-tableau.mts
+```
+
+Les scripts qui lisent `.env.local` (clé de service) **ne tournent plus** :
+`.env.local` n'est pas dans le dépôt et ne doit jamais y entrer. Leurs
+lectures se font par le connecteur Supabase (`execute_sql`). Les sources du
+métier (dossier DO sur OneDrive, boîte Outlook) ne sont lisibles que si le
+métier les dépose dans la conversation ou si un connecteur y donne accès.
+
+**Ce que le cloud ne voit pas** : `C:\Users\…`, OneDrive, le PGlite de
+`AppData\Local\Temp`. Les chemins Windows cités plus bas sont l'historique.
+
+**Next.js 16** : lire `node_modules/next/dist/docs/` (après `npm ci`) avant
+d'écrire du code Next — voir `AGENTS.md`.
+
+## Ce qui reste ouvert au 2 octobre 2026
+
+- Les décisions métier listées dans **`docs/MISE-A-JOUR-2026-09-23.md`**
+  (« À trancher par le métier ») : attributions contradictoires (AA 291 PT /
+  AA 920 VA, AA 550 JD, DK 6067 AM), 14 chauffeurs actifs absents de la liste
+  RH, Bagouma Diop et AA 898 PZ accidenté, AA 605 TR (moteur, compteur), AB 938
+  KQ (carte grise), deux pickups sans plaque, véhicule « Aubineau », plaques
+  anciennes sur la fiche parc de Malick.
+- Les décisions de l'assistant de l'audit (`docs/AUDIT-APPLICATION-2026-09.md`,
+  « à confirmer ») : bons de livraison prioritaires sur le relevé pour les
+  tonnes, pleins comptés comme charge, demande « réglée » close sans date.
+- Données à compléter côté métier : durées d'immobilisation des curatives (454),
+  registre des incidents vide, compteurs non relevés, jauge de la cuve,
+  certificats de salubrité, carburant après le 31/07/2026.
+- La section « Ce qui reste ouvert » plus bas (chantiers non faits).
+
+## Repères utiles
+
+- `scripts/reconcilier-pleins.mts` connaît les plaques réimmatriculées
+  (DK 1306 BB → AB 098 JC, DK 2348 BD → AB 078 JS, DK 7485 BK → AB 364 HK).
+- `scripts/charger-releve-complement.mts` charge les semaines du relevé de
+  tonnage absentes de la base, sans renuméroter l'existant.
+- Les pastilles et le classement des chauffeurs lisent des fonctions qui
+  rendent un **tableau JSON** : jamais de `.maybeSingle()` dessus.
 
 ## Audit du 23 septembre 2026 — à lire d'abord
 
@@ -36,15 +104,16 @@ Détail : **`docs/AUDIT-APPLICATION-2026-09.md`**. En bref :
 - **Pile** : Next.js 16 (lire `node_modules/next/dist/docs` avant d'écrire du
   code Next — voir `AGENTS.md`), Supabase (RLS par `peut(module, niveau)`,
   `mon_role()`), TypeScript.
-- **SQL** : le métier joue lui-même les fichiers dans le **SQL Editor de
-  Supabase**, dans l'ordre donné. Un fichier au-delà de ~500 Ko est refusé. Un
-  fichier doit être **rejouable** (`if not exists`, `on conflict`, `drop … if
-  exists`).
-- **Git** : on commite ; **le métier pousse lui-même** (`git push origin main`)
-  — le push de l'assistant est refusé.
-- **Secrets** : `.env.local` porte la clé de service ; les scripts la lisent
-  sans jamais l'afficher. Lectures de contrôle en base : scripts temporaires
-  sous `scripts/_*.mts`, supprimés après usage.
+- **SQL** : un fichier doit être **rejouable** (`if not exists`, `on
+  conflict`, `drop … if exists`). Application par le connecteur Supabase,
+  avec l'accord du métier (voir plus haut). *Jusqu'au 23/09/2026 : SQL Editor à
+  la main, refus au-delà de ~500 Ko.*
+- **Git** : une branche par chantier, une PR vers `main`, fusion par le
+  métier après l'aperçu Vercel (voir plus haut). *Jusqu'au 23/09/2026 : commit
+  sur `main` en local, push par le métier.*
+- **Secrets** : aucune clé dans le dépôt. Lectures de contrôle en base par le
+  connecteur Supabase. *Jusqu'au 23/09/2026 : scripts `scripts/_*.mts` lisant
+  `.env.local` sur le poste.*
 - **Style** : commentaires en tête de fichier qui disent *pourquoi*, citations
   du métier datées ; `npm run verifier-charte` doit passer.
 - **Écritures** : navigateur d'abord (`enregistrerCreation` /
@@ -60,6 +129,7 @@ Détail : **`docs/AUDIT-APPLICATION-2026-09.md`**. En bref :
 ## Bancs d'essai
 
 ```bash
+# Dans le cloud : PGLITE_DIR=/tmp/pglite (voir plus haut). Sur l'ancien poste :
 PGLITE_DIR=C:/Users/mamadou.seck/AppData/Local/Temp/sedima-pglite node --import tsx --import ./scripts/rendu/hook.mjs scripts/tester-services-maintenance.mts
 ```
 
