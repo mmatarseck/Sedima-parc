@@ -55,6 +55,11 @@ d'écrire du code Next — voir `AGENTS.md`.
 
 ## Ce qui reste ouvert au 2 octobre 2026
 
+- **Mise à jour de septembre** (branche `claude/maj-septembre`) : voir
+  **`docs/MISE-A-JOUR-2026-10-02.md`** — tonnage du 18 au 30/09, 7 demandes
+  d'achat, 3 statuts, 2 batteries ; carburant (après le 31/07), caisse et
+  livraisons de septembre toujours absents.
+
 - **0068 `fermeture_des_fonctions`** (branche `claude/securite-fonctions`) :
   éprouvée au banc `tester-acces.mts` (27 contrôles ; 6 tombent sans elle),
   **jouée le 2 octobre 2026** par `apply_migration` (première migration inscrite
