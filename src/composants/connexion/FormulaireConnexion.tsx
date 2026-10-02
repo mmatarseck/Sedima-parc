@@ -29,7 +29,7 @@ import { ACCROCHE_APPLICATION, NOM_APPLICATION, PRECISION_APPLICATION } from "@/
  * Écrit en clair plutôt qu'en jetons : c'est le seul endroit qui porte un
  * aplat de couleur pleine, et il n'a pas à peser sur la palette commune.
  */
-const DEGRADE = "linear-gradient(145deg, #8cc72e 0%, #78b225 22%, #4e7d1a 44%, #7d1c15 70%, #c00000 100%)";
+export const DEGRADE = "linear-gradient(145deg, #8cc72e 0%, #78b225 22%, #4e7d1a 44%, #7d1c15 70%, #c00000 100%)";
 
 /**
  * La photo qui passe sous le dégradé — un camion du parc, à déposer dans
@@ -149,16 +149,12 @@ export function FormulaireConnexion() {
     router.refresh();
   }
 
-  async function motDePasseOublie() {
-    const adresse = identifiant.trim();
-    if (!adresse) {
-      setErreur("Saisissez d'abord votre identifiant : le lien de réinitialisation part à cette adresse.");
-      return;
-    }
+  /* Aucun serveur d'envoi n'est branché à Supabase (2 octobre 2026) : un
+     courriel de réinitialisation ne partirait pas. Le nouveau lien se demande
+     à l'administrateur, qui le fabrique depuis la fiche d'accès. */
+  function motDePasseOublie() {
     setErreur(null);
-    const { error } = await clientNavigateur().auth.resetPasswordForEmail(adresse, { redirectTo: `${window.location.origin}/connexion` });
-    if (error) setErreur(`Réinitialisation refusée : ${error.message}`);
-    else setInformation(`Un lien de réinitialisation a été envoyé à ${adresse}, s'il correspond à un compte.`);
+    setInformation("Demandez un nouveau lien à l'administrateur de SEDIMA Parc : il le fabrique depuis votre fiche d'accès et vous l'envoie par courriel.");
   }
 
   /* Les champs en pilule, d'après la maquette : rayon plein, fond très clair
@@ -252,7 +248,7 @@ export function FormulaireConnexion() {
 
           {/* Le lien d'oubli sous les champs, aligné à droite. */}
           <div className="mt-2.5 flex justify-end">
-            <button type="button" className="text-[12.5px] font-medium text-accent-fonce hover:text-accent" onClick={() => void motDePasseOublie()}>
+            <button type="button" className="text-[12.5px] font-medium text-accent-fonce hover:text-accent" onClick={motDePasseOublie}>
               Mot de passe oublié&nbsp;?
             </button>
           </div>

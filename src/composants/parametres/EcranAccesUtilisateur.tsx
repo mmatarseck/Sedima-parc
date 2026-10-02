@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { BellRing, Check, ChevronLeft, KeyRound, LayoutGrid, ShieldCheck, UserRound } from "lucide-react";
+import { BellRing, Check, ChevronLeft, Copy, KeyRound, LayoutGrid, Link2, Mail, ShieldCheck, UserRound } from "lucide-react";
 import { ChampCombo } from "@/composants/interface/ChampCombo";
 import { Pastille } from "@/composants/interface/Pastille";
 import { MODULES, NIVEAU, NIVEAUX, PERIMETRE_ENTIER, PROFILS, ecartsDe, nomComplet, trouverProfil, type AccesUtilisateur, type Module, type Niveau, type Profil } from "@/domaine/acces";
@@ -11,8 +11,38 @@ import { ALERTES } from "@/domaine/alertes";
 import { BUSINESS_UNIT } from "@/domaine/libelles";
 import { REGIME_USAGE } from "@/domaine/parc-leger";
 import type { BusinessUnit, RegimeUsage } from "@/domaine/types";
+import { inviterAcces, nouveauLienAcces } from "@/lib/acces-actions";
 import { ecrireAcces, lireAcces, nouvelIdAcces } from "@/lib/acces-demo";
 import { authentificationReelle, lireRole } from "@/lib/session-demo";
+
+/**
+ * La durée de validité d'un lien, telle que l'annonce le courriel. Elle n'est
+ * pas réglée ici mais dans Supabase (Authentication › Sign In / Providers ›
+ * Email › « Email OTP Expiration », 86 400 s) : les deux doivent concorder.
+ */
+const DUREE_LIEN = "24 heures";
+
+/** Le courriel d'invitation, prêt à partir de la messagerie de l'administrateur. */
+function courrielInvitation(prenom: string, courriel: string, lien: string, nouveau: boolean): string {
+  const connexion = lien.replace(/\/connexion\/mot-de-passe\?.*$/, "/connexion");
+  const objet = nouveau ? "SEDIMA Parc — votre accès" : "SEDIMA Parc — nouveau lien de connexion";
+  const corps = [
+    `Bonjour ${prenom},`,
+    "",
+    nouveau
+      ? "Votre accès à SEDIMA Parc, l'application de gestion du parc automobile, est prêt. Pour l'activer, ouvrez ce lien personnel et choisissez votre mot de passe :"
+      : "Voici un nouveau lien pour choisir votre mot de passe sur SEDIMA Parc :",
+    "",
+    lien,
+    "",
+    `Le lien est valable ${DUREE_LIEN} et ne sert qu'une fois. Ne le transférez pas : il ouvre votre compte.`,
+    "",
+    `Ensuite, connectez-vous sur ${connexion} avec votre adresse ${courriel} et ce mot de passe.`,
+    "",
+    "Cordialement,",
+  ].join("\n");
+  return `mailto:${encodeURIComponent(courriel)}?subject=${encodeURIComponent(objet)}&body=${encodeURIComponent(corps)}`;
+}
 
 /* ============================================================================
  * La fiche d'accès d'une personne — cinq sections, sur le modèle du
@@ -55,6 +85,10 @@ export function EcranAccesUtilisateur({ initial, options }: { initial: AccesUtil
   const [admin, setAdmin] = useState(false);
   const [tentative, setTentative] = useState(false);
   const [issue, setIssue] = useState<{ ok: string } | { erreur: string } | null>(null);
+  /* Le lien fabriqué pour cette personne : affiché une fois, à envoyer depuis la messagerie. */
+  const [lien, setLien] = useState<{ courriel: string; lien: string; nouveau: boolean } | null>(null);
+  const [copie, setCopie] = useState(false);
+  const [enCours, setEnCours] = useState(false);
 
   useEffect(() => {
     setAdmin(lireRole() === "administrateur");
@@ -93,6 +127,21 @@ export function EcranAccesUtilisateur({ initial, options }: { initial: AccesUtil
       setSection(manquantsPar.identite ? "identite" : "profil");
       return;
     }
+    /* Base branchée : une fiche nouvelle crée d'abord le compte de connexion,
+       dont elle prend l'identifiant ; le lien d'invitation s'affiche ici. */
+    if (creation && authentificationReelle()) {
+      setEnCours(true);
+      void inviterAcces({ ...a, modifieLe: null }).then((r) => {
+        setEnCours(false);
+        if ("erreur" in r) {
+          setIssue({ erreur: r.erreur });
+          return;
+        }
+        setA((x) => ({ ...x, id: r.id, courriel: r.courriel }));
+        setLien({ courriel: r.courriel, lien: r.lien, nouveau: true });
+      });
+      return;
+    }
     const id = a.id || nouvelIdAcces(a.courriel, lireAcces());
     const fiche: AccesUtilisateur = { ...a, id, modifieLe: creation ? null : new Date().toISOString() };
     void ecrireAcces(fiche).then((refus) => {
@@ -105,17 +154,46 @@ export function EcranAccesUtilisateur({ initial, options }: { initial: AccesUtil
     });
   }
 
+  /* Invitation expirée ou mot de passe oublié : un nouveau lien, pour le même compte. */
+  function demanderLien() {
+    setIssue(null);
+    setEnCours(true);
+    void nouveauLienAcces(a.id).then((r) => {
+      setEnCours(false);
+      if ("erreur" in r) setIssue({ erreur: r.erreur });
+      else setLien({ courriel: r.courriel, lien: r.lien, nouveau: false });
+    });
+  }
+
+  function copier() {
+    if (!lien) return;
+    void navigator.clipboard.writeText(lien.lien).then(() => setCopie(true));
+  }
+
   const alertesDuProfil = ALERTES.filter((al) => !al.roles || al.roles.includes(profil.roleDefaut));
   const actions = admin ? (
-    <>
-      <Link href="/parametres/utilisateurs" className="bouton-discret text-accent-fonce">
-        Annuler
-      </Link>
-      <button type="button" onClick={enregistrer} className="bouton-principal">
+    lien && creation ? (
+      <Link href="/parametres/utilisateurs" className="bouton-principal" onClick={() => router.refresh()}>
         <Check className="size-4" strokeWidth={2.2} />
-        {creation ? "Enregistrer et inviter" : "Enregistrer"}
-      </button>
-    </>
+        Terminé
+      </Link>
+    ) : (
+      <>
+        <Link href="/parametres/utilisateurs" className="bouton-discret text-accent-fonce">
+          Annuler
+        </Link>
+        {!creation && authentificationReelle() ? (
+          <button type="button" onClick={demanderLien} disabled={enCours} className="bouton-secondaire disabled:opacity-60">
+            <Link2 className="size-4" strokeWidth={2} />
+            Nouveau lien de connexion
+          </button>
+        ) : null}
+        <button type="button" onClick={enregistrer} disabled={enCours} className="bouton-principal disabled:opacity-60">
+          <Check className="size-4" strokeWidth={2.2} />
+          {enCours && creation ? "Création du compte…" : creation ? "Enregistrer et inviter" : "Enregistrer"}
+        </button>
+      </>
+    )
   ) : null;
 
   return (
@@ -141,6 +219,26 @@ export function EcranAccesUtilisateur({ initial, options }: { initial: AccesUtil
       </div>
 
       {issue && "erreur" in issue ? <p className="rounded-[10px] bg-defavorable-fond px-4 py-2.5 text-[13px] text-defavorable">{issue.erreur}</p> : null}
+
+      {lien ? (
+        <section className="carte border-l-[3px] border-l-accent px-6 py-5">
+          <h2 className="titre-bloc">{lien.nouveau ? `Compte créé pour ${lien.courriel}` : `Nouveau lien pour ${lien.courriel}`}</h2>
+          <p className="meta mt-0.5">
+            Envoyez ce lien depuis votre messagerie : la personne y choisit son mot de passe. Valable {DUREE_LIEN}, une seule fois. Il ne s&apos;affiche qu&apos;ici et maintenant — au besoin, un nouveau lien se demande depuis la fiche.
+          </p>
+          <input readOnly value={lien.lien} onFocus={(e) => e.currentTarget.select()} className={`${CHAMP} code mt-4 text-[12px]`} aria-label="Lien personnel" />
+          <div className="mt-3 flex flex-wrap gap-2.5">
+            <a href={courrielInvitation(a.prenom, lien.courriel, lien.lien, lien.nouveau)} className="bouton-principal">
+              <Mail className="size-4" strokeWidth={2} />
+              Préparer le courriel
+            </a>
+            <button type="button" onClick={copier} className="bouton-secondaire">
+              <Copy className="size-4" strokeWidth={2} />
+              {copie ? "Lien copié" : "Copier le lien"}
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
         <nav aria-label="Sections" className="carte h-fit py-2 lg:sticky lg:top-0">
@@ -203,7 +301,9 @@ export function EcranAccesUtilisateur({ initial, options }: { initial: AccesUtil
                 <ChoixBloc actif={!a.actif} disabled={!admin} onClick={() => regler({ actif: false })} titre="Sans accès" precision="Contact seulement : ni connexion, ni notification. Un compte qui part garde ses traces" />
               </div>
               <p className="meta mt-4">
-                {authentificationReelle() ? "Base branchée : le compte se crée dans Supabase (Authentication › Users › Invite) avec la même adresse ; cette fiche lui donne son profil dès sa première connexion." : "En démonstration, la fiche se garde dans ce navigateur ; aucune invitation ne part."}
+                {authentificationReelle()
+                  ? "Base branchée : « Enregistrer et inviter » crée le compte de connexion et affiche un lien personnel, à envoyer depuis votre messagerie ; la personne y choisit son mot de passe. Un nouveau lien se demande depuis la fiche."
+                  : "En démonstration, la fiche se garde dans ce navigateur ; aucune invitation ne part."}
               </p>
             </section>
           ) : null}
