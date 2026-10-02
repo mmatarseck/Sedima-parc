@@ -6,7 +6,7 @@ travaille.*
 
 **État au 2 octobre 2026** : tout est sur `origin/main` (dernier commit
 `3351c4c` puis cette passation) ; migrations jouées en production **jusqu'à
-0067** — la prochaine sera **0068** ; tous les fichiers SQL ponctuels du
+0068** — la prochaine sera **0069** ; tous les fichiers SQL ponctuels du
 23 septembre sont joués (voir `docs/MISE-A-JOUR-2026-09-23.md`). Rien n'attend
 en base.
 
@@ -56,8 +56,11 @@ d'écrire du code Next — voir `AGENTS.md`.
 ## Ce qui reste ouvert au 2 octobre 2026
 
 - **0068 `fermeture_des_fonctions`** (branche `claude/securite-fonctions`) :
-  écrite et éprouvée au banc `tester-acces.mts` (27 contrôles ; 6 tombent sans
-  elle), **pas encore jouée**. La 0030 retirait `anon` mais pas PUBLIC : sans
+  éprouvée au banc `tester-acces.mts` (27 contrôles ; 6 tombent sans elle),
+  **jouée le 2 octobre 2026** par `apply_migration` (première migration inscrite
+  dans `list_migrations`). Contrôle après coup : `anon` n'appelle plus aucune
+  fonction de l'application, `authenticated` les appelle toujours ; le contrôle
+  de sécurité Supabase passe de 23 à 8 alertes « anon », toutes voulues. La 0030 retirait `anon` mais pas PUBLIC : sans
   compte, on appelait encore `conducteur_du_jour` (qui conduit quel véhicule)
   et `recompter_utilisations_taches` (une écriture). Restent signalés par
   Supabase, volontairement : les fonctions lues par les politiques RLS,
