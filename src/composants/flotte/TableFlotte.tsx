@@ -130,6 +130,17 @@ const COLONNES: ColonneListe<LigneFlotte>[] = [
     rendu: (l) => <span className="block truncate">{l.vehicule.businessUnit ? BUSINESS_UNIT[l.vehicule.businessUnit] : "—"}</span>,
   },
   { cle: "site", libelle: "Site", parDefaut: true, largeur: 150, rendu: (l) => <span className="block truncate">{l.site?.libelle ?? <span className="text-attenue-2">—</span>}</span> },
+  /* La date d'entrée de la fiche dans l'application : un clic sur l'en-tête
+     met les derniers véhicules entrés en tête (métier, 2 octobre 2026). */
+  {
+    cle: "creation",
+    libelle: "Créé le",
+    parDefaut: true,
+    largeur: 104,
+    tri: (l) => l.vehicule.creeLe ?? null,
+    texte: (l) => (l.vehicule.creeLe ? dateCourte(l.vehicule.creeLe.slice(0, 10)) : ""),
+    rendu: (l) => (l.vehicule.creeLe ? <span className="block truncate">{dateCourte(l.vehicule.creeLe.slice(0, 10))}</span> : <span className="text-attenue-2">—</span>),
+  },
   {
     cle: "chauffeur",
     libelle: "Chauffeur ou attributaire",

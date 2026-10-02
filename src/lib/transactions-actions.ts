@@ -915,9 +915,31 @@ export async function supprimerTransaction(e: { type: TypeTransaction; numero: s
   const moi = await utilisateurCourant(client);
   if (!moi) return { issue: "refusee", motif: "Session absente : reconnectez-vous." };
 
+  /* Un service clos a écrit son intervention, ses dépenses et ses sorties de
+     pièces, qui portent son numéro (« OTR-… · FAC-… »). Il part avec elles,
+     chacune tracée au journal (métier, 2 octobre 2026) : la règle d'avant
+     demandait de les supprimer une à une, et un service d'essai restait
+     affiché, ses dépenses comptées dans les coûts, une fois son intervention
+     supprimée — l'ordre clos ne se supprimait plus du tout. */
+  const emportees: { table: string; numero: string; resume: string }[] = [];
   if (e.type === "ordre") {
-    const o = await client.from("ordre_travail").select("statut").eq("numero", e.numero).maybeSingle<{ statut: string }>();
-    if (o.data?.statut === "clos") return { issue: "refusee", motif: "Un service clos a écrit son intervention et ses dépenses : il ne se supprime pas. Supprimez celles-ci, ou gardez le service." };
+    const o = await client.from("ordre_travail").select("statut, intervention_numero").eq("numero", e.numero).maybeSingle<{ statut: string; intervention_numero: string | null }>();
+    if (o.data?.statut === "clos") {
+      const marque = `${e.numero} ·%`;
+      const [sorties, depenses, intervention] = await Promise.all([
+        client.from("mouvement_stock").select("numero, motif").like("motif", marque).returns<{ numero: string; motif: string }[]>(),
+        client.from("depense").select("numero, libelle, montant").like("reference", marque).returns<{ numero: string; libelle: string; montant: number }[]>(),
+        o.data.intervention_numero ? client.from("intervention").select("numero, objet").eq("numero", o.data.intervention_numero).returns<{ numero: string; objet: string | null }[]>() : Promise.resolve({ data: [] as { numero: string; objet: string | null }[] }),
+      ]);
+      for (const m of sorties.data ?? []) emportees.push({ table: "mouvement_stock", numero: m.numero, resume: `Mouvement ${m.numero} · ${m.motif}` });
+      for (const d of depenses.data ?? []) emportees.push({ table: "depense", numero: d.numero, resume: `Dépense ${d.numero} · ${d.libelle} · ${d.montant} F` });
+      for (const i of intervention.data ?? []) emportees.push({ table: "intervention", numero: i.numero, resume: `Intervention ${i.numero} · ${i.objet ?? ""}` });
+    }
+  }
+  for (const x of emportees) {
+    const r = await client.from(x.table).delete().eq("numero", x.numero).select("numero");
+    if (r.error || !r.data?.length) return { issue: "refusee", motif: `Le service n'est pas supprimé : ${x.numero}, qu'il a écrit, ne se supprime pas (${r.error?.message ?? "vos droits ne le permettent pas"}).` };
+    await client.from("modification").insert({ table_cible: x.table, numero: x.numero, champ: "suppression", libelle_champ: "Suppression", avant: `${x.resume} [avec le service ${e.numero}]`.slice(0, 500), apres: null, motif: e.motif.trim(), statut: "appliquee", cree_par: moi.utilisateurId });
   }
   if (e.type === "signalement") {
     const inclus = await client.from("ordre_travail").select("numero").contains("signalements", [e.numero]).in("statut", ["planifie", "en-atelier"]).limit(1).returns<{ numero: string }[]>();

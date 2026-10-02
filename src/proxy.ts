@@ -17,6 +17,7 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { premierePage } from "@/domaine/appareil";
 
 const PAGE_DE_GARDE = "/connexion";
 const PREMIERE_PAGE = "/flotte";
@@ -65,7 +66,8 @@ export async function proxy(requete: NextRequest) {
   if (user && surLaGarde && !requete.nextUrl.searchParams.has("motif")) {
     const destination = requete.nextUrl.clone();
     const suite = requete.nextUrl.searchParams.get("suite");
-    destination.pathname = PREMIERE_PAGE;
+    /* Un téléphone entre sur sa vue, pas sur la Flotte du bureau (2 octobre 2026). */
+    destination.pathname = premierePage(requete.headers.get("user-agent"));
     destination.search = "";
     if (suite && suite.startsWith("/") && !suite.startsWith("//")) return NextResponse.redirect(new URL(suite, requete.nextUrl.origin));
     return NextResponse.redirect(destination);

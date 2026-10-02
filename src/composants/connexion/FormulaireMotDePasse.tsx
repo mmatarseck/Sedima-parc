@@ -9,6 +9,7 @@ import { DEGRADE } from "@/composants/connexion/FormulaireConnexion";
 import { marquerConnexion } from "@/lib/instantanes";
 import { clientNavigateur } from "@/lib/supabase";
 import { NOM_APPLICATION } from "@/domaine/marque";
+import { premierePage } from "@/domaine/appareil";
 
 /** La longueur minimale d'un mot de passe choisi ici. */
 const LONGUEUR_MINIMALE = 10;
@@ -83,7 +84,7 @@ export function FormulaireMotDePasse() {
       return;
     }
     marquerConnexion();
-    router.push("/flotte");
+    router.push(premierePage(navigator.userAgent));
     router.refresh();
   }
 

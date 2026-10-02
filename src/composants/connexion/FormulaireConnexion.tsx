@@ -8,6 +8,7 @@ import { fermerSession } from "@/lib/session-demo";
 import { effacerInstantanes, marquerConnexion } from "@/lib/instantanes";
 import { clientNavigateur } from "@/lib/supabase";
 import { ACCROCHE_APPLICATION, NOM_APPLICATION, PRECISION_APPLICATION } from "@/domaine/marque";
+import { premierePage } from "@/domaine/appareil";
 
 /**
  * Le dégradé du panneau de garde.
@@ -145,7 +146,7 @@ export function FormulaireConnexion() {
     /* La session est dans les cookies : le serveur la lira au prochain rendu.
        Une page demandée avant la connexion — un QR code scanné — reprend. */
     const suite = parametres.get("suite");
-    router.push(suite && suite.startsWith("/") && !suite.startsWith("//") ? suite : "/flotte");
+    router.push(suite && suite.startsWith("/") && !suite.startsWith("//") ? suite : premierePage(navigator.userAgent));
     router.refresh();
   }
 

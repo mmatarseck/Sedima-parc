@@ -23,7 +23,7 @@ import { lireCreations } from "@/lib/clotures-demo";
 import { APTITUDE, BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_OBSERVATION, CONTRAT_CHAUFFEUR, GRAVITE_OBSERVATION, MISSION_INCIDENT, MOTIF_IMMOBILISATION, MOTIF_INDISPONIBILITE, MOTIF_SORTIE, NATURE_INCIDENT, POSTE_DEPENSE, RESPONSABILITE, ROLE_AFFECTATION, STATUT_DECLARATION, STATUT_OBSERVATION, STATUT_VEHICULE, STATUT_VISITE, TYPE_INCIDENT, TYPE_SANCTION, TYPE_VISITE } from "@/domaine/libelles";
 import type { TypeTransaction } from "@/domaine/reference";
 import type { CategorieVehicule } from "@/domaine/types";
-import { cleNom, nomMarqueConnu } from "@/domaine/parametres";
+import { baremeALaDate, cleNom, nomMarqueConnu } from "@/domaine/parametres";
 import { optionsCategories, optionsSystemes, optionsSystemesDe } from "@/domaine/categories-maintenance";
 import { PRIORITE_SERVICE } from "@/domaine/service";
 import { ETAT_SIGNALEMENT, PRIORITE_SIGNALEMENT } from "@/domaine/signalements";
@@ -308,7 +308,13 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
         { valeur: "station", libelle: "Station-service" },
       ],
       obligatoire: true,
-      entraine: (v, s) => (v === "cuve" ? { source: SOURCE_CUVE, remboursable: false } : { source: /cuve/i.test(String(s.source ?? "")) ? "" : String(s.source ?? ""), remboursable: true }),
+      /* Le prix du litre se pose avec l'approvisionnement : celui de la cuve, ou
+         le gasoil en station, au barème du jour du plein (Paramètres › Énergie). */
+      entraine: (v, s) => {
+        const prix = prixDuBareme(v === "cuve" ? "cuve" : "station", s);
+        const lieu = v === "cuve" ? { source: SOURCE_CUVE, remboursable: false } : { source: /cuve/i.test(String(s.source ?? "")) ? "" : String(s.source ?? ""), remboursable: true };
+        return { ...lieu, ...(prix ? { prixLitre: String(prix), ...montantDuPlein({ ...s, prixLitre: String(prix) }) } : {}) };
+      },
     },
     { cle: "source", libelle: "Pompe", type: "lecture", visibleSi: (s) => s.approvisionnement === "cuve" },
     {
@@ -320,9 +326,12 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
       precision: "Absente de la liste : écrivez son nom, elle s'ajoute au référentiel",
       visibleSi: (s) => s.approvisionnement === "station",
     },
-    { cle: "litres", libelle: "Litres", type: "nombre", unite: "L", obligatoire: true },
-    { cle: "prixLitre", libelle: "Prix du litre", type: "nombre", unite: "F" },
-    { cle: "montant", libelle: "Montant", type: "nombre", unite: "F", obligatoire: true },
+    /* Litres, prix et montant se tiennent (métier, 2 octobre 2026) : saisir les
+       litres calcule le montant, saisir le montant calcule les litres — le
+       dernier champ touché fait foi. Le prix reste modifiable. */
+    { cle: "litres", libelle: "Litres", type: "nombre", unite: "L", obligatoire: true, entraine: (_v, s) => montantDuPlein(s) },
+    { cle: "prixLitre", libelle: "Prix du litre", type: "nombre", unite: "F", precision: "Prérempli au barème du jour (Paramètres › Énergie) ; à corriger s'il diffère du ticket", entraine: (_v, s) => montantDuPlein(s) },
+    { cle: "montant", libelle: "Montant", type: "nombre", unite: "F", obligatoire: true, entraine: (_v, s) => litresDuPlein(s) },
     { cle: "km", libelle: "Km relevé", type: "nombre", unite: "km" },
     { cle: "reference", libelle: "Bon de sortie", type: "texte", visibleSi: (s) => s.approvisionnement === "cuve" },
     { cle: "reference", libelle: "N° du ticket ou de la facture", type: "texte", visibleSi: (s) => s.approvisionnement !== "cuve" },
@@ -946,6 +955,38 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
     default:
       return base;
   }
+}
+
+/** Un nombre saisi : « 12,5 », « 12 500 » ; nul si vide ou illisible. */
+function nombreSaisi(v: unknown): number | null {
+  const n = Number(String(v ?? "").replace(/\s/g, "").replace(",", "."));
+  return String(v ?? "").trim() && Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/**
+ * Le prix du litre au barème du jour du plein : la cuve, ou le gasoil en
+ * station. L'essence n'est pas distinguée ici — le formulaire ne connaît pas
+ * l'énergie du véhicule ; le prix se corrige à la main pour un véhicule essence.
+ */
+function prixDuBareme(lieu: "cuve" | "station", s: Record<string, unknown>): number | null {
+  if (typeof window === "undefined") return null;
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(s.date ?? "")) ? String(s.date) : new Date().toISOString().slice(0, 10);
+  const bareme = baremeALaDate(date, lireParametres());
+  return (lieu === "cuve" ? bareme.prixLitreCuve : bareme.prixLitreGasoil) || null;
+}
+
+/** Litres × prix → montant, quand les deux sont connus. */
+function montantDuPlein(s: Record<string, unknown>): Record<string, string> {
+  const litres = nombreSaisi(s.litres);
+  const prix = nombreSaisi(s.prixLitre);
+  return litres && prix ? { montant: String(Math.round(litres * prix)) } : {};
+}
+
+/** Montant ÷ prix → litres, quand les deux sont connus. */
+function litresDuPlein(s: Record<string, unknown>): Record<string, string> {
+  const montant = nombreSaisi(s.montant);
+  const prix = nombreSaisi(s.prixLitre);
+  return montant && prix ? { litres: String(Math.round((montant / prix) * 100) / 100) } : {};
 }
 
 /** La source d'un plein pris à la pompe du siège. */

@@ -23,12 +23,9 @@
  * ==========================================================================*/
 
 import { headers } from "next/headers";
-
-/** Les familles d'appareils qui doivent ouvrir sur la vue téléphone. */
-const MOTIF_TELEPHONE = /android|iphone|ipod|ipad|iemobile|blackberry|opera mini|windows phone|\bmobile\b/i;
+import { estTelephone } from "@/domaine/appareil";
 
 /** Vrai quand la requête vient d'un téléphone ou d'une tablette. */
 export async function requeteDepuisUnTelephone(): Promise<boolean> {
-  const agent = (await headers()).get("user-agent") ?? "";
-  return MOTIF_TELEPHONE.test(agent);
+  return estTelephone((await headers()).get("user-agent"));
 }

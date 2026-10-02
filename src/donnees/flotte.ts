@@ -66,6 +66,8 @@ interface LigneVehicule {
   duree_amortissement_annees: number | null;
   date_acquisition?: string | null;
   reference_immobilisation?: string | null;
+  /** L'entrée de la fiche dans l'application. */
+  cree_le?: string | null;
   photo: string | null;
   commentaire: string | null;
   regime: Vehicule["regime"];
@@ -372,6 +374,7 @@ export function vehiculeDepuisLaBase(v: LigneVehicule): Vehicule {
     dureeAmortissementAnnees: v.duree_amortissement_annees,
     dateAcquisition: v.date_acquisition ?? null,
     referenceImmobilisation: v.reference_immobilisation ?? null,
+    creeLe: v.cree_le ?? null,
     commentaire: v.commentaire,
     photo: v.photo,
     regime: v.regime ?? "exploitation",
