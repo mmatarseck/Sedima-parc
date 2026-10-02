@@ -45,7 +45,7 @@ select 'vehicule', m.immatriculation, 'statut', 'Statut', m.avant, m.apres, m.mo
 -- Numéros pris à la suite de MVT-R-00058 : régénéré, le chargeur renumérote
 -- (la ligne AA 905 CW du 01/07 a quitté le classeur, voir la note).
 insert into mouvement_stock (numero, date, nature, piece_id, quantite, ecart, prix_unitaire, demande_numero, vehicule_id, fournisseur, motif, auteur_nom)
-select v.numero, v.date::date, v.nature, p.id, v.quantite, v.ecart, v.prix_unitaire, v.demande_numero, ve.id, v.fournisseur, v.motif, 'Chargement des classeurs de suivi'
+select v.numero, v.date::date, v.nature, p.id, v.quantite::numeric, v.ecart::numeric, v.prix_unitaire::bigint, v.demande_numero, ve.id, v.fournisseur, v.motif, 'Chargement des classeurs de suivi'
   from (values
     ('MVT-R-00059', '2026-09-21', 'entree', 'PCE-R-002', 1, null, null, 'BC26090098 / DA2608220', null, 'SICAS', 'Entrée déduite du montage : le classeur suit l''achat et la pose, pas le magasin. Achetée au bon BC26090098 / DA2608220 (SICAS).'),
     ('MVT-R-00060', '2026-09-21', 'sortie', 'PCE-R-002', 1, null, null, 'BC26090098 / DA2608220', 'DK4922BB', null, 'Montée sur le véhicule, d''après SUIVI BATTERIES 2025 (feuille « BATTERIES PL 2025 - 2026 »).'),
