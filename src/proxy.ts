@@ -50,8 +50,11 @@ export async function proxy(requete: NextRequest) {
      vide, ou 401) : le passage du matin de Vercel n'a pas de session, et une
      redirection vers la page de garde lui ferait croire à une page HTML. */
   const api = chemin.startsWith("/api/");
+  /* « Choisir mon mot de passe » s'ouvre sans session : c'est la validation
+     du formulaire, jeton à l'appui, qui l'ouvre (2 octobre 2026). */
+  const motDePasse = chemin === "/connexion/mot-de-passe";
 
-  if (!user && !surLaGarde && !api) {
+  if (!user && !surLaGarde && !api && !motDePasse) {
     const destination = requete.nextUrl.clone();
     destination.pathname = PAGE_DE_GARDE;
     /* La page demandée est gardée : un QR code scanné sans session mène à
