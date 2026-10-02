@@ -112,12 +112,16 @@ async function lienMotDePasse(type: "invite" | "recovery", jeton: string): Promi
 /** Crée le compte, écrit la fiche, rend le lien d'invitation. */
 export async function inviterAcces(brut: AccesUtilisateur): Promise<Invitation> {
   if (!authentificationReelle()) return { erreur: "Démonstration : aucun compte ne se crée." };
-  const lue = normaliserAcces(brut);
+  /* Une fiche nouvelle n'a pas encore d'identifiant — c'est le compte créé
+     ici qui le lui donne — et le contrôle de la fiche en exige un : on lui en
+     prête un le temps de la lire. */
+  const lue = normaliserAcces({ ...brut, id: "a-creer" });
   if (!lue) return { erreur: "Fiche illisible." };
   const admin = await administrateur("d'inviter");
   if ("erreur" in admin) return admin;
 
   const courriel = lue.courriel.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(courriel)) return { erreur: `Adresse de courriel invalide : « ${lue.courriel} ».` };
   const service = clientService();
   const { data, error } = await service.auth.admin.generateLink({ type: "invite", email: courriel });
   if (error || !data.user) {
