@@ -197,6 +197,13 @@ export interface ParametresCaisse {
   soldeInitial: number;
   /** Sous ce solde, la caisse appelle un réapprovisionnement. */
   seuil: number;
+  /**
+   * Le jour où le journal repart (métier, 2 octobre 2026 : « prendre un point
+   * de départ avec un solde de départ ») : seuls comptent les mouvements datés
+   * de ce jour ou après, et ce qui attend la caisse depuis ce jour. Nulle, le
+   * journal compte depuis le premier mouvement (0069).
+   */
+  dateOuverture: string | null;
 }
 
 export interface ParametresCuve {
@@ -204,7 +211,7 @@ export interface ParametresCuve {
   stockInitial: number;
 }
 
-export const CAISSE_DEFAUT: ParametresCaisse = { soldeInitial: 1_500_000, seuil: 200_000 };
+export const CAISSE_DEFAUT: ParametresCaisse = { soldeInitial: 1_500_000, seuil: 200_000, dateOuverture: null };
 export const CUVE_DEFAUT: ParametresCuve = { stockInitial: 9_000 };
 
 const entierPositif = (v: unknown, defaut: number): number => {
@@ -214,7 +221,8 @@ const entierPositif = (v: unknown, defaut: number): number => {
 
 function normaliserCaisse(brut: unknown): ParametresCaisse {
   const b = (brut ?? {}) as Partial<Record<keyof ParametresCaisse, unknown>>;
-  return { soldeInitial: entierPositif(b.soldeInitial, CAISSE_DEFAUT.soldeInitial), seuil: entierPositif(b.seuil, CAISSE_DEFAUT.seuil) };
+  const date = typeof b.dateOuverture === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.dateOuverture) ? b.dateOuverture : null;
+  return { soldeInitial: entierPositif(b.soldeInitial, CAISSE_DEFAUT.soldeInitial), seuil: entierPositif(b.seuil, CAISSE_DEFAUT.seuil), dateOuverture: date };
 }
 
 function normaliserCuve(brut: unknown): ParametresCuve {

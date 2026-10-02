@@ -742,6 +742,15 @@ export function champsVehicule(): ChampEdition[] {
       { cle: "dureeAmortissementAnnees", libelle: "Durée d'amortissement", type: "nombre", unite: "ans" },
       { cle: "referenceImmobilisation", libelle: "Référence d'immobilisation", type: "texte" },
     ]),
+    /* Balise et cartes péage (métier, 2 octobre 2026 — 0069). Un numéro de carte
+       saisi vaut carte présente, à l'enregistrement. */
+    ...section("Équipements", [
+      { cle: "baliseGeolocalisation", libelle: "Balise de géolocalisation", type: "oui-non" },
+      { cle: "cartePeageSecaa", libelle: "Carte péage SECAA", type: "oui-non" },
+      { cle: "numeroCarteSecaa", libelle: "N° de la carte SECAA", type: "texte", visibleSi: (s) => s.cartePeageSecaa === true || s.cartePeageSecaa === "oui" },
+      { cle: "cartePeageAgeroute", libelle: "Carte péage Agéroute", type: "oui-non" },
+      { cle: "numeroCarteAgeroute", libelle: "N° de la carte Agéroute", type: "texte", visibleSi: (s) => s.cartePeageAgeroute === true || s.cartePeageAgeroute === "oui" },
+    ]),
     ...section("Notes", [{ cle: "commentaire", libelle: "Commentaire", type: "texte-long" }]),
   ];
 }

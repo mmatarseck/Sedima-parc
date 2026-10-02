@@ -68,6 +68,12 @@ interface LigneVehicule {
   reference_immobilisation?: string | null;
   /** L'entrée de la fiche dans l'application. */
   cree_le?: string | null;
+  /* Balise et cartes péage (0069) : absentes avant la migration, d'où l'optionnel. */
+  balise_geolocalisation?: boolean | null;
+  carte_peage_secaa?: boolean | null;
+  numero_carte_secaa?: string | null;
+  carte_peage_ageroute?: boolean | null;
+  numero_carte_ageroute?: string | null;
   photo: string | null;
   commentaire: string | null;
   regime: Vehicule["regime"];
@@ -375,6 +381,11 @@ export function vehiculeDepuisLaBase(v: LigneVehicule): Vehicule {
     dateAcquisition: v.date_acquisition ?? null,
     referenceImmobilisation: v.reference_immobilisation ?? null,
     creeLe: v.cree_le ?? null,
+    baliseGeolocalisation: v.balise_geolocalisation ?? false,
+    cartePeageSecaa: v.carte_peage_secaa ?? false,
+    numeroCarteSecaa: v.numero_carte_secaa ?? null,
+    cartePeageAgeroute: v.carte_peage_ageroute ?? false,
+    numeroCarteAgeroute: v.numero_carte_ageroute ?? null,
     commentaire: v.commentaire,
     photo: v.photo,
     regime: v.regime ?? "exploitation",

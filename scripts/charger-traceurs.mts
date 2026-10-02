@@ -94,6 +94,8 @@ const col = (nom: string) => {
 };
 
 const retenus: { plaque: string; km: number; balise: string; avant: string }[] = [];
+/* Les véhicules du parc qui ont une balise, odomètre fiable ou non (0069). */
+const equipes = new Set<string>();
 const ecartes: { balise: string; raison: string }[] = [];
 for (const l of feuille.lignes.slice(1)) {
   const balise = texte(l[col("Nom")]);
@@ -105,6 +107,7 @@ for (const l of feuille.lignes.slice(1)) {
     ecartes.push({ balise, raison: `hors du parc (${[...new Set(candidates)].join(", ") || "sans plaque"})` });
     continue;
   }
+  equipes.add(plaque);
   if (!Number.isFinite(odometre) || odometre <= 0) {
     ecartes.push({ balise, raison: "pas d'odomètre" });
     continue;
@@ -166,7 +169,42 @@ select count(*) as releves, min(km) as km_min, max(km) as km_max
 `,
 );
 
+/* Le second fichier : la case « balise de géolocalisation » (0069) des véhicules
+   que la plateforme suit. Elle ne s'ajoute que pour eux ; un véhicule absent de
+   la liste garde sa valeur — une balise retirée se décoche à la main. */
+const plaquesEquipees = [...equipes].sort();
+const fichierBalises = join(process.cwd(), "supabase", `balises-traceurs-${date}.sql`);
+writeFileSync(
+  fichierBalises,
+  `-- ============================================================================
+-- SEDIMA Parc — véhicules équipés d'une balise au ${date} (${echappe(source.split(/[\\/]/).at(-1)!)}).
+--
+-- **Ce n'est pas une migration.** Écrit par \`scripts/charger-traceurs.mts\`, à jouer
+-- après la 0069. ${plaquesEquipees.length} véhicules du parc suivis par la plateforme de
+-- géolocalisation : leur case « balise » se coche, tracée au journal. Un véhicule
+-- absent de la liste garde sa valeur.
+--
+-- Rejouable : seuls les véhicules pas encore cochés changent.
+-- ============================================================================
+
+with maj as (
+  update vehicule set balise_geolocalisation = true, modifie_le = now()
+   where immatriculation in (${plaquesEquipees.map((p) => `'${p}'`).join(", ")})
+     and not balise_geolocalisation
+  returning immatriculation
+)
+insert into modification (table_cible, numero, champ, libelle_champ, avant, apres, motif, statut, cree_par)
+select 'vehicule', m.immatriculation, 'baliseGeolocalisation', 'Balise de géolocalisation', 'Non', 'Oui',
+       'Liste des traceurs de la plateforme de géolocalisation au ${date}', 'appliquee',
+       (select utilisateur_id from profil where role = 'administrateur' and actif order by nom limit 1)
+  from maj m;
+
+select count(*) filter (where balise_geolocalisation) as equipes, count(*) as parc from vehicule;
+`,
+);
+
 console.log(`${lignes.length} relevés retenus au ${date}, ${ecartes.length} écartés → ${fichier}`);
+console.log(`${plaquesEquipees.length} véhicules du parc équipés d'une balise → ${fichierBalises}`);
 for (const r of lignes) console.log(`  ${r.plaque.padEnd(9)} ${String(r.km).padStart(8)} km  (avant : ${r.avant})`);
 console.log("Écartés :");
 for (const e of ecartes) console.log(`  ${e.balise.padEnd(16)} ${e.raison}`);

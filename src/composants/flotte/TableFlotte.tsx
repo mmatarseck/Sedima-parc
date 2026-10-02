@@ -130,6 +130,11 @@ const COLONNES: ColonneListe<LigneFlotte>[] = [
     rendu: (l) => <span className="block truncate">{l.vehicule.businessUnit ? BUSINESS_UNIT[l.vehicule.businessUnit] : "—"}</span>,
   },
   { cle: "site", libelle: "Site", parDefaut: true, largeur: 150, rendu: (l) => <span className="block truncate">{l.site?.libelle ?? <span className="text-attenue-2">—</span>}</span> },
+  /* Balise et cartes péage (0069), en colonnes facultatives : la recherche
+     « oui » ou un numéro de carte retrouve les véhicules équipés. */
+  { cle: "balise", libelle: "Balise", parDefaut: false, largeur: 80, texte: (l) => (l.vehicule.baliseGeolocalisation ? "oui" : "non"), rendu: (l) => (l.vehicule.baliseGeolocalisation ? "Oui" : <span className="text-attenue-2">Non</span>) },
+  { cle: "secaa", libelle: "Carte SECAA", parDefaut: false, largeur: 120, texte: (l) => (l.vehicule.cartePeageSecaa ? (l.vehicule.numeroCarteSecaa ?? "oui") : "non"), rendu: (l) => (l.vehicule.cartePeageSecaa ? <span className="code block truncate">{l.vehicule.numeroCarteSecaa ?? "Oui"}</span> : <span className="text-attenue-2">—</span>) },
+  { cle: "ageroute", libelle: "Carte Agéroute", parDefaut: false, largeur: 120, texte: (l) => (l.vehicule.cartePeageAgeroute ? (l.vehicule.numeroCarteAgeroute ?? "oui") : "non"), rendu: (l) => (l.vehicule.cartePeageAgeroute ? <span className="code block truncate">{l.vehicule.numeroCarteAgeroute ?? "Oui"}</span> : <span className="text-attenue-2">—</span>) },
   /* La date d'entrée de la fiche dans l'application : un clic sur l'en-tête
      met les derniers véhicules entrés en tête (métier, 2 octobre 2026). */
   {

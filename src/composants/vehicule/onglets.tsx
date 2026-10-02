@@ -347,6 +347,17 @@ export function OngletCaracteristiques({ fiche, detenteur }: { fiche: FicheVehic
         />
       </Carte>
 
+      {/* Balise et cartes péage (métier, 2 octobre 2026 — 0069) : elles se règlent par « Modifier », section Équipements. */}
+      <Carte titre="Équipements" precision="Balise de géolocalisation et cartes péage">
+        <Definitions
+          elements={[
+            { libelle: "Balise de géolocalisation", valeur: v.baliseGeolocalisation ? "Oui" : "Non" },
+            { libelle: "Carte péage SECAA", valeur: v.cartePeageSecaa ? (v.numeroCarteSecaa ? <span className="code">{v.numeroCarteSecaa}</span> : "Oui, numéro non renseigné") : "Non" },
+            { libelle: "Carte péage Agéroute", valeur: v.cartePeageAgeroute ? (v.numeroCarteAgeroute ? <span className="code">{v.numeroCarteAgeroute}</span> : "Oui, numéro non renseigné") : "Non" },
+          ]}
+        />
+      </Carte>
+
       {/* -- Le détenteur d'un véhicule léger ---------------------------------
        *
        * Ajouté le 10 septembre 2026, après une remarque du métier : « certains
