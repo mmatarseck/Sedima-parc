@@ -72,16 +72,22 @@ await pg.exec(`insert into auth.users (id) values ('${ADMIN}'), ('${DETENTEUR}')
   grant usage on schema public, auth to authenticated;
   grant select, insert, update, delete on all tables in schema public to authenticated;
   grant execute on all functions in schema public to authenticated;
-  grant execute on function auth.uid() to authenticated;`);
+  grant execute on function auth.uid() to authenticated;
+  grant usage on schema public, auth to anon;
+  grant select on all tables in schema public to anon;
+  grant execute on all functions in schema public to anon;
+  grant execute on function auth.uid() to anon;`);
 
 /* Supabase accorde `execute` sur toute fonction nouvelle à `anon` et
    `authenticated` : le blanc-seing ci-dessus le reproduit. La 0030 est donc
    rejouée après, comme en production, pour que ses retraits soient les
    derniers mots — sans quoi le banc éprouverait le blanc-seing, pas la
    migration. */
-const fermeture = join(projet, "supabase/migrations/0030_fermeture_des_acces.sql");
-if (existsSync(fermeture)) await pg.exec(readFileSync(fermeture, "utf8"));
-else console.log("⚠ 0030 absente : le banc éprouve l'état d'avant la fermeture.");
+for (const nom of ["0030_fermeture_des_acces.sql", "0068_fermeture_des_fonctions.sql"]) {
+  const fermeture = join(projet, "supabase/migrations", nom);
+  if (existsSync(fermeture)) await pg.exec(readFileSync(fermeture, "utf8"));
+  else console.log(`⚠ ${nom} absente : le banc éprouve l'état d'avant cette fermeture.`);
+}
 
 /* Une dépense sans véhicule, comme un salaire : c'est elle que la 0030 protège. */
 await pg.exec(`insert into depense (numero, vehicule_id, date, poste, libelle, montant, beneficiaire)
@@ -265,6 +271,51 @@ const forgeCourriel = await sous(
   `select notifier_detenteurs('essai-forge', '${chauffeur.id}', null, 'Direction des Opérations', 'Mise à jour de vos accès', 'Cliquez ici', 'https://ailleurs.example')`,
 );
 attendu("un détenteur ne déclenche pas un courriel signé de l'entreprise", "refus" in forgeCourriel);
+
+/* -- 10. Sans compte, aucune fonction -----------------------------------------
+ *
+ * La 0030 retirait `anon` nommément, mais PUBLIC gardait le droit : `anon`
+ * l'avait encore par là, en production, jusqu'à la 0068. Deux fonctions ne
+ * vérifient rien elles-mêmes — c'est sur elles que le contrôle compte.
+ * ------------------------------------------------------------------------- */
+
+async function sansCompte(sql: string): Promise<{ lignes: unknown[] } | { refus: string }> {
+  await pg.exec(`set essai.uid = ''; set role anon;`);
+  try {
+    const r = await pg.query(sql);
+    return { lignes: r.rows as unknown[] };
+  } catch (e) {
+    return { refus: e instanceof Error ? e.message : String(e) };
+  } finally {
+    await pg.exec(`reset role`);
+  }
+}
+
+const conducteurAnonyme = await sansCompte(`select conducteur_du_jour('${vehicule.id}', current_date)`);
+attendu("sans compte, on ne lit pas qui conduit un véhicule", "refus" in conducteurAnonyme && /permission/i.test(conducteurAnonyme.refus));
+
+const recompteAnonyme = await sansCompte(`select recompter_utilisations_taches()`);
+attendu("sans compte, on ne déclenche pas le recompte des tâches", "refus" in recompteAnonyme && /permission/i.test(recompteAnonyme.refus));
+
+for (const appel of [`select get_me()`, `select publier_message('vehicule:x', null, null, 'x', null, null)`, `select ajouter_station('Station fantôme')`]) {
+  const r = await sansCompte(appel);
+  attendu(`sans compte : ${appel.replace(/^select /, "").replace(/\(.*$/, "()")} refusée`, "refus" in r && /permission/i.test(r.refus));
+}
+
+const recompteAgent = await sous(AGENT, `select recompter_utilisations_taches()`);
+attendu("un compte connecté ne l'appelle pas davantage : déclencheurs et clé de service seulement", "refus" in recompteAgent);
+
+const conducteurAgent = await sous(AGENT, `select conducteur_du_jour('${vehicule.id}', current_date)`);
+attendu("un compte connecté lit toujours le conducteur du jour", "lignes" in conducteurAgent);
+
+const moi = await sous(AGENT, `select role from get_me()`);
+attendu("et get_me() lui rend toujours son rôle", "lignes" in moi && moi.lignes.length === 1);
+
+/* Les déclencheurs tournent toujours, alors que plus personne n'a `execute`
+   sur leurs fonctions : la garde des signatures vient de refuser plus haut
+   (contrôle 3), et le recompte suit une tâche rattachée à une intervention. */
+const marque = await sous(ADMIN, `update vehicule set immatriculation = immatriculation where id = '${vehicule.id}' returning id`);
+attendu("le déclencheur de modification tourne encore sous un compte connecté", "lignes" in marque && marque.lignes.length === 1);
 
 console.log(echecs === 0 ? "\ntout passe" : `\n${echecs} contrôle(s) en échec`);
 process.exit(echecs === 0 ? 0 : 1);
