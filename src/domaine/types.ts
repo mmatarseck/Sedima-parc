@@ -170,6 +170,13 @@ export interface Vehicule {
   dateAcquisition?: string | null;
   /** Le numéro de l'immobilisation en comptabilité (IMM-201-…). */
   referenceImmobilisation?: string | null;
+  /**
+   * L'entrée de la fiche dans l'application — pour retrouver les derniers
+   * véhicules entrés (métier, 2 octobre 2026). Les véhicules chargés en bloc
+   * en septembre 2026 portent la date de leur chargement, pas celle de leur
+   * arrivée au parc.
+   */
+  creeLe?: string | null;
   commentaire: string | null;
   /**
    * Photo du véhicule, pour le reconnaître d'un coup d'œil — demande du métier
