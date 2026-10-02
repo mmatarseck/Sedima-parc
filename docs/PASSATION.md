@@ -6,7 +6,7 @@ travaille.*
 
 **État au 2 octobre 2026** : tout est sur `origin/main` (dernier commit
 `3351c4c` puis cette passation) ; migrations jouées en production **jusqu'à
-0067** — la prochaine sera **0068** ; tous les fichiers SQL ponctuels du
+0068** — la prochaine sera **0069** ; tous les fichiers SQL ponctuels du
 23 septembre sont joués (voir `docs/MISE-A-JOUR-2026-09-23.md`). Rien n'attend
 en base.
 
@@ -54,6 +54,22 @@ métier les dépose dans la conversation ou si un connecteur y donne accès.
 d'écrire du code Next — voir `AGENTS.md`.
 
 ## Ce qui reste ouvert au 2 octobre 2026
+
+- **0068 `fermeture_des_fonctions`** (branche `claude/securite-fonctions`) :
+  éprouvée au banc `tester-acces.mts` (27 contrôles ; 6 tombent sans elle),
+  **jouée le 2 octobre 2026** par `apply_migration` (première migration inscrite
+  dans `list_migrations`). Contrôle après coup : `anon` n'appelle plus aucune
+  fonction de l'application, `authenticated` les appelle toujours ; le contrôle
+  de sécurité Supabase passe de 23 à 8 alertes « anon », toutes voulues. La 0030 retirait `anon` mais pas PUBLIC : sans
+  compte, on appelait encore `conducteur_du_jour` (qui conduit quel véhicule)
+  et `recompter_utilisations_taches` (une écriture). Restent signalés par
+  Supabase, volontairement : les fonctions lues par les politiques RLS,
+  `rls_auto_enable` (posée par Supabase, hors de nos migrations), `btree_gist`
+  dans `public`, et la protection des mots de passe compromis (un réglage du
+  tableau de bord Auth, côté métier).
+- `list_migrations` du connecteur est **vide** : 0001–0067 ont été jouées à la
+  main dans l'éditeur SQL. Les migrations jouées par `apply_migration` y
+  apparaîtront désormais.
 
 - Les décisions métier listées dans **`docs/MISE-A-JOUR-2026-09-23.md`**
   (« À trancher par le métier ») : attributions contradictoires (AA 291 PT /
