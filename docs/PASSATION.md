@@ -55,16 +55,10 @@ d'écrire du code Next — voir `AGENTS.md`.
 
 ## Ce qui reste ouvert au 2 octobre 2026
 
-- **Comptes de l'équipe** (branche `claude/invitations`) : *Paramètres ›
-  Utilisateurs › Nouvel utilisateur* crée le compte (clé de service), la fiche
-  et le profil, et affiche un **lien personnel** que l'administrateur envoie
-  depuis Outlook (« Préparer le courriel »). Le lien mène à
-  `/connexion/mot-de-passe`, qui ne consomme le jeton qu'à la validation
-  (l'analyse des liens d'Outlook ouvre les adresses d'avance). « Nouveau lien
-  de connexion » sur une fiche existante sert à l'invitation expirée et au mot
-  de passe oublié. **Aucun serveur d'envoi (SMTP) n'est branché à Supabase** :
-  le service par défaut ne livre qu'aux membres du projet. Réglage à faire dans
-  Supabase : « Email OTP Expiration » à 86 400 s (le courriel annonce 24 h).
+- **Mise à jour de septembre** (branche `claude/maj-septembre`) : voir
+  **`docs/MISE-A-JOUR-2026-10-02.md`** — tonnage du 18 au 30/09, 7 demandes
+  d'achat, 3 statuts, 2 batteries ; carburant (après le 31/07), caisse et
+  livraisons de septembre toujours absents.
 
 - **0068 `fermeture_des_fonctions`** (branche `claude/securite-fonctions`) :
   éprouvée au banc `tester-acces.mts` (27 contrôles ; 6 tombent sans elle),

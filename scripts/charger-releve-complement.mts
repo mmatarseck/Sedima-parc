@@ -38,7 +38,8 @@ const echappe = (s: string) => s.replace(/'/g, "''");
 
 /** Mêmes correspondances que `charger-releve-transport.mts`. */
 const TRANSPORTEURS: Record<string, string> = { "A DIENG": "PRE-2026-00022", "A KANE": "PRE-2026-00021", ADEX: "PRE-2026-00033", "DR WADE": "PRE-2026-00027", "SOKHNA DIOP": "PRE-2026-00023", AUTRES: "PRE-2026-00025" };
-const COQUILLES: Record<string, string> = { AA105VE: "AA105VA", AA383JZ: "AA383GZ" };
+/* AA 022 ED et AA 131 FX : coquilles du relevé « .29 » (01/10/2026) pour les pickups AA 022 EA et AA 131 EX. */
+const COQUILLES: Record<string, string> = { AA105VE: "AA105VA", AA383JZ: "AA383GZ", AA022ED: "AA022EA", AA131FX: "AA131EX" };
 
 const parc = new Set(((await pg.from("vehicule").select("immatriculation")).data ?? []).map((v) => v.immatriculation as string));
 const camions = new Set(((await pg.from("camion_tiers").select("immatriculation")).data ?? []).map((v) => v.immatriculation as string));

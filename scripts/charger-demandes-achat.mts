@@ -198,6 +198,8 @@ const TRANSPORTEURS_DU_REGISTRE: Record<string, string> = {
   "DR WADE": "PRE-2026-00027",
   K2SBT: "PRE-2026-00031",
   "WAKEUR S. FALLOU": "PRE-2026-80007",
+  "MOUSSA KANE": "PRE-2026-00024",
+  "SOKHNA DIOP": "PRE-2026-00023",
 };
 
 /** Le poste d'une demande du registre, d'après sa description. */
@@ -243,6 +245,7 @@ for (const fichier of ["supabase/seed.sql", "supabase/maintenance-parties/mainte
 const factures: Facture[] = [];
 const inconnus: string[] = [];
 let precedente: { numeroDa: string; date: string; fournisseur: string; prestataire: string | null; cle: string } | null = null;
+const dejaVues = new Set<string>();
 
 for (const l of registre.lignes.slice(r0 + 1)) {
   const description = texte(l[rc("DESCRIPTION")]);
@@ -262,6 +265,12 @@ for (const l of registre.lignes.slice(r0 + 1)) {
     notes.push(`Seconde fourniture de la demande ${numeroDa} : le registre la pose sur une ligne de plus.`);
   }
   if (!numeroDa) continue;
+  /* Une demande saisie deux fois — même numéro, même montant : CA200-2609130,
+     l'eau de Karaouni 1, posée les 10 et 11/09 (métier, 2 octobre 2026 : la
+     compter une fois). La seconde ligne est sautée, la numérotation suit. */
+  const cleDoublon = `${numeroDa}|${ht}`;
+  if (numeroDaLu && dejaVues.has(cleDoublon)) continue;
+  dejaVues.add(cleDoublon);
   if (!brut && !fournisseur) fournisseur = "Fournisseur non nommé";
 
   let date = texte(l[rc("DATE")]) || (numeroDaLu ? "" : (precedente?.date ?? ""));
@@ -361,7 +370,7 @@ select case when origine_numero like 'INT-%' then 'intervention' when origine_nu
 );
 
 const valeurFacture = (f: Facture, i: number) =>
-  `  ('DAC-R-${String(90001 + i)}', '${f.date}', ${sql(f.objet)}, '${f.poste}', ${f.ht}, ${sql(f.prestataire)}, ${sql(f.cleFournisseur || null)}, ${sql(f.fournisseur)}, ${sql(f.immatriculation)}, ${sql(f.numeroDa)}, ${sql(f.document)}, ${sql(["Chargée le 14 septembre 2026 depuis le registre des demandes d'achat du parc (SUIVI_PARC).", ...f.notes].join(" "))})`;
+  `  ('DAC-R-${String(90001 + i)}', '${f.date}', ${sql(f.objet)}, '${f.poste}', ${f.ht}, ${sql(f.prestataire)}, ${sql(f.cleFournisseur || null)}, ${sql(f.fournisseur)}, ${sql(f.immatriculation)}, ${sql(f.numeroDa)}, ${sql(f.document)}, ${sql([`Chargée le ${i < 22 ? "14 septembre" : "2 octobre"} 2026 depuis le registre des demandes d'achat du parc (SUIVI_PARC).`, ...f.notes].join(" "))})`;
 writeFileSync(
   join(dossier, "achats-02-registre-du-parc.sql"),
   `-- ============================================================================
