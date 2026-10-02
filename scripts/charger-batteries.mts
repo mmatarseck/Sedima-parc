@@ -71,7 +71,8 @@ import { lireClasseur, type Cellule } from "./lire-xlsx.mts";
 import { normaliser } from "../src/domaine/immatriculation";
 
 const M = "C:/Users/mamadou.seck/OneDrive - SEDIMA S.A/Direction des Operations (DO) - Documents/6. Logistique & Distribution/61. Gestion Parc/MALICK/FICHE SUIVI 2026";
-const BATTERIES = join(M, "SUIVI BATTERIES.xlsx");
+/* Renommé « SUIVI BATTERIES 2025 » par la gestion du parc (classeur du 22/09/2026). */
+const BATTERIES = join(M, "SUIVI BATTERIES 2025.xlsx");
 const TATA = join(M, "FICHE SUIVI DISQUE TATA.xlsx");
 const projet = process.cwd();
 
