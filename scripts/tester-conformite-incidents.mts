@@ -75,7 +75,7 @@ const incident: LigneIncident = {
   nature: "accident", type: "collision", dateHeure: "2026-09-20T08:00", lieu: "Rufisque", chauffeurId: null, chauffeur: null, mission: null, roulant: "oui", statut: "declare", responsabilite: null, blesses: false, sinistreOuvert: false,
   cout: null, immobilisationJours: null, description: "", kilometrage: null, declarant: "Banc", pieces: photos, creee: false,
 };
-const fiche = assemblerFiche(ligne, { ...FAITS_VIDES, incidents: [incident] }, PARAMETRES_DEFAUT, "2026-09-21", { programme: programmeParDefaut(ligne.vehicule.categorie), plan: planDuVehicule(ligne.vehicule.id, ligne.vehicule.categorie), passages: passagesReleves });
+const fiche = assemblerFiche(ligne, { ...FAITS_VIDES, incidents: [incident] }, PARAMETRES_DEFAUT, "2026-09-21", { programme: programmeParDefaut(ligne.vehicule.categorie), plan: planDuVehicule(ligne.vehicule.id, ligne.vehicule), passages: passagesReleves });
 const onglet = renderToString(React.createElement(FournisseurEdition, { sujet: `vehicule:${ligne.vehicule.immatriculation}`, href: "/flotte" }, React.createElement(OngletIncidents, { fiche, onDeclarer: () => {} })));
 attendu("l'onglet Incidents a son bouton « Déclarer », comme les autres onglets", onglet.includes("Déclarer un incident ou sinistre"));
 attendu("une déclaration qui porte des pièces montre le trombone et leur nombre", onglet.includes("pièce jointe") && />2<\/span>/.test(onglet));

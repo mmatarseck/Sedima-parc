@@ -75,7 +75,7 @@ const fiche = assemblerFiche(
   },
   PARAMETRES_DEFAUT,
   "2026-09-21",
-  { programme: programmeParDefaut(ligne.vehicule.categorie), plan: planDuVehicule(ligne.vehicule.id, ligne.vehicule.categorie), passages: passagesReleves },
+  { programme: programmeParDefaut(ligne.vehicule.categorie), plan: planDuVehicule(ligne.vehicule.id, ligne.vehicule), passages: passagesReleves },
 );
 attendu("la facture attachée arrive sur la dépense de la fiche", fiche.depenses.find((d) => d.numero === "DEP-R-00002")?.photo === "pieces/documents/2026/09/2026-09-16-dep-r-00002.pdf");
 attendu("une dépense sans facture n'en invente pas", (fiche.depenses.find((d) => d.numero === "DEP-CP-1")?.photo ?? null) === null);

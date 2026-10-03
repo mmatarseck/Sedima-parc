@@ -138,7 +138,7 @@ const ficheAvecTicket = assemblerFiche(
   { ...FAITS_VIDES, pleins: [{ numero: "PLN-R-1", date: "2026-09-01", litres: 50, prixLitre: 700, montant: 35_000, km: null, source: "Station Shell", reference: null, photo: ticket }] },
   PARAMETRES_DEFAUT,
   "2026-09-21",
-  { programme: programmeParDefaut(lignePleinFiche.vehicule.categorie), plan: planDuVehicule(lignePleinFiche.vehicule.id, lignePleinFiche.vehicule.categorie), passages: passagesReleves },
+  { programme: programmeParDefaut(lignePleinFiche.vehicule.categorie), plan: planDuVehicule(lignePleinFiche.vehicule.id, lignePleinFiche.vehicule), passages: passagesReleves },
 );
 attendu("le ticket arrive sur le plein de la fiche", ficheAvecTicket.pleins.find((p) => p.numero === "PLN-R-1")?.photo === ticket);
 

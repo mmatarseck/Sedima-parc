@@ -55,7 +55,7 @@ const faits: FaitsFiche = {
 };
 const ligne = FLOTTE.find((l) => l.vehicule.immatriculation === "AA032EA")!;
 const v = ligne.vehicule;
-const fiche = assemblerFiche(ligne, faits, PARAMETRES_DEFAUT, "2026-09-02", { programme: programmeParDefaut(v.categorie), plan: planDuVehicule(v.id, v.categorie), passages: passagesReleves });
+const fiche = assemblerFiche(ligne, faits, PARAMETRES_DEFAUT, "2026-09-02", { programme: programmeParDefaut(v.categorie), plan: planDuVehicule(v.id, v), passages: passagesReleves });
 attendu(`compteur ${fiche.indicateurs.kilometrage} km, ${fiche.indicateurs.kmParMois} km/mois, ${fiche.indicateurs.consommationL100} L/100, ${fiche.indicateurs.coutDouzeMois} F sur 12 mois, ${fiche.indicateurs.coutParKm} F/km, dispo ${fiche.indicateurs.disponibilitePct} %`, fiche.indicateurs.kilometrage !== null && (fiche.indicateurs.coutDouzeMois ?? 0) > 0 && fiche.indicateurs.disponibilitePct !== null);
 attendu(`${fiche.documents.length} documents, états : ${[...new Set(fiche.documents.map((d) => d.etat))].join(", ")}`, fiche.documents.length >= 3);
 attendu(`immobilisation administrative : ${fiche.immobilisationAdministrative ? fiche.immobilisationAdministrative.documents.map((d) => `${d.type} ${d.etat}`).join(", ") : "aucune"}`, true);

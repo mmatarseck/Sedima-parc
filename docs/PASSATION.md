@@ -313,7 +313,11 @@ Tout est décrit dans **`docs/SERVICES-MAINTENANCE.md`** (sections datées).
   service ».
 - **Disponibilité** (#26) : les compteurs du parc en unités ; le total des
   prêts partagé parc / transporteurs.
-- **Planifier une échéance** (#25) : les tâches du plan arrivent en ligne.
+- **Planifier une échéance** (#25, et la fiche véhicule) : les tâches du plan
+  arrivent en ligne.
+- Les bancs qui rendent un composant sous `FournisseurEdition`
+  (`tester-conformite-incidents`…) échouent dans le cloud sur « useEdition
+  s'emploie sous FournisseurEdition » — environnement, pas le code ; non résolu.
 
 - Saisir un plein **en station** en écrivant le nom d'une station inconnue :
   elle doit apparaître au référentiel des prestataires, type « station »
@@ -352,8 +356,6 @@ Tout est décrit dans **`docs/SERVICES-MAINTENANCE.md`** (sections datées).
   fiche, lui, suit les rappels) — à aligner si le métier le demande.
 - **Côté métier** : créer les programmes d'entretien des modèles (L200, Hilux,
   TATA LPT 1618, Renault frigo…) avec les périodicités du constructeur.
-- Le bouton « Planifier » d'une échéance n'existe pas sur l'onglet Maintenance
-  de la fiche véhicule (seulement page Maintenance et téléphone).
 - Les bancs `tester-fiche`, `tester-maintenance`, `tester-toutes-fiches` et
   `tester-rapports` ne démarrent pas dans le cloud : ils lisent
   `supabase/seed-parties`, absent du dépôt (resté sur l'ancien poste).

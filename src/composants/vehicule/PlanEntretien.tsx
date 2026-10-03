@@ -1,11 +1,13 @@
 "use client";
 
-import { Info, SlidersHorizontal, Trash2 } from "lucide-react";
+import { CalendarPlus, Info, SlidersHorizontal, Trash2, Wrench } from "lucide-react";
 import { CHAMPS } from "@/composants/transactions/champs";
 import { Carte, TableauSimple } from "@/composants/interface/Carte";
 import { Echeance } from "@/composants/interface/Pastille";
 import { useEdition } from "@/composants/transactions/ContexteEdition";
+import { fabriquerLigneOrdre, fabriquerSignalement } from "@/composants/transactions/fabriques";
 import {
+  appelleUneAction,
   ETAT_ECHEANCE,
   GROUPE_OPERATION,
   libellePeriodicite,
@@ -13,6 +15,8 @@ import {
   type EcheanceEntretien,
 } from "@/domaine/entretien";
 import type { FicheVehicule } from "@/domaine/fiche";
+import { estOuvert, type LigneOrdre } from "@/domaine/maintenance";
+import type { LigneSignalement } from "@/domaine/signalements";
 import { date as formaterDate, montant, nombre } from "@/lib/format";
 
 /* ============================================================================
@@ -24,11 +28,25 @@ import { date as formaterDate, montant, nombre } from "@/lib/format";
  *
  * L'ajustement passe par la modale de modification, comme tout le reste : il
  * est tracé, il porte un motif, et il se relit dans l'historique de la fiche.
+ *
+ * Une échéance dépassée ou à planifier **propose le service** (métier,
+ * 3 octobre 2026, comme la page Maintenance) : « Planifier » sur la ligne ouvre
+ * le service préventif avec la tâche de l'opération en ligne ; en tête, toutes
+ * les échéances dues d'un coup. Un service préventif déjà ouvert pour le
+ * véhicule s'ouvre à la place, plutôt que d'en créer un second.
  * ==========================================================================*/
 
 export function PlanEntretien({ fiche }: { fiche: FicheVehicule }) {
-  const { surcharger, demander } = useEdition();
+  const { surcharger, demander, creations, ouvrirService } = useEdition();
   const plan = fiche.planEntretien;
+  const vf = fiche.ligne.vehicule;
+  /* Les services et les pannes du véhicule, ceux du navigateur compris : le formulaire en a besoin. */
+  const servicesCrees = creations("ordre", fabriquerLigneOrdre).filter((o): o is LigneOrdre => o !== null);
+  const services = [...servicesCrees, ...(fiche.services ?? []).filter((o) => !servicesCrees.some((c) => c.numero === o.numero))].map(surcharger);
+  const signalementsCrees = creations("signalement", fabriquerSignalement).filter((x): x is LigneSignalement => x !== null);
+  const signalements = [...signalementsCrees, ...(fiche.signalements ?? []).filter((x) => !signalementsCrees.some((c) => c.numero === x.numero))].map(surcharger);
+  const vehiculeService = { immatriculation: vf.immatriculation, immatriculationAffichee: vf.immatriculationAffichee, libelle: `${vf.marque} ${vf.appellation}` };
+  const serviceOuvert = services.find((o) => estOuvert(o.statut) && o.type === "preventif") ?? null;
 
   /*
    * Une ligne ajustée depuis l'application recouvre la ligne calculée. La
@@ -78,6 +96,26 @@ export function PlanEntretien({ fiche }: { fiche: FicheVehicule }) {
         ? "kilométrage non relevé"
         : `${nombre(plan.compteurs.km)} km au compteur`;
 
+  const dues = lignes.filter(appelleUneAction);
+
+  /* Le service préventif de ces échéances : leurs tâches en ligne, urgent si l'une est dépassée. Déjà ouvert, on l'ouvre. */
+  function planifier(liste: EcheanceEntretien[]) {
+    if (serviceOuvert) return ouvrirService({ service: serviceOuvert, vehicule: vehiculeService, signalements, services });
+    if (!liste.length) return;
+    ouvrirService({
+      vehicule: vehiculeService,
+      signalements,
+      services,
+      propose: {
+        type: "preventif",
+        objet: `Entretien préventif — ${liste.map((e) => e.libelle.toLowerCase()).join(", ")}`,
+        origineNumero: null,
+        priorite: liste.some((e) => e.etat === "en-retard") ? "urgent" : "planifie",
+        operations: liste.map((e) => e.code),
+      },
+    });
+  }
+
   function ajuster(e: EcheanceEntretien) {
     demander({
       type: "entretien",
@@ -122,6 +160,17 @@ export function PlanEntretien({ fiche }: { fiche: FicheVehicule }) {
           </span>
         ) : null}
         {enRetard === 0 && aPlanifier === 0 && sansReference === 0 ? <Echeance ton="favorable">Plan à jour</Echeance> : null}
+        {serviceOuvert ? (
+          <button type="button" onClick={() => planifier([])} className="bouton-secondaire h-7 px-2.5 text-[12px]" title="Un service préventif est déjà ouvert pour ce véhicule">
+            <Wrench className="size-3.5" strokeWidth={2} />
+            Service {serviceOuvert.numero}
+          </button>
+        ) : dues.length > 0 ? (
+          <button type="button" onClick={() => planifier(dues)} className="bouton-principal h-7 px-2.5 text-[12px]">
+            <CalendarPlus className="size-3.5" strokeWidth={2} />
+            {dues.length > 1 ? `Planifier les ${dues.length} échéances` : "Planifier l'échéance"}
+          </button>
+        ) : null}
         <span className="meta ml-auto flex items-center gap-1.5">
           <SlidersHorizontal className="size-3.5 shrink-0" strokeWidth={1.9} />
           Le crayon ajuste une périodicité, la corbeille retire l&apos;opération — pour ce véhicule seulement
@@ -204,6 +253,17 @@ export function PlanEntretien({ fiche }: { fiche: FicheVehicule }) {
           },
           { cle: "duree", libelle: "Immobilisation", alignee: "droite", parDefaut: false, rendu: (e) => <span className="code">{e.dureeHeures} h</span> },
           { cle: "cout", libelle: "Coût estimé", alignee: "droite", parDefaut: false, rendu: (e) => <span className="code">{montant(e.coutEstime)}</span> },
+          {
+            cle: "planifier",
+            libelle: "",
+            rendu: (e) =>
+              appelleUneAction(e) ? (
+                <button type="button" onClick={(ev) => { ev.stopPropagation(); planifier([e]); }} className="bouton-discret h-7 px-2 text-[12px]" title={serviceOuvert ? `Ouvrir le service ${serviceOuvert.numero}` : "Ouvrir le service, cette tâche en ligne"}>
+                  <CalendarPlus className="size-3.5" strokeWidth={1.9} />
+                  {serviceOuvert ? "Service" : "Planifier"}
+                </button>
+              ) : null,
+          },
           {
             cle: "retirer",
             libelle: "",

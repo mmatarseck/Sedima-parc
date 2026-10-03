@@ -75,7 +75,7 @@ for (const brut of parc.vehicules) {
     const f = (await pg.query(`select lire_fiche($1) as j`, [brut.immatriculation])).rows[0].j;
     etape = "assembler";
     const v = ligne.vehicule;
-    const fiche = assemblerFiche(ligne, f ? versFaits(f) : FAITS_VIDES, PARAMETRES_DEFAUT, aujourdhui, { programme: programmeParDefaut(v.categorie), plan: planDuVehicule(v.id, v.categorie), passages: passagesReleves });
+    const fiche = assemblerFiche(ligne, f ? versFaits(f) : FAITS_VIDES, PARAMETRES_DEFAUT, aujourdhui, { programme: programmeParDefaut(v.categorie), plan: planDuVehicule(v.id, v), passages: passagesReleves });
     etape = "pieces";
     if (leger && (fiche.documents.some((d) => d.etat === "manquant") || fiche.immobilisationAdministrative)) throw new Error("un véhicule de service ou de fonction se voit reprocher des pièces que le parc ne tient pas");
     etape = "serialiser";
@@ -140,7 +140,7 @@ let aRecevoir = 0;
 for (const ligne of lignesARecevoir(parc)) {
   try {
     const v = ligne.vehicule;
-    const fiche = assemblerFiche(ligne, FAITS_VIDES, PARAMETRES_DEFAUT, aujourdhui, { programme: programmeParDefaut(v.categorie), plan: planDuVehicule(v.id, v.categorie), passages: passagesReleves });
+    const fiche = assemblerFiche(ligne, FAITS_VIDES, PARAMETRES_DEFAUT, aujourdhui, { programme: programmeParDefaut(v.categorie), plan: planDuVehicule(v.id, v), passages: passagesReleves });
     if (fiche.documents.some((d) => d.etat === "manquant") || fiche.immobilisationAdministrative) throw new Error("un véhicule à recevoir se voit reprocher des pièces");
     const html = renderToString(
       React.createElement(FournisseurEdition, { sujet: `vehicule:${v.immatriculation}`, href: `/flotte/${v.id}` } as any,
@@ -170,7 +170,7 @@ if (!rendues.has("AA019EA")) {
   if (!ligne) console.log("ÉCHEC dossier garni : aucun véhicule");
   else {
     const v = ligne.vehicule;
-    const fiche = assemblerFiche(ligne, FAITS_VIDES, PARAMETRES_DEFAUT, aujourdhui, { programme: programmeParDefaut(v.categorie), plan: planDuVehicule(v.id, v.categorie), passages: passagesReleves });
+    const fiche = assemblerFiche(ligne, FAITS_VIDES, PARAMETRES_DEFAUT, aujourdhui, { programme: programmeParDefaut(v.categorie), plan: planDuVehicule(v.id, v), passages: passagesReleves });
     /* Trois familles depuis le 16 septembre 2026 : le réglementaire, les
        procès-verbaux de visite, ce qui a coûté. Le lecteur les réunit en une
        seule forme ; l'onglet ne fait que grouper. On en pose une de chaque,

@@ -460,6 +460,11 @@ Les opérations viennent du programme que suit le véhicule (modèle, sinon
 catégorie). Une fois le service enregistré, les échéances du véhicule passent
 « en cours » et renvoient à lui.
 
+**Sur la fiche véhicule** (onglet du plan d'entretien), même geste : « Planifier »
+sur une ligne due ouvre le service avec cette tâche ; en tête, « Planifier les
+N échéances » les prend toutes. Si un service préventif est déjà ouvert pour le
+véhicule, c'est lui qui s'ouvre (« Service OTR-… »), plutôt qu'un second.
+
 ## 3 octobre 2026 — deux rapports de maintenance
 
 **Respect du plan préventif** (Rapports › Maintenance). Une ligne par
