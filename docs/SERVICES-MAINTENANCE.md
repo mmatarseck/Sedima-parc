@@ -484,11 +484,33 @@ clos — deux au 3 octobre 2026.
 
 Banc : `scripts/tester-rapports-maintenance.mts`.
 
+## 3 octobre 2026 — les observations de visite deviennent des signalements (0077)
+
+Une seule liste de « ce qu'il faut réparer » (proposition, lot 1). Par la
+base, quel que soit l'écran qui écrit :
+
+- **relever une observation** non corrigée ouvre un signalement qui la cite
+  (`signalement.observation_numero`) : numéro `SIG-OBS-…`, « Visite technique :
+  … », daté du passage au centre, priorité **haute** si l'observation est
+  majeure, **normale** sinon ; le système vient de sa catégorie (freinage 013,
+  direction 015, éclairage 034, pneumatiques 017, pollution 043, carrosserie et
+  vitrage 002, attelage 014, équipements 050) ; le détail cite l'observation, la
+  visite, le PV et la gravité ;
+- le signalement se planifie comme toute panne : « Planifier » ouvre le
+  service qui l'inclut, et **la clôture du service le résout** (0060) ;
+- **un signalement résolu corrige l'observation**, à la même date, avec le
+  numéro du service ; une observation marquée corrigée à la main résout son
+  signalement ;
+- les observations non corrigées déjà en base reçoivent le leur (aucune au
+  3 octobre 2026).
+
+Dans « À faire », une observation portée par un signalement ne se compte plus
+deux fois : elle y est comme panne. Sans 0077, rien ne change.
+
 ## Ce qui reste
 
 - Les programmes des modèles eux-mêmes : à créer par le responsable du parc
   (L200, Hilux, TATA LPT 1618, Renault frigo…), périodicités du constructeur.
-- Les observations de visite technique, à rattacher aux signalements.
 - Le téléphone de l'atelier démarre et clôt encore l'ancien ordre de travail. Il
   n'a pas le formulaire de service.
 

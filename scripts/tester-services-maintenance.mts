@@ -303,6 +303,27 @@ if (bac) {
   await pg.exec(readFileSync("supabase/correctif-operations-doublons.sql", "utf8"));
   const apres = ((await pg.query(`select count(*)::int as n from operation_entretien`)).rows[0] as { n: number }).n;
   attendu(`le correctif ôte les opérations en double du jeu de départ, rejouable (${doublees} → ${apres})`, doublees === 2 * prog.o && apres === prog.o);
+  /* 0077 : une observation de visite ouvre son signalement, la résolution de l'un corrige l'autre, rejouable. */
+  await pg.exec(`
+    insert into vehicule (immatriculation, marque, appellation, categorie) values ('ZZ077VT', 'TATA', 'Essai', 'camion') on conflict do nothing;
+    insert into visite_technique (numero, vehicule_id, centre, date_rendez_vous, date_passage, statut, numero_pv) values ('VTE-2026-77001', (select id from vehicule where immatriculation = 'ZZ077VT'), 'CCT Dakar', '2026-09-30', '2026-10-01', 'refusee', 'PV-1');
+    insert into observation_visite (numero, visite_numero, vehicule_id, libelle, categorie, gravite) values
+      ('OBS-2026-77001', 'VTE-2026-77001', (select id from vehicule where immatriculation = 'ZZ077VT'), 'Feu stop arrière gauche hors service', 'eclairage', 'majeure'),
+      ('OBS-2026-77002', 'VTE-2026-77001', (select id from vehicule where immatriculation = 'ZZ077VT'), 'Usure des plaquettes avant', 'freinage', 'mineure');`);
+  const sig77 = (await pg.query(`select numero, priorite, systeme, description, date::text, statut, declarant from signalement where observation_numero = 'OBS-2026-77001'`)).rows[0] as { numero: string; priorite: string; systeme: string; description: string; date: string; statut: string; declarant: string } | undefined;
+  attendu(
+    `0077 : relever une observation ouvre son signalement — majeure en priorité haute, éclairage au système 034, daté du passage (${sig77?.numero}, ${sig77?.priorite}, ${sig77?.systeme}, ${sig77?.date})`,
+    sig77?.numero === "SIG-OBS-2026-77001" && sig77.priorite === "haute" && sig77.systeme === "034" && sig77.date === "2026-10-01" && sig77.statut === "ouvert" && sig77.description === "Visite technique : Feu stop arrière gauche hors service" && sig77.declarant === "Centre CCT Dakar",
+  );
+  await pg.exec(`update signalement set statut = 'resolu', resolu_le = '2026-10-03', service_numero = 'OTR-2026-77001' where observation_numero = 'OBS-2026-77001';`);
+  const obs1 = (await pg.query(`select statut, corrigee_le::text as corrigee_le, intervention_numero from observation_visite where numero = 'OBS-2026-77001'`)).rows[0] as { statut: string; corrigee_le: string; intervention_numero: string };
+  attendu(`0077 : le signalement résolu corrige l'observation, même date, numéro du service (${obs1.statut}, ${obs1.corrigee_le}, ${obs1.intervention_numero})`, obs1.statut === "corrigee" && obs1.corrigee_le === "2026-10-03" && obs1.intervention_numero === "OTR-2026-77001");
+  await pg.exec(`update observation_visite set statut = 'corrigee', corrigee_le = '2026-10-02' where numero = 'OBS-2026-77002';`);
+  const sig2 = (await pg.query(`select statut, resolu_le::text as resolu_le, priorite, systeme from signalement where observation_numero = 'OBS-2026-77002'`)).rows[0] as { statut: string; resolu_le: string; priorite: string; systeme: string };
+  attendu(`0077 : une observation corrigée à la main résout son signalement ; mineure en priorité normale, freinage au 013 (${sig2.statut}, ${sig2.resolu_le}, ${sig2.priorite}, ${sig2.systeme})`, sig2.statut === "resolu" && sig2.resolu_le === "2026-10-02" && sig2.priorite === "normale" && sig2.systeme === "013");
+  await pg.exec(readFileSync("supabase/migrations/0077_observations_en_signalements.sql", "utf8"));
+  const n77 = ((await pg.query(`select count(*)::int as n from signalement where observation_numero like 'OBS-2026-77%'`)).rows[0] as { n: number }).n;
+  attendu(`0077 rejouable : toujours un signalement par observation (${n77})`, n77 === 2);
   await pg.exec(readFileSync("supabase/migrations/0075_programmes_par_modele.sql", "utf8"));
   const modeles75 = (await pg.query(`select count(*)::int as n from programme_entretien where modeles = '{}'`)).rows[0] as { n: number };
   attendu("0075 : les programmes portent leurs modèles, vides au départ, rejouable", modeles75.n === prog.p);

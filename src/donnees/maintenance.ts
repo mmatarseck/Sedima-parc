@@ -12,7 +12,8 @@
  *
  * Les observations de visite technique (0023) entrent dans le travail à faire
  * tant qu'elles ne sont pas corrigées, avec le délai de contre-visite de la
- * visite qui les a produites.
+ * visite qui les a produites — sauf celles qu'un signalement porte (0077) :
+ * elles y sont déjà, comme panne à réparer, et ne se comptent pas deux fois.
  * ==========================================================================*/
 
 import { lignesLues } from "./lecture";
@@ -201,14 +202,18 @@ export function travauxDepuisLaBase(lignes: LigneFlotte[], parc: ParcBrut, ordre
 
 async function travauxServeurBrut(parametres: Parametres): Promise<LigneTravail[]> {
   const client = await clientServeur();
-  const [lignes, parc, ordres, incidents, observations] = await Promise.all([
+  const [lignes, parc, ordres, incidents, observations, portees] = await Promise.all([
     lignesFlotte(parametres),
     parcServeur(),
     ordresServeur(),
     client.from("incident").select("numero, vehicule_id, date_heure, type, immobilisation_jours, description").neq("statut", "clos").limit(2000).returns<IncidentEnCours[]>(),
     client.from("observation_visite").select("numero, vehicule_id, libelle, statut, intervention_numero, visite_technique (date_limite_contre_visite)").neq("statut", "corrigee").limit(2000).returns<ObservationOuverte[]>(),
+    /* Sans 0077, la colonne manque : la lecture échoue et toutes les observations restent dans la liste, comme avant. */
+    client.from("signalement").select("observation_numero").not("observation_numero", "is", null).limit(5000).returns<{ observation_numero: string }[]>(),
   ]);
-  return travauxDepuisLaBase(lignes, parc, ordres, lignesLues("Incidents en cours", incidents), parc.aujourdhui, lignesLues("Observations de visite", observations));
+  const dejaSignalees = new Set((portees.error ? [] : (portees.data ?? [])).map((x) => x.observation_numero));
+  const ouvertes = lignesLues("Observations de visite", observations).filter((o) => !dejaSignalees.has(o.numero));
+  return travauxDepuisLaBase(lignes, parc, ordres, lignesLues("Incidents en cours", incidents), parc.aujourdhui, ouvertes);
 }
 
 export const travauxServeur = cache(travauxServeurBrut);
