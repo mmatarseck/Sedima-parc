@@ -40,7 +40,7 @@ import { ATTELAGES, FLOTTE, LICENCES } from "./parc-demo";
 import { date, joursRestants, nombre } from "@/lib/format";
 import type { CompteursVehicule } from "@/domaine/entretien";
 import { echeancesDuPlan } from "@/domaine/entretien";
-import { passagesReleves, planDuVehicule, programmeParDefaut } from "./entretien-demo";
+import { passagesReleves, planDuVehicule, programmeDuParc } from "./entretien-demo";
 
 /** Date de référence des données de démonstration. */
 const AUJOURDHUI = new Date("2026-09-02T00:00:00Z");
@@ -300,7 +300,7 @@ function construire(l: LigneFlotte, parametres: Parametres): FicheVehicule {
    * opérations sont donc à jour, quelques-unes arrivent à échéance, quelques
    * autres sont dépassées. C'est ce qu'on veut montrer.
    */
-  const operationsDuPlan = programmeParDefaut(v.categorie).operations.filter((o) => o.periodicite.km !== null || o.periodicite.mois !== null);
+  const operationsDuPlan = programmeDuParc(v).operations.filter((o) => o.periodicite.km !== null || o.periodicite.mois !== null);
   let rangOperationTiree = entre(alea, 0, Math.max(0, operationsDuPlan.length - 1));
 
   for (let i = 0; i < nbInterventions; i++) {
@@ -353,8 +353,8 @@ function construire(l: LigneFlotte, parametres: Parametres): FicheVehicule {
      Il vient après les interventions parce qu'il s'y confronte : une
      périodicité ne dit rien tant qu'on ne sait pas quand l'opération a été
      faite pour la dernière fois. */
-  const programme = programmeParDefaut(v.categorie);
-  const plan = planDuVehicule(v.id, v.categorie);
+  const programme = programmeDuParc(v);
+  const plan = planDuVehicule(v.id, v);
   /* Un engin compte des heures. Le compteur horaire n'existe pas encore dans le
      jeu de démonstration : on l'estime sur la durée de service, et le jour où
      l'atelier le relèvera, seule cette ligne changera. */
@@ -964,8 +964,8 @@ function construire(l: LigneFlotte, parametres: Parametres): FicheVehicule {
  */
 /** Le plan d'un véhicule neuf : le gabarit de sa catégorie, aucun passage. */
 function planVierge(v: Vehicule): PlanEntretienFiche {
-  const programme = programmeParDefaut(v.categorie);
-  const plan = planDuVehicule(v.id, v.categorie);
+  const programme = programmeDuParc(v);
+  const plan = planDuVehicule(v.id, v);
   const compteurs: CompteursVehicule = { km: null, heures: null, kmParJour: 1, heuresParJour: 1, miseEnService: v.premiereMiseEnCirculation };
   return {
     programmeCode: programme.code,

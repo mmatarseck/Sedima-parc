@@ -31,7 +31,7 @@ import { joursRestants } from "@/lib/format";
 import { clientServeur } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { programmesServeur } from "./entretien";
-import { passagesReleves, programmeParDefaut } from "./entretien-demo";
+import { passagesReleves, programmeDuParc } from "./entretien-demo";
 
 export { ligneLegere } from "./flotte-demo";
 import { ligneLegere } from "./flotte-demo";
@@ -494,7 +494,7 @@ function rythmeMesure(uuid: string, parc: ParcBrut): number | null {
 
 /** Toutes les échéances du plan d'entretien d'un véhicule, confrontées à ses interventions en base ; la liste en garde la première, la Maintenance celles qui appellent une action. */
 export function echeancesEntretienDeLaBase(v: Vehicule, uuid: string, compteur: { km: number; date: string } | null, parc: ParcBrut, rythme?: number | null): EcheanceEntretien[] {
-  const programme = programmeParDefaut(v.categorie, parc.programmes);
+  const programme = programmeDuParc(v, parc.programmes);
   const interventions = parc.interventions.filter((i) => i.vehicule_id === uuid).map((i) => ({ numero: i.numero, date: i.date, objet: i.objet, km: i.km }));
   const compteurs: CompteursVehicule = {
     km: compteur?.km ?? null,

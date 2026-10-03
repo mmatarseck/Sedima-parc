@@ -7,7 +7,7 @@ import { titrePage } from "@/domaine/marque";
 import { normaliser } from "@/domaine/immatriculation";
 import { lignesChauffeurs } from "@/donnees/chauffeurs";
 import { demandesServeur } from "@/donnees/demandes";
-import { passagesReleves, planDuVehicule, programmeParDefaut } from "@/donnees/entretien-demo";
+import { passagesReleves, planDuVehicule, programmeDuParc } from "@/donnees/entretien-demo";
 import { faitsDepuisJson, type FicheJson } from "@/donnees/fiche";
 import { lignesFlotte, parcServeur } from "@/donnees/flotte";
 import { ordresServeur } from "@/donnees/ordres";
@@ -98,7 +98,7 @@ export default async function PageDiagnostic({ searchParams }: { searchParams: P
     }, (j) => (j ? `${j.documents.length} documents, ${j.affectations.length} affectations, ${j.releves.length} relevés, ${j.pleins.length} pleins, ${j.depenses.length} dépenses, ${j.interventions.length} interventions, ${j.statuts.length} statuts` : "null (véhicule introuvable pour la fonction)"));
     if (ligne) {
       const v = ligne.vehicule;
-      const plan = { programme: programmeParDefaut(v.categorie), plan: planDuVehicule(v.id, v.categorie), passages: passagesReleves };
+      const plan = { programme: programmeDuParc(v), plan: planDuVehicule(v.id, v), passages: passagesReleves };
       await mesurer("Fiche — conversion des faits", async () => (brut ? faitsDepuisJson(brut) : FAITS_VIDES), (f) => `${f.documents.length} documents, ${f.licences.length} licences`);
       await mesurer("Fiche — assemblage (assemblerFiche)", async () => assemblerFiche(ligne, brut ? faitsDepuisJson(brut) : FAITS_VIDES, parametres, aujourdhui, plan), (f) => `${f.documents.length} documents, ${f.interventions.length} interventions, ${f.carburant.length} mois de carburant, ${f.planEntretien.echeances.length} échéances, journal ${f.journal.length}`);
       await mesurer("Fiche — sérialisation (JSON)", async () => JSON.stringify(assemblerFiche(ligne, brut ? faitsDepuisJson(brut) : FAITS_VIDES, parametres, aujourdhui, plan)).length, (n) => `${Math.round(n / 1024)} Ko`);

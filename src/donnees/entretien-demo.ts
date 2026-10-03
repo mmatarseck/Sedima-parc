@@ -17,7 +17,7 @@
  * ==========================================================================*/
 
 import type { AjustementOperation, DernierPassage, OperationEntretien, PlanVehicule, ProgrammeEntretien } from "@/domaine/entretien";
-import { reconnaitOperation } from "@/domaine/entretien";
+import { programmeDuVehicule, reconnaitOperation } from "@/domaine/entretien";
 import type { CategorieVehicule } from "@/domaine/types";
 
 /* -- Les gabarits ----------------------------------------------------------- */
@@ -48,6 +48,7 @@ export const PROGRAMMES: ProgrammeEntretien[] = [
     libelle: "Poids lourd — porteur et tracteur",
     precision: "Vrac, sacherie et traction. Périodicités resserrées : la piste et la surcharge usent plus vite que la route.",
     categories: ["camion", "tracteur"],
+    modeles: [],
     base: "km",
     operations: [
       op("vidange-moteur", "Vidange moteur et filtres", "moteur", { km: 15_000, mois: 12 }, ["vidange"], 3, 118_500),
@@ -64,6 +65,7 @@ export const PROGRAMMES: ProgrammeEntretien[] = [
     libelle: "Semi-remorque",
     precision: "Pas de moteur : tout se joue sur le freinage, les pneumatiques et le châssis.",
     categories: ["semi-remorque"],
+    modeles: [],
     base: "km",
     operations: [
       op("garnitures-frein", "Contrôle des garnitures de frein", "freinage", { km: 30_000, mois: 6 }, ["frein", "garniture", "plaquette"], 4, 210_000, true),
@@ -78,6 +80,7 @@ export const PROGRAMMES: ProgrammeEntretien[] = [
     libelle: "Véhicule léger et camionnette",
     precision: "Livraison, liaison et direction. Le kilométrage tombe vite, la courroie décide de la longévité.",
     categories: ["camionnette", "vehicule-leger", "bus", "moto"],
+    modeles: [],
     base: "km",
     operations: [
       op("vidange-moteur", "Vidange moteur et filtres", "moteur", { km: 10_000, mois: 12 }, ["vidange"], 2, 62_000),
@@ -93,6 +96,7 @@ export const PROGRAMMES: ProgrammeEntretien[] = [
     libelle: "Engin de manutention",
     precision: "Il ne roule pas, il travaille : c'est le compteur horaire qui commande, jamais le kilométrage.",
     categories: ["engin"],
+    modeles: [],
     base: "heures",
     operations: [
       op("vidange-moteur", "Vidange moteur et filtres", "moteur", { heures: 500, mois: 12 }, ["vidange"], 3, 95_000),
@@ -114,6 +118,22 @@ export function programmeParCode(code: string): ProgrammeEntretien | null {
 export function programmeParDefaut(categorie: CategorieVehicule, programmes: ProgrammeEntretien[] = PROGRAMMES): ProgrammeEntretien {
   /* Les programmes tenus en base (0062) passent devant les gabarits d'origine ; le léger, puis le premier, servent de filet. */
   return programmes.find((p) => p.categories.includes(categorie)) ?? programmes.find((p) => p.code === "leger") ?? programmes[0] ?? PROGRAMMES.find((p) => p.code === "leger")!;
+}
+
+/** Ce qu'il faut d'un véhicule pour lui trouver son programme : sa catégorie, et son modèle. */
+export interface VehiculeAEntretenir {
+  categorie: CategorieVehicule;
+  marque?: string | null;
+  appellation?: string | null;
+}
+
+/**
+ * Le programme d'un véhicule (0075) : celui de son modèle, sinon celui de sa
+ * catégorie, sinon le léger. C'est lui que la fiche, la liste, la Maintenance
+ * et le formulaire d'un service lisent.
+ */
+export function programmeDuParc(v: VehiculeAEntretenir, programmes: ProgrammeEntretien[] = PROGRAMMES): ProgrammeEntretien {
+  return programmeDuVehicule(v, programmes)?.programme ?? programmeParDefaut(v.categorie, programmes);
 }
 
 /* -- Les ajustements, véhicule par véhicule --------------------------------- */
@@ -141,10 +161,10 @@ const AJUSTEMENTS: Record<string, AjustementOperation[]> = {
 };
 
 /** Le plan appliqué à un véhicule : son gabarit, et ce qu'il en change. */
-export function planDuVehicule(vehiculeId: string, categorie: CategorieVehicule, programmes: ProgrammeEntretien[] = PROGRAMMES): PlanVehicule {
+export function planDuVehicule(vehiculeId: string, vehicule: VehiculeAEntretenir, programmes: ProgrammeEntretien[] = PROGRAMMES): PlanVehicule {
   return {
     vehiculeId,
-    programmeCode: programmeParDefaut(categorie, programmes).code,
+    programmeCode: programmeDuParc(vehicule, programmes).code,
     ajustements: AJUSTEMENTS[vehiculeId] ?? [],
   };
 }

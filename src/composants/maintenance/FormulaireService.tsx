@@ -25,7 +25,7 @@ import { date as formaterDate, montant } from "@/lib/format";
 import { lirePiecesDisponibles, type PieceDisponible } from "@/lib/pieces-actions";
 import { lireProgrammes } from "@/lib/entretien-actions";
 import { libellePeriodicite, type ProgrammeEntretien } from "@/domaine/entretien";
-import { programmeParDefaut } from "@/donnees/entretien-demo";
+import { programmeDuParc } from "@/donnees/entretien-demo";
 import { lireReferentiels } from "@/lib/referentiels-navigateur";
 import { lireRole } from "@/lib/session-demo";
 import { cloturerService } from "./cloturer-service";
@@ -189,12 +189,12 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
   /*
    * Reprendre un plan d'entretien défini (métier, 21 septembre 2026 : « un
    * nouveau service peut sélectionner aussi un plan d'entretien défini ») : le
-   * programme du véhicule, selon sa catégorie. Choisir une opération ajoute sa
+   * programme du véhicule, selon son modèle ou sa catégorie (0075). Choisir une opération ajoute sa
    * tâche du catalogue en ligne ; « tout le programme » les ajoute toutes. Le
    * service devient préventif.
    */
-  const categorieVehicule = vehiculeChoisi ? (lireReferentiels().vehicules.find((v) => v.immatriculation === vehiculeChoisi.immatriculation)?.categorie ?? null) : null;
-  const programme = programmes?.length && categorieVehicule ? programmeParDefaut(categorieVehicule, programmes) : null;
+  const vehiculeDuPlan = vehiculeChoisi ? (lireReferentiels().vehicules.find((v) => v.immatriculation === vehiculeChoisi.immatriculation) ?? null) : null;
+  const programme = programmes?.length && vehiculeDuPlan ? programmeDuParc(vehiculeDuPlan, programmes) : null;
   function reprendrePlan(code: string) {
     if (!programme) return;
     const operations = code === "*" ? programme.operations : programme.operations.filter((o) => o.code === code);
