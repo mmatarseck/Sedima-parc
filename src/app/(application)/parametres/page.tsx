@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, BellRing, Car, ChevronRight, ClipboardList, FileCheck2, Fuel, Gauge, ListChecks, LockKeyhole, Trophy, Truck, Users, Wallet, Wrench } from "lucide-react";
+import { Activity, BarChart3, BellRing, Car, ChevronRight, ClipboardList, FileCheck2, Fuel, Gauge, ListChecks, LockKeyhole, Trophy, Truck, Users, Wallet, Wrench } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { titrePage } from "@/domaine/marque";
 
@@ -61,6 +61,7 @@ const GROUPES: { titre: string; precision: string; sections: Section[] }[] = [
     sections: [
       { href: "/parametres/utilisateurs", libelle: "Utilisateurs et rôles", precision: "Les huit rôles, leur périmètre, qui voit les sanctions, qui clôture — et de quoi prendre un autre rôle", icone: Users },
       { href: "/parametres/clotures", libelle: "Clôture des mois", precision: "Fermer un mois, approuver les modifications demandées sur un mois clos", icone: LockKeyhole },
+      { href: "/parametres/activite", libelle: "Activité des utilisateurs", precision: "Qui utilise réellement l'application, et comment : connexions, jours actifs, écrans consultés, saisies — réservé à l'administrateur et à la direction", icone: BarChart3 },
       { href: "/parametres/diagnostic", libelle: "Diagnostic", precision: "Chaque lecture de la base chronométrée, avec son erreur s'il y en a une — réservé à l'administrateur et à la direction", icone: Activity },
     ],
   },

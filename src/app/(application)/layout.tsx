@@ -3,6 +3,7 @@ import { Coquille } from "@/composants/coquille/Coquille";
 import { AmorceSession } from "@/composants/coquille/AmorceSession";
 import { AmorceReferentiels } from "@/composants/coquille/AmorceReferentiels";
 import { RafraichirApresEcriture } from "@/composants/coquille/RafraichirApresEcriture";
+import { SuiviActivite } from "@/composants/coquille/SuiviActivite";
 import { AmorceParametres } from "@/composants/parametres/AmorceParametres";
 import { referentielsChoixServeur } from "@/donnees/referentiels-choix";
 import { parametresServeur } from "@/lib/parametres-serveur";
@@ -37,6 +38,8 @@ export default async function LayoutApplication({ children }: { children: React.
       {/* Une écriture acceptée par la base redemande la page : sans quoi les
           listes déroulantes gardent les référentiels du rendu précédent. */}
       <RafraichirApresEcriture />
+      {/* Les écrans consultés, pour Paramètres › Activité des utilisateurs (0078). */}
+      {session.etat === "connecte" ? <SuiviActivite /> : null}
       {children}
     </Coquille>
   );
