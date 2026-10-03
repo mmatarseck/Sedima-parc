@@ -239,12 +239,21 @@ export function PointDuMatin({ point, jourLong, lignes, camions }: { point: Poin
   );
 }
 
+const CLE_OUVERTURE_AUTO = "sedima.parc.courriel.ouverture-auto";
+
 function Courriel({ point, jourLong, onFermer }: { point: Point; jourLong: string; onFermer: () => void }) {
   const [destinataires, setDestinataires] = useState("");
   const [copie, setCopie] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [copiee, setCopiee] = useState(false);
+  /* Le poste a-t-il déjà réglé l'ouverture automatique des brouillons ? Un réglage par navigateur. */
+  const [regle, setRegle] = useState(true);
   useEffect(() => {
+    try {
+      setRegle(localStorage.getItem(CLE_OUVERTURE_AUTO) === "oui");
+    } catch {
+      setRegle(false);
+    }
     const d = lireParametres().diffusion.disponibilite;
     setDestinataires(d.destinataires.join("; "));
     setCopie(d.copie.join("; "));
@@ -259,6 +268,11 @@ function Courriel({ point, jourLong, onFermer }: { point: Point; jourLong: strin
    * Le courriel s'ouvre dans Outlook, tableau déjà mis en forme (métier,
    * 3 octobre 2026) : un fichier .eml marqué « non envoyé », qu'Outlook ouvre
    * comme un brouillon — destinataires, objet, corps. On relit, on envoie.
+   *
+   * Un site ne peut pas lancer Outlook avec un corps mis en forme : le lien
+   * « mailto » ne porte que du texte. Le brouillon passe donc par le
+   * navigateur, réglé une fois par poste pour l'ouvrir aussitôt (« Toujours
+   * ouvrir les fichiers de ce type ») : ensuite, un clic ouvre Outlook.
    */
   function ouvrirDansOutlook() {
     const eml = brouillonEml({ a, cc, sujet, html });
@@ -268,7 +282,7 @@ function Courriel({ point, jourLong, onFermer }: { point: Point; jourLong: strin
     lien.download = `point-du-matin-${point.jour}.eml`;
     lien.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setMessage("Le brouillon est téléchargé : ouvrez-le (il s'ouvre dans Outlook), relisez, envoyez.");
+    setMessage(regle ? "Outlook s'ouvre avec le brouillon : relisez, envoyez." : "Première fois sur ce poste : faites le réglage ci-dessous, une fois pour toutes.");
   }
 
   /* Pour Outlook dans le navigateur, qui n'ouvre pas les .eml : le tableau au presse-papier, à coller. */
@@ -316,6 +330,32 @@ function Courriel({ point, jourLong, onFermer }: { point: Point; jourLong: strin
             </button>
             {message ? <span className="meta">{message}</span> : null}
           </div>
+          {!regle ? (
+            <div className="rounded-[12px] border border-accent bg-accent-fond/40 px-4 py-3 text-[12.5px] text-texte">
+              <p className="font-semibold text-accent-fonce">Réglage unique sur ce poste, pour qu'Outlook s'ouvre directement</p>
+              <ol className="mt-1.5 list-decimal space-y-1 pl-5 text-texte-2">
+                <li>Cliquez « Ouvrir dans Outlook » : le brouillon apparaît dans les téléchargements du navigateur (en haut à droite).</li>
+                <li>Sur ce brouillon, ouvrez le menu « … » (Edge) ou la flèche (Chrome), puis choisissez « Toujours ouvrir les fichiers de ce type ».</li>
+                <li>S'il ne s'ouvre pas dans Outlook : clic droit sur le fichier › Ouvrir avec › Outlook, case « Toujours utiliser cette application ».</li>
+              </ol>
+              <p className="mt-1.5 text-texte-2">Ensuite, un seul clic sur « Ouvrir dans Outlook » ouvre le brouillon, tableau mis en forme.</p>
+              <button
+                type="button"
+                className="bouton-secondaire mt-2 h-7"
+                onClick={() => {
+                  try {
+                    localStorage.setItem(CLE_OUVERTURE_AUTO, "oui");
+                  } catch {
+                    /* sans stockage, l'aide reviendra : sans conséquence */
+                  }
+                  setRegle(true);
+                }}
+              >
+                <Check className="size-3.5" strokeWidth={2} />
+                C'est réglé
+              </button>
+            </div>
+          ) : null}
           <p className="label-champ mt-1">Objet</p>
           <p className="text-[13px] font-medium text-texte">{sujet}</p>
           <p className="label-champ mt-1">Le tableau tel qu'il partira</p>
@@ -323,7 +363,7 @@ function Courriel({ point, jourLong, onFermer }: { point: Point; jourLong: strin
           <div className="overflow-x-auto rounded-[10px] border border-bordure bg-white p-3" dangerouslySetInnerHTML={{ __html: html }} />
         </div>
         <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-bordure bg-surface-2 px-5 py-3">
-          <p className="meta mr-auto max-w-[420px]">« Ouvrir dans Outlook » télécharge un brouillon prêt : destinataires, objet et tableau. Outlook dans le navigateur : « Copier le tableau », puis Ctrl+V.</p>
+          <p className="meta mr-auto max-w-[420px]">« Ouvrir dans Outlook » ouvre le brouillon prêt : destinataires, objet et tableau. Outlook dans le navigateur : « Copier le tableau », puis Ctrl+V.</p>
           <button type="button" onClick={copier} className="bouton-secondaire h-8">
             {copiee ? <Check className="size-4" strokeWidth={2} /> : <ClipboardCopy className="size-4 text-texte-2" strokeWidth={1.8} />}
             Copier le tableau
