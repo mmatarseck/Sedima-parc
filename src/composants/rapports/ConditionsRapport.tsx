@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, SlidersHorizontal, X } from "lucide-react";
 import type { ColonneRapport } from "@/domaine/rapports";
-import { OPERATEURS, conditionValide, conditionsDe, libelleCondition, poserCondition, retirerCondition, type Condition, type Operateur } from "./conditions";
+import { A_DEUX_BORNES, OPERATEURS, conditionValide, conditionsDe, libelleCondition, poserCondition, retirerCondition, type Condition, type Operateur } from "./conditions";
 import type { Facettes } from "./reglages";
 
 /* ============================================================================
@@ -95,7 +95,7 @@ function Editeur({
             aria-label="Valeur"
             className={champ}
           />
-          {c.operateur === "entre" ? (
+          {A_DEUX_BORNES.includes(c.operateur) ? (
             <>
               <span className="meta shrink-0">et</span>
               <input type={date ? "date" : "text"} inputMode={date ? undefined : "decimal"} value={c.b} onChange={(e) => setC({ ...c, b: e.target.value })} aria-label="Seconde valeur" className={champ} />

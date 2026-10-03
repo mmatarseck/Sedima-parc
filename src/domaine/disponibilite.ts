@@ -40,6 +40,8 @@ export interface ConducteurDuJour {
   role: "titulaire" | "suppleant";
   /** Pourquoi il ne peut pas conduire, s'il ne le peut pas. */
   empechement: string | null;
+  /** Son téléphone, pour le joindre au matin. */
+  telephone?: string | null;
   /**
    * Un véhicule qui tourne en deux quarts (0074) : le chauffeur du matin et
    * celui du soir, avec leurs heures de prise et de relève. Absent pour un
@@ -55,6 +57,7 @@ export interface QuartDuJour {
   /** « 06:00 → 18:00 ». */
   heures: string;
   empechement: string | null;
+  telephone?: string | null;
 }
 
 export const LIBELLE_QUART: Record<"matin" | "soir", string> = { matin: "Quart de matin", soir: "Quart de soir" };
@@ -113,7 +116,7 @@ export function conducteurDuJour(
     else if (c.chauffeur.aptitude === "inapte") empechement = "déclaré inapte";
     else if (echu(c.permis)) empechement = c.permis.echeance ? "permis échu" : "date du permis inconnue";
     else if (echu(c.visiteMedicale)) empechement = c.visiteMedicale.echeance ? "visite médicale échue" : "date de visite médicale inconnue";
-    return { id: a.chauffeurId!, nom: a.chauffeur ?? c?.nomComplet ?? a.chauffeurId!, role: a.role as "titulaire" | "suppleant", empechement };
+    return { id: a.chauffeurId!, nom: a.chauffeur ?? c?.nomComplet ?? a.chauffeurId!, role: a.role as "titulaire" | "suppleant", empechement, telephone: c?.chauffeur.telephone ?? null };
   };
   const titulaires = enCours.filter((a) => a.role === "titulaire").map(decrire);
   const suppleants = enCours.filter((a) => a.role === "suppleant").map(decrire);
@@ -121,7 +124,10 @@ export function conducteurDuJour(
   /* Les quarts du jour (0074) : le titulaire de chaque quart, matin puis soir. */
   const quarts: QuartDuJour[] = enCours
     .filter((a) => a.role === "titulaire" && (a.quart === "matin" || a.quart === "soir"))
-    .map((a) => ({ quart: a.quart as "matin" | "soir", id: a.chauffeurId!, nom: decrire(a).nom, heures: heuresDuQuart(a.heureDebut, a.heureFin), empechement: decrire(a).empechement }))
+    .map((a) => {
+      const d = decrire(a);
+      return { quart: a.quart as "matin" | "soir", id: a.chauffeurId!, nom: d.nom, heures: heuresDuQuart(a.heureDebut, a.heureFin), empechement: d.empechement, telephone: d.telephone ?? null };
+    })
     .sort((x, y) => (x.quart === y.quart ? 0 : x.quart === "matin" ? -1 : 1));
   return choisi && quarts.length ? { ...choisi, quarts } : choisi;
 }

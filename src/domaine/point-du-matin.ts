@@ -41,7 +41,10 @@ export interface VehiculeDuMatin {
   capaciteTonnes: number | null;
   /** Le chargement spécialisé, qui remplace les tonnes quand il est posé. */
   special: { nature: ChargementSpecial; valeur: number | null } | null;
+  /** Le chauffeur, avec son téléphone quand on le connaît : « Gora Diop (77 536 34 72) ». */
   chauffeur: string | null;
+  /** Du parc ou d'un transporteur : la fenêtre d'ajustement n'est pas la même. */
+  genre: "parc" | "tiers";
   href: string;
 }
 
@@ -64,6 +67,8 @@ export interface BuDuMatin {
 }
 
 export interface ImmobiliseDuMatin {
+  immatriculation: string;
+  genre: "parc" | "tiers";
   immatriculationAffichee: string;
   type: string;
   motif: string;
@@ -84,6 +89,14 @@ export interface PointDuMatin {
 }
 
 const arrondi = (x: number) => Math.round(x * 10) / 10;
+
+/** « Gora Diop (77 536 34 72) » : le numéro lisible, groupé à la sénégalaise quand il a neuf chiffres. */
+export function avecTelephone(nom: string, telephone: string | null | undefined): string {
+  const chiffres = (telephone ?? "").replace(/\D/g, "").replace(/^221(?=\d{9}$)/, "");
+  if (!chiffres) return nom;
+  const lisible = chiffres.length === 9 ? `${chiffres.slice(0, 2)} ${chiffres.slice(2, 5)} ${chiffres.slice(5, 7)} ${chiffres.slice(7)}` : (telephone ?? "").trim();
+  return `${nom} (${lisible})`;
+}
 
 const TYPE_SPECIAL: Record<ChargementSpecial, string> = { oeufs: "camion à œufs", poussins: "camion à poussins", "volailles-vives": "camion de volailles" };
 
@@ -152,8 +165,9 @@ export function pointDuMatin(parc: LigneDisponibilite[], camions: LigneCamionTie
     type: typeParc(l),
     capaciteTonnes: l.chargeUtile ? arrondi(l.chargeUtile / 1000) : null,
     special: l.chargementSpecial ? { nature: l.chargementSpecial, valeur: l.capaciteSpeciale ?? null } : null,
-    /* En deux quarts (0074) : « matin X · soir Y ». */
-    chauffeur: l.conducteur?.quarts?.length ? l.conducteur.quarts.map((q) => `${q.quart} ${q.nom}`).join(" · ") : (l.conducteur?.nom ?? null),
+    /* En deux quarts (0074) : « matin X · soir Y ». Le téléphone suit le nom. */
+    chauffeur: l.conducteur?.quarts?.length ? l.conducteur.quarts.map((q) => `${q.quart} ${avecTelephone(q.nom, q.telephone)}`).join(" · ") : l.conducteur ? avecTelephone(l.conducteur.nom, l.conducteur.telephone) : null,
+    genre: "parc",
     href: `/flotte/${l.immatriculation}`,
   });
   const versTiers = (c: LigneCamionTiers): VehiculeDuMatin => ({
@@ -162,7 +176,8 @@ export function pointDuMatin(parc: LigneDisponibilite[], camions: LigneCamionTie
     type: typeTiers(c),
     capaciteTonnes: c.capaciteTonnes,
     special: c.chargementSpecial ? { nature: c.chargementSpecial, valeur: c.capaciteSpeciale } : null,
-    chauffeur: c.chauffeur?.nom ?? c.chauffeurReleve,
+    chauffeur: c.chauffeur ? avecTelephone(c.chauffeur.nom, c.chauffeur.telephone) : c.chauffeurReleve,
+    genre: "tiers",
     href: `/transporteurs/camions/${c.immatriculation}`,
   });
   const parCapacite = (a: VehiculeDuMatin, b: VehiculeDuMatin) => (b.capaciteTonnes ?? 0) - (a.capaciteTonnes ?? 0) || a.immatriculation.localeCompare(b.immatriculation);
@@ -199,10 +214,10 @@ export function pointDuMatin(parc: LigneDisponibilite[], camions: LigneCamionTie
   const immobilises: ImmobiliseDuMatin[] = [
     ...exploitation
       .filter((l) => l.etat === "immobilise")
-      .map((l) => ({ immatriculationAffichee: l.immatriculationAffichee, type: typeParc(l), motif: STATUT_VEHICULE[l.statutEffectif].libelle, transporteur: null, bu: libelleBu(l.businessUnit), href: `/flotte/${l.immatriculation}` })),
+      .map((l) => ({ immatriculation: l.immatriculation, genre: "parc" as const, immatriculationAffichee: l.immatriculationAffichee, type: typeParc(l), motif: STATUT_VEHICULE[l.statutEffectif].libelle, transporteur: null, bu: libelleBu(l.businessUnit), href: `/flotte/${l.immatriculation}` })),
     ...engages
       .filter((c) => !operationnel(c))
-      .map((c) => ({ immatriculationAffichee: c.immatriculationAffichee, type: typeTiers(c), motif: STATUT_VEHICULE[c.statut]?.libelle ?? c.statut, transporteur: c.transporteur, bu: libelleBu(c.businessUnit), href: `/transporteurs/camions/${c.immatriculation}` })),
+      .map((c) => ({ immatriculation: c.immatriculation, genre: "tiers" as const, immatriculationAffichee: c.immatriculationAffichee, type: typeTiers(c), motif: STATUT_VEHICULE[c.statut]?.libelle ?? c.statut, transporteur: c.transporteur, bu: libelleBu(c.businessUnit), href: `/transporteurs/camions/${c.immatriculation}` })),
   ];
   const capacites = bus.reduce((s, b) => additionner(s, b.capacites), VIDE);
   const tonnesTiers = bus.flatMap((b) => b.groupes.filter((g) => g.tiers)).reduce((s, g) => s + g.capacites.tonnes, 0);
@@ -277,5 +292,38 @@ export function tableauHtml(p: PointDuMatin, jourLong: string): string {
   const immobilises = p.immobilises.length
     ? `<p style="font:13px Calibri,Arial,sans-serif;margin:12px 0 4px"><b>Immobilisés (${p.immobilises.length})</b> : ${p.immobilises.map((i) => `${echapper(i.immatriculationAffichee)}${i.transporteur ? ` (${echapper(i.transporteur)})` : ""} — ${echapper(i.motif.toLowerCase())}`).join(" ; ")}</p>`
     : "";
-  return `<p style="font:13px Calibri,Arial,sans-serif">Véhicules disponibles ce matin, ${echapper(jourLong)} :</p><table style="border-collapse:collapse"><thead><tr><th style="${ent}">Parc ou transporteur</th><th style="${ent}">Prêts</th><th style="${ent}">Composition</th><th style="${ent}">Capacité</th><th style="${ent}">Véhicules et chauffeurs</th></tr></thead><tbody>${lignes.join("")}</tbody></table>${immobilises}`;
+  return `<p style="font:13px Calibri,Arial,sans-serif">Bonjour à tous,</p><p style="font:13px Calibri,Arial,sans-serif">Voici les véhicules disponibles ce matin, ${echapper(jourLong)} :</p><table style="border-collapse:collapse"><thead><tr><th style="${ent}">Parc ou transporteur</th><th style="${ent}">Prêts</th><th style="${ent}">Composition</th><th style="${ent}">Capacité</th><th style="${ent}">Véhicules et chauffeurs</th></tr></thead><tbody>${lignes.join("")}</tbody></table>${immobilises}<p style="font:13px Calibri,Arial,sans-serif">Cordialement,</p>`;
+}
+
+/* -- Le brouillon Outlook ----------------------------------------------------------- */
+
+/** Base64 d'un texte UTF-8, comme le veut un courriel. */
+function base64(texte: string): string {
+  const octets = new TextEncoder().encode(texte);
+  let binaire = "";
+  for (const o of octets) binaire += String.fromCharCode(o);
+  return btoa(binaire).replace(/.{76}/g, "$&\r\n");
+}
+
+/**
+ * Le courriel du matin, en fichier .eml prêt à ouvrir : destinataires, objet,
+ * et le tableau déjà mis en forme dans le corps. L'en-tête `X-Unsent: 1` dit à
+ * Outlook de l'ouvrir comme un brouillon à envoyer, et non comme un message
+ * reçu — on relit, on clique Envoyer.
+ */
+export function brouillonEml(e: { a: string[]; cc: string[]; sujet: string; html: string }): string {
+  const sujet = `=?UTF-8?B?${btoa(String.fromCharCode(...new TextEncoder().encode(e.sujet)))}?=`;
+  const corps = `<!doctype html><html><head><meta charset="utf-8"></head><body>${e.html}</body></html>`;
+  return [
+    `To: ${e.a.join("; ")}`,
+    ...(e.cc.length ? [`Cc: ${e.cc.join("; ")}`] : []),
+    `Subject: ${sujet}`,
+    "X-Unsent: 1",
+    "MIME-Version: 1.0",
+    "Content-Type: text/html; charset=UTF-8",
+    "Content-Transfer-Encoding: base64",
+    "",
+    base64(corps),
+    "",
+  ].join("\r\n");
 }
