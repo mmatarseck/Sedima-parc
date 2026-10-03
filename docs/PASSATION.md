@@ -1,14 +1,21 @@
-# Passation — où en est SEDIMA Parc (2 octobre 2026)
+# Passation — où en est SEDIMA Parc (3 octobre 2026)
 
 *À lire en premier dans une nouvelle conversation. Le détail de chaque chantier
 est dans les documents cités ; ce fichier dit où l'on en est et comment on
 travaille.*
 
-**État au 2 octobre 2026** : tout est sur `origin/main` (dernier commit
-`3351c4c` puis cette passation) ; migrations jouées en production **jusqu'à
-0068** — la prochaine sera **0069** ; tous les fichiers SQL ponctuels du
-23 septembre sont joués (voir `docs/MISE-A-JOUR-2026-09-23.md`). Rien n'attend
-en base.
+**État au 3 octobre 2026 (soir)** : tout est sur `origin/main` (PR #28
+fusionnée, `70161c1`, puis cette passation) ; migrations jouées en production
+**jusqu'à 0077** — la prochaine sera **0078**. `list_migrations` porte 0068 à
+0075 ; **0076 et 0077 ont été jouées à la main dans l'éditeur SQL** (le
+`apply_migration` du connecteur a été annulé trois fois de suite ce jour-là,
+sans demande de confirmation visible) — elles n'y figurent donc pas, et c'est
+normal : leur présence se vérifie par une lecture (déclencheurs
+`attelage_clot_le_precedent`, `observation_vers_signalement`,
+`signalement_vers_observation`, colonne `signalement.observation_numero`).
+Rien n'attend en base du fait des chantiers du 3 octobre ; l'état des fichiers
+SQL ponctuels des 2 et 3 octobre (`supabase/*-2026-10-0*.sql`) est dans leurs
+PR et documents, non revérifié ici.
 
 ## Nouvelle façon de travailler (à partir du 2 octobre 2026) — tout en ligne
 
@@ -25,13 +32,23 @@ Supabase et Vercel** (via Composio ou les connecteurs de claude.ai).
 | Base | Supabase, projet `mafnzghuexfcxctupyqb` (production) | Lectures de contrôle : `execute_sql` en **lecture seule**, sans demander. **Toute écriture** (migration, correctif, chargement) : le fichier SQL est d'abord commité sur la branche, puis **appliqué seulement après accord explicite du métier**, et **après** la fusion de la PR qui en dépend (ou juste avant, si le code de la PR en a besoin pour marcher). |
 
 **Les migrations** restent des fichiers `supabase/migrations/NNNN_nom.sql`,
-numérotés à la suite (0068 la prochaine), **rejouables**. Les appliquer par
+numérotés à la suite (0078 la prochaine), **rejouables**. Les appliquer par
 `apply_migration` du connecteur Supabase en reprenant **le contenu exact du
 fichier**, puis vérifier par une lecture (`list_migrations`, ou une requête sur
 ce que la migration crée). Les correctifs de données (`supabase/correctif-*.sql`,
 `supabase/mise-a-jour-*.sql`) passent par `execute_sql`, une fois le fichier
 commité et validé par le métier — **jamais de suppression ou de mise à jour de
 masse sans avoir montré d'abord le décompte** de ce qui sera touché.
+
+**Si `apply_migration` est annulé** (3 octobre 2026 : trois fois, pour 0076),
+ne pas insister : le métier colle le fichier dans l'éditeur SQL de Supabase, sur
+le projet `sedima-parc`, et l'assistant vérifie ensuite par une lecture. Le
+compte porte six projets Supabase : vérifier qu'on est sur le bon.
+
+**Une branche de session** : une conversation peut se voir imposer une branche
+unique (`claude/epic-faraday-858f82` le 3 octobre 2026). On y enchaîne alors
+les chantiers, une PR par chantier ; après chaque fusion, la branche repart de
+`origin/main` (`git checkout -B <branche> origin/main`).
 
 **Les bancs d'essai** (PGlite) tournent dans l'environnement cloud :
 
@@ -52,6 +69,44 @@ métier les dépose dans la conversation ou si un connecteur y donne accès.
 
 **Next.js 16** : lire `node_modules/next/dist/docs/` (après `npm ci`) avant
 d'écrire du code Next — voir `AGENTS.md`.
+
+## Le 3 octobre 2026 — ce qui a été fait (PR #21 à #28)
+
+Détail dans **`docs/SERVICES-MAINTENANCE.md`** (sections du 3 octobre) et
+**`docs/ATTELAGES.md`**.
+
+- **#21–#22 Point du matin** : ajuster un véhicule d'un clic, téléphones des
+  chauffeurs, conditions =, ≥, ≤, hors ; courriel en brouillon `.eml` ouvert
+  dans Outlook, avec l'aide au réglage « Toujours ouvrir » une fois par poste.
+- **#23 Plans préventifs par modèle (0075)** : `programme_entretien.modeles` ;
+  « Mitsubishi L200 » couvre toutes les L200 (début du modèle, sans casse ni
+  accents, mot entier), le plus précis l'emporte, le modèle passe devant la
+  catégorie (`programmeDuVehicule`, `programmeDuParc`). Paramètres ›
+  Programmes d'entretien : modèles proposés d'après le parc, « Partir des
+  opérations de ». **Aucun programme de modèle n'est encore créé.**
+- **#24 Attelages** : au point du matin, un tracteur + sa semi = **une unité**
+  (deux plaques, charge utile de la semi, chauffeur du tracteur, semi
+  immobilisée ⇒ unité immobilisée ; `avecAttelages`). **0076** : ouvrir un
+  attelage clôt, à sa date, l'attelage en cours qui cite l'un de ses véhicules
+  (dans un rôle ou l'autre) ; `ATT-2025-90001` (couple inversé du jeu de
+  démonstration) a été clos au 14/09/2026.
+- **#25 Une échéance propose le service** : « Planifier » sur une échéance
+  (page Maintenance) ouvre le service préventif avec les tâches du plan en
+  ligne, et les autres échéances dues du véhicule ; urgent si l'une est
+  dépassée (`LigneTravail.operationCode`, `propose.operations`).
+- **#26 Rapports** « Respect du plan préventif » (passages à l'heure / en
+  retard, 10 % de tolérance, échéance dépassée = oubli) et « Pièces par tâche »
+  (services clos seulement : aucun lien dépense → intervention en base).
+  **Disponibilité** : les compteurs du parc comptent en unités (un attelage
+  pour un), « Prêts avec chauffeur » dit « N parc SEDIMA + M transporteurs »
+  (le métier ne comprenait pas « 35 / 46 » face à « 70 »).
+- **#27 Observations de visite technique → signalements (0077)** : relever une
+  observation ouvre `SIG-OBS-…` (haute si majeure, système déduit de la
+  catégorie) ; signalement résolu ⇒ observation corrigée, et l'inverse ;
+  « À faire » ne la compte plus deux fois.
+- **#28 Téléphone › Atelier** : ouvre le formulaire de service (clôture,
+  planification) ; « Remettre en service » après un service clos ; l'ancienne
+  clôture d'un montant global est retirée.
 
 ## Ce qui reste ouvert au 2 octobre 2026
 
@@ -167,6 +222,11 @@ PGLITE_DIR=C:/Users/mamadou.seck/AppData/Local/Temp/sedima-pglite node --import 
 - `npx tsc --noEmit -p .` (lent : jusqu'à ~3 min) et `npm run verifier-charte`.
 - `tester-conformite` échouait déjà avant ces chantiers (jeu de démonstration
   sans documents) : connu, non traité.
+- Depuis le 3 octobre 2026 : `tester-point-du-matin` (attelages en une unité,
+  0076 en PGlite — `PGLITE_DIR` facultatif) et `tester-rapports-maintenance`
+  (respect du plan, pièces par tâche) ; `tester-services-maintenance` couvre
+  aussi 0075, 0077, l'échéance qui propose le service et le téléphone de
+  l'atelier.
 
 ## Ce qui est en base (joué par le métier)
 
@@ -248,6 +308,13 @@ Tout est décrit dans **`docs/SERVICES-MAINTENANCE.md`** (sections datées).
 
 ### À vérifier dans l'application (rien ne l'a été dans un navigateur)
 
+- **Téléphone › Atelier** (#28) : le formulaire de service au téléphone —
+  lisible, bouton « Clôturer le service » accessible ; puis « Remettre en
+  service ».
+- **Disponibilité** (#26) : les compteurs du parc en unités ; le total des
+  prêts partagé parc / transporteurs.
+- **Planifier une échéance** (#25) : les tâches du plan arrivent en ligne.
+
 - Saisir un plein **en station** en écrivant le nom d'une station inconnue :
   elle doit apparaître au référentiel des prestataires, type « station »
   (`ajouter_station`, 0065).
@@ -283,12 +350,13 @@ Tout est décrit dans **`docs/SERVICES-MAINTENANCE.md`** (sections datées).
 - La liste Flotte et les rapports calculent encore l'immobilisation
   administrative sur les documents, pas sur les rappels suivis (l'en-tête de la
   fiche, lui, suit les rappels) — à aligner si le métier le demande.
-- Plans préventifs **par modèle** (aujourd'hui par catégorie) ; échéance qui
-  propose le service, tâches remplies.
-- Rapports à faire : respect du plan préventif, consommation de pièces par
-  tâche.
-- Observations de visite technique à rattacher aux signalements.
-- Le téléphone de l'atelier ne connaît pas le formulaire de service.
+- **Côté métier** : créer les programmes d'entretien des modèles (L200, Hilux,
+  TATA LPT 1618, Renault frigo…) avec les périodicités du constructeur.
+- Le bouton « Planifier » d'une échéance n'existe pas sur l'onglet Maintenance
+  de la fiche véhicule (seulement page Maintenance et téléphone).
+- Les bancs `tester-fiche`, `tester-maintenance`, `tester-toutes-fiches` et
+  `tester-rapports` ne démarrent pas dans le cloud : ils lisent
+  `supabase/seed-parties`, absent du dépôt (resté sur l'ancien poste).
 - Possible doublon d'import dans les pleins : PLN-R-000829 et PLN-R-005671
   ont les mêmes valeurs — à vérifier avant d'en supprimer un.
 - Aucun écran n'a été vérifié dans un navigateur sur ces chantiers : l'accès
