@@ -38,6 +38,8 @@ export function EcranCaisseCuve({ soldeDuJour, stockDuJour, capaciteCuve }: Prop
   const router = useRouter();
   const [p, setP] = useState<Parametres>(PARAMETRES_DEFAUT);
   const [valeurs, setValeurs] = useState<Record<Cle, string>>({ soldeInitial: "", seuil: "", stockInitial: "" });
+  /* Le jour où le journal de caisse repart (0069) ; vide, il compte depuis le premier mouvement. */
+  const [ouverture, setOuverture] = useState("");
   const [habilite, setHabilite] = useState(false);
   const [nomRole, setNomRole] = useState("");
   const [enregistre, setEnregistre] = useState(false);
@@ -47,6 +49,7 @@ export function EcranCaisseCuve({ soldeDuJour, stockDuJour, capaciteCuve }: Prop
     const lu = lireParametres();
     setP(lu);
     setValeurs({ soldeInitial: String(lu.caisse.soldeInitial), seuil: String(lu.caisse.seuil), stockInitial: String(lu.cuve.stockInitial) });
+    setOuverture(lu.caisse.dateOuverture ?? "");
     const r = trouverRole(lireRole());
     setHabilite(peutCloturer(r.role));
     setNomRole(r.libelle);
@@ -54,20 +57,24 @@ export function EcranCaisseCuve({ soldeDuJour, stockDuJour, capaciteCuve }: Prop
 
   const lire = (cle: Cle) => Number((valeurs[cle] ?? "").replace(/\s/g, ""));
   const nombres: Record<Cle, number> = { soldeInitial: lire("soldeInitial"), seuil: lire("seuil"), stockInitial: lire("stockInitial") };
-  const valide = CHAMPS.every((c) => Number.isFinite(nombres[c.cle]) && nombres[c.cle] >= 0);
+  const ouvertureValide = ouverture === "" || /^\d{4}-\d{2}-\d{2}$/.test(ouverture);
+  const valide = ouvertureValide && CHAMPS.every((c) => Number.isFinite(nombres[c.cle]) && nombres[c.cle] >= 0);
   const courant: Record<Cle, number> = { soldeInitial: p.caisse.soldeInitial, seuil: p.caisse.seuil, stockInitial: p.cuve.stockInitial };
-  const change = valide && CHAMPS.some((c) => Math.round(nombres[c.cle]) !== courant[c.cle]);
+  const ouvertureChange = (ouverture || null) !== p.caisse.dateOuverture;
+  const change = valide && (ouvertureChange || CHAMPS.some((c) => Math.round(nombres[c.cle]) !== courant[c.cle]));
   const defauts: Record<Cle, number> = { soldeInitial: CAISSE_DEFAUT.soldeInitial, seuil: CAISSE_DEFAUT.seuil, stockInitial: CUVE_DEFAUT.stockInitial };
-  const modifie = CHAMPS.some((c) => nombres[c.cle] !== defauts[c.cle]);
+  const modifie = ouverture !== "" || CHAMPS.some((c) => nombres[c.cle] !== defauts[c.cle]);
 
   /* Le solde du jour aux paramètres en vigueur, déplacé du nouvel écart de report : c'est le même journal. */
-  const soldeSimule = soldeDuJour === null || !valide ? null : soldeDuJour - courant.soldeInitial + Math.round(nombres.soldeInitial);
+  /* Changer la date d'ouverture change les mouvements comptés : le solde ne se
+     simule plus d'ici, il se relit une fois enregistré. */
+  const soldeSimule = soldeDuJour === null || !valide || ouvertureChange ? null : soldeDuJour - courant.soldeInitial + Math.round(nombres.soldeInitial);
   const stockSimule = stockDuJour === null || !valide ? null : Math.max(0, stockDuJour - courant.stockInitial + Math.round(nombres.stockInitial));
   const rouge = soldeSimule !== null && valide && soldeSimule < Math.round(nombres.seuil);
 
   function enregistrer() {
     if (!valide) return;
-    const suite: Parametres = { ...p, caisse: { soldeInitial: Math.round(nombres.soldeInitial), seuil: Math.round(nombres.seuil) }, cuve: { stockInitial: Math.round(nombres.stockInitial) } };
+    const suite: Parametres = { ...p, caisse: { soldeInitial: Math.round(nombres.soldeInitial), seuil: Math.round(nombres.seuil), dateOuverture: ouverture || null }, cuve: { stockInitial: Math.round(nombres.stockInitial) } };
     setP(suite);
     setErreur(null);
     void ecrireParametres(suite).then((refus) => {
@@ -83,6 +90,7 @@ export function EcranCaisseCuve({ soldeDuJour, stockDuJour, capaciteCuve }: Prop
 
   function reinitialiser() {
     setValeurs({ soldeInitial: String(defauts.soldeInitial), seuil: String(defauts.seuil), stockInitial: String(defauts.stockInitial) });
+    setOuverture("");
     setEnregistre(false);
   }
 
@@ -118,6 +126,16 @@ export function EcranCaisseCuve({ soldeDuJour, stockDuJour, capaciteCuve }: Prop
 
       <Carte titre="Caisse parc" precision="Le solde ne se saisit jamais : il se déduit du journal à partir du report">
         <div className="flex flex-col divide-y divide-bordure px-5 pb-2">
+          <label className="flex flex-wrap items-center gap-4 py-3">
+            <span className="min-w-[260px] flex-1">
+              <span className="block text-[13px] font-medium text-texte">Ouverture du journal</span>
+              <span className="meta block">Le point de départ : le journal ne compte que les mouvements datés de ce jour ou après, le solde partant du report ci-dessous ; ce qui attendait la caisse avant ce jour sort de la liste « à régler ». Vide, le journal compte depuis le premier mouvement</span>
+            </span>
+            <span className="flex items-center gap-2">
+              <input type="date" value={ouverture} disabled={!habilite} onChange={(e) => { setOuverture(e.target.value); setEnregistre(false); }} className={`${champ} text-left`} aria-label="Ouverture du journal" />
+              <span className="meta w-[40px]" />
+            </span>
+          </label>
           {CHAMPS.filter((c) => c.cle !== "stockInitial").map((c) => (
             <label key={c.cle} className="flex flex-wrap items-center gap-4 py-3">
               <span className="min-w-[260px] flex-1">
@@ -132,7 +150,9 @@ export function EcranCaisseCuve({ soldeDuJour, stockDuJour, capaciteCuve }: Prop
           ))}
         </div>
         <p className="px-5 pb-4 text-[12.5px] leading-[1.5] text-texte-2">
-          {soldeSimule === null ? (
+          {ouvertureChange ? (
+            <>La date d&apos;ouverture change les mouvements comptés : le solde du jour se relira une fois enregistré.</>
+          ) : soldeSimule === null ? (
             <>Le solde du jour n&apos;est pas connu.</>
           ) : (
             <>

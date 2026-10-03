@@ -177,6 +177,14 @@ export interface Vehicule {
    * arrivée au parc.
    */
   creeLe?: string | null;
+  /** Équipé d'une balise de géolocalisation (0069). */
+  baliseGeolocalisation?: boolean;
+  /** Carte péage SECAA, et son numéro (0069). */
+  cartePeageSecaa?: boolean;
+  numeroCarteSecaa?: string | null;
+  /** Carte péage Agéroute, et son numéro (0069). */
+  cartePeageAgeroute?: boolean;
+  numeroCarteAgeroute?: string | null;
   commentaire: string | null;
   /**
    * Photo du véhicule, pour le reconnaître d'un coup d'œil — demande du métier

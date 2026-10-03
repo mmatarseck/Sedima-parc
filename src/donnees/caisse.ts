@@ -110,6 +110,8 @@ export interface CaisseServeur {
   depensesARegler: DepenseCaisse[];
   soldeInitial: number;
   seuil: number;
+  /** Le jour d'ouverture du journal, s'il est posé (0069). */
+  dateOuverture?: string | null;
 }
 
 async function caisseServeurBrut(parametres: Parametres): Promise<CaisseServeur> {
@@ -119,9 +121,12 @@ async function caisseServeurBrut(parametres: Parametres): Promise<CaisseServeur>
     client.from("mouvement_caisse").select("numero, date, sens, libelle, montant, beneficiaire, piece, justificatif, depense_numero, enregistre_par").order("date", { ascending: false }).limit(5000).returns<LigneCaisseBase[]>(),
     client.from("depense").select("numero, date, libelle, montant, poste, beneficiaire, reference, justificatif, vehicule (immatriculation, business_unit, site (libelle))").eq("origine", "caisse").order("date", { ascending: false }).limit(5000).returns<LigneDepenseCaisseBase[]>(),
   ]);
-  const lignesCaisse = lignesLues("Mouvements de caisse", mouvements);
-  const lignesDepenses = [...lignesLues("Dépenses de caisse", depenses).map(depenseCaisseDepuisLigne), ...(await pleinsEtServicesARegler(client))];
-  return { mouvements: journalDepuisLaBase(lignesCaisse, lignesDepenses, p.soldeInitial), depensesARegler: aReglerDepuisLaBase(lignesDepenses, lignesCaisse), soldeInitial: p.soldeInitial, seuil: p.seuil };
+  /* La date d'ouverture (0069) : le journal repart de ce jour, avec le report ;
+     ce qui le précède — mouvements, dépenses et pleins en attente — n'y entre plus. */
+  const depuis = (date: string) => !p.dateOuverture || date >= p.dateOuverture;
+  const lignesCaisse = lignesLues("Mouvements de caisse", mouvements).filter((m) => depuis(m.date));
+  const lignesDepenses = [...lignesLues("Dépenses de caisse", depenses).map(depenseCaisseDepuisLigne), ...(await pleinsEtServicesARegler(client))].filter((d) => depuis(d.date));
+  return { mouvements: journalDepuisLaBase(lignesCaisse, lignesDepenses, p.soldeInitial), depensesARegler: aReglerDepuisLaBase(lignesDepenses, lignesCaisse), soldeInitial: p.soldeInitial, seuil: p.seuil, dateOuverture: p.dateOuverture };
 }
 
 export const caisseServeur = cache(caisseServeurBrut);

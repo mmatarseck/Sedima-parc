@@ -164,6 +164,17 @@ export function sectionsNouveauVehicule(contexte: ContexteNouveauVehicule): Sect
             { cle: "chargeUtile", libelle: "Charge utile", type: "nombre", unite: "kg" },
           ],
         },
+        {
+          titre: "Équipements",
+          precision: "Balise de géolocalisation et cartes péage (0069)",
+          champs: [
+            { cle: "baliseGeolocalisation", libelle: "Balise de géolocalisation", type: "oui-non" },
+            { cle: "cartePeageSecaa", libelle: "Carte péage SECAA", type: "oui-non" },
+            { cle: "numeroCarteSecaa", libelle: "N° de la carte SECAA", type: "texte", visibleSi: (s) => s.cartePeageSecaa === true },
+            { cle: "cartePeageAgeroute", libelle: "Carte péage Agéroute", type: "oui-non" },
+            { cle: "numeroCarteAgeroute", libelle: "N° de la carte Agéroute", type: "texte", visibleSi: (s) => s.cartePeageAgeroute === true },
+          ],
+        },
       ],
     },
     /* La section « Réglages » a disparu le 14 septembre 2026 : elle ne portait

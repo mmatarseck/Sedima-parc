@@ -936,6 +936,12 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
           reference_immobilisation: texte(v.referenceImmobilisation),
           photo: texte(v.photo),
           commentaire: texte(v.commentaire),
+          /* Balise et cartes péage (0069) : un numéro saisi vaut carte présente. */
+          balise_geolocalisation: booleen(v.baliseGeolocalisation),
+          carte_peage_secaa: booleen(v.cartePeageSecaa) || Boolean(texte(v.numeroCarteSecaa)),
+          numero_carte_secaa: texte(v.numeroCarteSecaa),
+          carte_peage_ageroute: booleen(v.cartePeageAgeroute) || Boolean(texte(v.numeroCarteAgeroute)),
+          numero_carte_ageroute: texte(v.numeroCarteAgeroute),
         },
       };
     }
@@ -1090,6 +1096,11 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
     fournisseur: "fournisseur",
     photo: "photo",
     commentaire: "commentaire",
+    baliseGeolocalisation: "balise_geolocalisation",
+    cartePeageSecaa: "carte_peage_secaa",
+    numeroCarteSecaa: "numero_carte_secaa",
+    cartePeageAgeroute: "carte_peage_ageroute",
+    numeroCarteAgeroute: "numero_carte_ageroute",
   },
 };
 
@@ -1107,7 +1118,7 @@ const TABLEAUX = new Set(["pieces", "signalements", "pieces_reglement"]);
 /* Les colonnes que la base veut en booléen. Une case « oui/non » arrive de la
    modale en texte : sans cette liste, « non » entrerait tel quel et Postgres le
    lirait comme vrai — une fiche qu'on croit désactivée resterait proposée. */
-const BOOLEENS = new Set(["plein_complet", "remboursable", "justificatif", "transport_special", "engage", "actif", "permanent", "retiree"]);
+const BOOLEENS = new Set(["plein_complet", "remboursable", "justificatif", "transport_special", "engage", "actif", "permanent", "retiree", "balise_geolocalisation", "carte_peage_secaa", "carte_peage_ageroute"]);
 const HORODATES = new Set(["date_heure"]);
 const PRODUITS = new Set(["produit"]);
 /* Les colonnes qui portent une plaque : elle se range sous sa forme canonique,
