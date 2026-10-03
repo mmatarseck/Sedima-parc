@@ -185,6 +185,9 @@ export interface Vehicule {
   /** Carte péage Agéroute, et son numéro (0069). */
   cartePeageAgeroute?: boolean;
   numeroCarteAgeroute?: string | null;
+  /** Chargement spécialisé et sa capacité hors tonnes : plateaux d'œufs, milliers de poussins, sujets vifs (0073). */
+  chargementSpecial?: import("./chargement").ChargementSpecial | null;
+  capaciteSpeciale?: number | null;
   commentaire: string | null;
   /**
    * Photo du véhicule, pour le reconnaître d'un coup d'œil — demande du métier

@@ -12,6 +12,7 @@ import { cache } from "react";
 import type { BusinessUnit, CategorieVehicule, StatutVehicule } from "@/domaine/types";
 import type { CamionTiers, LigneCamionTiers, TypeContratCamion } from "@/domaine/camions-tiers";
 import { afficher } from "@/domaine/immatriculation";
+import { estChargementSpecial } from "@/domaine/chargement";
 import { jourCourant } from "@/domaine/temps";
 import { clientServeur } from "@/lib/supabase";
 import { lignesLues } from "./lecture";
@@ -37,12 +38,14 @@ interface LigneCamionBase {
   numero_carte_secaa: string | null;
   carte_peage_ageroute: boolean;
   numero_carte_ageroute: string | null;
+  chargement_special?: string | null;
+  capacite_speciale?: number | string | null;
   prestataire: { numero: string; raison_sociale: string } | null;
   chauffeur_tiers: { nom: string; telephone: string | null } | null;
 }
 
 const COLONNES_CAMION =
-  "immatriculation, categorie, capacite_tonnes, actif, commentaire, cree_le, marque, modele, vin, premiere_mise_en_circulation, photo, statut, business_unit, type_contrat, carburant_fourni, balise_geolocalisation, carte_peage_secaa, numero_carte_secaa, carte_peage_ageroute, numero_carte_ageroute, prestataire (numero, raison_sociale), chauffeur_tiers (nom, telephone)";
+  "immatriculation, categorie, capacite_tonnes, actif, commentaire, cree_le, marque, modele, vin, premiere_mise_en_circulation, photo, statut, business_unit, type_contrat, carburant_fourni, balise_geolocalisation, carte_peage_secaa, numero_carte_secaa, carte_peage_ageroute, numero_carte_ageroute, chargement_special, capacite_speciale, prestataire (numero, raison_sociale), chauffeur_tiers (nom, telephone)";
 
 function camionDepuisLigne(l: LigneCamionBase): CamionTiers {
   return {
@@ -70,6 +73,8 @@ function camionDepuisLigne(l: LigneCamionBase): CamionTiers {
     numeroCarteSecaa: l.numero_carte_secaa,
     carteAgeroute: l.carte_peage_ageroute,
     numeroCarteAgeroute: l.numero_carte_ageroute,
+    chargementSpecial: estChargementSpecial(l.chargement_special) ? l.chargement_special : null,
+    capaciteSpeciale: l.capacite_speciale == null ? null : Number(l.capacite_speciale),
   };
 }
 

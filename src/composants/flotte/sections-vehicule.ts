@@ -1,5 +1,6 @@
 import { BUSINESS_UNIT, CATEGORIE_FLOTTE, ENERGIE, STATUT_VEHICULE, USAGE_VEHICULE } from "@/domaine/libelles";
 import { REGIME_USAGE } from "@/domaine/parc-leger";
+import { CHARGEMENT_SPECIAL } from "@/domaine/chargement";
 import type { ChampEdition } from "@/domaine/cloture";
 import { champsIdentiteVehicule } from "@/composants/transactions/champs";
 
@@ -162,6 +163,14 @@ export function sectionsNouveauVehicule(contexte: ContexteNouveauVehicule): Sect
             { cle: "ptra", libelle: "PTRA", type: "nombre", unite: "kg" },
             { cle: "poidsVide", libelle: "Poids à vide", type: "nombre", unite: "kg" },
             { cle: "chargeUtile", libelle: "Charge utile", type: "nombre", unite: "kg" },
+          ],
+        },
+        {
+          titre: "Capacité spécialisée",
+          precision: "Œufs, poussins, poulettes ou poulets vifs : la capacité ne se compte pas en tonnes (0073)",
+          champs: [
+            { cle: "chargementSpecial", libelle: "Chargement spécialisé", type: "choix", options: Object.entries(CHARGEMENT_SPECIAL).map(([valeur, d]) => ({ valeur, libelle: `${d.libelle} — ${d.unite}` })) },
+            { cle: "capaciteSpeciale", libelle: "Capacité", type: "nombre", precision: "En plateaux d'œufs, en milliers de poussins, ou en nombre de poulettes ou poulets vifs", visibleSi: (s) => Boolean(s.chargementSpecial) },
           ],
         },
         {
