@@ -7,7 +7,7 @@ import { BandeauKpi } from "@/composants/interface/BandeauKpi";
 import { Pastille } from "@/composants/interface/Pastille";
 import { StatutModifiable } from "@/composants/vehicule/StatutModifiable";
 import { FournisseurEdition, useEdition } from "@/composants/transactions/ContexteEdition";
-import { champsCreation } from "@/composants/transactions/champs";
+import { champsCreation, champsVehicule } from "@/composants/transactions/champs";
 import { Pencil } from "lucide-react";
 import { jourCourant } from "@/domaine/temps";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
@@ -83,7 +83,8 @@ const COLONNES: ColonneListe<LigneDisponibilite>[] = [
   { cle: "categorie", libelle: "Catégorie", parDefaut: true, largeur: 128, rendu: (l) => CATEGORIE_VEHICULE[l.categorie] },
   { cle: "flotte", libelle: "Catégorie de flotte", parDefaut: false, largeur: 140, rendu: (l) => CATEGORIE_FLOTTE[l.categorieFlotte] },
   { cle: "charge", libelle: "Charge utile", alignee: "droite", parDefaut: true, largeur: 120, rendu: (l) => (l.chargeUtile ? <span className="code">{nombre(l.chargeUtile / 1000, 1)} t</span> : <span className="text-attenue-2">—</span>) },
-  { cle: "site", libelle: "Site", parDefaut: true, largeur: 150, rendu: (l) => l.site ?? "—" },
+  /* Le crayon change le site sans quitter l'écran (métier, 3 octobre 2026). */
+  { cle: "site", libelle: "Site", parDefaut: true, largeur: 180, rendu: (l) => <SiteDuVehicule ligne={l} />, texte: (l) => l.site ?? "" },
   {
     cle: "action",
     libelle: "Action",
@@ -161,6 +162,35 @@ function ChauffeurDuJour({ ligne: l }: { ligne: LigneDisponibilite }) {
         )}
       </span>
       {crayon}
+    </span>
+  );
+}
+
+/**
+ * Le site du véhicule, et le crayon qui le change (métier, 3 octobre 2026) :
+ * la même modification que la fiche véhicule — un site écrit plutôt que choisi
+ * se crée, avec sa région et son type.
+ */
+function SiteDuVehicule({ ligne: l }: { ligne: LigneDisponibilite }) {
+  const { demander, surcharger } = useEdition();
+  const numero = `VEH-${l.immatriculation}`;
+  const actuel = surcharger({ numero, siteId: l.siteId ?? "", site: l.site ?? "" });
+  function changer(e: React.MouseEvent) {
+    e.stopPropagation();
+    demander({
+      type: "vehicule",
+      numero,
+      titre: `Site · ${l.immatriculationAffichee}`,
+      champs: champsVehicule().filter((c) => ["siteId", "siteRegion", "siteType"].includes(c.cle)),
+      valeurs: { siteId: actuel.siteId },
+    });
+  }
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="min-w-0 flex-1 truncate">{actuel.site || <span className="text-attenue-2">—</span>}</span>
+      <button type="button" onClick={changer} title={`Changer le site de ${l.immatriculationAffichee}`} className="grid size-6 shrink-0 place-items-center rounded-[6px] text-attenue transition-colors hover:bg-surface-3 hover:text-accent-fonce">
+        <Pencil className="size-3.5" strokeWidth={1.9} />
+      </button>
     </span>
   );
 }
