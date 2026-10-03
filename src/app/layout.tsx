@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { NOM_APPLICATION } from "@/domaine/marque";
+import { AvisNouvelleVersion } from "@/composants/interface/AvisNouvelleVersion";
 
 export const metadata: Metadata = {
   title: NOM_APPLICATION,
@@ -30,7 +31,11 @@ export default function RacineLayout({ children }: { children: React.ReactNode }
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Une nouvelle version mise en ligne : le bandeau propose d'actualiser (3 octobre 2026). */}
+        <AvisNouvelleVersion />
+      </body>
     </html>
   );
 }
