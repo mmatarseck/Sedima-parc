@@ -4,16 +4,18 @@
 est dans les documents cités ; ce fichier dit où l'on en est et comment on
 travaille.*
 
-**État au 3 octobre 2026 (soir)** : tout est sur `origin/main` (PR #30
-fusionnée, `892ec90`, puis cette passation) ; migrations jouées en production
-**jusqu'à 0077** — la prochaine sera **0078** (le suivi de l'activité, dans la
-PR #31, à jouer après sa fusion ; ensuite 0079). `list_migrations` porte 0068 à
-0075 ; **0076 et 0077 ont été jouées à la main dans l'éditeur SQL** (le
+**État au 3 octobre 2026 (soir)** : tout est sur `origin/main` (PR #31
+fusionnée, `4af4d87`, puis cette passation) ; migrations jouées en production
+**jusqu'à 0078** — la prochaine sera **0079**. `list_migrations` porte 0068 à
+0075 ; **0076, 0077 et 0078 ont été jouées à la main dans l'éditeur SQL** (le
 `apply_migration` du connecteur a été annulé trois fois de suite ce jour-là,
 sans demande de confirmation visible) — elles n'y figurent donc pas, et c'est
 normal : leur présence se vérifie par une lecture (déclencheurs
 `attelage_clot_le_precedent`, `observation_vers_signalement`,
-`signalement_vers_observation`, colonne `signalement.observation_numero`).
+`signalement_vers_observation`, colonne `signalement.observation_numero` ;
+table `activite_page` et fonctions `noter_visite`, `activite_utilisateurs`,
+`saisies_par_utilisateur` pour 0078, vérifiées le 3 octobre au soir : droits
+conformes, 84 saisies sur 30 jours pour Matar Seck, 2 pour Malick Ndiaye).
 Rien n'attend en base du fait des chantiers du 3 octobre ; l'état des fichiers
 SQL ponctuels des 2 et 3 octobre (`supabase/*-2026-10-0*.sql`) est dans leurs
 PR et documents, non revérifié ici.
@@ -119,9 +121,9 @@ Détail dans **`docs/SERVICES-MAINTENANCE.md`** (sections du 3 octobre) et
   modifications, modules les plus utilisés ; par module : vues et personnes ;
   sur 7, 30 ou 90 jours. Table `activite_page` (un compteur par personne, jour,
   écran sans identifiants, appareil), alimentée par `SuiviActivite` dans la
-  coquille via `noter_visite` ; lecture par `activite_utilisateurs`. Les écrans
-  ne se comptent qu'à partir du jour où 0078 est jouée ; saisies et
-  modifications se lisent dans tout l'historique. Banc `tester-activite`.
+  coquille via `noter_visite` ; lecture par `activite_utilisateurs`. **0078
+  jouée le 3 octobre 2026** : les écrans se comptent à partir de là ; saisies
+  et modifications se lisent dans tout l'historique. Banc `tester-activite`.
 
 Avec #25, #28 et #30, une échéance due propose le service **partout** : page
 Maintenance, fiche véhicule, téléphone de l'atelier. **Tous les chantiers de
@@ -327,6 +329,10 @@ Tout est décrit dans **`docs/SERVICES-MAINTENANCE.md`** (sections datées).
 ## Ce qui reste ouvert
 
 ### À vérifier dans l'application (rien ne l'a été dans un navigateur)
+
+- **Activité des utilisateurs** (#31) : après quelques jours, la page montre
+  des écrans consultés ; l'appel `noter_visite` part bien à chaque écran
+  (sinon `activite_page` reste vide alors que des gens se connectent).
 
 - **Téléphone › Atelier** (#28) : le formulaire de service au téléphone —
   lisible, bouton « Clôturer le service » accessible ; puis « Remettre en
