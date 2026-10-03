@@ -106,9 +106,77 @@ export interface ProgrammeEntretien {
   precision: string;
   /** Les catégories auxquelles le programme s'applique par défaut. */
   categories: CategorieVehicule[];
+  /**
+   * Les modèles qui le suivent (0075) : « Mitsubishi L200 ». Ils passent devant
+   * la catégorie — un plan par modèle est plus juste qu'un plan par famille.
+   */
+  modeles: string[];
   /** Ce que ce type de véhicule compte : des kilomètres, ou des heures. */
   base: "km" | "heures";
   operations: OperationEntretien[];
+}
+
+/* -- Le programme d'un véhicule : son modèle d'abord ------------------------ */
+
+/*
+ * Le métier, 3 octobre 2026 : « plans préventifs par modèle ». Le parc écrit
+ * ses modèles comme ils sont venus — « Mitsubishi L200 DC », « MITSUBISHI L200
+ * pick-up », « Mitsubishi L200 » : vingt façons de dire L200. Un programme cite
+ * donc le **début** du modèle, sans casse ni accents, mot entier : « Mitsubishi
+ * L200 » les couvre toutes, sans prendre une « L2000 ».
+ */
+
+/** « MITSUBISHI  L200 pick-up » se lit « mitsubishi l200 pick-up ». */
+export function normaliserModele(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Le modèle d'un véhicule tel qu'on le dit : la marque, puis l'appellation — sans redire la marque (« Toyota Toyota »). */
+export function modeleDuVehicule(marque: string, appellation: string): string {
+  const m = marque.trim();
+  const a = appellation.trim();
+  if (!a || normaliserModele(a).startsWith(normaliserModele(m))) return a || m;
+  return m ? `${m} ${a}` : a;
+}
+
+/** Vrai si le modèle cité couvre ce véhicule : même début, mot entier. */
+export function modeleCouvre(cite: string, modele: string): boolean {
+  const c = normaliserModele(cite);
+  const m = normaliserModele(modele);
+  return c.length > 0 && (m === c || m.startsWith(`${c} `));
+}
+
+/** Le modèle cité par ce programme qui couvre le véhicule, le plus précis d'abord. */
+function modeleQuiCouvre(p: ProgrammeEntretien, modele: string): string | null {
+  return p.modeles.filter((c) => modeleCouvre(c, modele)).sort((a, b) => normaliserModele(b).length - normaliserModele(a).length)[0] ?? null;
+}
+
+/**
+ * Le programme que suit un véhicule : celui de son **modèle**, le plus précis
+ * l'emportant (« Mitsubishi L200 DC » devant « Mitsubishi L200 ») ; à défaut
+ * celui de sa **catégorie** ; à défaut, le filet donné par l'appelant. Le
+ * motif dit d'où vient le programme — la fiche l'affiche.
+ */
+export function programmeDuVehicule(
+  v: { categorie: CategorieVehicule; marque?: string | null; appellation?: string | null },
+  programmes: ProgrammeEntretien[],
+): { programme: ProgrammeEntretien; par: "modele" | "categorie"; modele: string | null } | null {
+  const modele = modeleDuVehicule(v.marque ?? "", v.appellation ?? "");
+  if (modele) {
+    let meilleur: { programme: ProgrammeEntretien; modele: string } | null = null;
+    for (const p of programmes) {
+      const cite = modeleQuiCouvre(p, modele);
+      if (cite && (!meilleur || normaliserModele(cite).length > normaliserModele(meilleur.modele).length)) meilleur = { programme: p, modele: cite };
+    }
+    if (meilleur) return { programme: meilleur.programme, par: "modele", modele: meilleur.modele };
+  }
+  const parCategorie = programmes.find((p) => p.categories.includes(v.categorie));
+  return parCategorie ? { programme: parCategorie, par: "categorie", modele: null } : null;
 }
 
 /* -- L'ajustement, véhicule par véhicule ------------------------------------ */

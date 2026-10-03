@@ -23,7 +23,7 @@ import { calculerService, depensesDuService, joursImmobilisation, lireLignes, pe
 import { travauxOuverts } from "../src/domaine/maintenance";
 import { construireRapportDe } from "../src/domaine/assembler-rapports";
 import { RAPPORTS } from "../src/domaine/rapports";
-import { motsClesDe } from "../src/domaine/entretien";
+import { modeleCouvre, modeleDuVehicule, motsClesDe } from "../src/domaine/entretien";
 import { estSupprimable, plaqueDuResume, resumeSuppression } from "../src/domaine/suppression";
 import { optionsSystemesDe, prochainEnsemble } from "../src/domaine/categories-maintenance";
 import { CHAMPS as CHAMPS_EDITION, champsCreation } from "../src/composants/transactions/champs";
@@ -31,7 +31,7 @@ import { aReglerDepuisLaBase } from "../src/donnees/caisse";
 import { ChampPieces } from "../src/composants/interface/ChampPieces";
 import { sourceRapportsDemo } from "../src/donnees/rapports-demo";
 import { programmesDepuisLignes } from "../src/donnees/entretien";
-import { programmeParDefaut } from "../src/donnees/entretien-demo";
+import { programmeDuParc, programmeParDefaut } from "../src/donnees/entretien-demo";
 import { etatSignalement, trierSignalements, type LigneSignalement } from "../src/domaine/signalements";
 import { cleTache, tacheParLibelle } from "../src/domaine/taches";
 import { colonnesModification, ligneCreation } from "../src/lib/transactions-colonnes";
@@ -187,6 +187,15 @@ attendu("à un utilisateur qui n'est pas responsable du parc, pas de bouton « C
     [{ code: "leger.vidange-moteur", programme_code: "leger", libelle: "Vidange", groupe: "moteur", periodicite_km: 10_000, periodicite_heures: null, periodicite_mois: 12, mots_cles: ["vidange"], duree_heures: "2", cout_estime: "62000", critique: false, ordre: 1, tache_libelle: "Remplacement de l'huile moteur et du filtre" }],
   );
   attendu("un programme lu en base : code court, tâche citée, retirés écartés", lus.length === 1 && lus[0]!.operations[0]!.code === "vidange-moteur" && lus[0]!.operations[0]!.tacheLibelle === "Remplacement de l'huile moteur et du filtre" && programmeParDefaut("vehicule-leger", lus).code === "leger");
+  /* Les plans par modèle (0075) : le modèle passe devant la catégorie, le plus précis l'emporte, mot entier. */
+  const gabarit = (code: string, categories: string[], modeles: string[]) => ({ code, libelle: code, precision: null, categories: categories as never, modeles, base: "km" as const, actif: true });
+  const parModele = programmesDepuisLignes([gabarit("leger", ["camionnette", "vehicule-leger"], []), gabarit("l200", [], ["Mitsubishi L200"]), gabarit("l200-dc", [], ["mitsubishi  l200 dc"])], []);
+  const suit = (marque: string, appellation: string, categorie = "camionnette") => programmeDuParc({ categorie: categorie as never, marque, appellation }, parModele).code;
+  attendu(
+    `plans par modèle : la L200 suit son modèle quelle que soit la casse, la DC le plus précis, une L2000 et une Hilux leur catégorie (${suit("MITSUBISHI", "L200 pick-up")}, ${suit("Mitsubishi", "L200 DC")}, ${suit("Mitsubishi", "L2000")}, ${suit("Toyota", "Hilux DC")})`,
+    suit("MITSUBISHI", "L200 pick-up") === "l200" && suit("Mitsubishi", "L200 DC") === "l200-dc" && suit("Mitsubishi", "L2000") === "leger" && suit("Toyota", "Hilux DC") === "leger" && suit("Mitsubishi", "L200") === "l200",
+  );
+  attendu("le modèle d'un véhicule ne redit pas sa marque", modeleDuVehicule("Toyota", "Toyota") === "Toyota" && modeleDuVehicule("TATA", "LPT1618TC") === "TATA LPT1618TC" && modeleCouvre("Citroën C3", "citroen c3 aircross"));
   attendu("les mots-clés proposés pour une tâche", motsClesDe("Remplacement des plaquettes de frein").join() === "plaquette,frein");
 
   /* Supprimer, en gardant la trace ; reprendre un plan ; l'atelier sans doublon ni visionneuse vide. */
@@ -196,7 +205,7 @@ attendu("à un utilisateur qui n'est pas responsable du parc, pas de bouton « C
   const formulaire = readFileSync("src/composants/maintenance/FormulaireService.tsx", "utf8");
   const actions = readFileSync("src/lib/transactions-actions.ts", "utf8");
   attendu("« Supprimer » dans la modale et le service ; motif obligatoire ; trace « suppression » ; un service clos ne se supprime pas", modale.includes("void supprimer()") && formulaire.includes("void supprimer()") && actions.includes(`champ: "suppression"`) && actions.includes("Un service clos a écrit"));
-  attendu("un service reprend les tâches du plan d'entretien du véhicule", formulaire.includes("Depuis le plan d'entretien…") && formulaire.includes("programmeParDefaut(categorieVehicule, programmes)"));
+  attendu("un service reprend les tâches du plan d'entretien du véhicule", formulaire.includes("Depuis le plan d'entretien…") && formulaire.includes("programmeDuParc(vehiculeDuPlan, programmes)"));
   const onglets = readFileSync("src/composants/vehicule/onglets.tsx", "utf8");
   attendu("l'atelier : colonne « Tâche de service », pas de doublon local/base, pas de cadre sans pièce", onglets.includes(`libelle: "Tâche de service"`) && onglets.includes("const interventions = sansDoublon(") && onglets.includes("c === l.cle || !l.fichier ? null : l.cle"));
 }
@@ -284,6 +293,9 @@ if (bac) {
   await pg.exec(readFileSync("supabase/correctif-operations-doublons.sql", "utf8"));
   const apres = ((await pg.query(`select count(*)::int as n from operation_entretien`)).rows[0] as { n: number }).n;
   attendu(`le correctif ôte les opérations en double du jeu de départ, rejouable (${doublees} → ${apres})`, doublees === 2 * prog.o && apres === prog.o);
+  await pg.exec(readFileSync("supabase/migrations/0075_programmes_par_modele.sql", "utf8"));
+  const modeles75 = (await pg.query(`select count(*)::int as n from programme_entretien where modeles = '{}'`)).rows[0] as { n: number };
+  attendu("0075 : les programmes portent leurs modèles, vides au départ, rejouable", modeles75.n === prog.p);
   const colonne = (await pg.query(`select count(*)::int as n from information_schema.columns where table_name = 'ordre_travail' and column_name = 'main_oeuvre_globale'`)).rows[0] as { n: number };
   attendu("0062 : le service porte sa main-d'œuvre globale", colonne.n === 1);
   const colonnes63 = (await pg.query(`select count(*)::int as n from information_schema.columns where (table_name, column_name) in (('depense', 'numero_bc'), ('depense', 'fichier_bc'), ('ordre_travail', 'mode_reglement'), ('ordre_travail', 'numero_bc'), ('ordre_travail', 'pieces_reglement'), ('mouvement_caisse', 'objet_reglement'))`)).rows[0] as { n: number };

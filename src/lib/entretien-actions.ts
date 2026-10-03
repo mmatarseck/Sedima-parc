@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { GroupeOperation, ProgrammeEntretien } from "@/domaine/entretien";
+import { normaliserModele, type GroupeOperation, type ProgrammeEntretien } from "@/domaine/entretien";
 import { programmesServeur } from "@/donnees/entretien";
 import type { CategorieVehicule } from "@/domaine/types";
 import { authentificationReelle } from "@/lib/session-demo";
@@ -17,6 +17,11 @@ import { clientServeur } from "@/lib/supabase";
  * aux autres — sinon le véhicule relèverait de deux gabarits, et seul le
  * premier trouvé compterait. Un programme retiré est désactivé, pas effacé :
  * les plans et ajustements qui le citent restent lisibles.
+ *
+ * Depuis 0075, un programme cite aussi des **modèles** (« Mitsubishi L200 »),
+ * qui passent devant la catégorie. Un modèle n'appartient qu'à un programme,
+ * de même. Un programme de modèle naît le plus souvent d'un programme de
+ * catégorie : il en reprend les opérations, qu'on resserre ou complète ensuite.
  *
  * La base vérifie le droit (gestion de la maintenance, ou administration).
  * ==========================================================================*/
@@ -43,7 +48,21 @@ export interface ProgrammeSaisi {
   libelle: string;
   precision: string;
   categories: CategorieVehicule[];
+  /** « Mitsubishi L200 » : les modèles qui suivent ce programme (0075). */
+  modeles: string[];
   base: "km" | "heures";
+  /** À la création : le programme dont on reprend les opérations. */
+  depuis?: string | null;
+}
+
+/** Les modèles saisis, sans doublon ni vide : « mitsubishi  L200 » et « Mitsubishi L200 » n'en font qu'un. */
+function modelesPropres(modeles: string[]): string[] {
+  const vus = new Map<string, string>();
+  for (const m of modeles) {
+    const propre = m.replace(/\s+/g, " ").trim();
+    if (propre && !vus.has(normaliserModele(propre))) vus.set(normaliserModele(propre), propre);
+  }
+  return [...vus.values()];
 }
 
 export async function enregistrerProgramme(p: ProgrammeSaisi): Promise<Issue> {
@@ -51,8 +70,37 @@ export async function enregistrerProgramme(p: ProgrammeSaisi): Promise<Issue> {
   if (!p.libelle.trim()) return { ok: false, motif: "Le programme porte un nom." };
   const client = await clientServeur();
   const code = p.code ?? `${slug(p.libelle)}-${Date.now().toString(36).slice(-4)}`;
-  const ecrit = await client.from("programme_entretien").upsert({ code, libelle: p.libelle.trim(), precision: p.precision.trim() || null, categories: p.categories, base: p.base, actif: true }, { onConflict: "code" });
-  if (ecrit.error) return { ok: false, motif: `Programme non enregistré : ${ecrit.error.message}` };
+  const modeles = modelesPropres(p.modeles);
+  const ligne = { code, libelle: p.libelle.trim(), precision: p.precision.trim() || null, categories: p.categories, base: p.base, actif: true };
+  const ecrit = await client.from("programme_entretien").upsert({ ...ligne, modeles }, { onConflict: "code" });
+  if (ecrit.error) {
+    /* Sans 0075, la colonne manque : le programme s'enregistre par catégorie, et l'écran dit pourquoi les modèles n'ont pas suivi. */
+    if (!/modeles/.test(ecrit.error.message)) return { ok: false, motif: `Programme non enregistré : ${ecrit.error.message}` };
+    if (modeles.length) return { ok: false, motif: "Les modèles s'enregistrent une fois la migration 0075 jouée." };
+    const sansModeles = await client.from("programme_entretien").upsert(ligne, { onConflict: "code" });
+    if (sansModeles.error) return { ok: false, motif: `Programme non enregistré : ${sansModeles.error.message}` };
+  }
+  /* Un programme neuf peut reprendre les opérations d'un autre : on part du gabarit de la catégorie, puis on le règle pour le modèle. */
+  if (!p.code && p.depuis) {
+    const source = await client
+      .from("operation_entretien")
+      .select("code, libelle, tache_libelle, groupe, periodicite_km, periodicite_heures, periodicite_mois, mots_cles, duree_heures, cout_estime, critique, ordre")
+      .eq("programme_code", p.depuis)
+      .returns<{ code: string; libelle: string; tache_libelle: string | null; groupe: GroupeOperation; periodicite_km: number | null; periodicite_heures: number | null; periodicite_mois: number | null; mots_cles: string[]; duree_heures: number; cout_estime: number; critique: boolean; ordre: number }[]>();
+    if (source.error) return { ok: false, motif: `Programme créé, mais ses opérations n'ont pas été reprises : ${source.error.message}` };
+    if (source.data?.length) {
+      const copie = await client.from("operation_entretien").insert(source.data.map((o) => ({ ...o, code: `${code}.${o.code.replace(/^[^.:]+[.:]/, "")}`, programme_code: code })));
+      if (copie.error) return { ok: false, motif: `Programme créé, mais ses opérations n'ont pas été reprises : ${copie.error.message}` };
+    }
+  }
+  /* Les modèles donnés ici quittent les autres programmes. */
+  if (modeles.length) {
+    const autres = await client.from("programme_entretien").select("code, modeles").neq("code", code).returns<{ code: string; modeles: string[] | null }[]>();
+    for (const a of autres.data ?? []) {
+      const restent = (a.modeles ?? []).filter((m) => !modeles.some((n) => normaliserModele(n) === normaliserModele(m)));
+      if (restent.length !== (a.modeles ?? []).length) await client.from("programme_entretien").update({ modeles: restent }).eq("code", a.code);
+    }
+  }
   /* Les catégories données ici quittent les autres programmes. */
   if (p.categories.length) {
     const autres = await client.from("programme_entretien").select("code, categories").neq("code", code).returns<{ code: string; categories: CategorieVehicule[] }[]>();
@@ -68,7 +116,9 @@ export async function enregistrerProgramme(p: ProgrammeSaisi): Promise<Issue> {
 export async function retirerProgramme(code: string): Promise<Issue> {
   if (!authentificationReelle()) return HORS_BASE;
   const client = await clientServeur();
-  const r = await client.from("programme_entretien").update({ actif: false, categories: [] }).eq("code", code);
+  /* Ses catégories et ses modèles reviennent aux autres programmes ; sans 0075, il n'a pas de modèles à rendre. */
+  let r = await client.from("programme_entretien").update({ actif: false, categories: [], modeles: [] }).eq("code", code);
+  if (r.error && /modeles/.test(r.error.message)) r = await client.from("programme_entretien").update({ actif: false, categories: [] }).eq("code", code);
   if (r.error) return { ok: false, motif: `Programme non retiré : ${r.error.message}` };
   revalidatePath("/", "layout");
   return { ok: true, code };

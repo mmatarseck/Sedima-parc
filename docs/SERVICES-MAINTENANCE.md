@@ -22,6 +22,7 @@ supabase/migrations/0060_services_maintenance.sql    -- catalogue, signalements,
 supabase/migrations/0061_intervention_tache.sql      -- les tâches de chaque intervention, les utilisations comptées sur le parc
 supabase/migrations/0062_programmes_entretien.sql    -- main-d'œuvre globale d'un service, programmes d'entretien en base et éditables
 supabase/migrations/0063_reglements.sql              -- comment une dépense, un plein ou un service se règle : caisse, BC, facture
+supabase/migrations/0075_programmes_par_modele.sql   -- (3 octobre 2026) un programme cite des modèles, qui passent devant la catégorie
 supabase/taches-service.sql                          -- le catalogue tiré de Fleetio, revu : 294 tâches
 supabase/interventions-taches.sql                    -- les 581 interventions du parc affectées au catalogue
 ```
@@ -402,10 +403,51 @@ service prennent ce règlement pour origine ; réglé par BC, elles portent son
 numéro et sa pièce, et la référence le cite. Réglé par la caisse, c'est le
 **service** que la sortie cite, pas chacune de ses dépenses.
 
+## 3 octobre 2026 — plans préventifs par modèle (0075)
+
+Métier : « plans préventifs par modèle ». Lot 4 de `PROPOSITION-MAINTENANCE.md`.
+
+**Un programme cite des modèles** (`programme_entretien.modeles`), en plus de
+ses catégories. Le parc écrit ses modèles comme ils sont venus : « Mitsubishi
+L200 DC », « MITSUBISHI L200 pick-up », « Mitsubishi L200 ». Un programme cite
+donc le **début** du modèle (marque, puis appellation), sans casse ni accents,
+mot entier : « Mitsubishi L200 » couvre toutes les L200, pas une « L2000 ».
+
+**Le programme d'un véhicule** (`programmeDuVehicule`, `programmeDuParc`) :
+
+1. celui de son **modèle** — le plus précis l'emporte : « Mitsubishi L200 DC »
+   devant « Mitsubishi L200 » ;
+2. à défaut, celui de sa **catégorie** ;
+3. à défaut, le léger.
+
+La fiche (onglet Maintenance), la liste de la flotte, la page Maintenance et
+« Depuis le plan d'entretien… » du formulaire de service lisent tous ce même
+programme. **L'ajustement par véhicule reste** : il porte sur le programme que
+le véhicule suit. Passé au programme de son modèle, un véhicule laisse en base
+les ajustements de l'ancien gabarit, sans qu'ils s'appliquent (il n'y en avait
+aucun au 3 octobre 2026).
+
+**Paramètres › Programmes d'entretien.**
+
+- « Nouveau programme » : nom, compteur, **modèles** (proposés d'après le parc,
+  avec le nombre de véhicules que chacun couvre ; on peut aussi en taper un),
+  catégories, et **« Partir des opérations de »** : le programme neuf reprend
+  les opérations d'un autre — en général celui de la catégorie —, qu'on
+  resserre ou complète ensuite pour le modèle.
+- Un modèle n'appartient qu'à un programme, comme une catégorie : le prendre
+  le retire à l'autre. La carte dit combien de véhicules suivraient le
+  programme une fois enregistré.
+- Un programme de modèle porte l'étiquette « modèle » dans la barre des
+  programmes. Retiré, ses modèles reviennent au programme de leur catégorie.
+
+Sans 0075, l'écran reste celui d'avant : les programmes valent par catégorie,
+et enregistrer des modèles le dit.
+
 ## Ce qui reste
 
-- **Plans préventifs par modèle** (par catégorie aujourd'hui) ; une échéance
-  qui propose le service, tâches déjà remplies.
+- **Une échéance qui propose le service**, tâches déjà remplies.
+- Les programmes des modèles eux-mêmes : à créer par le responsable du parc
+  (L200, Hilux, TATA LPT 1618, Renault frigo…), périodicités du constructeur.
 - Rapports encore à faire : respect du plan préventif, consommation de pièces
   par tâche.
 - Les observations de visite technique, à rattacher aux signalements.

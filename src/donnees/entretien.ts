@@ -7,7 +7,8 @@
  * Programmes d'entretien tient.
  *
  * Une base sans 0062, ou sans programme, rend les gabarits d'origine : les
- * échéances continuent de se calculer.
+ * échéances continuent de se calculer. Depuis 0075, un programme cite aussi
+ * des modèles, qui passent devant la catégorie.
  * ==========================================================================*/
 
 import { cache } from "react";
@@ -21,6 +22,8 @@ interface LigneProgramme {
   libelle: string;
   precision: string | null;
   categories: CategorieVehicule[] | null;
+  /** Absent tant que 0075 n'est pas jouée. */
+  modeles?: string[] | null;
   base: "km" | "heures";
   actif: boolean;
 }
@@ -56,6 +59,7 @@ export function programmesDepuisLignes(programmes: LigneProgramme[], operations:
       libelle: p.libelle,
       precision: p.precision ?? "",
       categories: p.categories ?? [],
+      modeles: p.modeles ?? [],
       base: p.base,
       operations: operations
         .filter((o) => o.programme_code === p.code)
@@ -77,8 +81,13 @@ export function programmesDepuisLignes(programmes: LigneProgramme[], operations:
 async function programmesServeurBrut(): Promise<{ programmes: ProgrammeEntretien[]; enBase: boolean }> {
   try {
     const client = await clientServeur();
+    /* Les modèles (0075) d'abord ; sans la colonne, la lecture d'avant — les programmes valent alors par catégorie. */
+    const lireProgrammes = async () => {
+      const avecModeles = await client.from("programme_entretien").select("code, libelle, precision, categories, modeles, base, actif").order("code").returns<LigneProgramme[]>();
+      return avecModeles.error ? client.from("programme_entretien").select("code, libelle, precision, categories, base, actif").order("code").returns<LigneProgramme[]>() : avecModeles;
+    };
     const [p, o] = await Promise.all([
-      client.from("programme_entretien").select("code, libelle, precision, categories, base, actif").order("code").returns<LigneProgramme[]>(),
+      lireProgrammes(),
       client.from("operation_entretien").select("code, programme_code, libelle, groupe, periodicite_km, periodicite_heures, periodicite_mois, mots_cles, duree_heures, cout_estime, critique, ordre, tache_libelle").returns<LigneOperation[]>(),
     ]);
     if (p.error || o.error) {

@@ -1,27 +1,33 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Info, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, Info, Pencil, Plus, Trash2, X } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { Carte, TableauSimple } from "@/composants/interface/Carte";
 import { ChampCombo } from "@/composants/interface/ChampCombo";
 import { Echeance } from "@/composants/interface/Pastille";
-import { GROUPE_OPERATION, libellePeriodicite, motsClesDe, type GroupeOperation, type OperationEntretien, type ProgrammeEntretien } from "@/domaine/entretien";
+import { GROUPE_OPERATION, libellePeriodicite, modeleCouvre, modeleDuVehicule, motsClesDe, normaliserModele, type GroupeOperation, type OperationEntretien, type ProgrammeEntretien } from "@/domaine/entretien";
 import { CATEGORIE_VEHICULE } from "@/domaine/libelles";
 import type { CategorieVehicule } from "@/domaine/types";
+import { programmeDuParc, type VehiculeAEntretenir } from "@/donnees/entretien-demo";
 import { enregistrerOperation, enregistrerProgramme, retirerOperation, retirerProgramme, type Issue } from "@/lib/entretien-actions";
 import { montant, nombre } from "@/lib/format";
 
 /* ============================================================================
  * Les programmes d'entretien standards — éditables (0062).
  *
- * Un gabarit par type de véhicule. Métier, 21 septembre 2026 : « les
+ * Un gabarit par modèle ou par type de véhicule. Métier, 21 septembre 2026 : « les
  * programmes d'entretien doivent être éditables, on peut rajouter ou retirer
  * des tâches, ou rajouter un nouveau programme pour une nouvelle catégorie de
  * véhicule ». Une opération cite une tâche du catalogue ; ses mots-clés la
  * reconnaissent dans l'historique des interventions.
+ *
+ * Métier, 3 octobre 2026 : « plans préventifs par modèle ». Un programme cite
+ * aussi des modèles (0075) — « Mitsubishi L200 » couvre toutes les L200 du
+ * parc —, qui passent devant la catégorie. Un programme de modèle naît d'un
+ * programme existant, dont il reprend les opérations pour les régler.
  *
  * L'ajustement véhicule par véhicule reste sur la fiche, dans l'onglet
  * Maintenance, sans toucher au gabarit des autres.
@@ -67,14 +73,66 @@ function Champ({ libelle, children, large = false }: { libelle: string; children
   );
 }
 
-export function EcranProgrammesEntretien({ programmes, comptes, taches, enBase }: { programmes: ProgrammeEntretien[]; comptes: Record<string, number>; taches: { libelle: string; precision: string }[]; enBase: boolean }) {
+interface ProgrammeEdite {
+  code?: string;
+  libelle: string;
+  precision: string;
+  base: "km" | "heures";
+  categories: CategorieVehicule[];
+  modeles: string[];
+  /** À la création : le programme dont les opérations sont reprises. */
+  depuis: string;
+}
+
+/**
+ * Les modèles que le parc compte, à proposer : chaque modèle tel qu'écrit, et
+ * sa famille (« Mitsubishi L200 » pour « L200 DC », « L200 SC »…), avec le
+ * nombre de véhicules que chacun couvrirait.
+ */
+function modelesDuParc(vehicules: VehiculeAEntretenir[]): { modele: string; vehicules: number }[] {
+  const modeles = vehicules.map((v) => modeleDuVehicule(v.marque ?? "", v.appellation ?? "")).filter(Boolean);
+  const candidats = new Map<string, string>();
+  for (const m of modeles) {
+    const mots = m.split(" ");
+    for (let n = 2; n <= mots.length; n++) {
+      const c = mots.slice(0, n).join(" ");
+      if (!candidats.has(normaliserModele(c))) candidats.set(normaliserModele(c), c);
+    }
+    if (mots.length === 1 && !candidats.has(normaliserModele(m))) candidats.set(normaliserModele(m), m);
+  }
+  return [...candidats.values()]
+    .map((modele) => ({ modele, vehicules: modeles.filter((m) => modeleCouvre(modele, m)).length }))
+    .sort((a, b) => b.vehicules - a.vehicules || a.modele.localeCompare(b.modele, "fr"));
+}
+
+export function EcranProgrammesEntretien({ programmes, vehicules, taches, enBase }: { programmes: ProgrammeEntretien[]; vehicules: VehiculeAEntretenir[]; taches: { libelle: string; precision: string }[]; enBase: boolean }) {
   const router = useRouter();
   const [enCours, demarrer] = useTransition();
   const [choisi, setChoisi] = useState(programmes[0]?.code ?? "");
   const [message, setMessage] = useState<{ ton: "ok" | "erreur"; texte: string } | null>(null);
   const [operation, setOperation] = useState<Brouillon | null>(null);
-  const [programmeEdite, setProgrammeEdite] = useState<{ code?: string; libelle: string; precision: string; base: "km" | "heures"; categories: CategorieVehicule[] } | null>(null);
+  const [programmeEdite, setProgrammeEdite] = useState<ProgrammeEdite | null>(null);
   const programme = programmes.find((p) => p.code === choisi) ?? programmes[0];
+  const suggestions = useMemo(() => modelesDuParc(vehicules), [vehicules]);
+
+  /* Les véhicules que chaque programme gouverne : par modèle d'abord, puis par catégorie. */
+  const repartir = (liste: ProgrammeEntretien[]) => {
+    const comptes: Record<string, number> = {};
+    for (const v of vehicules) {
+      const code = programmeDuParc(v, liste).code;
+      comptes[code] = (comptes[code] ?? 0) + 1;
+    }
+    return comptes;
+  };
+  const comptes = useMemo(() => repartir(programmes), [programmes, vehicules]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* En cours d'édition, ce que l'enregistrement donnerait : le programme réglé, les modèles et catégories qu'il prend retirés aux autres. */
+  const comptesApres = useMemo(() => {
+    if (!programmeEdite) return null;
+    const pris = (m: string) => programmeEdite.modeles.some((n) => normaliserModele(n) === normaliserModele(m));
+    const edite: ProgrammeEntretien = { code: programmeEdite.code ?? "__nouveau", libelle: programmeEdite.libelle, precision: programmeEdite.precision, base: programmeEdite.base, categories: programmeEdite.categories, modeles: programmeEdite.modeles, operations: [] };
+    const autres = programmes.filter((p) => p.code !== edite.code).map((p) => ({ ...p, categories: p.categories.filter((c) => !edite.categories.includes(c)), modeles: p.modeles.filter((m) => !pris(m)) }));
+    return repartir([...autres, edite])[edite.code] ?? 0;
+  }, [programmeEdite, programmes, vehicules]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function agir(action: () => Promise<Issue>, reussite: string, apres?: (code: string) => void) {
     setMessage(null);
@@ -101,6 +159,9 @@ export function EcranProgrammesEntretien({ programmes, comptes, taches, enBase }
   const coutAnnuel = programme.operations.reduce((s, o) => s + passagesAnnuels(o) * o.coutEstime, 0);
   const heuresAnnuelles = programme.operations.reduce((s, o) => s + passagesAnnuels(o) * o.dureeHeures, 0);
   const proprietaire = (c: CategorieVehicule) => programmes.find((p) => p.categories.includes(c));
+  const proprietaireModele = (m: string) => programmes.find((p) => p.modeles.some((n) => normaliserModele(n) === normaliserModele(m)));
+  const couverts = (m: string) => suggestions.find((s) => normaliserModele(s.modele) === normaliserModele(m))?.vehicules ?? 0;
+  const nouveau = (): ProgrammeEdite => ({ libelle: "", precision: "", base: "km", categories: [], modeles: [], depuis: programme?.code ?? "" });
 
   function enregistrerLOperation() {
     if (!operation) return;
@@ -130,10 +191,10 @@ export function EcranProgrammesEntretien({ programmes, comptes, taches, enBase }
     <div className="defilement-discret flex flex-col gap-5 px-8 py-7 lg:h-full lg:overflow-y-auto">
       <TitreEcran
         titre="Programmes d'entretien"
-        sousTitre={`${programmes.length} gabarits — un par type de véhicule · appliqués automatiquement selon la catégorie, ajustables ensuite fiche par fiche`}
+        sousTitre={`${programmes.length} gabarits · appliqués d'après le modèle du véhicule, sinon sa catégorie · ajustables ensuite fiche par fiche`}
         actions={
           enBase ? (
-            <button type="button" className="bouton-principal" onClick={() => setProgrammeEdite({ libelle: "", precision: "", base: "km", categories: [] })}>
+            <button type="button" className="bouton-principal" onClick={() => setProgrammeEdite(nouveau())}>
               <Plus className="size-4" strokeWidth={2} />
               Nouveau programme
             </button>
@@ -167,6 +228,7 @@ export function EcranProgrammesEntretien({ programmes, comptes, taches, enBase }
             className={`h-8 rounded-full px-3 text-[12.5px] whitespace-nowrap transition-colors ${p.code === programme.code ? "bg-surface font-semibold text-texte shadow-onglet" : "bg-surface-3 font-medium text-texte-2 hover:text-texte"}`}
           >
             {p.libelle}
+            {p.modeles.length ? <span className="ml-1.5 text-[11px] font-medium text-accent-fonce">modèle</span> : null}
             <span className="ml-1.5 text-attenue">{comptes[p.code] ?? 0}</span>
           </button>
         ))}
@@ -174,7 +236,10 @@ export function EcranProgrammesEntretien({ programmes, comptes, taches, enBase }
 
       {/* ---- Le programme : lecture, ou édition ---- */}
       {programmeEdite ? (
-        <Carte titre={programmeEdite.code ? "Modifier le programme" : "Nouveau programme"} precision="Une catégorie n'appartient qu'à un programme : la cocher ici la retire à l'autre">
+        <Carte
+          titre={programmeEdite.code ? "Modifier le programme" : "Nouveau programme"}
+          precision={`Un modèle ou une catégorie n'appartient qu'à un programme : le prendre ici le retire à l'autre · ${comptesApres ?? 0} véhicules suivraient ce programme`}
+        >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Champ libelle="Nom du programme">
               <input className={CHAMP} value={programmeEdite.libelle} onChange={(e) => setProgrammeEdite({ ...programmeEdite, libelle: e.target.value })} />
@@ -188,6 +253,60 @@ export function EcranProgrammesEntretien({ programmes, comptes, taches, enBase }
             <Champ libelle="Précision" large>
               <input className={CHAMP} value={programmeEdite.precision} onChange={(e) => setProgrammeEdite({ ...programmeEdite, precision: e.target.value })} placeholder="Ce qui distingue ce type de véhicule" />
             </Champ>
+            {!programmeEdite.code ? (
+              <Champ libelle="Partir des opérations de" large>
+                <select className={CHAMP} value={programmeEdite.depuis} onChange={(e) => setProgrammeEdite({ ...programmeEdite, depuis: e.target.value })}>
+                  <option value="">Aucun — programme vide</option>
+                  {programmes.map((p) => (
+                    <option key={p.code} value={p.code}>
+                      {p.libelle} ({p.operations.length} opérations)
+                    </option>
+                  ))}
+                </select>
+              </Champ>
+            ) : null}
+            <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-4">
+              <span className="label-champ">Modèles de véhicules — passent devant la catégorie</span>
+              {programmeEdite.modeles.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {programmeEdite.modeles.map((m) => {
+                    const ailleurs = proprietaireModele(m);
+                    return (
+                      <span key={m} className="flex items-center gap-1.5 rounded-full border border-accent bg-accent-fond py-1 pr-1 pl-3 text-[12.5px]">
+                        {m}
+                        <span className="meta">
+                          · {couverts(m)} véh.{ailleurs && ailleurs.code !== programmeEdite.code ? ` · pris à ${ailleurs.libelle}` : ""}
+                        </span>
+                        <button
+                          type="button"
+                          className="grid size-5 place-items-center rounded-full text-attenue hover:bg-surface-3 hover:text-texte"
+                          aria-label={`Retirer ${m}`}
+                          onClick={() => setProgrammeEdite({ ...programmeEdite, modeles: programmeEdite.modeles.filter((x) => x !== m) })}
+                        >
+                          <X className="size-3" strokeWidth={2} />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : null}
+              <div className="max-w-[420px]">
+                <ChampCombo
+                  valeur=""
+                  creation
+                  onChange={(m) => {
+                    const propre = m.replace(/\s+/g, " ").trim();
+                    if (propre && !programmeEdite.modeles.some((x) => normaliserModele(x) === normaliserModele(propre))) setProgrammeEdite({ ...programmeEdite, modeles: [...programmeEdite.modeles, propre] });
+                  }}
+                  options={suggestions.map((s) => {
+                    const ailleurs = proprietaireModele(s.modele);
+                    return { valeur: s.modele, libelle: s.modele, precision: `${s.vehicules} véhicule${s.vehicules > 1 ? "s" : ""}${ailleurs && ailleurs.code !== programmeEdite.code ? ` · ${ailleurs.libelle}` : ""}` };
+                  })}
+                  placeholder="Ajouter un modèle : « Mitsubishi L200 »"
+                />
+              </div>
+              <p className="meta">Le début du modèle suffit : « Mitsubishi L200 » couvre les L200 DC, SC, DID et pick-up. Le plus précis l&apos;emporte d&apos;un programme à l&apos;autre.</p>
+            </div>
             <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-4">
               <span className="label-champ">Catégories de véhicules</span>
               <div className="flex flex-wrap gap-2">
@@ -213,7 +332,13 @@ export function EcranProgrammesEntretien({ programmes, comptes, taches, enBase }
               type="button"
               className="bouton-principal"
               disabled={enCours}
-              onClick={() => agir(() => enregistrerProgramme(programmeEdite), programmeEdite.code ? "Programme mis à jour." : "Programme créé : ajoutez-lui ses tâches.", (code) => (setProgrammeEdite(null), setChoisi(code)))}
+              onClick={() =>
+                agir(
+                  () => enregistrerProgramme({ ...programmeEdite, depuis: programmeEdite.depuis || null }),
+                  programmeEdite.code ? "Programme mis à jour." : programmeEdite.depuis ? "Programme créé avec les opérations reprises : réglez-les pour ce modèle." : "Programme créé : ajoutez-lui ses tâches.",
+                  (code) => (setProgrammeEdite(null), setChoisi(code)),
+                )
+              }
             >
               Enregistrer
             </button>
@@ -225,8 +350,16 @@ export function EcranProgrammesEntretien({ programmes, comptes, taches, enBase }
           <div className="min-w-0 flex-1 text-[13px] leading-relaxed text-texte">
             <p>
               <span className="font-medium">{programme.libelle}</span>
-              {programme.precision ? ` — ${programme.precision}` : ""} S&apos;applique à{" "}
-              {programme.categories.length ? programme.categories.map((c) => CATEGORIE_VEHICULE[c]).join(", ").toLowerCase() : "aucune catégorie"}, soit <strong className="font-semibold">{comptes[programme.code] ?? 0} véhicules</strong> du parc.
+              {programme.precision ? ` — ${programme.precision}` : ""} S&apos;applique{" "}
+              {programme.modeles.length ? (
+                <>
+                  aux modèles <span className="font-medium">{programme.modeles.join(", ")}</span>
+                  {programme.categories.length ? ", puis à " : ""}
+                </>
+              ) : (
+                "à "
+              )}
+              {programme.categories.length ? programme.categories.map((c) => CATEGORIE_VEHICULE[c]).join(", ").toLowerCase() : programme.modeles.length ? "" : "aucune catégorie"}, soit <strong className="font-semibold">{comptes[programme.code] ?? 0} véhicules</strong> du parc.
             </p>
             <p className="meta mt-1">
               Sur un cycle de référence de {programme.base === "heures" ? `${nombre(REFERENCE_HEURES)} heures` : `${nombre(REFERENCE_KM)} km`} par an, ce programme représente <strong className="font-semibold text-texte">{montant(Math.round(coutAnnuel))}</strong> et{" "}
@@ -235,7 +368,7 @@ export function EcranProgrammesEntretien({ programmes, comptes, taches, enBase }
           </div>
           {enBase ? (
             <div className="flex shrink-0 gap-1.5">
-              <button type="button" className="bouton-discret h-8 px-2 text-[12px]" onClick={() => setProgrammeEdite({ code: programme.code, libelle: programme.libelle, precision: programme.precision, base: programme.base, categories: programme.categories })}>
+              <button type="button" className="bouton-discret h-8 px-2 text-[12px]" onClick={() => setProgrammeEdite({ code: programme.code, libelle: programme.libelle, precision: programme.precision, base: programme.base, categories: programme.categories, modeles: programme.modeles, depuis: "" })}>
                 <Pencil className="size-3.5" strokeWidth={1.8} />
                 Modifier
               </button>
@@ -244,7 +377,7 @@ export function EcranProgrammesEntretien({ programmes, comptes, taches, enBase }
                 className="bouton-discret h-8 px-2 text-[12px] hover:text-defavorable"
                 disabled={enCours}
                 onClick={() => {
-                  if (window.confirm(`Retirer le programme « ${programme.libelle} » ? Ses catégories reviendront au programme léger.`)) agir(() => retirerProgramme(programme.code), "Programme retiré.", () => setChoisi(programmes.find((p) => p.code !== programme.code)?.code ?? ""));
+                  if (window.confirm(`Retirer le programme « ${programme.libelle} » ? Ses modèles reviendront au programme de leur catégorie, ses catégories au programme léger.`)) agir(() => retirerProgramme(programme.code), "Programme retiré.", () => setChoisi(programmes.find((p) => p.code !== programme.code)?.code ?? ""));
                 }}
               >
                 <Trash2 className="size-3.5" strokeWidth={1.8} />
