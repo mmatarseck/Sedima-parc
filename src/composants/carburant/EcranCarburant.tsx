@@ -102,11 +102,17 @@ function Segments<T extends string>({ valeur, options, onChange, etiquette }: { 
   );
 }
 
+/** Un plein d'un camion de transporteur mis à disposition (0071) : il n'a pas de fiche au parc. */
+const deTiers = (vehiculeId: string | null | undefined) => Boolean(vehiculeId?.startsWith("tiers:"));
+
 const Vehicule = ({ immatriculation, affichee }: { immatriculation: string | null; affichee: string | null }) =>
   immatriculation ? (
     <Link href={`/flotte/${immatriculation}?onglet=carburant`} onClick={(e) => e.stopPropagation()} className="code font-medium text-accent-fonce hover:underline">
       {affichee}
     </Link>
+  ) : affichee ? (
+    /* Un camion de transporteur mis à disposition (0071) : sa plaque, sans fiche à ouvrir. */
+    <span className="code font-medium text-texte-2">{affichee}</span>
   ) : (
     <span className="text-attenue">—</span>
   );
@@ -289,7 +295,7 @@ function Interieur({ pleins, cuve, stockInitial, consommations, aujourdhui, vueI
     () => [
       { cle: "sens", libelle: "Mouvement", parDefaut: true, largeur: 140, texte: (m) => SENS_CUVE[m.sens], rendu: (m) => <Pastille ton={TON_SENS_CUVE[m.sens]}>{SENS_CUVE[m.sens]}</Pastille> },
       { cle: "libelle", libelle: "Libellé", parDefaut: true, largeur: 240, rendu: (m) => <span className="block truncate">{m.libelle}</span> },
-      { cle: "vehicule", libelle: "Véhicule", parDefaut: true, largeur: 115, texte: (m) => m.immatriculationAffichee ?? "", rendu: (m) => <Vehicule immatriculation={m.immatriculation} affichee={m.immatriculationAffichee} /> },
+      { cle: "vehicule", libelle: "Véhicule", parDefaut: true, largeur: 115, texte: (m) => m.immatriculationAffichee ?? "", rendu: (m) => <Vehicule immatriculation={deTiers(m.vehiculeId) ? null : m.immatriculation} affichee={m.immatriculationAffichee} /> },
       { cle: "entree", libelle: "Entrée (L)", parDefaut: true, largeur: 105, alignee: "droite", tri: (m) => (m.sens === "livraison" ? m.litres : null), rendu: (m) => (m.sens === "livraison" ? <span className="code font-medium text-favorable">{nombre(m.litres)}</span> : <span className="text-attenue">—</span>) },
       { cle: "sortie", libelle: "Sortie (L)", parDefaut: true, largeur: 105, alignee: "droite", tri: (m) => (m.sens === "sortie" ? m.litres : null), rendu: (m) => (m.sens === "sortie" ? <span className="code font-medium">{nombre(m.litres, 1)}</span> : <span className="text-attenue">—</span>) },
       { cle: "ecart", libelle: "Écart jauge", parDefaut: true, largeur: 110, alignee: "droite", tri: (m) => m.ecart, rendu: (m) => (m.ecart === null ? <span className="text-attenue">—</span> : <Echeance ton={Math.abs(m.ecart) > 150 ? "defavorable" : Math.abs(m.ecart) > 50 ? "vigilance" : "favorable"}>{m.ecart > 0 ? "+" : ""}{nombre(m.ecart)} L</Echeance>) },
@@ -391,7 +397,7 @@ function Interieur({ pleins, cuve, stockInitial, consommations, aujourdhui, vueI
           ecran="pleins"
           lignes={pleinsVisibles}
           cle={(p) => p.numero}
-          href={(p) => `/flotte/${p.immatriculation}?onglet=carburant&ref=${p.numero}`}
+          href={(p) => (deTiers(p.vehiculeId) ? `/carburant?ref=${p.numero}` : `/flotte/${p.immatriculation}?onglet=carburant&ref=${p.numero}`)}
           filet={(p) => { const e = etatPlein(p); return { couleur: COULEUR_ETAT_PLEIN[e], libelle: LIBELLE_ETAT_PLEIN[e], precision: PRECISION_ETAT_PLEIN[e] }; }}
           identifiant={{ cle: "numero", libelle: "Réf.", largeur: 140, rendu: (p) => <Numero valeur={p.numero} /> }}
           fixes={FIXES_PLEINS}
@@ -409,7 +415,7 @@ function Interieur({ pleins, cuve, stockInitial, consommations, aujourdhui, vueI
           ecran="cuve"
           lignes={cuveVisible}
           cle={(m) => m.numero}
-          href={(m) => (m.immatriculation ? `/flotte/${m.immatriculation}?onglet=carburant&ref=${m.numero}` : `/carburant?vue=cuve&ref=${m.numero}`)}
+          href={(m) => (m.immatriculation && !deTiers(m.vehiculeId) ? `/flotte/${m.immatriculation}?onglet=carburant&ref=${m.numero}` : `/carburant?vue=cuve&ref=${m.numero}`)}
           filet={(m) => ({ couleur: COULEUR_SENS_CUVE[m.sens], libelle: SENS_CUVE[m.sens], precision: PRECISION_SENS_CUVE[m.sens] })}
           identifiant={{ cle: "numero", libelle: "Réf.", largeur: 140, rendu: (m) => <Numero valeur={m.numero} /> }}
           fixes={FIXES_CUVE}
@@ -447,7 +453,7 @@ function Interieur({ pleins, cuve, stockInitial, consommations, aujourdhui, vueI
    lit les préférences repart en boucle. */
 const FIXES_PLEINS: ColonneListe<LignePlein>[] = [
   { cle: "date", libelle: "Date", parDefaut: true, largeur: 100, tri: (p) => p.date, rendu: (p) => <span className="code">{dateCourte(p.date)}</span> },
-  { cle: "immat", libelle: "Véhicule", parDefaut: true, largeur: 120, rendu: (p) => <Vehicule immatriculation={p.immatriculation} affichee={p.immatriculationAffichee} /> },
+  { cle: "immat", libelle: "Véhicule", parDefaut: true, largeur: 120, rendu: (p) => <Vehicule immatriculation={deTiers(p.vehiculeId) ? null : p.immatriculation} affichee={p.immatriculationAffichee} /> },
 ];
 
 const FIXES_CUVE: ColonneListe<LigneCuve>[] = [

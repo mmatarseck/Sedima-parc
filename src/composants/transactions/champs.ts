@@ -796,7 +796,9 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
     case "plein":
       return [
         /* Depuis le module Carburant, on choisit d'abord le véhicule ; depuis la fiche, il est connu. */
-        ...(contexte.pour === "carburant" ? [{ cle: "vehiculeId", libelle: "Véhicule", type: "choix" as const, options: optionsVehicules(), obligatoire: true }] : []),
+        /* Les camions des transporteurs suivent ceux du parc, marqués « (tiers) » : le carburant
+           fourni par SEDIMA à un camion mis à disposition (Adex) se saisit plein par plein (0071). */
+        ...(contexte.pour === "carburant" ? [{ cle: "vehiculeId", libelle: "Véhicule", type: "choix" as const, options: [...optionsVehicules(), ...optionsCamionsTiers()], obligatoire: true }] : []),
         /* En station, la facture est obligatoire à la saisie ; la pompe du siège n'en a pas. */
         ...base.map((c) => (c.cle === "photo" ? { ...c, obligatoire: true } : c)),
       ];

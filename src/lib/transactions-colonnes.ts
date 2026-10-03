@@ -383,10 +383,12 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
     case "plein": {
       const litres = nombre(v.litres);
       const montant = nombre(v.montant);
-      if (!r.vehiculeId) return { refus: "plein sans véhicule" };
+      /* Un véhicule du parc, ou un camion de transporteur mis à disposition (0071) — l'un ou l'autre. */
+      const tiers = !r.vehiculeId ? r.camionTiers : null;
+      if (!r.vehiculeId && !tiers) return { refus: "plein sans véhicule" };
       if (!litres || litres <= 0 || montant === null) return { refus: "plein sans litres ou sans montant" };
       const prixLitre = nombre(v.prixLitre) ?? Math.round(montant / litres);
-      return { ligne: { numero, vehicule_id: r.vehiculeId, chauffeur_id: r.chauffeurId, prestataire_id: r.prestataireId, date: texte(v.date), litres, prix_litre: Math.max(1, Math.round(prixLitre)), montant: Math.round(montant), km: nombre(v.km), plein_complet: v.pleinComplet === undefined ? true : booleen(v.pleinComplet), source: texte(v.source) ?? "station", reference: texte(v.reference), photo: texte(v.photo), ...(v.remboursable === undefined ? {} : { remboursable: /cuve/i.test(texte(v.source) ?? "") ? false : booleen(v.remboursable) }) } };
+      return { ligne: { numero, vehicule_id: r.vehiculeId, ...(tiers ? { camion_tiers_immatriculation: tiers } : {}), chauffeur_id: tiers ? null : r.chauffeurId, prestataire_id: r.prestataireId, date: texte(v.date), litres, prix_litre: Math.max(1, Math.round(prixLitre)), montant: Math.round(montant), km: nombre(v.km), plein_complet: v.pleinComplet === undefined ? true : booleen(v.pleinComplet), source: texte(v.source) ?? "station", reference: texte(v.reference), photo: texte(v.photo), ...(v.remboursable === undefined ? {} : { remboursable: /cuve/i.test(texte(v.source) ?? "") ? false : booleen(v.remboursable) }) } };
     }
     case "depense": {
       const montant = nombre(v.montant);
