@@ -1,5 +1,6 @@
 "use client";
 
+import { CHARGEMENT_SPECIAL, capaciteSpecialeTexte } from "@/domaine/chargement";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { ENERGIE } from "@/domaine/libelles";
@@ -341,6 +342,8 @@ export function OngletCaracteristiques({ fiche, detenteur }: { fiche: FicheVehic
             { libelle: "PTRA", valeur: avecUnite(i.ptra, "kg") },
             { libelle: "Poids à vide", valeur: avecUnite(i.poidsVide, "kg") },
             { libelle: "Charge utile", valeur: avecUnite(i.chargeUtile, "kg") },
+            /* Œufs, poussins, volailles vives : la capacité qui compte n'est pas en tonnes (0073). */
+            ...(v.chargementSpecial ? [{ libelle: CHARGEMENT_SPECIAL[v.chargementSpecial].libelle, valeur: v.capaciteSpeciale ? capaciteSpecialeTexte(v.chargementSpecial, v.capaciteSpeciale) : "capacité non renseignée" }] : []),
             { libelle: "Énergie", valeur: i.energie ? ENERGIE[i.energie] : null },
             { libelle: "Réservoir", valeur: avecUnite(i.capaciteReservoir, "L") },
           ]}

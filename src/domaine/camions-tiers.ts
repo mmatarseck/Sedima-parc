@@ -14,6 +14,7 @@
  * ==========================================================================*/
 
 import type { BusinessUnit, CategorieVehicule, StatutVehicule } from "./types";
+import type { ChargementSpecial } from "./chargement";
 
 export type TypeContratCamion = "voyage" | "mise-a-disposition" | "forfait";
 
@@ -50,6 +51,9 @@ export interface CamionTiers {
   numeroCarteSecaa: string | null;
   carteAgeroute: boolean;
   numeroCarteAgeroute: string | null;
+  /** Chargement spécialisé et sa capacité hors tonnes (0073). */
+  chargementSpecial: ChargementSpecial | null;
+  capaciteSpeciale: number | null;
 }
 
 /** Une ligne de la liste : le camion, et ce que ses trente derniers jours disent de lui. */

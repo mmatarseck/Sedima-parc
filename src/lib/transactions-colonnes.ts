@@ -952,6 +952,9 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
           numero_carte_secaa: texte(v.numeroCarteSecaa),
           carte_peage_ageroute: booleen(v.cartePeageAgeroute) || Boolean(texte(v.numeroCarteAgeroute)),
           numero_carte_ageroute: texte(v.numeroCarteAgeroute),
+          /* Chargement spécialisé (0073) : une capacité sans nature ne se lirait pas. */
+          chargement_special: texte(v.chargementSpecial),
+          capacite_speciale: texte(v.chargementSpecial) ? nombre(v.capaciteSpeciale) : null,
         },
       };
     }
@@ -981,6 +984,9 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
           numero_carte_secaa: texte(v.numeroCarteSecaa),
           carte_peage_ageroute: booleen(v.cartePeageAgeroute) || Boolean(texte(v.numeroCarteAgeroute)),
           numero_carte_ageroute: texte(v.numeroCarteAgeroute),
+          /* Chargement spécialisé (0073) : une capacité sans nature ne se lirait pas. */
+          chargement_special: texte(v.chargementSpecial),
+          capacite_speciale: texte(v.chargementSpecial) ? nombre(v.capaciteSpeciale) : null,
           commentaire: texte(v.commentaire),
           actif: true,
         },
@@ -1122,6 +1128,8 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
     numeroCarteSecaa: "numero_carte_secaa",
     cartePeageAgeroute: "carte_peage_ageroute",
     numeroCarteAgeroute: "numero_carte_ageroute",
+    chargementSpecial: "chargement_special",
+    capaciteSpeciale: "capacite_speciale",
     commentaire: "commentaire",
   },
   vehicule: {
@@ -1165,6 +1173,8 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
     numeroCarteSecaa: "numero_carte_secaa",
     cartePeageAgeroute: "carte_peage_ageroute",
     numeroCarteAgeroute: "numero_carte_ageroute",
+    chargementSpecial: "chargement_special",
+    capaciteSpeciale: "capacite_speciale",
   },
 };
 
@@ -1175,7 +1185,7 @@ const NUMERIQUES = new Set([
   "puissance_cv", "cylindree", "ptac", "ptra", "poids_vide", "charge_utile", "capacite_reservoir", "valeur_acquisition", "duree_amortissement_annees",
 ]);
 /* Les colonnes qui gardent leurs décimales : des litres, des tonnes, des quantités. */
-const DECIMALES = new Set(["capacite_tonnes", "litres", "tonnage", "tonnage_pese", "tonnage_livre", "carburant_litres", "tonnes_transportees", "quantite", "remise_valeur", "tva_taux", "brs_taux"]);
+const DECIMALES = new Set(["capacite_tonnes", "capacite_speciale", "litres", "tonnage", "tonnage_pese", "tonnage_livre", "carburant_litres", "tonnes_transportees", "quantite", "remise_valeur", "tva_taux", "brs_taux"]);
 /* Les colonnes JSON et les tableaux (0058, 0060) : ni un texte, ni un nombre. */
 const JSONS = new Set(["lignes"]);
 const TABLEAUX = new Set(["pieces", "signalements", "pieces_reglement"]);

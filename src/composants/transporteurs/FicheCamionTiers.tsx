@@ -12,6 +12,7 @@ import { useEdition } from "@/composants/transactions/ContexteEdition";
 import { PastillesEquipement } from "@/composants/vehicule/PastillesEquipement";
 import { PhotoVehicule } from "@/composants/vehicule/PhotoVehicule";
 import { TYPE_CONTRAT, libelleCamion } from "@/domaine/camions-tiers";
+import { CHARGEMENT_SPECIAL, capaciteSpecialeTexte } from "@/domaine/chargement";
 import { BUSINESS_UNIT, CATEGORIE_VEHICULE, NATURE_INCIDENT, STATUT_DECLARATION, STATUT_VEHICULE, TYPE_INCIDENT, formulerEcheance, tonEcheance } from "@/domaine/libelles";
 import { jourCourant } from "@/domaine/temps";
 import type { TypeTransaction } from "@/domaine/reference";
@@ -111,6 +112,8 @@ export function FicheCamionTiers({ fiche, ongletInitial }: { fiche: Fiche; ongle
         numeroCarteSecaa: c.numeroCarteSecaa ?? "",
         cartePeageAgeroute: c.carteAgeroute,
         numeroCarteAgeroute: c.numeroCarteAgeroute ?? "",
+        chargementSpecial: c.chargementSpecial ?? "",
+        capaciteSpeciale: c.capaciteSpeciale ?? "",
         commentaire: c.commentaire ?? "",
       },
     });
@@ -380,6 +383,7 @@ function Caracteristiques({ fiche }: { fiche: Fiche }) {
             { libelle: "Modèle", valeur: c.modele },
             { libelle: "Catégorie", valeur: CATEGORIE_VEHICULE[c.categorie] ?? c.categorie },
             { libelle: "Capacité", valeur: c.capaciteTonnes ? `${n1(c.capaciteTonnes)} t` : null },
+            ...(c.chargementSpecial ? [{ libelle: CHARGEMENT_SPECIAL[c.chargementSpecial].libelle, valeur: c.capaciteSpeciale ? capaciteSpecialeTexte(c.chargementSpecial, c.capaciteSpeciale) : "capacité non renseignée" }] : []),
             { libelle: "N° de châssis", valeur: c.vin ? <span className="code">{c.vin}</span> : null },
             { libelle: "1re mise en circulation", valeur: c.premiereMiseEnCirculation ? formaterDate(c.premiereMiseEnCirculation) : null },
             { libelle: "Entré au référentiel", valeur: c.creeLe ? formaterDate(c.creeLe.slice(0, 10)) : null },

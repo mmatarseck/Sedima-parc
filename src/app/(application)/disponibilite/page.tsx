@@ -64,6 +64,8 @@ export default async function PageDisponibilite() {
       immobilisation,
       engage: v.engage,
       chargeUtile: v.chargeUtile,
+      chargementSpecial: v.chargementSpecial ?? null,
+      capaciteSpeciale: v.capaciteSpeciale ?? null,
       conducteur,
     };
     const { etat, motif } = etatDisponibilite(base);

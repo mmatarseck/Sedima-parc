@@ -1,3 +1,4 @@
+import { estChargementSpecial } from "@/domaine/chargement";
 /* ============================================================================
  * La flotte telle que la liste la lit : une ligne par véhicule, augmentée de
  * ce qui se calcule — titulaire, compteur, échéances, coût, immobilisation.
@@ -74,6 +75,9 @@ interface LigneVehicule {
   numero_carte_secaa?: string | null;
   carte_peage_ageroute?: boolean | null;
   numero_carte_ageroute?: string | null;
+  /* Chargement spécialisé (0073) : absent avant la migration. */
+  chargement_special?: string | null;
+  capacite_speciale?: number | string | null;
   photo: string | null;
   commentaire: string | null;
   regime: Vehicule["regime"];
@@ -386,6 +390,8 @@ export function vehiculeDepuisLaBase(v: LigneVehicule): Vehicule {
     numeroCarteSecaa: v.numero_carte_secaa ?? null,
     cartePeageAgeroute: v.carte_peage_ageroute ?? false,
     numeroCarteAgeroute: v.numero_carte_ageroute ?? null,
+    chargementSpecial: estChargementSpecial(v.chargement_special) ? v.chargement_special : null,
+    capaciteSpeciale: v.capacite_speciale == null ? null : Number(v.capacite_speciale),
     commentaire: v.commentaire,
     photo: v.photo,
     regime: v.regime ?? "exploitation",

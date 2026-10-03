@@ -54,6 +54,9 @@ export interface LigneDisponibilite {
   immobilisation: ImmobilisationAdministrative | null;
   engage: boolean;
   chargeUtile: number | null;
+  /** Chargement spécialisé et sa capacité hors tonnes (0073). */
+  chargementSpecial?: import("./chargement").ChargementSpecial | null;
+  capaciteSpeciale?: number | null;
   conducteur: ConducteurDuJour | null;
   etat: EtatDisponibilite;
   /** Ce qui manque pour être prêt, en une ligne. */

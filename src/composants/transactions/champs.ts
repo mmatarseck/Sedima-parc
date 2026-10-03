@@ -11,6 +11,7 @@
 
 import type { ChampEdition } from "@/domaine/cloture";
 import { CATEGORIES_PERMIS } from "@/domaine/chauffeur";
+import { CHARGEMENT_SPECIAL } from "@/domaine/chargement";
 import { CATEGORIE_PIECE, ETAT_PNEU, NATURE_MOUVEMENT, POSITIONS_PNEU, UNITE_PIECE } from "@/domaine/pieces";
 import { URGENCE_ACHAT } from "@/domaine/caisse";
 import { SOURCE_TARIF, STATUT_AFFRETEMENT } from "@/domaine/transporteurs";
@@ -32,6 +33,7 @@ import { lireReferentiels } from "@/lib/referentiels-navigateur";
 
 import { optionsAffectation, optionsAttribution, optionsCamionsTiers, optionsChauffeurs, optionsGarages, optionsPrestataires, optionsPrestatairesParNumero, optionsSites, optionsVehicules } from "./options";
 
+const OPTIONS_CHARGEMENT = Object.entries(CHARGEMENT_SPECIAL).map(([valeur, d]) => ({ valeur, libelle: `${d.libelle} — ${d.unite}` }));
 const options = (r: Record<string, string>) => Object.entries(r).map(([valeur, libelle]) => ({ valeur, libelle }));
 const optionsStatut = () => Object.entries(STATUT_VEHICULE).map(([valeur, d]) => ({ valeur, libelle: d.libelle }));
 const optionsAptitude = () => Object.entries(APTITUDE).map(([valeur, d]) => ({ valeur, libelle: d.libelle }));
@@ -736,6 +738,8 @@ export function champsVehicule(): ChampEdition[] {
       { cle: "ptra", libelle: "PTRA", type: "nombre", unite: "kg" },
       { cle: "poidsVide", libelle: "Poids à vide", type: "nombre", unite: "kg" },
       { cle: "chargeUtile", libelle: "Charge utile", type: "nombre", unite: "kg" },
+      { cle: "chargementSpecial", libelle: "Chargement spécialisé", type: "choix", options: OPTIONS_CHARGEMENT, precision: "Œufs, poussins, poulettes ou poulets vifs : la capacité ne se compte pas en tonnes" },
+      { cle: "capaciteSpeciale", libelle: "Capacité spécialisée", type: "nombre", precision: "En plateaux d'œufs, en milliers de poussins, ou en nombre de poulettes ou poulets vifs", visibleSi: (s) => Boolean(s.chargementSpecial) },
     ]),
     ...section("Finances", [
       /* Le vendeur du véhicule (0048) : le référentiel des prestataires le
@@ -798,6 +802,8 @@ export function champsCamion(mode: "creation" | "modification"): ChampEdition[] 
       { cle: "modele", libelle: "Modèle", type: "texte" },
       { cle: "categorie", libelle: "Catégorie", type: "choix", options: CATEGORIES_CAMION, obligatoire: true },
       { cle: "capaciteTonnes", libelle: "Capacité", type: "nombre", unite: "t" },
+      { cle: "chargementSpecial", libelle: "Chargement spécialisé", type: "choix", options: OPTIONS_CHARGEMENT, precision: "Œufs, poussins, poulettes ou poulets vifs : la capacité ne se compte pas en tonnes" },
+      { cle: "capaciteSpeciale", libelle: "Capacité spécialisée", type: "nombre", precision: "En plateaux d'œufs, en milliers de poussins, ou en nombre de poulettes ou poulets vifs", visibleSi: (s) => Boolean(s.chargementSpecial) },
       { cle: "vin", libelle: "N° de châssis (VIN)", type: "texte" },
       { cle: "premiereMiseEnCirculation", libelle: "1re mise en circulation", type: "date" },
       { cle: "photo", libelle: "Photo (adresse)", type: "texte" },
@@ -926,6 +932,8 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
         { cle: "premiereMiseEnCirculation", libelle: "1re mise en circulation", type: "date" },
         { cle: "dateImmatriculation", libelle: "Date d'immatriculation", type: "date" },
         { cle: "chargeUtile", libelle: "Charge utile", type: "nombre", unite: "kg" },
+        { cle: "chargementSpecial", libelle: "Chargement spécialisé", type: "choix", options: OPTIONS_CHARGEMENT, precision: "Œufs, poussins, poulettes ou poulets vifs : la capacité ne se compte pas en tonnes" },
+      { cle: "capaciteSpeciale", libelle: "Capacité spécialisée", type: "nombre", precision: "En plateaux d'œufs, en milliers de poussins, ou en nombre de poulettes ou poulets vifs", visibleSi: (s) => Boolean(s.chargementSpecial) },
         { cle: "kilometrage", libelle: "Kilométrage à l'entrée", type: "nombre", unite: "km" },
         /* Véhicule léger neuf : la réglementation accorde un délai avant la première
            visite ; l'agent saisit cette date, l'échéancier part de là. */
