@@ -170,7 +170,7 @@ export function travauxDepuisLaBase(lignes: LigneFlotte[], parc: ParcBrut, ordre
     const compteur = l.kilometrage !== null && l.dateKilometrage ? { km: l.kilometrage, date: l.dateKilometrage } : null;
     for (const e of echeancesEntretienDeLaBase(l.vehicule, uuid, compteur, parc).filter(appelleUneAction)) {
       const ordreNumero = ordrePour(l.vehicule.id, null, "preventif");
-      travaux.push({ cle: `echeance:${l.vehicule.id}:${e.code}`, nature: "echeance", urgence: ordreNumero ? "en-cours" : e.etat === "en-retard" ? "en-retard" : "a-planifier", type: "preventif", ...p, objet: e.libelle, origineNumero: null, echeance: libelleEcheance(e).toLowerCase(), kmRestants: e.kmRestants, joursRestants: e.joursRestants, ordreNumero });
+      travaux.push({ cle: `echeance:${l.vehicule.id}:${e.code}`, nature: "echeance", urgence: ordreNumero ? "en-cours" : e.etat === "en-retard" ? "en-retard" : "a-planifier", type: "preventif", ...p, objet: e.libelle, origineNumero: null, echeance: libelleEcheance(e).toLowerCase(), kmRestants: e.kmRestants, joursRestants: e.joursRestants, ordreNumero, operationCode: e.code });
     }
     const statut = l.vehicule.statut;
     if ((statut === "en-reparation" || statut === "en-restauration") && !vehiculesAvecIncident.has(uuid)) {

@@ -242,12 +242,40 @@ function Interieur({ travaux, ordres, signalements = [], interventions, aujourdh
   function planifier(t?: LigneTravail) {
     const panne = t?.nature === "panne" ? tousSignalements.find((s) => s.numero === t.origineNumero) : undefined;
     if (panne) return planifierSignalement(panne);
+    if (t?.nature === "echeance" && t.operationCode) return planifierEcheances(t);
     ouvrirService({
       signalements: tousSignalements,
       services: tousOrdres,
       propose: t ? { type: t.type, objet: t.objet, origineNumero: t.origineNumero, priorite: t.urgence === "en-retard" ? "urgent" : "planifie", vehiculeImmatriculation: t.immatriculation } : undefined,
     });
   }
+
+  /*
+   * Une échéance propose le service (métier, 3 octobre 2026) : un clic, et le
+   * service s'ouvre préventif, ses tâches en ligne. Les autres échéances dues
+   * du même véhicule viennent avec — un passage au garage les fait toutes —,
+   * qu'on retire d'un geste si on ne les veut pas.
+   */
+  function planifierEcheances(t: LigneTravail) {
+    const dues = tousTravaux.filter((x) => x.nature === "echeance" && x.vehiculeId === t.vehiculeId && !x.ordreNumero && x.operationCode);
+    const liste = [t, ...dues.filter((x) => x.cle !== t.cle)];
+    ouvrirService({
+      signalements: tousSignalements,
+      services: tousOrdres,
+      propose: {
+        type: "preventif",
+        objet: liste.length > 1 ? `Entretien préventif — ${liste.map((x) => x.objet.toLowerCase()).join(", ")}` : `Entretien préventif — ${t.objet.toLowerCase()}`,
+        origineNumero: null,
+        priorite: liste.some((x) => x.urgence === "en-retard") ? "urgent" : "planifie",
+        vehiculeImmatriculation: t.immatriculation,
+        operations: liste.map((x) => x.operationCode!),
+      },
+    });
+  }
+
+  /* Les colonnes se figent au premier rendu : leur bouton passe par ce relais pour planifier sur les listes du moment. */
+  const relais = useMemo(() => ({ planifier }), []); // eslint-disable-line react-hooks/exhaustive-deps
+  relais.planifier = planifier;
 
   /* Une panne signalée se répare par un service, qui l'inclut d'avance. */
   function planifierSignalement(s: LigneSignalement) {
@@ -341,7 +369,7 @@ function Interieur({ travaux, ordres, signalements = [], interventions, aujourdh
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                planifier(t);
+                relais.planifier(t);
               }}
               className="bouton-principal h-7 px-2.5 text-[12px]"
             >

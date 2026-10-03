@@ -443,9 +443,25 @@ aucun au 3 octobre 2026).
 Sans 0075, l'écran reste celui d'avant : les programmes valent par catégorie,
 et enregistrer des modèles le dit.
 
+## 3 octobre 2026 — une échéance propose le service
+
+Page Maintenance, « À faire » : **« Planifier »** sur une échéance du plan
+(dépassée ou à planifier) ouvre le service :
+
+- **préventif**, sur le véhicule ;
+- **ses tâches déjà en ligne** : l'opération de l'échéance, et avec elle les
+  autres échéances dues du même véhicule qu'aucun service ouvert ne porte — un
+  passage au garage les fait toutes ; on retire d'un geste celles qu'on ne veut
+  pas. Chaque ligne cite la tâche du catalogue de l'opération et sa
+  périodicité, comme « Depuis le plan d'entretien… » ;
+- **urgent** si l'une est dépassée, planifié sinon ; l'objet les nomme.
+
+Les opérations viennent du programme que suit le véhicule (modèle, sinon
+catégorie). Une fois le service enregistré, les échéances du véhicule passent
+« en cours » et renvoient à lui.
+
 ## Ce qui reste
 
-- **Une échéance qui propose le service**, tâches déjà remplies.
 - Les programmes des modèles eux-mêmes : à créer par le responsable du parc
   (L200, Hilux, TATA LPT 1618, Renault frigo…), périodicités du constructeur.
 - Rapports encore à faire : respect du plan préventif, consommation de pièces
