@@ -1,22 +1,20 @@
-import { ListeTransporteurs } from "@/composants/transporteurs/ListeTransporteurs";
-import { listeTransporteursDe } from "@/domaine/assembler-transporteurs";
+import { EcranCamionsTiers } from "@/composants/transporteurs/EcranCamionsTiers";
 import { titrePage } from "@/domaine/marque";
-import { transporteursServeur } from "@/donnees/transporteurs";
+import { listeCamionsTiers } from "@/donnees/camions-tiers";
 
 export const metadata = { title: titrePage("Transporteurs") };
 
+/* Rendu à la demande : cette page lit la base avec la session des cookies. */
+export const dynamic = "force-dynamic";
+
 /**
- * Transporteurs — le **référentiel**, et rien d'autre.
+ * Transporteurs — les camions, comme la Flotte (refonte du 3 octobre 2026).
  *
- * Refonte du 5 septembre 2026 : les cinq vues qui vivaient ici — affrètements,
- * mises à disposition, prestations, activité, grilles — ont rejoint la fiche de
- * chaque transporteur, et les analyses d'ensemble le module Rapports. Un écran
- * de référentiel liste ; il n'analyse pas.
- *
- * Base branchée : une lecture (`lire_transporteurs`, 0025), un assemblage, un
- * écran. En démonstration, le même assemblage sur le jeu du navigateur.
+ * La liste était celle des transporteurs ; le métier veut celle de leurs
+ * camions, « le plus possible proche de la vue de notre propre flotte », le
+ * transporteur passant en filtre. Ce que le transporteur est en propre —
+ * contrat, grille, facturation, performance — se lit sur sa fiche fournisseur.
  */
 export default async function PageTransporteurs() {
-  const source = await transporteursServeur();
-  return <ListeTransporteurs lignes={listeTransporteursDe(source)} />;
+  return <EcranCamionsTiers lignes={await listeCamionsTiers()} />;
 }

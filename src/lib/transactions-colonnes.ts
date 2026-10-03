@@ -57,7 +57,8 @@ export type TableBranchee =
   | "attributaire"
   | "rappel"
   | "signalement"
-  | "tache_service";
+  | "tache_service"
+  | "camion_tiers";
 
 const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   releve: "releve_kilometrique",
@@ -104,6 +105,8 @@ const TABLES: Partial<Record<TypeTransaction, TableBranchee>> = {
   rappel: "rappel",
   signalement: "signalement",
   tache: "tache_service",
+  /* Le camion d'un transporteur (0072) : clé, la plaque — comme le véhicule. */
+  camion: "camion_tiers",
 };
 
 /**
@@ -158,6 +161,7 @@ export const RETRAIT_CHAUFFEUR = "retirer";
 
 export function cleDe(type: TypeTransaction, numero: string): { colonne: string; valeur: string } {
   if (type === "vehicule") return { colonne: "immatriculation", valeur: immatriculationCanonique(numero.replace(/^VEH-/i, "")) };
+  if (type === "camion") return { colonne: "immatriculation", valeur: immatriculationCanonique(numero.replace(/^CAM-/i, "")) };
   /* Le chauffeur se repère par son identifiant de table. La fiche le nomme
      « CHA-babacar-ndiaye » : c'est son adresse lisible, pas sa clé. L'écriture
      la traduit — elle seule a la base sous la main. */
@@ -400,19 +404,23 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
     case "document": {
       const typeDoc = texte(v.type);
       if (!typeDoc) return { refus: "document sans type" };
-      if (!r.vehiculeId && !r.chauffeurId) return { refus: "document sans porteur" };
+      /* Un camion de transporteur porte aussi ses documents (0072). */
+      const camionDoc = !r.vehiculeId && !r.chauffeurId ? (r.camionTiers ?? null) : null;
+      if (!r.vehiculeId && !r.chauffeurId && !camionDoc) return { refus: "document sans porteur" };
       /* Le fichier joint vaut justificatif : on ne coche pas « fourni » à côté
          d'une pièce qu'on vient d'attacher. */
       const fichier = texte(v.fichier);
-      return { ligne: { numero, type_document_id: typeDoc, vehicule_id: r.vehiculeId, chauffeur_id: r.vehiculeId ? null : r.chauffeurId, date_effet: texte(v.dateEffet), echeance: texte(v.echeance), emetteur: texte(v.emetteur), numero_piece: texte(v.numeroPiece), montant: nombre(v.montant), fichier, justificatif: booleen(v.justificatif) || Boolean(fichier) } };
+      return { ligne: { numero, type_document_id: typeDoc, vehicule_id: r.vehiculeId, chauffeur_id: r.vehiculeId ? null : r.chauffeurId, ...(camionDoc ? { camion_tiers_immatriculation: camionDoc } : {}), date_effet: texte(v.dateEffet), echeance: texte(v.echeance), emetteur: texte(v.emetteur), numero_piece: texte(v.numeroPiece), montant: nombre(v.montant), fichier, justificatif: booleen(v.justificatif) || Boolean(fichier) } };
     }
     case "incident": {
       const dateHeure = horodatage(v.dateHeure);
-      if (!r.vehiculeId) return { refus: "incident sans véhicule" };
+      /* Ou le camion d'un transporteur (0072) : l'un ou l'autre. */
+      const camionInc = !r.vehiculeId ? (r.camionTiers ?? null) : null;
+      if (!r.vehiculeId && !camionInc) return { refus: "incident sans véhicule" };
       if (!dateHeure) return { refus: "incident sans date" };
       const roulant = texte(v.roulant);
       const description = [texte(v.description), roulant === "non" ? "Véhicule non roulant." : roulant === "reserve" ? "Véhicule roulant avec réserve." : null].filter(Boolean).join(" ") || null;
-      return { ligne: { numero, vehicule_id: r.vehiculeId, chauffeur_id: r.chauffeurId, date_heure: dateHeure, nature: texte(v.nature) ?? "incident", type: texte(v.type) ?? "autre", lieu: texte(v.lieu), mission: texte(v.mission), responsabilite: texte(v.responsabilite), statut: texte(v.statut) ?? "declare", kilometrage: nombre(v.kilometrage), description, ...piecesDe(v.pieces) } };
+      return { ligne: { numero, vehicule_id: r.vehiculeId, ...(camionInc ? { camion_tiers_immatriculation: camionInc } : {}), chauffeur_id: camionInc ? null : r.chauffeurId, date_heure: dateHeure, nature: texte(v.nature) ?? "incident", type: texte(v.type) ?? "autre", lieu: texte(v.lieu), mission: texte(v.mission), responsabilite: texte(v.responsabilite), statut: texte(v.statut) ?? "declare", kilometrage: nombre(v.kilometrage), description, ...piecesDe(v.pieces) } };
     }
     case "affectation": {
       if (!r.vehiculeId || !r.chauffeurId) return { refus: "affectation sans véhicule ou sans chauffeur" };
@@ -947,6 +955,37 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
         },
       };
     }
+    /* Le camion d'un transporteur (0072) : sa plaque, son transporteur, et ce
+       que la fiche véhicule porte d'utile pour suivre un camion qui roule pour
+       nous. Le chauffeur se résout en base (`chauffeur_tiers`), pas ici. */
+    case "camion": {
+      const immatriculation = immatriculationCanonique(texte(v.immatriculation) ?? "");
+      if (!immatriculation) return { refus: "camion sans immatriculation" };
+      if (!r.prestataireId) return { refus: "camion sans transporteur" };
+      return {
+        ligne: {
+          immatriculation,
+          prestataire_id: r.prestataireId,
+          categorie: texte(v.categorie) ?? "camion",
+          capacite_tonnes: nombre(v.capaciteTonnes),
+          marque: texte(v.marque),
+          modele: texte(v.modele),
+          vin: texte(v.vin),
+          premiere_mise_en_circulation: texte(v.premiereMiseEnCirculation),
+          photo: texte(v.photo),
+          business_unit: texte(v.businessUnit),
+          type_contrat: texte(v.typeContrat) ?? "voyage",
+          carburant_fourni: booleen(v.carburantFourni),
+          balise_geolocalisation: booleen(v.baliseGeolocalisation),
+          carte_peage_secaa: booleen(v.cartePeageSecaa) || Boolean(texte(v.numeroCarteSecaa)),
+          numero_carte_secaa: texte(v.numeroCarteSecaa),
+          carte_peage_ageroute: booleen(v.cartePeageAgeroute) || Boolean(texte(v.numeroCarteAgeroute)),
+          numero_carte_ageroute: texte(v.numeroCarteAgeroute),
+          commentaire: texte(v.commentaire),
+          actif: true,
+        },
+      };
+    }
     default:
       return { refus: `pas de table pour ${type}` };
   }
@@ -1062,6 +1101,29 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
      Ce qui se calcule ne s'écrit pas : la région vient du site, l'utilisation
      de l'usage, le régime de propriété de la catégorie de flotte, l'entité de
      la business unit, la balise des relevés. */
+  /* La fiche d'un camion de transporteur (0072). Ni la plaque ni le
+     transporteur : les relevés, les pleins et les mises à disposition les
+     citent. Le chauffeur se résout à part (`chauffeur_tiers`). */
+  camion: {
+    marque: "marque",
+    modele: "modele",
+    categorie: "categorie",
+    capaciteTonnes: "capacite_tonnes",
+    vin: "vin",
+    premiereMiseEnCirculation: "premiere_mise_en_circulation",
+    photo: "photo",
+    statut: "statut",
+    businessUnit: "business_unit",
+    actif: "actif",
+    typeContrat: "type_contrat",
+    carburantFourni: "carburant_fourni",
+    baliseGeolocalisation: "balise_geolocalisation",
+    cartePeageSecaa: "carte_peage_secaa",
+    numeroCarteSecaa: "numero_carte_secaa",
+    cartePeageAgeroute: "carte_peage_ageroute",
+    numeroCarteAgeroute: "numero_carte_ageroute",
+    commentaire: "commentaire",
+  },
   vehicule: {
     immatriculation: "immatriculation",
     vin: "vin",
@@ -1113,14 +1175,14 @@ const NUMERIQUES = new Set([
   "puissance_cv", "cylindree", "ptac", "ptra", "poids_vide", "charge_utile", "capacite_reservoir", "valeur_acquisition", "duree_amortissement_annees",
 ]);
 /* Les colonnes qui gardent leurs décimales : des litres, des tonnes, des quantités. */
-const DECIMALES = new Set(["litres", "tonnage", "tonnage_pese", "tonnage_livre", "carburant_litres", "tonnes_transportees", "quantite", "remise_valeur", "tva_taux", "brs_taux"]);
+const DECIMALES = new Set(["capacite_tonnes", "litres", "tonnage", "tonnage_pese", "tonnage_livre", "carburant_litres", "tonnes_transportees", "quantite", "remise_valeur", "tva_taux", "brs_taux"]);
 /* Les colonnes JSON et les tableaux (0058, 0060) : ni un texte, ni un nombre. */
 const JSONS = new Set(["lignes"]);
 const TABLEAUX = new Set(["pieces", "signalements", "pieces_reglement"]);
 /* Les colonnes que la base veut en booléen. Une case « oui/non » arrive de la
    modale en texte : sans cette liste, « non » entrerait tel quel et Postgres le
    lirait comme vrai — une fiche qu'on croit désactivée resterait proposée. */
-const BOOLEENS = new Set(["plein_complet", "remboursable", "justificatif", "transport_special", "engage", "actif", "permanent", "retiree", "balise_geolocalisation", "carte_peage_secaa", "carte_peage_ageroute"]);
+const BOOLEENS = new Set(["plein_complet", "remboursable", "justificatif", "transport_special", "engage", "actif", "permanent", "retiree", "balise_geolocalisation", "carte_peage_secaa", "carte_peage_ageroute", "carburant_fourni"]);
 const HORODATES = new Set(["date_heure"]);
 const PRODUITS = new Set(["produit"]);
 /* Les colonnes qui portent une plaque : elle se range sous sa forme canonique,
@@ -1173,10 +1235,12 @@ export function colonnesModification(type: TypeTransaction, diffs: { champ: stri
 }
 
 /** Le sujet d'une création, décomposé : « vehicule:AA032EA » → { genre, cle } ; « transporteur:PRE-2026-00021 » est un prestataire. */
-export function decomposerSujet(sujet: string): { genre: "vehicule" | "chauffeur" | "prestataire" | "autre"; cle: string } {
+export function decomposerSujet(sujet: string): { genre: "vehicule" | "chauffeur" | "prestataire" | "camion" | "autre"; cle: string } {
   const [genre, ...reste] = sujet.split(":");
   const cle = reste.join(":");
   if (genre === "vehicule" && cle) return { genre: "vehicule", cle };
+  /* La fiche d'un camion de transporteur (0072) : « camion:AA573EC ». */
+  if (genre === "camion" && cle) return { genre: "camion", cle };
   if (genre === "chauffeur" && cle) return { genre: "chauffeur", cle };
   if ((genre === "transporteur" || genre === "prestataire") && cle) return { genre: "prestataire", cle };
   return { genre: "autre", cle: sujet };

@@ -399,7 +399,7 @@ function Interieur({ vehicules, chauffeurs, chauffeursTiers, aujourdhui }: { veh
                     )}
                     <span className="min-w-0">
                       {tiers ? (
-                        <Link href={`/transporteurs/${v.tiers!.transporteurNumero}?onglet=flotte`} className="code block truncate text-[13px] font-semibold text-accent-fonce hover:underline">
+                        <Link href={`/transporteurs/camions/${v.immatriculation}`} className="code block truncate text-[13px] font-semibold text-accent-fonce hover:underline">
                           {v.immatriculationAffichee}
                         </Link>
                       ) : (

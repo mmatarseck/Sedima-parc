@@ -15,6 +15,9 @@ import type { StatutVehicule } from "@/domaine/types";
 import { BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_VEHICULE, STATUT_VEHICULE } from "@/domaine/libelles";
 import type { BusinessUnit, RegimeUsage } from "@/domaine/types";
 import { date, nombre } from "@/lib/format";
+import type { LigneCamionTiers } from "@/domaine/camions-tiers";
+import { pointDuMatin } from "@/domaine/point-du-matin";
+import { PointDuMatin } from "./PointDuMatin";
 
 /* ============================================================================
  * Disponibilité du jour.
@@ -133,7 +136,7 @@ function statutsDeclares(jour: string): Map<string, StatutVehicule> {
  * qu'on découvre au matin qu'un camion ne partira pas, et c'est donc ici qu'on
  * doit pouvoir le déclarer en réparation — sans passer par sa fiche.
  */
-export function EcranDisponibilite(props: { lignes: LigneDisponibilite[]; aujourdhui: string }) {
+export function EcranDisponibilite(props: { lignes: LigneDisponibilite[]; camions: LigneCamionTiers[]; aujourdhui: string }) {
   return (
     <FournisseurEdition sujet="disponibilite" href="/disponibilite">
       <Interieur {...props} />
@@ -141,7 +144,7 @@ export function EcranDisponibilite(props: { lignes: LigneDisponibilite[]; aujour
   );
 }
 
-function Interieur({ lignes: toutes, aujourdhui }: { lignes: LigneDisponibilite[]; aujourdhui: string }) {
+function Interieur({ lignes: toutes, camions, aujourdhui }: { lignes: LigneDisponibilite[]; camions: LigneCamionTiers[]; aujourdhui: string }) {
   /* Le régime d'abord — tout le parc, exploitation, service, fonction —, puis la
      BU : KPI et liste parlent toujours de la même population. */
   const [regime, setRegime] = useState<RegimeUsage | "tout">("tout");
@@ -164,6 +167,11 @@ function Interieur({ lignes: toutes, aujourdhui }: { lignes: LigneDisponibilite[
       return { ...base, etat, motif };
     });
   }, [toutes, declares]);
+
+  /* Le point du matin porte tout le parc d'exploitation et les camions des
+     transporteurs : il se lit en entier, quel que soit le filtre posé. */
+  const point = useMemo(() => pointDuMatin(aJour, camions, aujourdhui), [aJour, camions, aujourdhui]);
+  const jourLong = new Date(`${aujourdhui}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   const lignes = useMemo(() => aJour.filter((l) => (regime === "tout" || l.regime === regime) && (bu === "toutes" || l.businessUnit === bu)), [aJour, regime, bu]);
 
@@ -217,6 +225,8 @@ function Interieur({ lignes: toutes, aujourdhui }: { lignes: LigneDisponibilite[
           ]}
         />
       </div>
+
+      <PointDuMatin point={point} jourLong={jourLong} />
 
       <TableListe<LigneDisponibilite>
         ecran="disponibilite"

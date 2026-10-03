@@ -146,7 +146,7 @@ export function champsIdentiteVehicule(): ChampEdition[] {
 
 /** Les champs d'un type, ceux du véhicule relus des paramètres à chaque appel. */
 export function champsCourants(type: TypeTransaction): ChampEdition[] {
-  return type === "vehicule" ? champsVehicule() : CHAMPS[type];
+  return type === "vehicule" ? champsVehicule() : type === "camion" ? champsCamion("modification") : CHAMPS[type];
 }
 
 export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
@@ -604,6 +604,7 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
   /* Les champs du véhicule se construisent par `champsVehicule()` : marque,
      modèle et catégorie viennent des paramètres, relus à chaque ouverture. */
   vehicule: [],
+  camion: [],
   /* La fiche d'un attributaire : ce que le parc sait de la personne. Son
      véhicule n'est pas ici — il se change par une attribution, qui se date. */
   /* Un rappel se renouvelle : l'échéance avance, la date du renouvellement se
@@ -759,6 +760,69 @@ export function champsVehicule(): ChampEdition[] {
   ];
 }
 
+/* Les catégories d'un camion de transporteur : les familles du parc qui roulent pour nous. */
+const CATEGORIES_CAMION: { valeur: string; libelle: string }[] = [
+  { valeur: "camion", libelle: "Camion porteur" },
+  { valeur: "tracteur", libelle: "Tracteur (plateau, semi)" },
+  { valeur: "camionnette", libelle: "Camionnette, pick-up, fourgon" },
+  { valeur: "vehicule-leger", libelle: "Véhicule léger" },
+  { valeur: "engin", libelle: "Engin" },
+];
+
+export const TYPE_CONTRAT_CAMION: Record<string, string> = {
+  voyage: "Au voyage (grille à la tonne)",
+  "mise-a-disposition": "Mise à disposition (au jour)",
+  forfait: "Forfait",
+};
+
+/**
+ * La fiche d'un camion de transporteur (0072), sur le modèle de la fiche
+ * véhicule : identité, exploitation, contrat, équipements (métier, 3 octobre
+ * 2026). La plaque et le transporteur se fixent à la création : la plaque est
+ * la clé que les relevés, les pleins et les mises à disposition citent, et un
+ * camion qui change de transporteur est un autre engagement.
+ */
+export function champsCamion(mode: "creation" | "modification"): ChampEdition[] {
+  const section = (titre: string, champs: ChampEdition[]): ChampEdition[] => champs.map((c) => ({ ...c, section: titre }));
+  const { marques } = lireParametres().vehicules;
+  const optionsMarques = marques.map((m) => ({ valeur: m.nom, libelle: m.nom }));
+  return [
+    ...section("Identification", [
+      ...(mode === "creation"
+        ? [
+            { cle: "immatriculation", libelle: "Immatriculation", type: "texte" as const, obligatoire: true },
+            { cle: "transporteurNumero", libelle: "Transporteur", type: "choix" as const, options: optionsPrestatairesParNumero(typeof window === "undefined" ? undefined : lireCreations, ["transporteur"]), obligatoire: true },
+          ]
+        : []),
+      { cle: "marque", libelle: "Marque", type: "suggestion", options: optionsMarques },
+      { cle: "modele", libelle: "Modèle", type: "texte" },
+      { cle: "categorie", libelle: "Catégorie", type: "choix", options: CATEGORIES_CAMION, obligatoire: true },
+      { cle: "capaciteTonnes", libelle: "Capacité", type: "nombre", unite: "t" },
+      { cle: "vin", libelle: "N° de châssis (VIN)", type: "texte" },
+      { cle: "premiereMiseEnCirculation", libelle: "1re mise en circulation", type: "date" },
+      { cle: "photo", libelle: "Photo (adresse)", type: "texte" },
+    ]),
+    ...section("Exploitation", [
+      ...(mode === "modification" ? [{ cle: "statut", libelle: "Statut", type: "choix" as const, options: optionsStatut(), obligatoire: true }] : []),
+      { cle: "businessUnit", libelle: "Business unit servie", type: "choix", options: options(BUSINESS_UNIT) },
+      { cle: "chauffeurNom", libelle: "Chauffeur affecté", type: "texte", precision: "Le chauffeur habituel du camion, chez le transporteur" },
+      { cle: "chauffeurTelephone", libelle: "Téléphone du chauffeur", type: "texte" },
+      ...(mode === "modification" ? [{ cle: "actif", libelle: "Toujours engagé pour SEDIMA", type: "oui-non" as const }] : []),
+    ]),
+    ...section("Contrat", [
+      { cle: "typeContrat", libelle: "Type de contrat", type: "choix", options: options(TYPE_CONTRAT_CAMION), obligatoire: true },
+      { cle: "carburantFourni", libelle: "Carburant fourni par SEDIMA (cuve ou station)", type: "oui-non" },
+    ]),
+    ...section("Équipements", [
+      { cle: "baliseGeolocalisation", libelle: "Balise de géolocalisation", type: "oui-non" },
+      { cle: "cartePeageSecaa", libelle: "Carte péage SECAA", type: "oui-non" },
+      { cle: "numeroCarteSecaa", libelle: "N° de la carte SECAA", type: "texte", visibleSi: (s) => s.cartePeageSecaa === true || s.cartePeageSecaa === "oui" },
+      { cle: "cartePeageAgeroute", libelle: "Carte péage Agéroute", type: "oui-non" },
+      { cle: "numeroCarteAgeroute", libelle: "N° de la carte Agéroute", type: "texte", visibleSi: (s) => s.cartePeageAgeroute === true || s.cartePeageAgeroute === "oui" },
+    ]),
+    ...section("Notes", [{ cle: "commentaire", libelle: "Commentaire", type: "texte-long" }]),
+  ];
+}
 /* -- À la création : ce qui se fixe une fois pour toutes ---------------------- */
 
 export interface ContexteCreation {
@@ -951,6 +1015,8 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
         ...base,
       ];
     }
+    case "camion":
+      return champsCamion("creation");
     case "prestataire":
     case "attributaire":
       /* Une fiche naît active ; on la désactive ensuite par modification. */

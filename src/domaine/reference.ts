@@ -59,7 +59,10 @@ export type TypeTransaction =
   | "signalement"
   | "tache"
   /* Une livraison saisie dans l'application (0064) ; celles de Sage X3 gardent leur numéro « BL… ». */
-  | "livraison";
+  | "livraison"
+  /* Le camion d'un transporteur (0072) : comme la fiche véhicule, il se crée et
+     se modifie avec la même modale ; sa clé est sa plaque. */
+  | "camion";
 
 export interface DefinitionTypeTransaction {
   prefixe: string;
@@ -140,6 +143,7 @@ export const TYPE_TRANSACTION: Record<TypeTransaction, DefinitionTypeTransaction
      celle du chauffeur (16 septembre 2026). */
   rappel: { prefixe: "RAP", libelle: "Rappel", ongletVehicule: "conformite", ongletChauffeur: "documents" },
   chauffeur: { prefixe: "CHA", libelle: "Fiche chauffeur", ongletVehicule: null, ongletChauffeur: "identite" },
+  camion: { prefixe: "CAM", libelle: "Camion de transporteur", ongletVehicule: null, ongletChauffeur: null },
 };
 
 const PAR_PREFIXE = new Map(Object.entries(TYPE_TRANSACTION).map(([type, d]) => [d.prefixe, type as TypeTransaction]));
