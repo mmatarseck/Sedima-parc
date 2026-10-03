@@ -19,6 +19,15 @@
  * poussins, sujets), et non dans les tonnes : additionner la charge utile d'un
  * camion de poussins aux tonnes d'aliment ne dirait rien de ce qu'on peut
  * livrer. Les tonnes et chaque unité se totalisent chacune de leur côté.
+ *
+ * LES ATTELAGES. Métier, 3 octobre 2026 : « les groupes tracteur-remorque
+ * doivent être présentés comme un seul véhicule (une seule capacité utile) ».
+ * Un tracteur et sa semi sont deux plaques mais une seule unité qui roule ;
+ * les compter deux fois doublait les tonnes (31 t + 31 t pour un plateau de
+ * 31 t). L'unité porte les deux plaques, la charge utile de la semi — c'est
+ * elle qui porte le chargement, celle du tracteur à défaut —, le chauffeur du
+ * tracteur. Elle n'est prête que si les deux moitiés le sont : un tracteur en
+ * réparation immobilise sa semi.
  * ==========================================================================*/
 
 import { CHARGEMENT_SPECIAL, capaciteSpecialeTexte, type ChargementSpecial } from "./chargement";
@@ -46,6 +55,8 @@ export interface VehiculeDuMatin {
   /** Du parc ou d'un transporteur : la fenêtre d'ajustement n'est pas la même. */
   genre: "parc" | "tiers";
   href: string;
+  /** La semi-remorque attelée, quand le véhicule est un tracteur : l'unité est une. */
+  remorque?: { immatriculation: string; immatriculationAffichee: string } | null;
 }
 
 export interface GroupeDuMatin {
@@ -102,7 +113,7 @@ const TYPE_SPECIAL: Record<ChargementSpecial, string> = { oeufs: "camion à œuf
 
 /* Le pluriel des types : « 2 camions à poussins », « 3 vracs », « 2 véhicules légers ». */
 const PLURIEL: Record<string, string> = {
-  camion: "camions", vrac: "vracs", frigo: "frigos", plateau: "plateaux", "pick-up": "pick-up", fourgon: "fourgons", bus: "bus",
+  camion: "camions", vrac: "vracs", citerne: "citernes", frigo: "frigos", plateau: "plateaux", "pick-up": "pick-up", fourgon: "fourgons", bus: "bus",
   "véhicule léger": "véhicules légers", "camion à œufs": "camions à œufs", "camion à poussins": "camions à poussins", "camion de volailles": "camions de volailles",
 };
 
@@ -111,6 +122,7 @@ function typeParc(l: LigneDisponibilite): string {
   if (l.chargementSpecial) return TYPE_SPECIAL[l.chargementSpecial];
   if (l.usage === "vrac") return "vrac";
   if (l.usage === "frigorifique") return "frigo";
+  if (l.usage === "citerne") return "citerne";
   if (l.categorie === "tracteur" || l.categorie === "semi-remorque") return "plateau";
   if (l.categorie === "camionnette") return "pick-up";
   if (l.categorie === "vehicule-leger") return "véhicule léger";
@@ -151,7 +163,53 @@ function grouperParBu<T>(liste: T[], bu: (x: T) => BusinessUnit | null): Map<Bus
   return m;
 }
 
-export function pointDuMatin(parc: LigneDisponibilite[], camions: LigneCamionTiers[], jour: string): PointDuMatin {
+/**
+ * Le tracteur et sa semi fondus en une ligne : les plaques du tracteur en tête
+ * (c'est lui qu'on ajuste), la semi à côté. La charge utile est celle de la
+ * semi ; le chauffeur, celui du tracteur ; l'état, celui du tracteur — sauf
+ * une semi immobilisée, qui immobilise l'unité. La semi n'a jamais de
+ * chauffeur à elle : son « sans conducteur » ne compte pas.
+ */
+function unite(tracteur: LigneDisponibilite, remorque: LigneDisponibilite): LigneDisponibilite & { remorque: LigneDisponibilite } {
+  const semiArretee = remorque.etat === "immobilise" && tracteur.etat !== "immobilise";
+  return {
+    ...tracteur,
+    usage: remorque.usage !== "autre" ? remorque.usage : tracteur.usage,
+    chargeUtile: remorque.chargeUtile ?? tracteur.chargeUtile,
+    chargementSpecial: remorque.chargementSpecial ?? tracteur.chargementSpecial ?? null,
+    capaciteSpeciale: remorque.chargementSpecial ? (remorque.capaciteSpeciale ?? null) : (tracteur.capaciteSpeciale ?? null),
+    conducteur: tracteur.conducteur ?? remorque.conducteur,
+    etat: semiArretee ? "immobilise" : tracteur.etat,
+    statutEffectif: semiArretee ? remorque.statutEffectif : tracteur.statutEffectif,
+    motif: semiArretee ? `semi ${remorque.immatriculationAffichee} : ${STATUT_VEHICULE[remorque.statutEffectif].libelle.toLowerCase()}` : tracteur.motif,
+    remorque,
+  };
+}
+
+/**
+ * Les lignes du parc, chaque attelage en cours réduit à une unité. Une paire
+ * ne se compte qu'une fois, même écrite deux fois en base ou dans les deux
+ * sens ; le tracteur est celui de catégorie tracteur, sinon celui que
+ * l'attelage nomme ainsi.
+ */
+export function avecAttelages(parc: LigneDisponibilite[]): (LigneDisponibilite & { remorque?: LigneDisponibilite })[] {
+  const parImmat = new Map(parc.map((l) => [l.immatriculation, l]));
+  const pris = new Set<string>();
+  const unites = new Map<string, LigneDisponibilite & { remorque: LigneDisponibilite }>();
+  for (const l of parc) {
+    const autre = l.attelage ? parImmat.get(l.attelage.immatriculation) : undefined;
+    if (!autre || autre === l || pris.has(l.immatriculation) || pris.has(autre.immatriculation)) continue;
+    const lEstTracteur = l.categorie === "tracteur" && autre.categorie !== "tracteur" ? true : autre.categorie === "tracteur" && l.categorie !== "tracteur" ? false : l.attelage!.role === "remorque";
+    const [tracteur, remorque] = lEstTracteur ? [l, autre] : [autre, l];
+    pris.add(l.immatriculation);
+    pris.add(autre.immatriculation);
+    unites.set(tracteur.immatriculation, unite(tracteur, remorque));
+  }
+  return parc.flatMap((l) => (unites.has(l.immatriculation) ? [unites.get(l.immatriculation)!] : pris.has(l.immatriculation) ? [] : [l]));
+}
+
+export function pointDuMatin(parcBrut: LigneDisponibilite[], camions: LigneCamionTiers[], jour: string): PointDuMatin {
+  const parc = avecAttelages(parcBrut);
   const exploitation = parc.filter((l) => l.regime === "exploitation" && l.etat !== "hors-perimetre");
   const pretsParc = exploitation.filter((l) => l.etat === "pret");
   const sansParc = exploitation.filter((l) => l.etat === "sans-conducteur" || l.etat === "conducteur-empeche");
@@ -159,9 +217,11 @@ export function pointDuMatin(parc: LigneDisponibilite[], camions: LigneCamionTie
   const operationnel = (c: LigneCamionTiers) => STATUT_VEHICULE[c.statut]?.operationnel ?? true;
   const pretsTiers = engages.filter(operationnel);
 
-  const versParc = (l: LigneDisponibilite): VehiculeDuMatin => ({
+  /* Une unité attelée se lit à ses deux plaques, tracteur d'abord : « AA-737-ZW + AA-713-VE ». */
+  const plaques = (l: LigneDisponibilite & { remorque?: LigneDisponibilite }) => (l.remorque ? `${l.immatriculationAffichee} + ${l.remorque.immatriculationAffichee}` : l.immatriculationAffichee);
+  const versParc = (l: LigneDisponibilite & { remorque?: LigneDisponibilite }): VehiculeDuMatin => ({
     immatriculation: l.immatriculation,
-    immatriculationAffichee: l.immatriculationAffichee,
+    immatriculationAffichee: plaques(l),
     type: typeParc(l),
     capaciteTonnes: l.chargeUtile ? arrondi(l.chargeUtile / 1000) : null,
     special: l.chargementSpecial ? { nature: l.chargementSpecial, valeur: l.capaciteSpeciale ?? null } : null,
@@ -169,6 +229,7 @@ export function pointDuMatin(parc: LigneDisponibilite[], camions: LigneCamionTie
     chauffeur: l.conducteur?.quarts?.length ? l.conducteur.quarts.map((q) => `${q.quart} ${avecTelephone(q.nom, q.telephone)}`).join(" · ") : l.conducteur ? avecTelephone(l.conducteur.nom, l.conducteur.telephone) : null,
     genre: "parc",
     href: `/flotte/${l.immatriculation}`,
+    remorque: l.remorque ? { immatriculation: l.remorque.immatriculation, immatriculationAffichee: l.remorque.immatriculationAffichee } : null,
   });
   const versTiers = (c: LigneCamionTiers): VehiculeDuMatin => ({
     immatriculation: c.immatriculation,
@@ -214,7 +275,7 @@ export function pointDuMatin(parc: LigneDisponibilite[], camions: LigneCamionTie
   const immobilises: ImmobiliseDuMatin[] = [
     ...exploitation
       .filter((l) => l.etat === "immobilise")
-      .map((l) => ({ immatriculation: l.immatriculation, genre: "parc" as const, immatriculationAffichee: l.immatriculationAffichee, type: typeParc(l), motif: STATUT_VEHICULE[l.statutEffectif].libelle, transporteur: null, bu: libelleBu(l.businessUnit), href: `/flotte/${l.immatriculation}` })),
+      .map((l) => ({ immatriculation: l.immatriculation, genre: "parc" as const, immatriculationAffichee: plaques(l), type: typeParc(l), motif: l.remorque && l.motif?.startsWith("semi ") ? l.motif : STATUT_VEHICULE[l.statutEffectif].libelle, transporteur: null, bu: libelleBu(l.businessUnit), href: `/flotte/${l.immatriculation}` })),
     ...engages
       .filter((c) => !operationnel(c))
       .map((c) => ({ immatriculation: c.immatriculation, genre: "tiers" as const, immatriculationAffichee: c.immatriculationAffichee, type: typeTiers(c), motif: STATUT_VEHICULE[c.statut]?.libelle ?? c.statut, transporteur: c.transporteur, bu: libelleBu(c.businessUnit), href: `/transporteurs/camions/${c.immatriculation}` })),

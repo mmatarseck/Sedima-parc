@@ -87,3 +87,30 @@ fichier de données se joue après elle et après `aligner-referentiel.sql`, qui
 apporte les dix véhicules. Les deux sont rejouables.
 
 Banc : `scripts/tester-attelages.mts`.
+
+## Au point du matin : une seule unité (3 octobre 2026)
+
+Métier : « les groupes tracteur-remorque doivent être présentés comme un seul
+véhicule (une seule capacité utile) ». Jusque-là, le tracteur et sa semi
+comptaient chacun leur charge utile : 31 t + 31 t pour le plateau AA 737 ZW +
+AA 713 VE, soit 62 t annoncées pour un camion de 31 t.
+
+Désormais (`avecAttelages`, `src/domaine/point-du-matin.ts`), chaque attelage
+en cours devient **une ligne** :
+
+- les deux plaques, tracteur d'abord : « AA-737-ZW + AA-713-VE » — au tableau,
+  au courriel, aux immobilisés ;
+- **la charge utile de la semi**, celle qui porte le chargement (celle du
+  tracteur si la semi n'en a pas) ;
+- le chauffeur du tracteur ; la semi n'a jamais « sans chauffeur » ;
+- l'état du tracteur, sauf une semi immobilisée, qui immobilise l'unité — le
+  motif la nomme ;
+- un clic ouvre l'ajustement du tracteur.
+
+Une même paire écrite deux fois, ou dans les deux sens, ne compte qu'une fois.
+Banc : `node --import tsx scripts/tester-point-du-matin.mts`.
+
+**En base, à trancher** : `ATT-2025-90001` attelle AA 053 AP (une semi) comme
+tracteur de AA 927 CA, en cours depuis le 1er janvier 2025 — le couple de
+`ATT-2026-00001`, inversé, venu du jeu de démonstration. Le point du matin n'en
+souffre pas, mais la fiche et la liste peuvent le citer.
