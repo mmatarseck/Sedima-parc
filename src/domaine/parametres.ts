@@ -211,6 +211,30 @@ export interface ParametresCuve {
   stockInitial: number;
 }
 
+/**
+ * Les listes de diffusion (métier, 3 octobre 2026) : à qui part le point du
+ * matin des véhicules disponibles. Des adresses, une par entrée ; vides tant
+ * que personne ne les a posées.
+ */
+export interface ParametresDiffusion {
+  disponibilite: { destinataires: string[]; copie: string[] };
+}
+
+export const DIFFUSION_DEFAUT: ParametresDiffusion = { disponibilite: { destinataires: [], copie: [] } };
+
+const COURRIEL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Des adresses saisies d'un bloc — virgules, points-virgules, retours à la ligne —, valides et sans doublon. */
+export function adressesDe(brut: unknown): string[] {
+  const liste = Array.isArray(brut) ? brut.map(String) : typeof brut === "string" ? brut.split(/[\s,;]+/) : [];
+  return [...new Set(liste.map((a) => a.trim().toLowerCase()).filter((a) => COURRIEL.test(a)))];
+}
+
+function normaliserDiffusion(brut: unknown): ParametresDiffusion {
+  const d = ((brut ?? {}) as { disponibilite?: { destinataires?: unknown; copie?: unknown } }).disponibilite ?? {};
+  return { disponibilite: { destinataires: adressesDe(d.destinataires), copie: adressesDe(d.copie) } };
+}
+
 export const CAISSE_DEFAUT: ParametresCaisse = { soldeInitial: 1_500_000, seuil: 200_000, dateOuverture: null };
 export const CUVE_DEFAUT: ParametresCuve = { stockInitial: 9_000 };
 
@@ -505,6 +529,7 @@ export interface Parametres {
   pastilles: ParametresPastilles;
   caisse: ParametresCaisse;
   cuve: ParametresCuve;
+  diffusion: ParametresDiffusion;
 }
 
 const standard = (d: Omit<DefinitionDocument, "standard">): DefinitionDocument => ({ ...d, standard: true });
@@ -577,6 +602,7 @@ export const PARAMETRES_DEFAUT: Parametres = {
   pastilles: PASTILLES_PARAM_DEFAUT,
   caisse: CAISSE_DEFAUT,
   cuve: CUVE_DEFAUT,
+  diffusion: DIFFUSION_DEFAUT,
   documents: {
     types: [
       standard({ id: "carte-grise", libelle: "Carte grise", porteur: "vehicule", applicabilite: "tous", validiteMois: null, critique: true, rappel: false }),
@@ -637,6 +663,7 @@ export function fusionnerParametres(partiel: unknown): Parametres {
     pastilles: normaliserPastilles((p as { pastilles?: unknown }).pastilles),
     caisse: normaliserCaisse((p as { caisse?: unknown }).caisse),
     cuve: normaliserCuve((p as { cuve?: unknown }).cuve),
+    diffusion: normaliserDiffusion((p as { diffusion?: unknown }).diffusion),
   };
 }
 
@@ -779,7 +806,7 @@ export const COOKIE_PARAMETRES = "sedima.parc.parametres";
  */
 export const PREFIXE_COOKIE_PARAMETRES = "sedima.parc.parametres.";
 
-export const CLES_PARAMETRES: (keyof Parametres)[] = ["documents", "energie", "alertes", "parcLeger", "vehicules", "pastilles", "caisse", "cuve"];
+export const CLES_PARAMETRES: (keyof Parametres)[] = ["documents", "energie", "alertes", "parcLeger", "vehicules", "pastilles", "caisse", "cuve", "diffusion"];
 
 /** Un cookie ne porte pas plus de 4 Ko, nom compris : au-delà, le navigateur le refuse sans rien dire. */
 export const TAILLE_MAX_COOKIE = 3_900;

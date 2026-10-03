@@ -209,6 +209,41 @@ async function camionTiersDe(client: SupabaseClient, plaque: unknown): Promise<s
   return r.data?.immatriculation ?? null;
 }
 
+/**
+ * Le chauffeur habituel d'un camion de transporteur (0072) : retrouvé par son
+ * nom chez le même transporteur, créé sinon — `chauffeur_tiers` tient les
+ * chauffeurs des transporteurs, que le parc ne gère pas. Un nom vide retire le
+ * chauffeur du camion. Le téléphone saisi met la fiche du chauffeur à jour.
+ */
+async function poserChauffeurTiers(client: SupabaseClient, plaque: string, nom: unknown, telephone: unknown): Promise<string | null> {
+  if (nom === undefined && telephone === undefined) return null;
+  const camion = await client.from("camion_tiers").select("prestataire_id, chauffeur_habituel_id").eq("immatriculation", plaque).maybeSingle<{ prestataire_id: string; chauffeur_habituel_id: string | null }>();
+  if (!camion.data) return "camion introuvable";
+  const tel = typeof telephone === "string" && telephone.trim() ? telephone.trim() : null;
+  /* Seul le téléphone a changé : il va sur le chauffeur déjà posé. */
+  if (nom === undefined) {
+    if (!camion.data.chauffeur_habituel_id) return null;
+    const maj = await client.from("chauffeur_tiers").update({ telephone: tel }).eq("id", camion.data.chauffeur_habituel_id);
+    return maj.error?.message ?? null;
+  }
+  const saisi = typeof nom === "string" ? nom.trim() : "";
+  if (!saisi) {
+    const retrait = await client.from("camion_tiers").update({ chauffeur_habituel_id: null }).eq("immatriculation", plaque);
+    return retrait.error?.message ?? null;
+  }
+  const connu = await client.from("chauffeur_tiers").select("id").eq("prestataire_id", camion.data.prestataire_id).ilike("nom", saisi).limit(1).maybeSingle<{ id: string }>();
+  let id = connu.data?.id ?? null;
+  if (!id) {
+    const cree = await client.from("chauffeur_tiers").insert({ prestataire_id: camion.data.prestataire_id, nom: saisi, telephone: tel, actif: true }).select("id").maybeSingle<{ id: string }>();
+    if (cree.error || !cree.data) return cree.error?.message ?? "chauffeur non créé";
+    id = cree.data.id;
+  } else if (tel) {
+    await client.from("chauffeur_tiers").update({ telephone: tel }).eq("id", id);
+  }
+  const pose = await client.from("camion_tiers").update({ chauffeur_habituel_id: id }).eq("immatriculation", plaque);
+  return pose.error?.message ?? null;
+}
+
 async function affretementIdDe(client: SupabaseClient, numero: unknown): Promise<string | null> {
   if (typeof numero !== "string" || !numero.trim()) return null;
   const r = await client.from("affretement").select("id").eq("numero", numero.trim()).maybeSingle<{ id: string }>();
@@ -258,13 +293,16 @@ async function rattacher(client: SupabaseClient, c: Creation, utilisateurId: str
     (await prestataireIdDe(client, v.garage ?? v.prestataire ?? v.fournisseur ?? v.beneficiaire ?? v.transporteur));
   /* Le camion du transporteur, s'il est au référentiel ; l'affrètement que cite une ligne de relevé. */
   const transport = c.type === "transport" || c.type === "affretement" || c.type === "mise-a-disposition";
-  /* Le plein d'un camion mis à disposition (0071) : choisi « tiers:PLAQUE » dans la liste des véhicules. */
-  const pleinTiers = c.type === "plein" && typeof v.vehiculeId === "string" && v.vehiculeId.startsWith("tiers:");
-  const camionTiers = pleinTiers
+  /* Le plein, l'incident ou le document d'un camion de transporteur (0071, 0072) :
+     choisi « tiers:PLAQUE » dans la liste des véhicules, ou saisi depuis sa fiche. */
+  const choisiTiers = typeof v.vehiculeId === "string" && v.vehiculeId.startsWith("tiers:");
+  const camionTiers = choisiTiers
     ? await camionTiersDe(client, v.vehiculeId)
     : transport
       ? await camionTiersDe(client, v.camion ?? v.immatriculationExterne ?? v.immatriculation ?? v.camionTiersImmatriculation)
-      : null;
+      : s.genre === "camion" && c.type !== "camion"
+        ? await camionTiersDe(client, s.cle)
+        : null;
   const affretementId = c.type === "transport" ? await affretementIdDe(client, v.affretementNumero) : null;
   /* La demande d'achat nomme qui demande : la personne de la session (son rôle est posé par l'écriture, qui la connaît). */
   if (c.type === "achat" && !v.demandeur) v.demandeur = c.auteur;
@@ -391,6 +429,19 @@ export async function ecrireCreation(c: Creation): Promise<ResultatEcriture> {
     if (ecriture.data) await entreeAuParc(client, ecriture.data.id, moi.utilisateurId, c.valeurs);
     revalidatePath("/", "layout");
     return { issue: "ecrite", numero: `VEH-${ligne.immatriculation}` };
+  }
+
+  /* Le camion d'un transporteur (0072), comme le véhicule : sa clé est sa
+     plaque, et un doublon se dit. Le chauffeur habituel se pose ensuite. */
+  if (c.type === "camion") {
+    const ecriture = await client.from(table).insert(ligne);
+    if (ecriture.error) {
+      const plaque = afficher(String(ligne.immatriculation ?? ""));
+      return { issue: "refusee", motif: ecriture.error.code === "23505" ? `${plaque} est déjà au référentiel des transporteurs : ouvrez sa fiche.` : `Non enregistré en base : ${ecriture.error.message}` };
+    }
+    await poserChauffeurTiers(client, String(ligne.immatriculation), c.valeurs.chauffeurNom, c.valeurs.chauffeurTelephone);
+    revalidatePath("/", "layout");
+    return { issue: "ecrite", numero: `CAM-${ligne.immatriculation}` };
   }
 
   /* Un rappel par porteur et par type : un second du même type n'est pas un
@@ -772,6 +823,26 @@ export async function ecrireModification(e: {
   const moi = moi0;
 
   const colonnes = colonnesModification(e.type, e.diffs);
+
+  /* Le chauffeur d'un camion de transporteur (0072) n'est pas une colonne du
+     camion : il se pose sur `chauffeur_tiers`, puis la trace s'écrit comme pour
+     le reste. */
+  const chauffeurCamion = e.type === "camion" ? e.diffs.filter((d) => d.champ === "chauffeurNom" || d.champ === "chauffeurTelephone") : [];
+  if (chauffeurCamion.length > 0) {
+    const cleCamion = cleDe("camion", e.numero);
+    const valeur = (champ: string) => {
+      const d = chauffeurCamion.find((x) => x.champ === champ);
+      return d ? (d.valeur ?? "") : undefined;
+    };
+    const echec = await poserChauffeurTiers(client, cleCamion.valeur, valeur("chauffeurNom"), valeur("chauffeurTelephone"));
+    if (echec) return { issue: "refusee", motif: `Chauffeur non enregistré : ${echec}` };
+    if (Object.keys(colonnes).length === 0) {
+      const trace = await client.from("modification").insert(e.diffs.map((d) => ({ table_cible: table, numero: cleCamion.valeur, champ: d.champ, libelle_champ: d.libelleChamp, avant: d.avant, apres: d.apres, motif: e.motif, statut: "appliquee", cree_par: moi.utilisateurId })));
+      if (trace.error) return { issue: "refusee", motif: `Modifiée, mais sans trace : ${trace.error.message}` };
+      revalidatePath("/", "layout");
+      return { issue: "ecrite", numero: e.numero };
+    }
+  }
 
   /*
    * Le plan car se coche sur le véhicule, et s'écrit sur son attribution.

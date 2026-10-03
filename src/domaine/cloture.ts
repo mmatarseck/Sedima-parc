@@ -181,6 +181,8 @@ export const CHAMP_DATE: Record<TypeTransaction, string> = {
   cuve: "date",
   /* Une fiche de prestataire n'a pas de mois : la clôture ne la concerne pas. */
   prestataire: "",
+  /* La fiche d'un camion de transporteur non plus. */
+  camion: "",
   /* Une observation est une action à suivre, pas une écriture du mois. */
   observation: "",
   /* Les fiches n'ont pas de mois : la clôture ne les concerne pas. */

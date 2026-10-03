@@ -102,7 +102,7 @@ function Segments<T extends string>({ valeur, options, onChange, etiquette }: { 
   );
 }
 
-/** Un plein d'un camion de transporteur mis à disposition (0071) : il n'a pas de fiche au parc. */
+/** Un plein d'un camion de transporteur mis à disposition (0071) : il n'a pas de fiche au parc, il a la sienne chez les transporteurs (0072). */
 const deTiers = (vehiculeId: string | null | undefined) => Boolean(vehiculeId?.startsWith("tiers:"));
 
 const Vehicule = ({ immatriculation, affichee }: { immatriculation: string | null; affichee: string | null }) =>
@@ -397,7 +397,7 @@ function Interieur({ pleins, cuve, stockInitial, consommations, aujourdhui, vueI
           ecran="pleins"
           lignes={pleinsVisibles}
           cle={(p) => p.numero}
-          href={(p) => (deTiers(p.vehiculeId) ? `/carburant?ref=${p.numero}` : `/flotte/${p.immatriculation}?onglet=carburant&ref=${p.numero}`)}
+          href={(p) => (deTiers(p.vehiculeId) ? `/transporteurs/camions/${p.immatriculation}?onglet=carburant` :`/flotte/${p.immatriculation}?onglet=carburant&ref=${p.numero}`)}
           filet={(p) => { const e = etatPlein(p); return { couleur: COULEUR_ETAT_PLEIN[e], libelle: LIBELLE_ETAT_PLEIN[e], precision: PRECISION_ETAT_PLEIN[e] }; }}
           identifiant={{ cle: "numero", libelle: "Réf.", largeur: 140, rendu: (p) => <Numero valeur={p.numero} /> }}
           fixes={FIXES_PLEINS}

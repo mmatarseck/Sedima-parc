@@ -5,6 +5,7 @@ import { titrePage } from "@/domaine/marque";
 import { jourCourant } from "@/domaine/temps";
 import { lignesChauffeurs } from "@/donnees/chauffeurs";
 import { lignesFlotte, parcServeur } from "@/donnees/flotte";
+import { listeCamionsTiers } from "@/donnees/camions-tiers";
 import { affectationsDepuisLeParc } from "@/donnees/rapports";
 import { parametresServeur } from "@/lib/parametres-serveur";
 
@@ -27,7 +28,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function PageDisponibilite() {
   const parametres = await parametresServeur();
-  const [flotte, parc, listeConducteurs] = await Promise.all([lignesFlotte(parametres), parcServeur(), lignesChauffeurs()]);
+  const [flotte, parc, listeConducteurs, camions] = await Promise.all([lignesFlotte(parametres), parcServeur(), lignesChauffeurs(), listeCamionsTiers()]);
   const chauffeurs = new Map(listeConducteurs.map((c) => [c.id, c]));
   const affectationsPar = affectationsDepuisLeParc(parc);
   const aujourdhui = jourCourant();
@@ -68,5 +69,5 @@ export default async function PageDisponibilite() {
     const { etat, motif } = etatDisponibilite(base);
     return { ...base, etat, motif };
   });
-  return <EcranDisponibilite lignes={lignes} aujourdhui={aujourdhui} />;
+  return <EcranDisponibilite lignes={lignes} camions={camions} aujourdhui={aujourdhui} />;
 }
