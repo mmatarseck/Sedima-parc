@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { estProvisoire, normaliser } from "@/domaine/immatriculation";
-import { Archive, ArchiveRestore, Link2, Lock, MapPin, Pencil, Radio, UserRound } from "lucide-react";
+import { Archive, ArchiveRestore, Link2, Lock, MapPin, Pencil, UserRound } from "lucide-react";
 import { BoutonDiscussion, PanneauDiscussion } from "@/composants/discussion/PanneauDiscussion";
 import { BandeauKpi } from "@/composants/interface/BandeauKpi";
 import { useCible } from "@/composants/interface/useCible";
@@ -35,6 +35,7 @@ import { alertesDeLaFiche, alertesParOnglet } from "./alertes-fiche";
 import { MenuAjout, type CibleAjout } from "./MenuAjout";
 import { useAjoutVehicule } from "./ajout";
 import { PhotoVehicule } from "./PhotoVehicule";
+import { PastillesEquipement } from "./PastillesEquipement";
 import { BoutonQr } from "./PanneauQr";
 import { enregistrerModification } from "@/lib/clotures-demo";
 import {
@@ -333,6 +334,15 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
                   Transport spécial
                 </span>
               ) : null}
+              <PastillesEquipement
+                e={{
+                  balise: v.baliseGeolocalisation || fiche.identite.gpsActif,
+                  carteSecaa: v.cartePeageSecaa,
+                  numeroCarteSecaa: v.numeroCarteSecaa,
+                  carteAgeroute: v.cartePeageAgeroute,
+                  numeroCarteAgeroute: v.numeroCarteAgeroute,
+                }}
+              />
               {/* Sans plaque : le châssis tient lieu de clé jusqu'à la carte
                   grise (16 septembre 2026). Le bouton ouvre la seule saisie
                   utile ; la fiche suit sa nouvelle adresse, l'historique reste. */}
@@ -447,15 +457,7 @@ export function FicheVehicule({ fiche, transferts = [], utilisateurs, ongletInit
                   </span>
                 </>
               ) : null}
-              {fiche.identite.gpsActif ? (
-                <>
-                  <span className="text-attenue-2">·</span>
-                  <span className="inline-flex items-center gap-1.5 text-accent-fonce">
-                    <Radio className="size-3.5" strokeWidth={1.8} />
-                    GPS actif
-                  </span>
-                </>
-              ) : null}
+
             </p>
           </div>
 
