@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Download, Plus } from "lucide-react";
+import { CalendarRange, Download, Plus } from "lucide-react";
 import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { Echeance } from "@/composants/interface/Pastille";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
@@ -176,6 +176,10 @@ function Interieur({ lignes }: { lignes: LigneCamionTiers[] }) {
         sousTitre={`${engages.length} camions engagés chez ${transporteurs} transporteurs · ${nombre(capacite)} t de capacité`}
         actions={
           <>
+            <Link href="/transporteurs/volumes" className="bouton-secondaire" title="Le tonnage de la semaine camion par camion, et la facturation du mois calculée sur la grille">
+              <CalendarRange className="size-4 text-texte-2" strokeWidth={1.7} />
+              Volumes et facturation
+            </Link>
             <Link href="/rapports/transporteurs-activite" className="bouton-secondaire" title="Ouvre les rapports des transporteurs, d'où le classeur se tire">
               <Download className="size-4 text-texte-2" strokeWidth={1.7} />
               Exporter
