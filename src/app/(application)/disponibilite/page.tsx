@@ -70,6 +70,7 @@ export default async function PageDisponibilite() {
       chargementSpecial: v.chargementSpecial ?? null,
       capaciteSpeciale: v.capaciteSpeciale ?? null,
       conducteur,
+      attelage: l.attelageCourant ? { immatriculation: l.attelageCourant.immatriculation, role: l.attelageCourant.role } : null,
     };
     const { etat, motif } = etatDisponibilite(base);
     return { ...base, etat, motif };

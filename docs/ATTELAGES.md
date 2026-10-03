@@ -87,3 +87,42 @@ fichier de données se joue après elle et après `aligner-referentiel.sql`, qui
 apporte les dix véhicules. Les deux sont rejouables.
 
 Banc : `scripts/tester-attelages.mts`.
+
+## Au point du matin : une seule unité (3 octobre 2026)
+
+Métier : « les groupes tracteur-remorque doivent être présentés comme un seul
+véhicule (une seule capacité utile) ». Jusque-là, le tracteur et sa semi
+comptaient chacun leur charge utile : 31 t + 31 t pour le plateau AA 737 ZW +
+AA 713 VE, soit 62 t annoncées pour un camion de 31 t.
+
+Désormais (`avecAttelages`, `src/domaine/point-du-matin.ts`), chaque attelage
+en cours devient **une ligne** :
+
+- les deux plaques, tracteur d'abord : « AA-737-ZW + AA-713-VE » — au tableau,
+  au courriel, aux immobilisés ;
+- **la charge utile de la semi**, celle qui porte le chargement (celle du
+  tracteur si la semi n'en a pas) ;
+- le chauffeur du tracteur ; la semi n'a jamais « sans chauffeur » ;
+- l'état du tracteur, sauf une semi immobilisée, qui immobilise l'unité — le
+  motif la nomme ;
+- un clic ouvre l'ajustement du tracteur.
+
+Une même paire écrite deux fois, ou dans les deux sens, ne compte qu'une fois.
+Banc : `node --import tsx scripts/tester-point-du-matin.mts`.
+
+## Un attelage ouvert clôt le précédent (0076, 3 octobre 2026)
+
+Métier : « s'il y a deux attelages, le deuxième qui a été ouvert ferme l'autre
+à la même date, pour éviter un doublon ».
+
+Un déclencheur sur `attelage` : ouvrir un attelage (sans date de fin) clôt, à
+sa date de début, tout attelage en cours qui cite l'un de ses deux véhicules,
+**dans un rôle ou dans l'autre**. Le motif de l'ancien dit « Clos à
+l'ouverture de ATT-… ». Un attelage saisi avec sa fin (un historique) ne clôt
+rien. Les index de 0050 restent : ils ne voyaient pas un véhicule passé d'une
+colonne à l'autre, le déclencheur si.
+
+La migration applique la règle aux doublons déjà en base : `ATT-2025-90001`
+(AA 053 AP, une semi, tenue pour le tracteur de AA 927 CA, venu du jeu de
+démonstration) est clos le 14 septembre 2026 par `ATT-2026-00001`, le même
+couple dans le bon sens.

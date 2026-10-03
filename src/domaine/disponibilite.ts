@@ -95,6 +95,8 @@ export interface LigneDisponibilite {
   chargementSpecial?: import("./chargement").ChargementSpecial | null;
   capaciteSpeciale?: number | null;
   conducteur: ConducteurDuJour | null;
+  /** L'autre moitié de l'attelage en cours (0050) : le point du matin en fait une seule unité. */
+  attelage?: { immatriculation: string; role: "tracteur" | "remorque" } | null;
   etat: EtatDisponibilite;
   /** Ce qui manque pour être prêt, en une ligne. */
   motif: string | null;
