@@ -397,6 +397,12 @@ function detailsVehicules(s: SourceRapports): LigneRapport[] {
       documentsATraiter: r?.documentsATraiter ?? 0,
       attelage: l.attelageCourant ? `${l.attelageCourant.role === "tracteur" ? "tire" : "tirée par"} ${l.attelageCourant.immatriculationAffichee}` : null,
       region: identite?.region ?? l.site?.region ?? null,
+      creeLe: v.creeLe ? v.creeLe.slice(0, 10) : null,
+      balise: v.baliseGeolocalisation ?? false,
+      carteSecaa: v.cartePeageSecaa ?? false,
+      numeroCarteSecaa: v.numeroCarteSecaa ?? null,
+      carteAgeroute: v.cartePeageAgeroute ?? false,
+      numeroCarteAgeroute: v.numeroCarteAgeroute ?? null,
       commentaire: v.commentaire,
     };
   });

@@ -16,6 +16,7 @@ import { ALIGNEE_DROITE, CelluleRapport, MONOSPACE, formaterValeur } from "./cel
 import { definitionDe, personnaliseParId, type RapportPersonnalise } from "./personnalises";
 import { ChoixPeriode } from "./ChoixPeriode";
 import { ColonnesRapport } from "./ColonnesRapport";
+import { conditionsDe, estSeuil, libelleCondition } from "./conditions";
 import { FiltresRapport, appliquerFacettes } from "./FiltresRapport";
 import { colonnesInitiales, ecrireEtat, enregistrerVue, lireEtat, lireVues, supprimerVue, type Facettes, type ReglageRapport, type VueEnregistree } from "./reglages";
 
@@ -179,7 +180,7 @@ export function EcranRapport({
 
   const colonnes = visibles.map((cle) => rapport.colonnes.find((c) => c.cle === cle)).filter((c): c is ColonneRapport => Boolean(c));
 
-  const filtrees = useMemo(() => appliquerFacettes(lignes, facettes), [lignes, facettes]);
+  const filtrees = useMemo(() => appliquerFacettes(lignes, facettes, base.colonnes), [lignes, facettes, base.colonnes]);
   const cherchees = useMemo(() => {
     const t = sansAccents(terme.trim());
     if (!t) return filtrees;
@@ -223,12 +224,18 @@ export function EcranRapport({
       largeurPx: c.largeur,
     }));
 
-    const filtresPoses = Object.entries(facettes)
-      .filter(([, v]) => v.length > 0)
-      .map(([cle, v]) => {
-        const col = rapport.colonnes.find((c) => c.cle === cle);
-        return `${col?.libelle ?? cle} : ${v.join(", ")}`;
-      });
+    const filtresPoses = [
+      ...Object.entries(facettes)
+        .filter(([cle, v]) => v.length > 0 && !estSeuil(cle))
+        .map(([cle, v]) => {
+          const col = base.colonnes.find((c) => c.cle === cle);
+          return `${col?.libelle ?? cle} : ${v.join(", ")}`;
+        }),
+      ...conditionsDe(facettes).flatMap((c) => {
+        const col = base.colonnes.find((x) => x.cle === c.cle);
+        return col ? [libelleCondition(c, col)] : [];
+      }),
+    ];
 
     const cartouche: { libelle: string; valeur: string }[] = [];
     if (rapport.periode) cartouche.push({ libelle: "Période", valeur: `${resolue.libelle} — du ${formaterDate(resolue.debut)} au ${formaterDate(resolue.fin)}` });
@@ -412,7 +419,7 @@ export function EcranRapport({
       ) : null}
 
       {/* ---- Facettes ---- */}
-      <FiltresRapport colonnes={rapport.colonnes} lignes={lignes} facettes={facettes} onChanger={setFacettes} />
+      <FiltresRapport colonnes={base.colonnes} lignes={lignes} facettes={facettes} onChanger={setFacettes} />
 
       {/* ---- Barre d'outils ---- */}
       <div className="flex flex-wrap items-center gap-3">

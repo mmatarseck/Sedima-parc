@@ -77,7 +77,7 @@ export function EcranConstructeur({
   }, [persoId, identifiant]);
 
   const colonnes = visibles.map((cle) => base.colonnes.find((c) => c.cle === cle)).filter((c): c is ColonneRapport => Boolean(c));
-  const filtrees = useMemo(() => appliquerFacettes(lignes, facettes), [lignes, facettes]);
+  const filtrees = useMemo(() => appliquerFacettes(lignes, facettes, base.colonnes), [lignes, facettes, base.colonnes]);
   const resolue = resoudrePeriode(periodeCourante, aujourdhui);
 
   /* Changer la période reconstruit les lignes : c'est le serveur qui les
