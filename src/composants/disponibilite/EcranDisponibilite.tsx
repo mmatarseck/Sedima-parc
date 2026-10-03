@@ -9,11 +9,10 @@ import { StatutModifiable } from "@/composants/vehicule/StatutModifiable";
 import { FournisseurEdition } from "@/composants/transactions/ContexteEdition";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
 import { etatDisponibilite, type LigneDisponibilite } from "@/domaine/disponibilite";
-import { REGIME_USAGE } from "@/domaine/parc-leger";
 import { lireToutesCreations } from "@/lib/clotures-demo";
 import type { StatutVehicule } from "@/domaine/types";
 import { BUSINESS_UNIT, CATEGORIE_FLOTTE, CATEGORIE_VEHICULE, STATUT_VEHICULE } from "@/domaine/libelles";
-import type { BusinessUnit, RegimeUsage } from "@/domaine/types";
+import type { BusinessUnit } from "@/domaine/types";
 import { date, nombre } from "@/lib/format";
 import type { LigneCamionTiers } from "@/domaine/camions-tiers";
 import { pointDuMatin } from "@/domaine/point-du-matin";
@@ -90,7 +89,6 @@ const COLONNES: ColonneListe<LigneDisponibilite>[] = [
       ),
     texte: (l) => l.conducteur?.nom ?? l.attributaire ?? "Non affecté",
   },
-  { cle: "regime", libelle: "Régime", parDefaut: false, largeur: 120, rendu: (l) => REGIME_USAGE[l.regime].libelle },
   { cle: "vehicule", libelle: "Véhicule", parDefaut: true, largeur: 200, rendu: (l) => <span className="block truncate">{l.marque} {l.appellation}</span> },
   { cle: "categorie", libelle: "Catégorie", parDefaut: true, largeur: 128, rendu: (l) => CATEGORIE_VEHICULE[l.categorie] },
   { cle: "flotte", libelle: "Catégorie de flotte", parDefaut: false, largeur: 140, rendu: (l) => CATEGORIE_FLOTTE[l.categorieFlotte] },
@@ -145,9 +143,9 @@ export function EcranDisponibilite(props: { lignes: LigneDisponibilite[]; camion
 }
 
 function Interieur({ lignes: toutes, camions, aujourdhui }: { lignes: LigneDisponibilite[]; camions: LigneCamionTiers[]; aujourdhui: string }) {
-  /* Le régime d'abord — tout le parc, exploitation, service, fonction —, puis la
-     BU : KPI et liste parlent toujours de la même population. */
-  const [regime, setRegime] = useState<RegimeUsage | "tout">("tout");
+  /* Les véhicules d'exploitation seulement (métier, 3 octobre 2026) : les
+     véhicules de service et de fonction ne se programment pas le matin. La BU
+     filtre : KPI et liste parlent toujours de la même population. */
   const [bu, setBu] = useState<BusinessUnit | "toutes">("toutes");
   const bus = useMemo(() => (Object.keys(BUSINESS_UNIT) as BusinessUnit[]).filter((b) => toutes.some((l) => l.businessUnit === b)), [toutes]);
 
@@ -173,7 +171,7 @@ function Interieur({ lignes: toutes, camions, aujourdhui }: { lignes: LigneDispo
   const point = useMemo(() => pointDuMatin(aJour, camions, aujourdhui), [aJour, camions, aujourdhui]);
   const jourLong = new Date(`${aujourdhui}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
-  const lignes = useMemo(() => aJour.filter((l) => (regime === "tout" || l.regime === regime) && (bu === "toutes" || l.businessUnit === bu)), [aJour, regime, bu]);
+  const lignes = useMemo(() => aJour.filter((l) => bu === "toutes" || l.businessUnit === bu), [aJour, bu]);
 
   const engages = lignes.filter((l) => l.engage && l.etat !== "hors-perimetre");
   const operationnels = engages.filter(operationnel);
@@ -195,16 +193,9 @@ function Interieur({ lignes: toutes, camions, aujourdhui }: { lignes: LigneDispo
     <div className="defilement-discret flex flex-col gap-5 px-8 py-7 lg:h-full lg:overflow-y-auto">
       <TitreEcran
         titre="Disponibilité du jour"
-        sousTitre={`Au ${date(aujourdhui)} · le statut du véhicule, et son chauffeur affecté ou pas`}
+        sousTitre={`Au ${date(aujourdhui)} · les véhicules d'exploitation : leur statut, et leur chauffeur affecté ou pas`}
         actions={
           <div className="flex max-w-full flex-wrap items-center gap-2">
-            <div className="sans-barre flex h-8 max-w-full items-center gap-0.5 overflow-x-auto rounded-full bg-surface-3 p-1" role="group" aria-label="Régime">
-              {[{ cle: "tout" as const, libelle: "Tout le parc" }, ...(Object.keys(REGIME_USAGE) as RegimeUsage[]).map((r) => ({ cle: r, libelle: REGIME_USAGE[r].libelle }))].map((o) => (
-                <button key={o.cle} type="button" aria-pressed={regime === o.cle} onClick={() => setRegime(o.cle)} className={segment(regime === o.cle)}>
-                  {o.libelle}
-                </button>
-              ))}
-            </div>
             {bus.length > 1 ? (
               <div className="sans-barre flex h-8 max-w-full items-center gap-0.5 overflow-x-auto rounded-full bg-surface-3 p-1" role="group" aria-label="Business unit">
                 {[{ cle: "toutes" as const, libelle: "Toutes BU" }, ...bus.map((b) => ({ cle: b, libelle: BUSINESS_UNIT[b] }))].map((o) => (
