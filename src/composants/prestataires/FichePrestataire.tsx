@@ -323,6 +323,14 @@ export function FichePrestataire({ fiche, compte: compteServeur, ongletInitial, 
                 </button>
               );
             })}
+            {/* Un transporteur a son volet Transport (refonte du 3 octobre 2026) :
+                contrat, flotte, livraisons, facturation, grille, notation. Ses
+                camions, eux, vivent dans la liste Transporteurs, comme la flotte. */}
+            {p.type === "transporteur" ? (
+              <Link href={`/transporteurs/${p.numero}`} className="relative shrink-0 border-b-2 border-transparent px-2.5 pt-1 pb-3 text-[13px] font-medium whitespace-nowrap text-accent-fonce hover:text-texte">
+                Transport ↗
+              </Link>
+            ) : null}
           </div>
 
           <div className="mb-2 ml-auto flex h-8 items-center gap-0.5 rounded-full bg-surface-3 p-1" role="group" aria-label="Période de lecture">
