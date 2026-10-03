@@ -126,7 +126,7 @@ for (const ligne of lignes) {
 
   const fiche = assemblerFiche(ligne, faits, PARAMETRES_DEFAUT, AUJOURDHUI, {
     programme: programmeParDefaut(v.categorie),
-    plan: planDuVehicule(v.id, v.categorie),
+    plan: planDuVehicule(v.id, v),
     passages: passagesReleves,
   });
   assemblees++;

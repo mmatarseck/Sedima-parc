@@ -225,6 +225,11 @@ attendu("à un utilisateur qui n'est pas responsable du parc, pas de bouton « C
       !atelierTelephone.includes("PanneauCloture") &&
       !atelierTelephone.includes('type: "intervention"'),
   );
+  const planFiche = readFileSync("src/composants/vehicule/PlanEntretien.tsx", "utf8");
+  attendu(
+    "la fiche véhicule planifie ses échéances : une ligne, ou toutes d'un coup ; un service préventif déjà ouvert s'ouvre à la place",
+    planFiche.includes("operations: liste.map((e) => e.code)") && planFiche.includes("planifier(dues)") && planFiche.includes("planifier([e])") && planFiche.includes("if (serviceOuvert) return ouvrirService({ service: serviceOuvert"),
+  );
   const onglets = readFileSync("src/composants/vehicule/onglets.tsx", "utf8");
   attendu("l'atelier : colonne « Tâche de service », pas de doublon local/base, pas de cadre sans pièce", onglets.includes(`libelle: "Tâche de service"`) && onglets.includes("const interventions = sansDoublon(") && onglets.includes("c === l.cle || !l.fichier ? null : l.cle"));
 }
