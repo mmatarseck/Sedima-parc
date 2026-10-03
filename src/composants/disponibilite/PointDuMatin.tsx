@@ -44,7 +44,9 @@ export function PointDuMatin({ point, jourLong }: { point: Point; jourLong: stri
   const [courriel, setCourriel] = useState(false);
   const basculer = (cle: string) => setOuverts((s) => (s.has(cle) ? new Set([...s].filter((x) => x !== cle)) : new Set([...s, cle])));
   const toutOuvert = ouverts.size > 0;
-  const toutesCles = point.bus.flatMap((b) => b.groupes.map((g) => `${b.bu ?? "aucune"}|${g.nom}`));
+  /* Tout replié à l'ouverture (métier, 3 octobre 2026) : la ligne de chaque BU
+     d'abord ; un clic montre ses parcs, un second clic sur un parc ses véhicules. */
+  const toutesCles = point.bus.flatMap((b) => [`bu:${b.bu ?? "aucune"}`, ...b.groupes.map((g) => `${b.bu ?? "aucune"}|${g.nom}`)]);
   const specialesTotales = NATURES.filter((n) => point.capacites.speciales[n]);
 
   const th = "border-b border-bordure px-3 py-2 text-[12px] font-medium text-texte-2";
@@ -100,10 +102,15 @@ export function PointDuMatin({ point, jourLong }: { point: Point; jourLong: stri
                 </td>
               </tr>
             ) : null}
-            {point.bus.map((b) => (
-              <Fragment key={b.bu ?? "aucune"}>
-                <tr className="border-b border-bordure bg-accent-fond/40">
-                  <td />
+            {point.bus.map((b) => {
+              const cleBu = `bu:${b.bu ?? "aucune"}`;
+              const buOuverte = ouverts.has(cleBu);
+              return (
+              <Fragment key={cleBu}>
+                <tr className="cursor-pointer border-b border-bordure bg-accent-fond/40 hover:bg-accent-fond/70" onClick={() => basculer(cleBu)} aria-expanded={buOuverte}>
+                  <td className="px-3 py-2 text-center">
+                    <ChevronRight className={`mx-auto size-3.5 text-accent-fonce transition-transform ${buOuverte ? "rotate-90" : ""}`} strokeWidth={2.2} />
+                  </td>
                   <td className="px-3 py-2 text-[12px] font-semibold tracking-wide text-accent-fonce uppercase">{b.libelle}</td>
                   <td className="px-3 py-2 text-right">
                     <span className="code font-semibold">{b.nombre}</span>
@@ -117,16 +124,15 @@ export function PointDuMatin({ point, jourLong }: { point: Point; jourLong: stri
                   </td>
                   <td />
                 </tr>
-                {b.groupes.map((g) => {
+                {buOuverte && b.groupes.map((g) => {
                   const cle = `${b.bu ?? "aucune"}|${g.nom}`;
                   const ouvert = ouverts.has(cle);
                   return (
                     <Fragment key={cle}>
-                      <tr className="cursor-pointer border-b border-bordure hover:bg-surface-2" onClick={() => basculer(cle)}>
-                        <td className="px-3 py-2 text-center">
-                          <ChevronRight className={`mx-auto size-3.5 text-attenue transition-transform ${ouvert ? "rotate-90" : ""}`} strokeWidth={2} />
-                        </td>
-                        <td className="px-3 py-2">
+                      <tr className="cursor-pointer border-b border-bordure hover:bg-surface-2" onClick={() => basculer(cle)} aria-expanded={ouvert}>
+                        <td />
+                        <td className="py-2 pr-3 pl-6">
+                          <ChevronRight className={`mr-1.5 inline size-3.5 align-[-2px] text-attenue transition-transform ${ouvert ? "rotate-90" : ""}`} strokeWidth={2} />
                           <span className={`font-medium ${g.tiers ? "text-texte" : "text-accent-fonce"}`}>{g.nom}</span>
                           {g.tiers ? <span className="meta"> · transporteur</span> : null}
                         </td>
@@ -147,7 +153,7 @@ export function PointDuMatin({ point, jourLong }: { point: Point; jourLong: stri
                       {ouvert ? (
                         <tr className="border-b border-bordure bg-surface-2/60">
                           <td />
-                          <td colSpan={6} className="px-3 py-2">
+                          <td colSpan={6} className="py-2 pr-3 pl-14">
                             <ul className="flex flex-wrap gap-1.5">
                               {g.disponibles.map((v) => (
                                 <li key={v.immatriculation}>
@@ -178,7 +184,8 @@ export function PointDuMatin({ point, jourLong }: { point: Point; jourLong: stri
                   );
                 })}
               </Fragment>
-            ))}
+              );
+            })}
           </tbody>
           {point.bus.length ? (
             <tfoot className="bg-surface-2">
