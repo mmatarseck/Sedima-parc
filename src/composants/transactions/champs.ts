@@ -33,6 +33,29 @@ import { lireReferentiels } from "@/lib/referentiels-navigateur";
 
 import { optionsAffectation, optionsAttribution, optionsCamionsTiers, optionsChauffeurs, optionsGarages, optionsPrestataires, optionsPrestatairesParNumero, optionsSites, optionsVehicules } from "./options";
 
+/*
+ * Le quart (0074) : les vracs tournent en deux quarts, matin et soir, chacun
+ * avec son titulaire et ses heures de prise et de relève ; l'affectation vaut
+ * chaque jour de sa période. Les heures se proposent d'après le quart choisi.
+ */
+const quartChoisi = (s: Record<string, string | boolean>) => s.quart === "matin" || s.quart === "soir";
+const CHAMPS_QUART: ChampEdition[] = [
+  {
+    cle: "quart",
+    libelle: "Quart",
+    type: "choix",
+    options: [
+      { valeur: "journee", libelle: "Journée entière" },
+      { valeur: "matin", libelle: "Quart de matin" },
+      { valeur: "soir", libelle: "Quart de soir" },
+    ],
+    obligatoire: true,
+    entraine: (v) => (v === "matin" ? { heureDebut: "06:00", heureFin: "18:00" } : v === "soir" ? { heureDebut: "18:00", heureFin: "06:00" } : { heureDebut: "", heureFin: "" }),
+  },
+  { cle: "heureDebut", libelle: "Prise du quart", type: "texte", precision: "« 06:00 »", obligatoire: true, visibleSi: quartChoisi },
+  { cle: "heureFin", libelle: "Relève", type: "texte", precision: "« 18:00 » — l'heure où le quart suivant prend le volant", obligatoire: true, visibleSi: quartChoisi },
+];
+
 const OPTIONS_CHARGEMENT = Object.entries(CHARGEMENT_SPECIAL).map(([valeur, d]) => ({ valeur, libelle: `${d.libelle} — ${d.unite}` }));
 const options = (r: Record<string, string>) => Object.entries(r).map(([valeur, libelle]) => ({ valeur, libelle }));
 const optionsStatut = () => Object.entries(STATUT_VEHICULE).map(([valeur, d]) => ({ valeur, libelle: d.libelle }));
@@ -904,12 +927,13 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
           { cle: "vehiculeId", libelle: "Véhicule", type: "choix", options: [...optionsVehicules(), ...optionsCamionsTiers()], obligatoire: true },
           { cle: "chauffeurId", libelle: "Chauffeur", type: "choix", suggestionsDe: () => optionsAffectation(true), obligatoire: true },
           { cle: "role", libelle: "Rôle", type: "choix", options: options(ROLE_AFFECTATION), obligatoire: true },
+          ...CHAMPS_QUART,
           ...base,
         ];
       }
       return contexte.pour === "vehicule"
-        ? [{ cle: "chauffeurId", libelle: "Chauffeur", type: "choix", suggestionsDe: () => optionsAffectation(), obligatoire: true }, { cle: "role", libelle: "Rôle", type: "choix", options: options(ROLE_AFFECTATION), obligatoire: true }, ...base]
-        : [{ cle: "vehiculeId", libelle: "Véhicule", type: "choix", options: optionsVehicules(), obligatoire: true }, { cle: "role", libelle: "Rôle", type: "choix", options: options(ROLE_AFFECTATION), obligatoire: true }, ...base];
+        ? [{ cle: "chauffeurId", libelle: "Chauffeur", type: "choix", suggestionsDe: () => optionsAffectation(), obligatoire: true }, { cle: "role", libelle: "Rôle", type: "choix", options: options(ROLE_AFFECTATION), obligatoire: true }, ...CHAMPS_QUART, ...base]
+        : [{ cle: "vehiculeId", libelle: "Véhicule", type: "choix", options: optionsVehicules(), obligatoire: true }, { cle: "role", libelle: "Rôle", type: "choix", options: options(ROLE_AFFECTATION), obligatoire: true }, ...CHAMPS_QUART, ...base];
     case "chauffeur":
       /* À la création on demande d'abord ce qui identifie la personne et ce qui
          l'autorise à conduire ; le reste de l'identité se complète ensuite sur

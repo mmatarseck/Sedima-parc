@@ -424,7 +424,11 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
     }
     case "affectation": {
       if (!r.vehiculeId || !r.chauffeurId) return { refus: "affectation sans véhicule ou sans chauffeur" };
-      return { ligne: { numero, vehicule_id: r.vehiculeId, chauffeur_id: r.chauffeurId, role: texte(v.role) ?? "titulaire", debut: texte(v.debut), fin: texte(v.fin), motif: texte(v.motif) ?? "Saisie dans l'application" } };
+      /* Le quart (0074) : matin ou soir, avec ses heures de prise et de relève ; la journée entière sinon. */
+      const quart = texte(v.quart) === "matin" || texte(v.quart) === "soir" ? texte(v.quart) : null;
+      const heure = (x: unknown) => (/^\d{1,2}[:h]\d{2}$/.test(String(x ?? "").trim()) ? String(x).trim().replace("h", ":").padStart(5, "0") : null);
+      if (quart && (!heure(v.heureDebut) || !heure(v.heureFin))) return { refus: "quart sans heures de prise et de relève (« 06:00 »)" };
+      return { ligne: { numero, vehicule_id: r.vehiculeId, chauffeur_id: r.chauffeurId, role: texte(v.role) ?? "titulaire", quart, heure_debut: quart ? heure(v.heureDebut) : null, heure_fin: quart ? heure(v.heureFin) : null, debut: texte(v.debut), fin: texte(v.fin), motif: texte(v.motif) ?? "Saisie dans l'application" } };
     }
     case "attelage": {
       /* Le seul lien entre deux véhicules du référentiel. Le rôle vient de la

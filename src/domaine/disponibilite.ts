@@ -40,6 +40,29 @@ export interface ConducteurDuJour {
   role: "titulaire" | "suppleant";
   /** Pourquoi il ne peut pas conduire, s'il ne le peut pas. */
   empechement: string | null;
+  /**
+   * Un véhicule qui tourne en deux quarts (0074) : le chauffeur du matin et
+   * celui du soir, avec leurs heures de prise et de relève. Absent pour un
+   * véhicule à la journée.
+   */
+  quarts?: QuartDuJour[];
+}
+
+export interface QuartDuJour {
+  quart: "matin" | "soir";
+  id: string;
+  nom: string;
+  /** « 06:00 → 18:00 ». */
+  heures: string;
+  empechement: string | null;
+}
+
+export const LIBELLE_QUART: Record<"matin" | "soir", string> = { matin: "Quart de matin", soir: "Quart de soir" };
+
+/** « 06:00 → 18:00 », à partir des heures de la base (« 06:00:00 »). */
+export function heuresDuQuart(debut: string | null | undefined, fin: string | null | undefined): string {
+  const hh = (x: string | null | undefined) => (x ? x.slice(0, 5) : "?");
+  return `${hh(debut)} → ${hh(fin)}`;
 }
 
 export interface LigneDisponibilite {
@@ -74,7 +97,7 @@ export interface LigneDisponibilite {
 
 /** Le conducteur du jour : le titulaire s'il peut conduire, sinon un suppléant qui le peut, sinon le titulaire empêché. */
 export function conducteurDuJour(
-  affectations: { chauffeurId: string | null; chauffeur: string | null; role: "titulaire" | "suppleant" | null; debut: string; fin: string | null }[],
+  affectations: { chauffeurId: string | null; chauffeur: string | null; role: "titulaire" | "suppleant" | null; quart?: "matin" | "soir" | null; heureDebut?: string | null; heureFin?: string | null; debut: string; fin: string | null }[],
   chauffeurs: Map<string, LigneChauffeur>,
   jour: string,
 ): ConducteurDuJour | null {
@@ -92,7 +115,13 @@ export function conducteurDuJour(
   };
   const titulaires = enCours.filter((a) => a.role === "titulaire").map(decrire);
   const suppleants = enCours.filter((a) => a.role === "suppleant").map(decrire);
-  return titulaires.find((t) => !t.empechement) ?? suppleants.find((s) => !s.empechement) ?? titulaires[0] ?? suppleants[0] ?? null;
+  const choisi = titulaires.find((t) => !t.empechement) ?? suppleants.find((s) => !s.empechement) ?? titulaires[0] ?? suppleants[0] ?? null;
+  /* Les quarts du jour (0074) : le titulaire de chaque quart, matin puis soir. */
+  const quarts: QuartDuJour[] = enCours
+    .filter((a) => a.role === "titulaire" && (a.quart === "matin" || a.quart === "soir"))
+    .map((a) => ({ quart: a.quart as "matin" | "soir", id: a.chauffeurId!, nom: decrire(a).nom, heures: heuresDuQuart(a.heureDebut, a.heureFin), empechement: decrire(a).empechement }))
+    .sort((x, y) => (x.quart === y.quart ? 0 : x.quart === "matin" ? -1 : 1));
+  return choisi && quarts.length ? { ...choisi, quarts } : choisi;
 }
 
 export function etatDisponibilite(l: Pick<LigneDisponibilite, "engage" | "statutEffectif" | "conducteur" | "immobilisation">): { etat: EtatDisponibilite; motif: string | null } {

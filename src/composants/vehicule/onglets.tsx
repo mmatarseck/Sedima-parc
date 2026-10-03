@@ -553,7 +553,17 @@ export function OngletAffectations({ fiche, transferts = [], cible }: { fiche: F
               </span>
             ),
           },
-          { cle: "role", libelle: "Rôle", rendu: (a) => (a.role ? ROLE_AFFECTATION[a.role] : "—") },
+          {
+            cle: "role",
+            libelle: "Rôle",
+            /* Le quart et ses heures de relève (0074), sous le rôle. */
+            rendu: (a) => (
+              <>
+                <span className="block">{a.role ? ROLE_AFFECTATION[a.role] : "—"}</span>
+                {a.quart ? <span className="meta block">{a.quart === "matin" ? "Quart de matin" : "Quart de soir"} · {(a.heureDebut ?? "?").slice(0, 5)} → {(a.heureFin ?? "?").slice(0, 5)}</span> : null}
+              </>
+            ),
+          },
           { cle: "debut", libelle: "Du", rendu: (a) => <span className="code">{date(a.debut)}</span> },
           { cle: "fin", libelle: "Au", rendu: (a) => (a.fin ? <span className="code">{date(a.fin)}</span> : <Pastille ton="favorable">en cours</Pastille>) },
           { cle: "bu", libelle: "BU / Site", rendu: (a) => a.buSite },

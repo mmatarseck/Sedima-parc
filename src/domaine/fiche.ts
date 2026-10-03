@@ -74,6 +74,10 @@ export interface AffectationFiche {
   chauffeurId: string | null;
   initiales: string;
   role: RoleAffectation | null;
+  /** Le quart et ses heures de prise et de relève (0074) ; nul pour la journée entière. */
+  quart?: "matin" | "soir" | null;
+  heureDebut?: string | null;
+  heureFin?: string | null;
   debut: string;
   fin: string | null;
   buSite: string;

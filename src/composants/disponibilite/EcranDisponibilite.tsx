@@ -6,7 +6,10 @@ import { TitreEcran } from "@/composants/coquille/TitreEcran";
 import { BandeauKpi } from "@/composants/interface/BandeauKpi";
 import { Pastille } from "@/composants/interface/Pastille";
 import { StatutModifiable } from "@/composants/vehicule/StatutModifiable";
-import { FournisseurEdition } from "@/composants/transactions/ContexteEdition";
+import { FournisseurEdition, useEdition } from "@/composants/transactions/ContexteEdition";
+import { champsCreation } from "@/composants/transactions/champs";
+import { Pencil } from "lucide-react";
+import { jourCourant } from "@/domaine/temps";
 import { TableListe, type ColonneListe, type FiltreListe } from "@/composants/interface/TableListe";
 import { etatDisponibilite, type LigneDisponibilite } from "@/domaine/disponibilite";
 import { lireToutesCreations } from "@/lib/clotures-demo";
@@ -71,23 +74,10 @@ const COLONNES: ColonneListe<LigneDisponibilite>[] = [
     cle: "chauffeur",
     libelle: "Chauffeur affecté",
     parDefaut: true,
-    largeur: 210,
-    rendu: (l) =>
-      l.conducteur ? (
-        <Link
-          href={`/chauffeurs/${l.conducteur.id}`}
-          onClick={(e) => e.stopPropagation()}
-          title={l.conducteur.empechement ? `Empêché : ${l.conducteur.empechement}` : l.conducteur.role === "suppleant" ? "Suppléant" : "Titulaire"}
-          className={`block truncate font-medium ${l.conducteur.empechement ? "text-vigilance" : "text-texte"} hover:underline`}
-        >
-          {l.conducteur.nom}
-        </Link>
-      ) : l.attributaire ? (
-        <span className="block truncate font-medium text-texte">{l.attributaire}</span>
-      ) : (
-        <Pastille ton="vigilance">Non affecté</Pastille>
-      ),
-    texte: (l) => l.conducteur?.nom ?? l.attributaire ?? "Non affecté",
+    largeur: 250,
+    /* Le crayon change le chauffeur sans quitter l'écran du matin, quart compris (0074). */
+    rendu: (l) => <ChauffeurDuJour ligne={l} />,
+    texte: (l) => (l.conducteur?.quarts?.length ? l.conducteur.quarts.map((q) => q.nom).join(" ") : (l.conducteur?.nom ?? l.attributaire ?? "Non affecté")),
   },
   { cle: "vehicule", libelle: "Véhicule", parDefaut: true, largeur: 200, rendu: (l) => <span className="block truncate">{l.marque} {l.appellation}</span> },
   { cle: "categorie", libelle: "Catégorie", parDefaut: true, largeur: 128, rendu: (l) => CATEGORIE_VEHICULE[l.categorie] },
@@ -111,6 +101,69 @@ const COLONNES: ColonneListe<LigneDisponibilite>[] = [
       ) : null,
   },
 ];
+
+/**
+ * Le chauffeur du jour, et le crayon qui le change — demande du métier du
+ * 3 octobre 2026 : « de cette vue, on peut retirer des véhicules en changeant
+ * leur statut, on peut changer le chauffeur ». Un véhicule en deux quarts
+ * montre ses deux titulaires et leurs heures de relève.
+ */
+function ChauffeurDuJour({ ligne: l }: { ligne: LigneDisponibilite }) {
+  const { creer } = useEdition();
+  function changer(e: React.MouseEvent) {
+    e.stopPropagation();
+    creer({
+      type: "affectation",
+      titre: `Affectation · ${l.immatriculationAffichee}`,
+      champs: champsCreation("affectation", { pour: "vehicule" }),
+      valeurs: { debut: jourCourant(), role: "titulaire", quart: l.conducteur?.quarts?.length ? "matin" : "journee" },
+      /* Rangée sur le véhicule, pas sur l'écran : c'est lui que l'écriture rattache. */
+      sujetDe: () => `vehicule:${l.immatriculation}`,
+    });
+  }
+  const crayon = (
+    <button type="button" onClick={changer} title={`Changer le chauffeur de ${l.immatriculationAffichee}`} className="grid size-6 shrink-0 place-items-center rounded-[6px] text-attenue transition-colors hover:bg-surface-3 hover:text-accent-fonce">
+      <Pencil className="size-3.5" strokeWidth={1.9} />
+    </button>
+  );
+  const quarts = l.conducteur?.quarts ?? [];
+  if (quarts.length) {
+    return (
+      <span className="flex items-center gap-1.5">
+        <span className="min-w-0 flex-1">
+          {quarts.map((q) => (
+            <span key={q.quart} className={`block truncate text-[12.5px] ${q.empechement ? "text-vigilance" : "text-texte"}`} title={q.empechement ? `Empêché : ${q.empechement}` : `${q.quart === "matin" ? "Quart de matin" : "Quart de soir"} · ${q.heures}`}>
+              <span className="meta">{q.quart === "matin" ? "Matin" : "Soir"} {q.heures} · </span>
+              <span className="font-medium">{q.nom}</span>
+            </span>
+          ))}
+        </span>
+        {crayon}
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="min-w-0 flex-1">
+        {l.conducteur ? (
+          <Link
+            href={`/chauffeurs/${l.conducteur.id}`}
+            onClick={(e) => e.stopPropagation()}
+            title={l.conducteur.empechement ? `Empêché : ${l.conducteur.empechement}` : l.conducteur.role === "suppleant" ? "Suppléant" : "Titulaire"}
+            className={`block truncate font-medium ${l.conducteur.empechement ? "text-vigilance" : "text-texte"} hover:underline`}
+          >
+            {l.conducteur.nom}
+          </Link>
+        ) : l.attributaire ? (
+          <span className="block truncate font-medium text-texte">{l.attributaire}</span>
+        ) : (
+          <Pastille ton="vigilance">Non affecté</Pastille>
+        )}
+      </span>
+      {crayon}
+    </span>
+  );
+}
 
 /** Le dernier statut déclaré pour chaque véhicule, à la date du jour. */
 function statutsDeclares(jour: string): Map<string, StatutVehicule> {
