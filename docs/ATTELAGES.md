@@ -110,7 +110,19 @@ en cours devient **une ligne** :
 Une même paire écrite deux fois, ou dans les deux sens, ne compte qu'une fois.
 Banc : `node --import tsx scripts/tester-point-du-matin.mts`.
 
-**En base, à trancher** : `ATT-2025-90001` attelle AA 053 AP (une semi) comme
-tracteur de AA 927 CA, en cours depuis le 1er janvier 2025 — le couple de
-`ATT-2026-00001`, inversé, venu du jeu de démonstration. Le point du matin n'en
-souffre pas, mais la fiche et la liste peuvent le citer.
+## Un attelage ouvert clôt le précédent (0076, 3 octobre 2026)
+
+Métier : « s'il y a deux attelages, le deuxième qui a été ouvert ferme l'autre
+à la même date, pour éviter un doublon ».
+
+Un déclencheur sur `attelage` : ouvrir un attelage (sans date de fin) clôt, à
+sa date de début, tout attelage en cours qui cite l'un de ses deux véhicules,
+**dans un rôle ou dans l'autre**. Le motif de l'ancien dit « Clos à
+l'ouverture de ATT-… ». Un attelage saisi avec sa fin (un historique) ne clôt
+rien. Les index de 0050 restent : ils ne voyaient pas un véhicule passé d'une
+colonne à l'autre, le déclencheur si.
+
+La migration applique la règle aux doublons déjà en base : `ATT-2025-90001`
+(AA 053 AP, une semi, tenue pour le tracteur de AA 927 CA, venu du jeu de
+démonstration) est clos le 14 septembre 2026 par `ATT-2026-00001`, le même
+couple dans le bon sens.
