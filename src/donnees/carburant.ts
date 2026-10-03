@@ -36,10 +36,14 @@ export interface LignePleinBase {
   photo?: string | null;
   vehicule: { immatriculation: string; marque: string; appellation: string; business_unit: BusinessUnit | null; site: { libelle: string } | null } | null;
   prestataire: { raison_sociale: string } | null;
+  /* Le camion d'un transporteur mis à disposition (0071), à la place d'un véhicule du parc. */
+  camion_tiers_immatriculation?: string | null;
+  camion_tiers?: { prestataire: { raison_sociale: string } | null } | null;
 }
 
 export function pleinDepuisLigne(l: LignePleinBase): LignePlein {
   const v = l.vehicule;
+  const tiers = l.camion_tiers_immatriculation ?? null;
   return {
     id: l.numero,
     numero: l.numero,
@@ -53,10 +57,11 @@ export function pleinDepuisLigne(l: LignePleinBase): LignePlein {
     km: l.km,
     kmMotifRejet: null,
     photo: l.photo ?? null,
-    vehiculeId: v?.immatriculation ?? l.vehicule_id,
-    immatriculation: v?.immatriculation ?? l.vehicule_id,
-    immatriculationAffichee: v ? afficher(v.immatriculation) : l.vehicule_id,
-    vehicule: v ? `${v.marque} ${v.appellation}` : "—",
+    /* Un camion tiers n'a pas de fiche au parc : « tiers:PLAQUE » le dit à l'écran, qui ne l'ouvre pas. */
+    vehiculeId: tiers ? `tiers:${tiers}` : (v?.immatriculation ?? l.vehicule_id),
+    immatriculation: tiers ?? v?.immatriculation ?? l.vehicule_id,
+    immatriculationAffichee: tiers ? afficher(tiers) : v ? afficher(v.immatriculation) : l.vehicule_id,
+    vehicule: tiers ? `${l.camion_tiers?.prestataire?.raison_sociale ?? "Transporteur"} — mise à disposition` : v ? `${v.marque} ${v.appellation}` : "—",
     businessUnit: v?.business_unit ?? null,
     site: v?.site?.libelle ?? null,
     creee: false,
@@ -199,7 +204,7 @@ async function carburantServeurBrut(parametres: Parametres): Promise<CarburantSe
   const stockInitial = parametres.cuve.stockInitial;
   const client = await clientServeur();
   const [pleins, cuve, parc] = await Promise.all([
-    client.from("plein").select("numero, vehicule_id, date, litres, prix_litre, montant, km, source, reference, photo, vehicule (immatriculation, marque, appellation, business_unit, site (libelle)), prestataire (raison_sociale)").order("date", { ascending: false }).limit(5000).returns<LignePleinBase[]>(),
+    client.from("plein").select("numero, vehicule_id, date, litres, prix_litre, montant, km, source, reference, photo, vehicule (immatriculation, marque, appellation, business_unit, site (libelle)), prestataire (raison_sociale), camion_tiers_immatriculation, camion_tiers (prestataire (raison_sociale))").order("date", { ascending: false }).limit(5000).returns<LignePleinBase[]>(),
     client.from("mouvement_cuve").select("numero, date, sens, libelle, litres, prix_litre, montant, fournisseur, piece, commentaire, enregistre_par, prestataire (raison_sociale)").order("date", { ascending: false }).limit(5000).returns<LigneCuveBase[]>(),
     parcServeur(),
   ]);

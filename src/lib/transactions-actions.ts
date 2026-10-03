@@ -258,7 +258,13 @@ async function rattacher(client: SupabaseClient, c: Creation, utilisateurId: str
     (await prestataireIdDe(client, v.garage ?? v.prestataire ?? v.fournisseur ?? v.beneficiaire ?? v.transporteur));
   /* Le camion du transporteur, s'il est au référentiel ; l'affrètement que cite une ligne de relevé. */
   const transport = c.type === "transport" || c.type === "affretement" || c.type === "mise-a-disposition";
-  const camionTiers = transport ? await camionTiersDe(client, v.camion ?? v.immatriculationExterne ?? v.immatriculation ?? v.camionTiersImmatriculation) : null;
+  /* Le plein d'un camion mis à disposition (0071) : choisi « tiers:PLAQUE » dans la liste des véhicules. */
+  const pleinTiers = c.type === "plein" && typeof v.vehiculeId === "string" && v.vehiculeId.startsWith("tiers:");
+  const camionTiers = pleinTiers
+    ? await camionTiersDe(client, v.vehiculeId)
+    : transport
+      ? await camionTiersDe(client, v.camion ?? v.immatriculationExterne ?? v.immatriculation ?? v.camionTiersImmatriculation)
+      : null;
   const affretementId = c.type === "transport" ? await affretementIdDe(client, v.affretementNumero) : null;
   /* La demande d'achat nomme qui demande : la personne de la session (son rôle est posé par l'écriture, qui la connaît). */
   if (c.type === "achat" && !v.demandeur) v.demandeur = c.auteur;
