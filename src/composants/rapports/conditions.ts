@@ -3,7 +3,8 @@
  *
  * Demande du métier du 3 octobre 2026. Les facettes cochent des valeurs d'un
  * vocabulaire fermé ; un kilométrage, un montant ou une date n'en ont pas — on
- * les borne : supérieur à, inférieur à, entre deux valeurs.
+ * les borne : égal, supérieur, inférieur (stricts ou non), entre deux valeurs
+ * ou en dehors de deux limites.
  *
  * Une condition se range parmi les facettes, sous la clé `seuil:<colonne>` et
  * la valeur `[opérateur, borne, seconde borne]`. Ainsi le dernier état, les
@@ -18,14 +19,23 @@ import type { Facettes } from "./reglages";
 
 export const PREFIXE_SEUIL = "seuil:";
 
-export type Operateur = "sup" | "inf" | "entre";
+export type Operateur = "egal" | "sup" | "supeg" | "inf" | "infeg" | "entre" | "hors";
 
+/* L'ordre est celui du menu. « Entre » et « en dehors de » ont deux bornes,
+   incluses pour « entre » (métier, 3 octobre 2026 : égal à, supérieur ou égal,
+   inférieur ou égal, en dehors de deux limites). */
 export const OPERATEURS: Record<Operateur, { nombre: string; date: string }> = {
+  egal: { nombre: "égal à", date: "le" },
   sup: { nombre: "supérieur à", date: "après le" },
+  supeg: { nombre: "supérieur ou égal à", date: "à partir du" },
   inf: { nombre: "inférieur à", date: "avant le" },
+  infeg: { nombre: "inférieur ou égal à", date: "jusqu'au" },
   entre: { nombre: "entre", date: "entre le" },
+  hors: { nombre: "en dehors de", date: "hors de la période du" },
 };
 
+/** Les opérateurs qui demandent deux bornes. */
+export const A_DEUX_BORNES: Operateur[] = ["entre", "hors"];
 export interface Condition {
   cle: string;
   operateur: Operateur;
@@ -69,37 +79,44 @@ export function retirerCondition(facettes: Facettes, cle: string): Facettes {
   return reste;
 }
 
-/** Une condition complète : ses bornes se lisent, et « entre » en a deux. */
+/** Une condition complète : ses bornes se lisent, et « entre » ou « en dehors de » en ont deux. */
 export function conditionValide(c: Condition, type: TypeValeur): boolean {
   const lit = (s: string) => (type === "date" ? /^\d{4}-\d{2}-\d{2}$/.test(s) : lireNombre(s) !== null);
-  return lit(c.a) && (c.operateur !== "entre" || lit(c.b));
+  return lit(c.a) && (!A_DEUX_BORNES.includes(c.operateur) || lit(c.b));
 }
 
 /** Vrai quand la ligne passe la condition. Une valeur absente ne passe jamais : « plus de 150 000 km » écarte les compteurs inconnus. */
 export function satisfait(ligne: LigneRapport, c: Condition, type: TypeValeur): boolean {
-  const v = ligne[c.cle] ?? null;
-  if (type === "date") {
-    const d = typeof v === "string" ? v.slice(0, 10) : "";
-    if (!d) return false;
-    if (c.operateur === "sup") return d > c.a;
-    if (c.operateur === "inf") return d < c.a;
-    const [bas, haut] = c.a <= c.b ? [c.a, c.b] : [c.b, c.a];
-    return d >= bas && d <= haut;
+  const brut = ligne[c.cle] ?? null;
+  /* Une date se compare en texte AAAA-MM-JJ, un chiffre en nombre : les deux s'ordonnent de même. */
+  const lire = (s: string): number | string | null => (type === "date" ? (/^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : null) : lireNombre(s));
+  const v = type === "date" ? (typeof brut === "string" ? lire(brut) : null) : typeof brut === "number" ? brut : lireNombre(texteDe(brut));
+  const a = lire(c.a);
+  if (v === null || a === null) return false;
+  switch (c.operateur) {
+    case "egal":
+      return v === a;
+    case "sup":
+      return v > a;
+    case "supeg":
+      return v >= a;
+    case "inf":
+      return v < a;
+    case "infeg":
+      return v <= a;
+    default: {
+      const b = lire(c.b);
+      if (b === null) return false;
+      const [bas, haut] = a <= b ? [a, b] : [b, a];
+      const dedans = v >= bas && v <= haut;
+      return c.operateur === "entre" ? dedans : !dedans;
+    }
   }
-  const n = typeof v === "number" ? v : lireNombre(texteDe(v));
-  const a = lireNombre(c.a);
-  if (n === null || a === null) return false;
-  if (c.operateur === "sup") return n > a;
-  if (c.operateur === "inf") return n < a;
-  const b = lireNombre(c.b);
-  if (b === null) return false;
-  return n >= Math.min(a, b) && n <= Math.max(a, b);
 }
-
 /** « Kilométrage : supérieur à 150 000 km », pour la pastille et l'export. */
 export function libelleCondition(c: Condition, colonne: ColonneRapport): string {
   const date = colonne.type === "date";
   const borne = (s: string) => (date ? formaterDate(s) : formaterValeur(lireNombre(s), colonne.type));
   const op = OPERATEURS[c.operateur][date ? "date" : "nombre"];
-  return c.operateur === "entre" ? `${colonne.libelle} : ${op} ${borne(c.a)} et ${borne(c.b)}` : `${colonne.libelle} : ${op} ${borne(c.a)}`;
+  return A_DEUX_BORNES.includes(c.operateur) ? `${colonne.libelle} : ${op} ${borne(c.a)} et ${borne(c.b)}` : `${colonne.libelle} : ${op} ${borne(c.a)}`;
 }

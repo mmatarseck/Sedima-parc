@@ -1,12 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Check, ChevronRight, ClipboardCopy, Mail, Users, X } from "lucide-react";
 import { Echeance } from "@/composants/interface/Pastille";
 import { CHARGEMENT_SPECIAL, capaciteSpecialeTexte, type ChargementSpecial } from "@/domaine/chargement";
 import { adressesDe } from "@/domaine/parametres";
-import { resumeGroupe, sujetCourriel, tableauHtml, texteCapaciteVehicule, texteCourriel, type Capacites, type PointDuMatin as Point } from "@/domaine/point-du-matin";
+import { brouillonEml, resumeGroupe, sujetCourriel, tableauHtml, texteCapaciteVehicule, texteCourriel, type Capacites, type PointDuMatin as Point } from "@/domaine/point-du-matin";
+import type { LigneCamionTiers } from "@/domaine/camions-tiers";
+import type { LigneDisponibilite } from "@/domaine/disponibilite";
+import { AjusterVehicule, type CibleAjustement } from "./AjusterVehicule";
 import { ecrireParametres, lireParametres } from "@/lib/parametres-demo";
 import { nombre } from "@/lib/format";
 
@@ -39,8 +41,19 @@ function Speciales({ c }: { c: Capacites }) {
   );
 }
 
-export function PointDuMatin({ point, jourLong }: { point: Point; jourLong: string }) {
+export function PointDuMatin({ point, jourLong, lignes, camions }: { point: Point; jourLong: string; lignes: LigneDisponibilite[]; camions: LigneCamionTiers[] }) {
   const [ouverts, setOuverts] = useState<Set<string>>(() => new Set());
+  /* Un clic sur la pastille d'un véhicule ouvre sa fenêtre d'ajustement (métier, 3 octobre 2026). */
+  const [cible, setCible] = useState<CibleAjustement | null>(null);
+  const ouvrir = (genre: "parc" | "tiers", immatriculation: string) => {
+    if (genre === "parc") {
+      const ligne = lignes.find((x) => x.immatriculation === immatriculation);
+      if (ligne) setCible({ genre: "parc", ligne });
+    } else {
+      const camion = camions.find((x) => x.immatriculation === immatriculation);
+      if (camion) setCible({ genre: "tiers", camion });
+    }
+  };
   const [courriel, setCourriel] = useState(false);
   const basculer = (cle: string) => setOuverts((s) => (s.has(cle) ? new Set([...s].filter((x) => x !== cle)) : new Set([...s, cle])));
   const toutOuvert = ouverts.size > 0;
@@ -157,23 +170,23 @@ export function PointDuMatin({ point, jourLong }: { point: Point; jourLong: stri
                             <ul className="flex flex-wrap gap-1.5">
                               {g.disponibles.map((v) => (
                                 <li key={v.immatriculation}>
-                                  <Link href={v.href} className="inline-flex h-7 items-center gap-1.5 rounded-full border border-bordure bg-surface px-2.5 text-[12px] hover:border-accent">
+                                  <button type="button" onClick={() => ouvrir(v.genre, v.immatriculation)} title="Ajuster : statut, chauffeur, BU, site" className="inline-flex h-7 items-center gap-1.5 rounded-full border border-bordure bg-surface px-2.5 text-[12px] hover:border-accent">
                                     <span className="code font-semibold">{v.immatriculationAffichee}</span>
                                     <span className="text-texte-2">
                                       {v.type} · {texteCapaciteVehicule(v)}
                                     </span>
                                     {v.chauffeur ? <span className="text-attenue">· {v.chauffeur}</span> : null}
-                                  </Link>
+                                  </button>
                                 </li>
                               ))}
                               {g.sansChauffeur.map((v) => (
                                 <li key={v.immatriculation}>
-                                  <Link href={v.href} className="inline-flex h-7 items-center gap-1.5 rounded-full border border-dashed border-vigilance bg-surface px-2.5 text-[12px] text-vigilance">
+                                  <button type="button" onClick={() => ouvrir(v.genre, v.immatriculation)} title="Affecter un chauffeur, changer le statut" className="inline-flex h-7 items-center gap-1.5 rounded-full border border-dashed border-vigilance bg-surface px-2.5 text-[12px] text-vigilance">
                                     <span className="code font-semibold">{v.immatriculationAffichee}</span>
                                     <span>
                                       {v.type} · {texteCapaciteVehicule(v)} · sans chauffeur
                                     </span>
-                                  </Link>
+                                  </button>
                                 </li>
                               ))}
                             </ul>
@@ -213,14 +226,15 @@ export function PointDuMatin({ point, jourLong }: { point: Point; jourLong: stri
         <div className="flex flex-wrap items-center gap-1.5 border-t border-bordure px-5 py-3">
           <span className="mr-1 text-[12.5px] font-semibold text-texte">Immobilisés ({point.immobilises.length})</span>
           {point.immobilises.map((i) => (
-            <Link key={i.immatriculationAffichee} href={i.href} title={`${i.type} · ${i.bu}${i.transporteur ? ` · ${i.transporteur}` : ""} — ${i.motif}`}>
+            <button key={i.immatriculationAffichee} type="button" onClick={() => ouvrir(i.genre, i.immatriculation)} title={`${i.type} · ${i.bu}${i.transporteur ? ` · ${i.transporteur}` : ""} — ${i.motif} · cliquer pour remettre en service`}>
               <Echeance ton="vigilance">{`${i.immatriculationAffichee}${i.transporteur ? ` · ${i.transporteur}` : ""}`}</Echeance>
-            </Link>
+            </button>
           ))}
         </div>
       ) : null}
 
       {courriel ? <Courriel point={point} jourLong={jourLong} onFermer={() => setCourriel(false)} /> : null}
+      {cible ? <AjusterVehicule cible={cible} onFermer={() => setCible(null)} /> : null}
     </section>
   );
 }
@@ -240,17 +254,31 @@ function Courriel({ point, jourLong, onFermer }: { point: Point; jourLong: strin
   const texte = useMemo(() => texteCourriel(point, jourLong), [point, jourLong]);
   const a = adressesDe(destinataires);
   const cc = adressesDe(copie);
-  const lien = (corps: string) => `mailto:${a.join(";")}?${[cc.length ? `cc=${encodeURIComponent(cc.join(";"))}` : "", `subject=${encodeURIComponent(sujet)}`, `body=${encodeURIComponent(corps)}`].filter(Boolean).join("&")}`;
 
-  /* Le tableau part par le presse-papier, en HTML : Outlook le colle comme un
-     vrai tableau. La messagerie s'ouvre ensuite avec l'objet et les destinataires. */
-  async function copierEtOuvrir() {
+  /*
+   * Le courriel s'ouvre dans Outlook, tableau déjà mis en forme (métier,
+   * 3 octobre 2026) : un fichier .eml marqué « non envoyé », qu'Outlook ouvre
+   * comme un brouillon — destinataires, objet, corps. On relit, on envoie.
+   */
+  function ouvrirDansOutlook() {
+    const eml = brouillonEml({ a, cc, sujet, html });
+    const url = URL.createObjectURL(new Blob([eml], { type: "message/rfc822" }));
+    const lien = document.createElement("a");
+    lien.href = url;
+    lien.download = `point-du-matin-${point.jour}.eml`;
+    lien.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setMessage("Le brouillon est téléchargé : ouvrez-le (il s'ouvre dans Outlook), relisez, envoyez.");
+  }
+
+  /* Pour Outlook dans le navigateur, qui n'ouvre pas les .eml : le tableau au presse-papier, à coller. */
+  async function copier() {
     try {
       await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }), "text/plain": new Blob([texte], { type: "text/plain" }) })]);
       setCopiee(true);
-      window.location.href = lien("Bonjour à tous,\n\n(Ctrl+V pour coller le tableau des véhicules disponibles)\n\nCordialement,");
+      setMessage("Tableau copié : collez-le (Ctrl+V) dans le corps du courriel.");
     } catch {
-      setMessage("Le presse-papier est refusé par le navigateur : utilisez « Ouvrir avec le texte ».");
+      setMessage("Le presse-papier est refusé par le navigateur.");
     }
   }
 
@@ -295,13 +323,14 @@ function Courriel({ point, jourLong, onFermer }: { point: Point; jourLong: strin
           <div className="overflow-x-auto rounded-[10px] border border-bordure bg-white p-3" dangerouslySetInnerHTML={{ __html: html }} />
         </div>
         <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-bordure bg-surface-2 px-5 py-3">
-          <p className="meta mr-auto max-w-[420px]">« Copier le tableau » ouvre la messagerie : collez (Ctrl+V) dans le corps du courriel, relisez, envoyez.</p>
-          <a href={lien(texte)} className={`bouton-secondaire h-8 ${a.length ? "" : "pointer-events-none opacity-50"}`} aria-disabled={!a.length}>
-            Ouvrir avec le texte
-          </a>
-          <button type="button" disabled={!a.length} onClick={copierEtOuvrir} className="bouton-principal h-8 disabled:cursor-not-allowed disabled:opacity-50">
-            {copiee ? <Check className="size-4" strokeWidth={2} /> : <ClipboardCopy className="size-4" strokeWidth={2} />}
-            Copier le tableau et ouvrir la messagerie
+          <p className="meta mr-auto max-w-[420px]">« Ouvrir dans Outlook » télécharge un brouillon prêt : destinataires, objet et tableau. Outlook dans le navigateur : « Copier le tableau », puis Ctrl+V.</p>
+          <button type="button" onClick={copier} className="bouton-secondaire h-8">
+            {copiee ? <Check className="size-4" strokeWidth={2} /> : <ClipboardCopy className="size-4 text-texte-2" strokeWidth={1.8} />}
+            Copier le tableau
+          </button>
+          <button type="button" disabled={!a.length} onClick={ouvrirDansOutlook} className="bouton-principal h-8 disabled:cursor-not-allowed disabled:opacity-50">
+            <Mail className="size-4" strokeWidth={2} />
+            Ouvrir dans Outlook
           </button>
         </footer>
       </div>
