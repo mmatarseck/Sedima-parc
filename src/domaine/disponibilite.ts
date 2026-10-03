@@ -9,8 +9,17 @@
  * véhicules prêts, par catégorie.
  * ==========================================================================*/
 
-import type { LigneChauffeur } from "./chauffeur";
-import { peutConduire } from "./chauffeur";
+import type { EcheanceChauffeur, LigneChauffeur } from "./chauffeur";
+
+/*
+ * Le permis ou la visite médicale empêchent de conduire quand leur date est
+ * passée, ou quand on n'en connaît aucune. Le scan absent du dossier, lui,
+ * n'empêche pas : c'est une pièce à classer, pas un chauffeur à retirer du
+ * volant. L'ancienne règle (`peutConduire`, qui compte la pièce manquante)
+ * déclarait empêchés presque tous les chauffeurs affectés — le point du matin
+ * annonçait zéro véhicule prêt pour SEDIMA (signalé le 3 octobre 2026).
+ */
+const echu = (e: EcheanceChauffeur) => e.echeance === null || (e.joursRestants !== null && e.joursRestants < 0);
 import type { ImmobilisationAdministrative } from "./documents";
 import { MOTIF_INDISPONIBILITE, STATUT_VEHICULE, TYPE_DOCUMENT } from "./libelles";
 import type { BusinessUnit, CategorieFlotte, CategorieVehicule, StatutVehicule, UsageVehicule, RegimeUsage } from "./types";
@@ -77,7 +86,8 @@ export function conducteurDuJour(
     else if (!c.chauffeur.actif) empechement = "sorti des effectifs";
     else if (c.statut === "indisponible") empechement = c.indisponibilite ? `indisponible — ${MOTIF_INDISPONIBILITE[c.indisponibilite.motif].toLowerCase()}` : "indisponible";
     else if (c.chauffeur.aptitude === "inapte") empechement = "déclaré inapte";
-    else if (!peutConduire(c)) empechement = "permis ou visite médicale non valide";
+    else if (echu(c.permis)) empechement = c.permis.echeance ? "permis échu" : "date du permis inconnue";
+    else if (echu(c.visiteMedicale)) empechement = c.visiteMedicale.echeance ? "visite médicale échue" : "date de visite médicale inconnue";
     return { id: a.chauffeurId!, nom: a.chauffeur ?? c?.nomComplet ?? a.chauffeurId!, role: a.role as "titulaire" | "suppleant", empechement };
   };
   const titulaires = enCours.filter((a) => a.role === "titulaire").map(decrire);

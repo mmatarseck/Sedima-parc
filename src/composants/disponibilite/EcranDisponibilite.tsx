@@ -189,7 +189,10 @@ function Interieur({ lignes: toutes, camions, aujourdhui }: { lignes: LigneDispo
   const segment = (actif: boolean) => `h-6 rounded-full px-2.5 text-[12px] whitespace-nowrap transition-colors ${actif ? "bg-surface font-semibold text-texte shadow-onglet" : "font-medium text-texte-2 hover:text-texte"}`;
 
   return (
-    <div className="flex flex-col gap-5 px-8 py-7 lg:h-full lg:min-h-0">
+    /* La page défile d'un bloc (3 octobre 2026) : le point du matin et la liste
+       ne se disputent plus une hauteur fixe — la liste écrasée à zéro ligne ne
+       laissait plus rien à faire défiler. La liste garde sa propre hauteur. */
+    <div className="defilement-discret flex flex-col gap-5 px-8 py-7 lg:h-full lg:overflow-y-auto">
       <TitreEcran
         titre="Disponibilité du jour"
         sousTitre={`Au ${date(aujourdhui)} · le statut du véhicule, et son chauffeur affecté ou pas`}
@@ -228,6 +231,7 @@ function Interieur({ lignes: toutes, camions, aujourdhui }: { lignes: LigneDispo
 
       <PointDuMatin point={point} jourLong={jourLong} />
 
+      <div className="flex shrink-0 flex-col lg:h-[calc(100vh-7rem)] lg:min-h-[480px]">
       <TableListe<LigneDisponibilite>
         ecran="disponibilite"
         lignes={lignes}
@@ -243,6 +247,7 @@ function Interieur({ lignes: toutes, camions, aujourdhui }: { lignes: LigneDispo
         libelleUnite="véhicules"
         vide="Aucun véhicule ne correspond."
       />
+      </div>
     </div>
   );
 }
