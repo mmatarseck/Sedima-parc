@@ -230,9 +230,15 @@ export function FicheTransporteur({ fiche, ongletInitial }: { fiche: Fiche; ongl
   return (
     <div className="defilement-discret flex flex-col gap-5 px-8 py-7 lg:h-full lg:overflow-y-auto">
       <nav aria-label="Fil d'Ariane" className="flex items-center gap-1.5 text-[12.5px] text-attenue">
-        <Link href="/transporteurs?vue=transporteurs" className="inline-flex items-center gap-1 font-medium text-texte-2 hover:text-accent-fonce">
+        {/* Le volet Transport de la fiche fournisseur (refonte du 3 octobre 2026) :
+            on y vient de la fiche du prestataire, on y retourne. */}
+        <Link href={`/prestataires/${fiche.prestataire.numero}`} className="inline-flex items-center gap-1 font-medium text-texte-2 hover:text-accent-fonce">
           <ChevronLeft className="size-3.5" strokeWidth={1.8} />
-          Transporteurs
+          Fiche fournisseur
+        </Link>
+        <span className="text-attenue-2">·</span>
+        <Link href="/transporteurs" className="font-medium text-texte-2 hover:text-accent-fonce">
+          Camions des transporteurs
         </Link>
       </nav>
 
@@ -383,7 +389,15 @@ export function FicheTransporteur({ fiche, ongletInitial }: { fiche: Fiche; ongl
               filtrable={fiche.camions.length > 6}
               vide="Aucun camion identifié pour ce transporteur."
               colonnes={[
-                { cle: "immat", libelle: "Immatriculation", rendu: (c) => <span className="code font-semibold text-accent-fonce">{c.immatriculationAffichee}</span> },
+                {
+                  cle: "immat",
+                  libelle: "Immatriculation",
+                  rendu: (c) => (
+                    <Link href={`/transporteurs/camions/${c.immatriculation}`} className="code font-semibold text-accent-fonce hover:underline">
+                      {c.immatriculationAffichee}
+                    </Link>
+                  ),
+                },
                 { cle: "categorie", libelle: "Type", rendu: (c) => CATEGORIE_VEHICULE[c.categorie] },
                 {
                   cle: "capacite",
