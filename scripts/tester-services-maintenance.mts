@@ -206,6 +206,16 @@ attendu("à un utilisateur qui n'est pas responsable du parc, pas de bouton « C
   const actions = readFileSync("src/lib/transactions-actions.ts", "utf8");
   attendu("« Supprimer » dans la modale et le service ; motif obligatoire ; trace « suppression » ; un service clos ne se supprime pas", modale.includes("void supprimer()") && formulaire.includes("void supprimer()") && actions.includes(`champ: "suppression"`) && actions.includes("Un service clos a écrit"));
   attendu("un service reprend les tâches du plan d'entretien du véhicule", formulaire.includes("Depuis le plan d'entretien…") && formulaire.includes("programmeDuParc(vehiculeDuPlan, programmes)"));
+  const ecranMaintenance = readFileSync("src/composants/maintenance/EcranMaintenance.tsx", "utf8");
+  const donneesMaintenance = readFileSync("src/donnees/maintenance.ts", "utf8");
+  attendu(
+    "une échéance propose le service : son opération en ligne, les autres échéances dues du véhicule avec, préventif, urgent si l'une est dépassée",
+    donneesMaintenance.includes("operationCode: e.code") &&
+      ecranMaintenance.includes("planifierEcheances(t)") &&
+      ecranMaintenance.includes("operations: liste.map((x) => x.operationCode!)") &&
+      ecranMaintenance.includes("relais.planifier(t)") &&
+      formulaire.includes("reprendrePlan(operationsProposees.current)"),
+  );
   const onglets = readFileSync("src/composants/vehicule/onglets.tsx", "utf8");
   attendu("l'atelier : colonne « Tâche de service », pas de doublon local/base, pas de cadre sans pièce", onglets.includes(`libelle: "Tâche de service"`) && onglets.includes("const interventions = sansDoublon(") && onglets.includes("c === l.cle || !l.fichier ? null : l.cle"));
 }

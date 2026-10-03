@@ -242,6 +242,7 @@ export function travauxAFaire(): LigneTravail[] {
         kmRestants: e.kmRestants,
         joursRestants: e.joursRestants,
         ordreNumero,
+        operationCode: e.code,
       });
     }
 

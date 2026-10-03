@@ -98,6 +98,8 @@ export interface LigneTravail {
   joursRestants: number | null;
   /** L'ordre de travail déjà ouvert pour ce travail, s'il existe. */
   ordreNumero: string | null;
+  /** Pour une échéance : le code de l'opération du plan (« vidange-moteur »), que le service reprend en ligne. */
+  operationCode?: string | null;
 }
 
 /* -- Ordres de travail ------------------------------------------------------- */

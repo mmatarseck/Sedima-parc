@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Lock, Package, Plus, Trash2, Wrench, X } from "lucide-react";
 import { ChampCombo } from "@/composants/interface/ChampCombo";
 import { ChampPieces } from "@/composants/interface/ChampPieces";
@@ -63,7 +63,7 @@ export interface DemandeService {
   /** Les services connus : un signalement déjà pris par un autre service ouvert ne se propose pas. */
   services?: LigneOrdre[];
   /** Ce qu'un « Planifier » propose d'avance : la panne signalée, l'échéance du plan. */
-  propose?: { type?: "preventif" | "curatif"; objet?: string; origineNumero?: string | null; signalements?: string[]; priorite?: PrioriteService; vehiculeImmatriculation?: string };
+  propose?: { type?: "preventif" | "curatif"; objet?: string; origineNumero?: string | null; signalements?: string[]; priorite?: PrioriteService; vehiculeImmatriculation?: string; operations?: string[] };
 }
 
 const ligneVide = (): LigneService => ({ cle: Math.random().toString(36).slice(2, 10), tacheNumero: null, libelle: "", systeme: null, mainOeuvre: 0, piecesAchetees: 0, piecesStock: [], remiseMode: "montant", remiseValeur: 0 });
@@ -195,9 +195,9 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
    */
   const vehiculeDuPlan = vehiculeChoisi ? (lireReferentiels().vehicules.find((v) => v.immatriculation === vehiculeChoisi.immatriculation) ?? null) : null;
   const programme = programmes?.length && vehiculeDuPlan ? programmeDuParc(vehiculeDuPlan, programmes) : null;
-  function reprendrePlan(code: string) {
+  function reprendrePlan(code: string | string[]) {
     if (!programme) return;
-    const operations = code === "*" ? programme.operations : programme.operations.filter((o) => o.code === code);
+    const operations = code === "*" ? programme.operations : programme.operations.filter((o) => (Array.isArray(code) ? code.includes(o.code) : o.code === code));
     const nouvelles = operations
       .map((o) => {
         const t = tacheParLibelle(taches, o.tacheLibelle ?? o.libelle);
@@ -208,6 +208,19 @@ export function FormulaireService({ demande, onFermer, onEnregistre }: { demande
     setLignes((ls) => [...ls.filter((l) => l.libelle.trim() || l.mainOeuvre || l.piecesAchetees || l.piecesStock.length), ...nouvelles]);
     if (!existant) setEntete((e) => ({ ...e, type: "preventif", objet: String(e.objet ?? "").trim() || `Entretien — ${programme.libelle}` }));
   }
+
+  /*
+   * Une échéance qui propose le service (métier, 3 octobre 2026) : « Planifier »
+   * sur une échéance due ouvre le service avec ses tâches déjà en ligne, une par
+   * opération du plan, dès que le programme du véhicule est lu.
+   */
+  const operationsProposees = useRef(existant ? null : (demande.propose?.operations ?? null));
+  useEffect(() => {
+    if (!programme || !operationsProposees.current?.length) return;
+    reprendrePlan(operationsProposees.current);
+    operationsProposees.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [programme]);
 
   function choisirTache(i: number, libelle: string) {
     const t = tacheParLibelle(taches, libelle);
