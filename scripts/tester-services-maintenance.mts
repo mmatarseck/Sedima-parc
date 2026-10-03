@@ -216,6 +216,15 @@ attendu("à un utilisateur qui n'est pas responsable du parc, pas de bouton « C
       ecranMaintenance.includes("relais.planifier(t)") &&
       formulaire.includes("reprendrePlan(operationsProposees.current)"),
   );
+  const atelierTelephone = readFileSync("src/composants/telephone/EcranTelephoneAtelier.tsx", "utf8");
+  attendu(
+    "le téléphone de l'atelier ouvre le formulaire de service (clôture, planification), sans l'ancienne clôture d'un montant global ; le retour en service reste en un geste",
+    atelierTelephone.includes("ouvrirService({ service: o, signalements, services: tous })") &&
+      atelierTelephone.includes("operations: dues.length ? liste.map((x) => x.operationCode!) : undefined") &&
+      atelierTelephone.includes("function remettreEnService(o: LigneOrdre)") &&
+      !atelierTelephone.includes("PanneauCloture") &&
+      !atelierTelephone.includes('type: "intervention"'),
+  );
   const onglets = readFileSync("src/composants/vehicule/onglets.tsx", "utf8");
   attendu("l'atelier : colonne « Tâche de service », pas de doublon local/base, pas de cadre sans pièce", onglets.includes(`libelle: "Tâche de service"`) && onglets.includes("const interventions = sansDoublon(") && onglets.includes("c === l.cle || !l.fichier ? null : l.cle"));
 }

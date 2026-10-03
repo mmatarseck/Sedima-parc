@@ -507,12 +507,30 @@ base, quel que soit l'écran qui écrit :
 Dans « À faire », une observation portée par un signalement ne se compte plus
 deux fois : elle y est comme panne. Sans 0077, rien ne change.
 
+## 3 octobre 2026 — le téléphone de l'atelier passe au formulaire de service
+
+Téléphone › Atelier ouvre désormais **le formulaire de service**, le même qu'au
+bureau :
+
+- **En atelier** : toucher un service l'ouvre ; on y remplit les lignes
+  (tâches, main-d'œuvre, pièces), le règlement, puis « Clôturer le service »,
+  qui écrit l'intervention, les dépenses et les sorties de stock, et résout les
+  pannes incluses ;
+- **Planifiés** : toucher un service l'ouvre ; « Entrer » le passe en atelier et
+  le véhicule en réparation, comme avant ;
+- **À planifier** : « Planifier » ouvre un service neuf — pour une échéance,
+  avec les tâches du plan déjà en ligne et les autres échéances dues du
+  véhicule, comme sur la page Maintenance ;
+- **Clos aujourd'hui** : un service clos sur un véhicule immobilisé propose
+  « Remettre … en service », le retour en service en un geste.
+
+L'ancien geste, qui écrivait une intervention d'un montant global à côté du
+service, est retiré : il laissait le service sans lignes ni dépenses.
+
 ## Ce qui reste
 
 - Les programmes des modèles eux-mêmes : à créer par le responsable du parc
   (L200, Hilux, TATA LPT 1618, Renault frigo…), périodicités du constructeur.
-- Le téléphone de l'atelier démarre et clôt encore l'ancien ordre de travail. Il
-  n'a pas le formulaire de service.
 
 ## Bancs
 
