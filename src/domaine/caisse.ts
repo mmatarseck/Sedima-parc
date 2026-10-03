@@ -59,6 +59,8 @@ export interface LigneMouvement {
   beneficiaire: string | null;
   /** Référence externe : reçu, bordereau de banque, bon de caisse. */
   piece: string | null;
+  /** Le justificatif joint, dans le seau « pieces » (0070). */
+  fichier?: string | null;
   justificatif: boolean;
   /** La dépense réglée — obligatoire pour une sortie. */
   depenseNumero: string | null;

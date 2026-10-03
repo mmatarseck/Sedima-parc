@@ -426,6 +426,8 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "responsabilite", libelle: "Responsabilité", type: "choix", options: options(RESPONSABILITE) },
     { cle: "statut", libelle: "Statut", type: "choix", options: options(STATUT_DECLARATION) },
     { cle: "description", libelle: "Description", type: "texte-long" },
+    /* Les photos prises sur place, le constat, le procès-verbal (métier, 2 octobre 2026) : la base les gardait déjà (`pieces`), le formulaire ne les proposait pas. */
+    { cle: "pieces", libelle: "Photos et documents", type: "pieces", precision: "Photos des dégâts, constat amiable, procès-verbal — en image ou en PDF" },
   ],
   sanction: [
     DATE("date"),
@@ -499,6 +501,8 @@ export const CHAMPS: Record<TypeTransaction, ChampEdition[]> = {
     { cle: "beneficiaire", libelle: "Bénéficiaire", type: "texte" },
     { cle: "piece", libelle: "Pièce de caisse", type: "texte" },
     { cle: "justificatif", libelle: "Justificatif fourni", type: "oui-non" },
+    /* Le justificatif lui-même (métier, 2 octobre 2026 — 0070) : joint, il coche « justificatif fourni ». */
+    { cle: "fichier", libelle: "Le justificatif", type: "photo", dossier: "documents", precision: "Le reçu, la facture ou le bon signé — photo ou PDF" },
   ],
   achat: [
     DATE("date", "Date de la demande"),
@@ -894,6 +898,7 @@ export function champsCreation(type: TypeTransaction, contexte: ContexteCreation
             { cle: "beneficiaire", libelle: "Remis par", type: "texte" },
             { cle: "piece", libelle: "Bordereau ou pièce", type: "texte" },
             { cle: "justificatif", libelle: "Justificatif fourni", type: "oui-non" },
+            { cle: "fichier", libelle: "Le justificatif", type: "photo", dossier: "documents", precision: "Le bordereau ou le reçu — photo ou PDF" },
           ]
         : [
             /* Ce que la sortie règle, puis l'élément ouvert de ce genre (métier, 22 septembre 2026). */

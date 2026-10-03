@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChampPhoto } from "@/composants/interface/ChampPhoto";
 import { ZoneDepot } from "@/composants/interface/ZoneDepot";
+import { BoutonAppareilPhoto } from "@/composants/interface/BoutonAppareilPhoto";
 import { televerserPhoto } from "@/lib/photos";
 
 /* ============================================================================
@@ -47,6 +48,8 @@ function Depot({ valeur, onChange, dossier, maximum, accept, filtre }: { valeur:
           ))}
         </div>
       ) : null}
+      {/* Sur un téléphone, l'appareil photo en un geste — une photo après l'autre (2 octobre 2026). Pas pour les seuls documents PDF. */}
+      {valeur.length < maximum && accept.includes("image") ? <BoutonAppareilPhoto compact={siens.length > 0} chargement={chargement} onPhoto={(f) => void deposer([f])} /> : null}
       {valeur.length < maximum ? <ZoneDepot multiple accept={accept} chargement={chargement} erreur={erreur} onFichiers={(f) => void deposer(f)} compact={siens.length > 0} /> : null}
     </div>
   );

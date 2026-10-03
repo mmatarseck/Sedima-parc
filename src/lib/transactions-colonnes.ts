@@ -492,7 +492,7 @@ export function ligneCreation(type: TypeTransaction, numero: string, valeurs: Re
       const depenseNumero = texte(v.depenseNumero);
       if (!montant || montant <= 0) return { refus: "mouvement de caisse sans montant" };
       if (!texte(v.libelle)) return { refus: "mouvement de caisse sans libellé" };
-      return { ligne: { numero, date: texte(v.date), sens: depenseNumero ? "sortie" : (texte(v.sens) ?? "entree"), libelle: texte(v.libelle), montant: Math.round(montant), beneficiaire: texte(v.beneficiaire), piece: texte(v.piece), justificatif: booleen(v.justificatif), depense_numero: depenseNumero, enregistre_par: texte(v.enregistrePar), ...(texte(v.objetReglement) ? { objet_reglement: texte(v.objetReglement) } : {}) } };
+      return { ligne: { numero, date: texte(v.date), sens: depenseNumero ? "sortie" : (texte(v.sens) ?? "entree"), libelle: texte(v.libelle), montant: Math.round(montant), beneficiaire: texte(v.beneficiaire), piece: texte(v.piece), justificatif: booleen(v.justificatif) || Boolean(texte(v.fichier)), depense_numero: depenseNumero, enregistre_par: texte(v.enregistrePar), ...(texte(v.objetReglement) ? { objet_reglement: texte(v.objetReglement) } : {}), ...(texte(v.fichier) ? { fichier: texte(v.fichier) } : {}) } };
     }
     case "cuve": {
       /* Une livraison porte un libellé ; un relevé de jauge n'en a pas, il dit ce que la cuve contient. */
@@ -959,7 +959,7 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   plein: { date: "date", litres: "litres", prixLitre: "prix_litre", montant: "montant", reference: "reference", km: "km", source: "source", photo: "photo", pleinComplet: "plein_complet", remboursable: "remboursable" },
   depense: { date: "date", poste: "poste", libelle: "libelle", montant: "montant", beneficiaire: "beneficiaire", reference: "reference", km: "km", justificatif: "justificatif", origine: "origine", photo: "photo", numeroBc: "numero_bc", fichierBc: "fichier_bc" },
   document: { numeroPiece: "numero_piece", emetteur: "emetteur", dateEffet: "date_effet", echeance: "echeance", montant: "montant", fichier: "fichier" },
-  incident: { dateHeure: "date_heure", lieu: "lieu", mission: "mission", kilometrage: "kilometrage", responsabilite: "responsabilite", statut: "statut", description: "description" },
+  incident: { dateHeure: "date_heure", lieu: "lieu", mission: "mission", kilometrage: "kilometrage", responsabilite: "responsabilite", statut: "statut", description: "description", pieces: "pieces" },
   affectation: { debut: "debut", fin: "fin", motif: "motif" },
   attributaire: {
     nom: "nom",
@@ -1021,7 +1021,7 @@ const COLONNES: Partial<Record<TypeTransaction, Record<string, string>>> = {
   indisponibilite: { motif: "motif", debut: "debut", fin: "fin", commentaire: "commentaire" },
   sanction: { date: "date", type: "type", jours: "jours", motif: "motif" },
   evenement: { date: "date", nature: "nature", description: "description", piece: "piece" },
-  caisse: { date: "date", libelle: "libelle", montant: "montant", beneficiaire: "beneficiaire", piece: "piece", justificatif: "justificatif", objetReglement: "objet_reglement", depenseNumero: "depense_numero" },
+  caisse: { date: "date", libelle: "libelle", montant: "montant", beneficiaire: "beneficiaire", piece: "piece", justificatif: "justificatif", objetReglement: "objet_reglement", depenseNumero: "depense_numero", fichier: "fichier" },
   cuve: { date: "date", libelle: "libelle", litres: "litres", prixLitre: "prix_litre", montant: "montant", fournisseur: "fournisseur", piece: "piece", commentaire: "commentaire" },
   achat: { date: "date", objet: "objet", poste: "poste", montantEstime: "montant_estime", fournisseur: "fournisseur", urgence: "urgence", etape: "etape", visaPar: "visa_par", visaLe: "visa_le", validePar: "valide_par", valideeLe: "validee_le", numeroDemandeX3: "numero_demande_x3", numeroBonCommande: "numero_bon_commande", montantEngage: "montant_engage", dateLivraison: "date_livraison", dateFacture: "date_facture", montantReel: "montant_reel", dateReglement: "date_reglement", depenseNumero: "depense_numero", commentaireDecision: "commentaire_decision", fichier: "fichier" },
   visite: { type: "type", centre: "centre", dateRendezVous: "date_rendez_vous", heure: "heure", datePassage: "date_passage", statut: "statut", numeroPv: "numero_pv", dateLimiteContreVisite: "date_limite_contre_visite", commentaire: "commentaire", fichier: "fichier" },
