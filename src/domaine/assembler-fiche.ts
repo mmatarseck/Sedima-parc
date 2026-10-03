@@ -45,7 +45,7 @@ export const REFERENCE_L100: Record<string, number> = {
 export interface FaitsFiche {
   documents: { numero: string; type: TypeDocument; dateEffet: string | null; echeance: string | null; emetteur: string | null; numeroPiece: string | null; montant: number | null; justificatif: boolean }[];
   licences: { numero: string; libelle: string; numeroPiece: string; emetteur: string; perimetre: "flotte" | "partie"; dateEffet: string; echeance: string; vehicules: number }[];
-  affectations: { numero: string; chauffeurId: string | null; chauffeur: string; role: "titulaire" | "suppleant"; debut: string; fin: string | null; motif: string }[];
+  affectations: { numero: string; chauffeurId: string | null; chauffeur: string; role: "titulaire" | "suppleant"; quart?: "matin" | "soir" | null; heureDebut?: string | null; heureFin?: string | null; debut: string; fin: string | null; motif: string }[];
   releves: { numero: string; date: string; km: number; origine: string; motifRejet: string | null }[];
   pleins: { numero: string; date: string; litres: number; prixLitre: number; montant: number; km: number | null; source: string; reference: string | null; photo?: string | null }[];
   depenses: { numero: string; date: string; poste: PosteDepense; libelle: string; montant: number; beneficiaire: string | null; reference: string | null; origine: "caisse" | "bon-de-commande" | "facture" | "stock"; justificatif: boolean; km: number | null; kmMotifRejet: string | null; /** La facture ou le reçu, posé par la lecture à part de `donnees/fiche`. */ photo?: string | null }[];
@@ -270,7 +270,7 @@ export function assemblerFiche(l: LigneFlotte, faits: FaitsFiche, parametres: Pa
     .map((a) => {
       const kmDebut = kmVers(releves, a.debut);
       const kmFin = kmVers(releves, a.fin ?? aujourdhui);
-      return { numero: a.numero, chauffeur: a.chauffeur, chauffeurId: a.chauffeurId, initiales: initiales(a.chauffeur), role: a.role, debut: a.debut, fin: a.fin, buSite, kmParcourus: kmDebut !== null && kmFin !== null && kmFin > kmDebut ? kmFin - kmDebut : 0, motif: a.motif };
+      return { numero: a.numero, chauffeur: a.chauffeur, chauffeurId: a.chauffeurId, initiales: initiales(a.chauffeur), role: a.role, quart: a.quart ?? null, heureDebut: a.heureDebut ?? null, heureFin: a.heureFin ?? null, debut: a.debut, fin: a.fin, buSite, kmParcourus: kmDebut !== null && kmFin !== null && kmFin > kmDebut ? kmFin - kmDebut : 0, motif: a.motif };
     })
     .sort((a, b) => (a.fin === null && b.fin !== null ? -1 : b.fin === null && a.fin !== null ? 1 : b.debut.localeCompare(a.debut)));
 

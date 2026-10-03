@@ -129,6 +129,10 @@ interface LigneAffectation {
   vehicule_id: string;
   chauffeur_id: string;
   role: "titulaire" | "suppleant";
+  /** Le quart et ses heures de prise et de relève (0074) ; absents, la journée entière. */
+  quart?: "matin" | "soir" | null;
+  heure_debut?: string | null;
+  heure_fin?: string | null;
   debut: string;
   fin: string | null;
   /** Le numéro et le motif, quand lire_parc() les rend : les rapports d'affectation les lisent. */

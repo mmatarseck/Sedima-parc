@@ -373,12 +373,15 @@ export async function ecrireCreation(c: Creation): Promise<ResultatEcriture> {
     const veille = new Date(`${ligne.debut}T00:00:00Z`);
     veille.setUTCDate(veille.getUTCDate() - 1);
     const fin = veille.toISOString().slice(0, 10);
-    const courante = await client.from("affectation").select("id, debut").eq("vehicule_id", ligne.vehicule_id).eq("role", "titulaire").is("fin", null).maybeSingle<{ id: string; debut: string }>();
-    if (courante.data) {
+    /* Par quart (0074) : un titulaire du matin ne remplace que celui du matin
+       (ou celui de la journée) ; un titulaire de journée remplace tous les quarts. */
+    const quartNouveau = typeof ligne.quart === "string" ? ligne.quart : null;
+    const courantes = await client.from("affectation").select("id, debut, quart").eq("vehicule_id", ligne.vehicule_id).eq("role", "titulaire").is("fin", null).returns<{ id: string; debut: string; quart: string | null }[]>();
+    for (const courante of (courantes.data ?? []).filter((c) => quartNouveau === null || c.quart === null || c.quart === quartNouveau)) {
       /* Une affectation ouverte le jour même se referme sur son propre début :
          la veille donnerait une période à l'envers, que la base refuse. */
-      const cloture = courante.data.debut > fin ? courante.data.debut : fin;
-      const fermee = await client.from("affectation").update({ fin: cloture, modifie_le: new Date().toISOString(), modifie_par: moi.utilisateurId }).eq("id", courante.data.id);
+      const cloture = courante.debut > fin ? courante.debut : fin;
+      const fermee = await client.from("affectation").update({ fin: cloture, modifie_le: new Date().toISOString(), modifie_par: moi.utilisateurId }).eq("id", courante.id);
       if (fermee.error) return { issue: "refusee", motif: `Affectation précédente non close : ${fermee.error.message}` };
     }
   }

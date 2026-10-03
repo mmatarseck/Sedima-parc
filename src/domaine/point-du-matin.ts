@@ -152,7 +152,8 @@ export function pointDuMatin(parc: LigneDisponibilite[], camions: LigneCamionTie
     type: typeParc(l),
     capaciteTonnes: l.chargeUtile ? arrondi(l.chargeUtile / 1000) : null,
     special: l.chargementSpecial ? { nature: l.chargementSpecial, valeur: l.capaciteSpeciale ?? null } : null,
-    chauffeur: l.conducteur?.nom ?? null,
+    /* En deux quarts (0074) : « matin X · soir Y ». */
+    chauffeur: l.conducteur?.quarts?.length ? l.conducteur.quarts.map((q) => `${q.quart} ${q.nom}`).join(" · ") : (l.conducteur?.nom ?? null),
     href: `/flotte/${l.immatriculation}`,
   });
   const versTiers = (c: LigneCamionTiers): VehiculeDuMatin => ({
