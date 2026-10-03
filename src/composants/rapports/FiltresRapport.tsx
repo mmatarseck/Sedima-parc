@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, ListFilter, Search, X } from "lucide-react";
 import { estFacette, texteDe, type ColonneRapport, type LigneRapport } from "@/domaine/rapports";
 import { nombre } from "@/lib/format";
+import { ConditionsRapport } from "./ConditionsRapport";
+import { conditionValide, conditionsDe, estBornable, estSeuil, satisfait, type Condition } from "./conditions";
 import type { Facettes } from "./reglages";
 
 /* ============================================================================
@@ -25,10 +27,16 @@ import type { Facettes } from "./reglages";
  * en cocher un second.
  * ==========================================================================*/
 
-export function appliquerFacettes(lignes: LigneRapport[], facettes: Facettes): LigneRapport[] {
-  const posees = Object.entries(facettes).filter(([, v]) => v.length > 0);
-  if (posees.length === 0) return lignes;
-  return lignes.filter((l) => posees.every(([cle, valeurs]) => valeurs.includes(texteDe(l[cle] ?? null) || "—")));
+export function appliquerFacettes(lignes: LigneRapport[], facettes: Facettes, colonnes: ColonneRapport[]): LigneRapport[] {
+  const posees = Object.entries(facettes).filter(([cle, v]) => v.length > 0 && !estSeuil(cle));
+  /* Une condition dont la colonne a disparu du catalogue, ou à moitié saisie, ne filtre rien. */
+  const conditions = conditionsDe(facettes)
+    .map((c) => ({ c, colonne: colonnes.find((x) => x.cle === c.cle) }))
+    .filter((x): x is { c: Condition; colonne: ColonneRapport } => Boolean(x.colonne) && conditionValide(x.c, x.colonne!.type));
+  if (posees.length === 0 && conditions.length === 0) return lignes;
+  return lignes.filter(
+    (l) => posees.every(([cle, valeurs]) => valeurs.includes(texteDe(l[cle] ?? null) || "—")) && conditions.every(({ c, colonne }) => satisfait(l, c, colonne.type)),
+  );
 }
 
 function valeursDe(lignes: LigneRapport[], cle: string): Map<string, number> {
@@ -158,6 +166,7 @@ export function FiltresRapport({
   );
 
   const posees = Object.entries(facettes).filter(([, v]) => v.length > 0);
+  const bornables = useMemo(() => colonnes.filter(estBornable), [colonnes]);
   /* Les facettes posées d'abord, puis les plus discriminantes — celles qui
      partagent le rapport en groupes lisibles plutôt qu'en poussière. */
   const ordonnees = [...utiles].sort((a, b) => {
@@ -168,17 +177,18 @@ export function FiltresRapport({
   const VISIBLES = 6;
   const montrees = toutes ? ordonnees : ordonnees.slice(0, VISIBLES);
 
-  if (utiles.length === 0) return null;
+  if (utiles.length === 0 && bornables.length === 0) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <ConditionsRapport colonnes={bornables} facettes={facettes} onChanger={onChanger} />
       {montrees.map(({ colonne }) => (
         <Facette
           key={colonne.cle}
           colonne={colonne}
           /* Le comptage ignore la facette elle-même : cocher « Camion » ne doit
              pas faire disparaître « Tracteur » de la liste. */
-          valeurs={valeursDe(appliquerFacettes(lignes, Object.fromEntries(Object.entries(facettes).filter(([k]) => k !== colonne.cle))), colonne.cle)}
+          valeurs={valeursDe(appliquerFacettes(lignes, Object.fromEntries(Object.entries(facettes).filter(([k]) => k !== colonne.cle)), colonnes), colonne.cle)}
           choisies={facettes[colonne.cle] ?? []}
           onChanger={(v) => onChanger({ ...facettes, [colonne.cle]: v })}
         />
