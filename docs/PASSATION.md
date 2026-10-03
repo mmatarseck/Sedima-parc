@@ -4,8 +4,8 @@
 est dans les documents cités ; ce fichier dit où l'on en est et comment on
 travaille.*
 
-**État au 3 octobre 2026 (soir)** : tout est sur `origin/main` (PR #28
-fusionnée, `70161c1`, puis cette passation) ; migrations jouées en production
+**État au 3 octobre 2026 (soir)** : tout est sur `origin/main` (PR #30
+fusionnée, `892ec90`, puis cette passation) ; migrations jouées en production
 **jusqu'à 0077** — la prochaine sera **0078**. `list_migrations` porte 0068 à
 0075 ; **0076 et 0077 ont été jouées à la main dans l'éditeur SQL** (le
 `apply_migration` du connecteur a été annulé trois fois de suite ce jour-là,
@@ -70,7 +70,7 @@ métier les dépose dans la conversation ou si un connecteur y donne accès.
 **Next.js 16** : lire `node_modules/next/dist/docs/` (après `npm ci`) avant
 d'écrire du code Next — voir `AGENTS.md`.
 
-## Le 3 octobre 2026 — ce qui a été fait (PR #21 à #28)
+## Le 3 octobre 2026 — ce qui a été fait (PR #21 à #30)
 
 Détail dans **`docs/SERVICES-MAINTENANCE.md`** (sections du 3 octobre) et
 **`docs/ATTELAGES.md`**.
@@ -107,6 +107,15 @@ Détail dans **`docs/SERVICES-MAINTENANCE.md`** (sections du 3 octobre) et
 - **#28 Téléphone › Atelier** : ouvre le formulaire de service (clôture,
   planification) ; « Remettre en service » après un service clos ; l'ancienne
   clôture d'un montant global est retirée.
+- **#29** : cette passation.
+- **#30 Fiche véhicule** : « Planifier » sur le plan d'entretien — une ligne
+  due, ou toutes en tête ; un service préventif déjà ouvert s'ouvre à la place.
+  Les bancs passent le véhicule à `planDuVehicule` (signature de 0075).
+
+Avec #25, #28 et #30, une échéance due propose le service **partout** : page
+Maintenance, fiche véhicule, téléphone de l'atelier. **Tous les chantiers de
+maintenance de `docs/PROPOSITION-MAINTENANCE.md` sont faits** ; il reste au
+métier à créer les programmes de ses modèles.
 
 ## Ce qui reste ouvert au 2 octobre 2026
 
