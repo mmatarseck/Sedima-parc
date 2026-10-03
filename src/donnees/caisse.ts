@@ -31,6 +31,8 @@ export interface LigneCaisseBase {
   justificatif: boolean;
   depense_numero: string | null;
   enregistre_par: string | null;
+  /** Absente d'une base d'avant 0070. */
+  fichier?: string | null;
 }
 
 export interface LigneDepenseCaisseBase {
@@ -78,6 +80,7 @@ export function journalDepuisLaBase(mouvements: LigneCaisseBase[], depenses: Dep
       montant: Number(m.montant),
       beneficiaire: m.beneficiaire,
       piece: m.piece,
+      fichier: m.fichier ?? null,
       justificatif: m.justificatif,
       depenseNumero: m.depense_numero,
       poste: d?.poste ?? null,
@@ -118,7 +121,8 @@ async function caisseServeurBrut(parametres: Parametres): Promise<CaisseServeur>
   const p = parametres.caisse;
   const client = await clientServeur();
   const [mouvements, depenses] = await Promise.all([
-    client.from("mouvement_caisse").select("numero, date, sens, libelle, montant, beneficiaire, piece, justificatif, depense_numero, enregistre_par").order("date", { ascending: false }).limit(5000).returns<LigneCaisseBase[]>(),
+    /* Toutes les colonnes : le justificatif (0070) vient avec elles une fois la migration jouée, sans casser la lecture d'avant. */
+    client.from("mouvement_caisse").select("*").order("date", { ascending: false }).limit(5000).returns<LigneCaisseBase[]>(),
     client.from("depense").select("numero, date, libelle, montant, poste, beneficiaire, reference, justificatif, vehicule (immatriculation, business_unit, site (libelle))").eq("origine", "caisse").order("date", { ascending: false }).limit(5000).returns<LigneDepenseCaisseBase[]>(),
   ]);
   /* La date d'ouverture (0069) : le journal repart de ce jour, avec le report ;
