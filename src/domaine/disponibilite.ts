@@ -86,6 +86,8 @@ export interface LigneDisponibilite {
   immobilisation: ImmobilisationAdministrative | null;
   engage: boolean;
   chargeUtile: number | null;
+  /** Le site du véhicule, pour le changer depuis l'écran du matin. */
+  siteId?: string | null;
   /** Chargement spécialisé et sa capacité hors tonnes (0073). */
   chargementSpecial?: import("./chargement").ChargementSpecial | null;
   capaciteSpeciale?: number | null;

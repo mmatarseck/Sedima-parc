@@ -61,6 +61,7 @@ export default async function PageDisponibilite() {
       usage: v.usage,
       transportSpecial: v.transportSpecial,
       site: l.site?.libelle ?? null,
+      siteId: l.site?.id ?? null,
       statutSaisi: v.statut,
       statutEffectif: v.statut,
       immobilisation,
