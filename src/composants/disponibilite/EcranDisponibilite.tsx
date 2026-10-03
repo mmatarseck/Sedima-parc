@@ -10,7 +10,7 @@ import type { StatutVehicule } from "@/domaine/types";
 import { STATUT_VEHICULE } from "@/domaine/libelles";
 import { date, nombre } from "@/lib/format";
 import type { LigneCamionTiers } from "@/domaine/camions-tiers";
-import { pointDuMatin } from "@/domaine/point-du-matin";
+import { avecAttelages, pointDuMatin } from "@/domaine/point-du-matin";
 import { PointDuMatin } from "./PointDuMatin";
 
 /* ============================================================================
@@ -80,7 +80,8 @@ function Interieur({ lignes: toutes, camions, aujourdhui }: { lignes: LigneDispo
   const point = useMemo(() => pointDuMatin(aJour, camions, aujourdhui), [aJour, camions, aujourdhui]);
   const jourLong = new Date(`${aujourdhui}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
-  const engages = aJour.filter((l) => l.engage && l.etat !== "hors-perimetre");
+  /* Les compteurs parlent du parc SEDIMA, en unités qui roulent : un tracteur et sa semi n'en font qu'une, comme au point du matin (métier, 3 octobre 2026). */
+  const engages = avecAttelages(aJour).filter((l) => l.engage && l.etat !== "hors-perimetre");
   const operationnels = engages.filter(operationnel);
   const avecChauffeur = operationnels.filter(aUnChauffeur);
   const sansChauffeur = operationnels.length - avecChauffeur.length;
@@ -93,10 +94,10 @@ function Interieur({ lignes: toutes, camions, aujourdhui }: { lignes: LigneDispo
       <div className="shrink-0">
         <BandeauKpi
           kpis={[
-            { label: "Opérationnels", valeur: `${operationnels.length}`, unite: `/ ${engages.length}`, precision: "véhicules engagés au parc" },
+            { label: "Parc SEDIMA opérationnel", valeur: `${operationnels.length}`, unite: `/ ${engages.length}`, precision: "véhicules engagés — un attelage compte pour un" },
             { label: "Disponibilité du parc", valeur: tdpa === null ? "—" : nombre(tdpa, 0), unite: "%", precision: "D_TDPA du jour — opérationnels sur engagés", ton: tdpa !== null && tdpa < 85 ? "defavorable" : "favorable" },
-            { label: "Prêts avec chauffeur", valeur: `${point.totalVehicules}`, precision: "parc et transporteurs" },
-            { label: "Sans chauffeur", valeur: `${sansChauffeur}`, precision: "véhicules opérationnels sans chauffeur affecté", ton: sansChauffeur > 0 ? "vigilance" : "favorable" },
+            { label: "Prêts avec chauffeur", valeur: `${point.totalVehicules}`, precision: `${point.parcPrets} parc SEDIMA + ${point.tiersPrets} transporteurs` },
+            { label: "Sans chauffeur", valeur: `${sansChauffeur}`, precision: "véhicules du parc opérationnels sans chauffeur affecté", ton: sansChauffeur > 0 ? "vigilance" : "favorable" },
           ]}
         />
       </div>

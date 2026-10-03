@@ -460,12 +460,34 @@ Les opérations viennent du programme que suit le véhicule (modèle, sinon
 catégorie). Une fois le service enregistré, les échéances du véhicule passent
 « en cours » et renvoient à lui.
 
+## 3 octobre 2026 — deux rapports de maintenance
+
+**Respect du plan préventif** (Rapports › Maintenance). Une ligne par
+véhicule et par opération du programme qu'il suit (modèle, sinon catégorie) :
+
+- les **passages** de la période : les interventions qui citent la tâche de
+  l'opération, ou dont l'objet la reconnaît (mots-clés) ;
+- chacun **à l'heure** ou **en retard** selon l'écart au passage précédent,
+  en km et en mois, avec 10 % de tolérance. Le premier passage connu n'a pas de
+  référence : il n'est pas jugé ;
+- l'**état actuel** de l'échéance (dépassée, à planifier, à venir, aucun
+  passage relevé) et son libellé ;
+- le **respect** : à l'heure sur passages jugés, une échéance dépassée
+  comptant comme un oubli.
+
+**Pièces par tâche**. Les services clos de la période, ligne par ligne : les
+sorties du magasin cumulées par tâche et par pièce (quantité, valeur au prix de
+référence), et les pièces achetées pour le service, d'un montant. Les
+interventions d'avant les services ne disent pas leurs pièces (aucun lien entre
+une dépense et une intervention) : le rapport se remplit au fil des services
+clos — deux au 3 octobre 2026.
+
+Banc : `scripts/tester-rapports-maintenance.mts`.
+
 ## Ce qui reste
 
 - Les programmes des modèles eux-mêmes : à créer par le responsable du parc
   (L200, Hilux, TATA LPT 1618, Renault frigo…), périodicités du constructeur.
-- Rapports encore à faire : respect du plan préventif, consommation de pièces
-  par tâche.
 - Les observations de visite technique, à rattacher aux signalements.
 - Le téléphone de l'atelier démarre et clôt encore l'ancien ordre de travail. Il
   n'a pas le formulaire de service.

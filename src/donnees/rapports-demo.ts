@@ -9,6 +9,7 @@
  * serveur ici** : ce module entre dans le paquet du navigateur.
  * ==========================================================================*/
 
+import { PROGRAMMES } from "./entretien-demo";
 import { construireRapportDe, CONTEXTE_PAR_DEFAUT, type ContexteRapport, type ResumeFiche, type SourceRapports } from "@/domaine/assembler-rapports";
 import type { AffectationFiche } from "@/domaine/fiche";
 import { PARAMETRES_DEFAUT, type Parametres } from "@/domaine/parametres";
@@ -93,6 +94,7 @@ export function sourceRapportsDemo(parametres: Parametres = PARAMETRES_DEFAUT): 
       budget: sourceBudgetDemo(),
       parcLeger: sourceParcLegerDemo(),
       pieces: [],
+      programmes: PROGRAMMES,
     };
     CACHE.set(cle, source);
   }

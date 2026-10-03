@@ -94,6 +94,9 @@ export interface PointDuMatin {
   bus: BuDuMatin[];
   immobilises: ImmobiliseDuMatin[];
   totalVehicules: number;
+  /** Ce total, partagé : le parc SEDIMA et les transporteurs. */
+  parcPrets: number;
+  tiersPrets: number;
   capacites: Capacites;
   /** La part des tonnes disponibles qui roule chez les transporteurs. */
   partTiers: number;
@@ -282,7 +285,10 @@ export function pointDuMatin(parcBrut: LigneDisponibilite[], camions: LigneCamio
   ];
   const capacites = bus.reduce((s, b) => additionner(s, b.capacites), VIDE);
   const tonnesTiers = bus.flatMap((b) => b.groupes.filter((g) => g.tiers)).reduce((s, g) => s + g.capacites.tonnes, 0);
-  return { jour, bus, immobilises, totalVehicules: bus.reduce((s, b) => s + b.nombre, 0), capacites, partTiers: capacites.tonnes ? Math.round((tonnesTiers / capacites.tonnes) * 100) : 0 };
+  const groupes = bus.flatMap((b) => b.groupes);
+  const parcPrets = groupes.filter((g) => !g.tiers).reduce((s, g) => s + g.disponibles.length, 0);
+  const tiersPrets = groupes.filter((g) => g.tiers).reduce((s, g) => s + g.disponibles.length, 0);
+  return { jour, bus, immobilises, totalVehicules: parcPrets + tiersPrets, parcPrets, tiersPrets, capacites, partTiers: capacites.tonnes ? Math.round((tonnesTiers / capacites.tonnes) * 100) : 0 };
 }
 
 /* -- Les textes ----------------------------------------------------------------- */

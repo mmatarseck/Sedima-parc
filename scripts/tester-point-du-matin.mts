@@ -77,6 +77,7 @@ const prets = sedima.flatMap((g) => g.disponibles);
 const plateau = prets.find((v) => v.immatriculation === "AA737ZW");
 attendu(`le plateau attelé : une ligne, deux plaques, 31 t (${plateau?.immatriculationAffichee}, ${plateau?.capaciteTonnes} t)`, plateau?.immatriculationAffichee === "AA-737-ZW + AA-713-VE" && plateau.capaciteTonnes === 31 && plateau.remorque?.immatriculation === "AA713VE");
 attendu(`prêts : le plateau et le porteur, 41 t en tout (${prets.length}, ${point.capacites.tonnes} t)`, prets.length === 2 && point.capacites.tonnes === 41 && point.totalVehicules === 2);
+attendu(`le total se partage entre parc et transporteurs (${point.parcPrets} + ${point.tiersPrets})`, point.parcPrets === 2 && point.tiersPrets === 0 && point.totalVehicules === point.parcPrets + point.tiersPrets);
 attendu("la semi n'apparaît pas « sans chauffeur »", sedima.every((g) => g.sansChauffeur.length === 0));
 const vrac = point.immobilises.find((i) => i.immatriculation === "AA927CA");
 attendu(`tracteur en réparation : l'unité immobilisée une fois, attelage inversé compris (${vrac?.immatriculationAffichee} — ${vrac?.motif})`, vrac?.immatriculationAffichee === "AA-927-CA + AA-053-AP" && point.immobilises.filter((i) => i.immatriculationAffichee.includes("AA-053-AP")).length === 1);

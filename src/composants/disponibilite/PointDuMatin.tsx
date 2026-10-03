@@ -73,6 +73,9 @@ export function PointDuMatin({ point, jourLong, lignes, camions }: { point: Poin
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface-3 px-3 text-[12.5px]">
             <span className="code font-semibold text-texte">{point.totalVehicules}</span> véhicules prêts
+            <span className="text-texte-2">
+              · {point.parcPrets} parc, {point.tiersPrets} transporteurs
+            </span>
           </span>
           <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface-3 px-3 text-[12.5px]">
             <span className="code font-semibold text-texte">{t1(point.capacites.tonnes)}</span>
