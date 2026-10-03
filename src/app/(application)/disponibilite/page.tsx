@@ -33,7 +33,9 @@ export default async function PageDisponibilite() {
   const affectationsPar = affectationsDepuisLeParc(parc);
   const aujourdhui = jourCourant();
 
-  const lignes: LigneDisponibilite[] = flotte.map((l) => {
+  /* Les véhicules d'exploitation seulement (métier, 3 octobre 2026) : ceux de
+     service et de fonction ne sont pas de la disponibilité du matin. */
+  const lignes: LigneDisponibilite[] = flotte.filter((l) => (l.vehicule.regime ?? "exploitation") === "exploitation").map((l) => {
     const v = l.vehicule;
     /*
      * Les documents critiques en cause, quand il y en a. Ils n'imposent plus
