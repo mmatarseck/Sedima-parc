@@ -97,6 +97,7 @@ import type { AffectationFiche, IdentiteFiche, IndicateursFiche } from "@/domain
 import type { ImmobilisationAdministrative } from "@/domaine/documents";
 import type { LigneIncident } from "@/domaine/incidents";
 import type { LigneInterventionFlotte, LigneOrdre, LigneTravail } from "@/domaine/maintenance";
+import { ETAT_ECHEANCE, echeanceOperation, libelleEcheance, libellePeriodicite, programmeDuVehicule, reconnaitOperation, type DernierPassage, type OperationEntretien, type ProgrammeEntretien } from "@/domaine/entretien";
 import { MODE_EXECUTION, PRODUIT_TRANSPORTE, ecartPesee, type LigneReleve } from "@/domaine/releve-transport";
 import { MODE_REMUNERATION } from "@/domaine/flotte-tierce";
 import { ETAT_BUDGET } from "@/domaine/budget";
@@ -178,6 +179,8 @@ export interface SourceRapports {
   signalements?: LigneSignalement[];
   /** Le catalogue des tâches de service, pour ranger les interventions par tâche, système et catégorie (0060-0061). */
   catalogueTaches?: { libelle: string; categorie: string | null; systeme: string | null }[];
+  /** Les programmes d'entretien (0062, 0075), pour le respect du plan préventif. */
+  programmes?: ProgrammeEntretien[];
 }
 
 export interface PieceReglementaire {
@@ -1038,6 +1041,131 @@ function parTache(s: SourceRapports, c: ContexteRapport): LigneRapport[] {
       curatif: x.curatif,
       cout: x.cout,
       coutMoyen: x.interventions + x.services ? Math.round(x.cout / (x.interventions + x.services)) : null,
+      derniere: x.derniere,
+    };
+  });
+}
+
+/*
+ * Le respect du plan préventif (métier : « services faits à l'heure, en
+ * retard, oubliés »). Pour chaque opération du programme que suit le véhicule
+ * (modèle, sinon catégorie), les passages relevés dans l'historique — une
+ * intervention qui cite la tâche de l'opération, ou dont l'objet la
+ * reconnaît —, et pour chacun l'écart au passage précédent : dans la
+ * périodicité (10 % de tolérance), il est à l'heure ; au-delà, en retard. Le
+ * premier passage connu n'a pas de référence : il n'est pas jugé. L'état
+ * actuel est celui de l'échéance ; dépassée, elle compte comme un oubli dans
+ * le taux de respect.
+ */
+const TOLERANCE_PLAN = 1.1;
+const RYTHME_PLAN_KM_JOUR = 100;
+const MOIS_EN_JOURS = 30.44;
+
+export function passagesDeLOperation(op: OperationEntretien, interventions: Pick<LigneInterventionFlotte, "numero" | "date" | "objet" | "km" | "taches">[]): Pick<LigneInterventionFlotte, "numero" | "date" | "objet" | "km">[] {
+  const tache = op.tacheLibelle?.toLowerCase() ?? null;
+  return interventions
+    .filter((i) => (tache !== null && (i.taches ?? []).some((t) => t.toLowerCase() === tache)) || reconnaitOperation(op, i.objet))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Vrai si le passage arrive dans la périodicité depuis le précédent, tolérance comprise. */
+export function passageALHeure(op: OperationEntretien, precedent: { date: string; km: number | null }, passage: { date: string; km: number | null }): boolean {
+  const jours = joursEntre(precedent.date, passage.date) ?? 0;
+  const km = precedent.km !== null && passage.km !== null ? passage.km - precedent.km : null;
+  const horsMois = op.periodicite.mois !== null && jours > op.periodicite.mois * MOIS_EN_JOURS * TOLERANCE_PLAN;
+  const horsKm = op.periodicite.km !== null && km !== null && km > op.periodicite.km * TOLERANCE_PLAN;
+  return !horsMois && !horsKm;
+}
+
+function respectDuPlan(s: SourceRapports, c: ContexteRapport): LigneRapport[] {
+  const programmes = s.programmes ?? [];
+  if (!programmes.length) return [];
+  const { debut, fin } = resoudrePeriode(c.periode, s.aujourdhui);
+  const parVehicule = new Map<string, LigneInterventionFlotte[]>();
+  for (const i of s.interventions) parVehicule.set(i.immatriculation, [...(parVehicule.get(i.immatriculation) ?? []), i]);
+  const lignes: LigneRapport[] = [];
+  for (const l of s.lignes.filter((x) => x.vehicule.engage !== false)) {
+    const v = l.vehicule;
+    const programme = programmeDuVehicule(v, programmes)?.programme ?? programmes.find((p) => p.code === "leger") ?? programmes[0]!;
+    const interventions = parVehicule.get(v.immatriculation) ?? [];
+    const compteurs = { km: l.kilometrage ?? null, heures: null, kmParJour: RYTHME_PLAN_KM_JOUR, heuresParJour: 0.5, miseEnService: v.premiereMiseEnCirculation };
+    for (const op of programme.operations) {
+      const passages = passagesDeLOperation(op, interventions);
+      let aLHeure = 0;
+      let enRetard = 0;
+      passages.forEach((p, k) => {
+        if (k === 0 || !dansLaPeriode(p.date, debut, fin)) return;
+        if (passageALHeure(op, passages[k - 1]!, p)) aLHeure += 1;
+        else enRetard += 1;
+      });
+      const d = passages.at(-1);
+      const dernier: DernierPassage | null = d ? { date: d.date, km: programme.base === "heures" ? null : d.km, heures: null, numero: d.numero, objet: d.objet } : null;
+      const e = echeanceOperation(op, undefined, dernier, compteurs, s.aujourdhui);
+      const oubli = e.etat === "en-retard" ? 1 : 0;
+      const juges = aLHeure + enRetard + oubli;
+      const RANG = { "en-retard": 0, "a-planifier": 1, "sans-reference": 2, "a-venir": 3 } as const;
+      lignes.push({
+        ...situation(s, v.id),
+        programme: programme.libelle,
+        operation: op.libelle,
+        critique: op.critique,
+        periodicite: libellePeriodicite(op.periodicite),
+        passages: passages.filter((p) => dansLaPeriode(p.date, debut, fin)).length,
+        aLHeure,
+        enRetard,
+        respect: juges ? Math.round((aLHeure / juges) * 100) : null,
+        dernier: d?.date ?? null,
+        dernierNumero: d?.numero ?? null,
+        etat: etat(ETAT_ECHEANCE[e.etat].libelle, ETAT_ECHEANCE[e.etat].ton, RANG[e.etat]),
+        echeance: libelleEcheance(e),
+      });
+    }
+  }
+  return lignes;
+}
+
+/*
+ * Les pièces consommées, tâche par tâche, sur les services clos de la période :
+ * les sorties du magasin (pièce, quantité, valeur au prix de référence) et les
+ * pièces achetées pour le service, d'un montant. Les interventions d'avant les
+ * services ne disent pas leurs pièces : elles n'entrent pas ici.
+ */
+function piecesParTache(s: SourceRapports, c: ContexteRapport): LigneRapport[] {
+  const { debut, fin } = resoudrePeriode(c.periode, s.aujourdhui);
+  const cumul = new Map<string, { tache: string; magasin: boolean; piece: string; reference: string | null; quantite: number | null; valeur: number; services: Set<string>; vehicules: Set<string>; derniere: string }>();
+  for (const o of s.ordres.filter((x) => x.statut === "clos" && dansLaPeriode(x.dateCloture ?? x.datePrevue, debut, fin))) {
+    const date = o.dateCloture ?? o.datePrevue;
+    for (const l of o.lignes ?? []) {
+      const tache = l.libelle?.trim() || "Tâche non nommée";
+      const ajouter = (magasin: boolean, piece: string, reference: string | null, quantite: number | null, valeur: number) => {
+        const cle = `${tache}|${magasin ? reference ?? piece : "achat"}`;
+        const x = cumul.get(cle) ?? { tache, magasin, piece, reference, quantite: magasin ? 0 : null, valeur: 0, services: new Set<string>(), vehicules: new Set<string>(), derniere: date };
+        if (quantite !== null) x.quantite = (x.quantite ?? 0) + quantite;
+        x.valeur += valeur;
+        x.services.add(o.numero);
+        x.vehicules.add(o.immatriculation);
+        if (date > x.derniere) x.derniere = date;
+        cumul.set(cle, x);
+      };
+      for (const p of l.piecesStock ?? []) ajouter(true, p.designation || p.pieceNumero, p.pieceNumero || null, p.quantite, Math.round((p.quantite || 0) * (p.prixUnitaire || 0)));
+      if ((l.piecesAchetees ?? 0) > 0) ajouter(false, "Pièces achetées pour le service", null, null, l.piecesAchetees);
+    }
+  }
+  const catalogue = new Map((s.catalogueTaches ?? []).map((t) => [t.libelle.toLowerCase(), t]));
+  return [...cumul.values()].map((x) => {
+    const t = catalogue.get(x.tache.toLowerCase());
+    const systeme = systemeDe(t?.systeme);
+    return {
+      tache: x.tache,
+      categorie: systeme ? CATEGORIES_MAINTENANCE[systeme.categorie] : t?.categorie ? (CATEGORIES_MAINTENANCE[t.categorie] ?? null) : null,
+      systeme: systeme?.libelle ?? null,
+      origine: x.magasin ? etat("Magasin", "neutre", 0) : etat("Achat", "neutre", 1),
+      piece: x.piece,
+      reference: x.reference,
+      quantite: x.quantite,
+      valeur: x.valeur,
+      services: x.services.size,
+      vehicules: x.vehicules.size,
       derniere: x.derniere,
     };
   });
@@ -2078,6 +2206,10 @@ export function construireRapportDe(s: SourceRapports, id: string, c: ContexteRa
       return pannes(s, c);
     case "maintenance-taches":
       return parTache(s, c);
+    case "maintenance-plan-preventif":
+      return respectDuPlan(s, c);
+    case "maintenance-pieces-taches":
+      return piecesParTache(s, c);
     case "conformite-documents":
       return documents(s, parametres);
     case "incidents-declarations":

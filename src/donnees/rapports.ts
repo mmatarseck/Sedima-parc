@@ -29,6 +29,7 @@ import { fichesChauffeursServeur } from "./fiche-chauffeur";
 import { lignesFlotte, parcServeur, type ParcBrut } from "./flotte";
 import { lignesLues } from "./lecture";
 import { incidentsServeur } from "./incidents";
+import { programmesServeur } from "./entretien";
 import { interventionsServeur, travauxServeur } from "./maintenance";
 import { ordresServeur } from "./ordres";
 import { parcLegerServeur } from "./parc-leger";
@@ -152,7 +153,7 @@ async function sourceRapportsServeurBrut(parametres: Parametres): Promise<Source
     parcLegerServeur(parametres),
   ]);
   /* Pannes et catalogue (0060) : le rapport se dresse sans eux plutôt que pas du tout, si la migration manque. */
-  const [signalements, catalogueTaches, transferts, livraisons] = await Promise.all([signalementsServeur().catch(() => []), tachesPourFormulaires().catch(() => []), transfertsServeur().catch(() => []), livraisonsServeur()]);
+  const [signalements, catalogueTaches, transferts, livraisons, { programmes }] = await Promise.all([signalementsServeur().catch(() => []), tachesPourFormulaires().catch(() => []), transfertsServeur().catch(() => []), livraisonsServeur(), programmesServeur()]);
   const affectations = affectationsDepuisLeParc(await parcServeur());
   const pieces = await piecesReglementairesServeur();
   const sansFiches: Omit<SourceRapports, "resumesFiche"> = {
@@ -183,6 +184,7 @@ async function sourceRapportsServeurBrut(parametres: Parametres): Promise<Source
     transferts,
     livraisons,
     catalogueTaches: catalogueTaches.map((t) => ({ libelle: t.libelle, categorie: t.categorie, systeme: t.systeme })),
+    programmes,
   };
   /* Ce que la fiche apporte, dérivé des lecteurs. */
   return { ...sansFiches, resumesFiche: resumesFicheDepuisLaSource(sansFiches) };
